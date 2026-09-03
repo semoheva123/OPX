@@ -35,6 +35,7 @@ if (!JWT_SECRET) {
 // 📧 إعداد عميل Resend
 const resendKey = process.env.RESEND_API_KEY;
 const resend = resendKey ? new Resend(resendKey) : null;
+const emailFrom = process.env.EMAIL_FROM || 'OPERIX <onboarding@resend.dev>';
 
 // 🔔 إعداد مفاتيح Web Push (VAPID Keys)
 const publicVapidKey = process.env.VAPID_PUBLIC_KEY;
@@ -394,7 +395,7 @@ app.post('/api/user/2fa/send-code', verifyToken, async (req, res) => {
     await user.save();
 
     await resend.emails.send({
-      from: 'OPERIX <onboarding@resend.dev>',
+      from: emailFrom,
       to: user.email,
       subject: 'رمز التحقق الثنائي (2FA) - BOOST',
       html: `
@@ -681,7 +682,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     await user.save();
 
     await resend.emails.send({
-      from: 'OPERIX <onboarding@resend.dev>',
+      from: emailFrom,
       to: user.email,
       subject: 'رمز استعادة كلمة المرور - OPERIX',
       html: `
@@ -997,7 +998,7 @@ app.post('/api/wallet/withdraw', verifyToken, async (req, res) => {
       try {
         const formattedDate = new Date().toLocaleString('ar-EG', { timeZone: 'UTC' });
         await resend.emails.send({
-          from: 'OPERIX <onboarding@resend.dev>',
+          from: emailFrom,
           to: user.email,
           subject: '⚠️ تم تقديم طلب سحب جديد - منصة OPERIX',
           html: `
@@ -1258,7 +1259,7 @@ app.post('/api/admin/withdrawals/action', verifyAdmin, async (req, res) => {
         try {
           const completedDate = new Date().toLocaleString('ar-EG', { timeZone: 'UTC' });
           await resend.emails.send({
-            from: 'OPERIX <onboarding@resend.dev>',
+            from: emailFrom,
             to: user.email,
             subject: '✅ تم إتمام عملية السحب بنجاح - منصة OPERIX',
             html: `
