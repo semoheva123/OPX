@@ -27,7 +27,7 @@
     "web-push": "^3.6.6"
   },
   "engines": {
-    "node": "20.x"
+    "node": "24.x"
   },
   "devDependencies": {
     "baseline-browser-mapping": "^2.11.20",
