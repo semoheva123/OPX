@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OPERIX - المنصة الذكية المتكاملة</title>
+
+    <!-- تحسينات السيو وتجربة التطبيق -->
+    <meta name="theme-color" content="#030712">
+    <meta name="description" content="OPERIX - منصة رقمية لإدارة المهام والحساب والإحالات والمكافآت">
+    <meta property="og:title" content="OPERIX - المنصة الرقمية المتكاملة">
+    <meta property="og:description" content="تجربة أوضح لإدارة الحساب والمهام والإحالات والمكافآت">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="/operix-logo.svg">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="OPERIX - المنصة الرقمية المتكاملة">
+    <meta name="twitter:description" content="تجربة أوضح لإدارة الحساب والمهام والإحالات والمكافآت">
+    <link rel="icon" type="image/svg+xml" href="/operix-icon.svg">
+
+    <link rel="stylesheet" href="/dist/tailwind.css">
+    <!-- FontAwesome Icons -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --operix-ink: #07111f;
+            --operix-panel: rgba(11, 24, 39, 0.82);
+            --operix-line: rgba(148, 163, 184, 0.16);
+            --operix-gold: #f7b955;
+        }
+        * {
+            font-family: 'IBM Plex Sans Arabic', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            letter-spacing: 0;
+        }
+        body {
+            background-color: var(--operix-ink);
+            background-image: linear-gradient(rgba(69, 214, 176, 0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(69, 214, 176, 0.035) 1px, transparent 1px), radial-gradient(circle at 85% 0%, rgba(247, 185, 85, 0.14), transparent 34rem), radial-gradient(circle at 0% 60%, rgba(69, 214, 176, 0.08), transparent 30rem);
+            background-size: 42px 42px, 42px 42px, auto, auto;
+            color: #f3f4f6;
+        }
+        .hide { display: none !important; }
+        
+        /* Glassmorphism Classes */
+        .glass-card {
+            background: var(--operix-panel);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--operix-line);
+            box-shadow: 0 18px 50px rgba(0, 0, 0, 0.16);
+        }
+        .glass-modal {
+            background: rgba(3, 7, 18, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .gold-gradient {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%);
+        }
+        .purple-gradient {
+            background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+        }
+        
+        /* Animation keyframes */
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+        .animate-glow { animation: pulseGlow 2s infinite; }
+        .wheel-disc {
+            background: conic-gradient(#f59e0b 0 12.5%, #fbbf24 12.5% 25%, #b45309 25% 37.5%, #f59e0b 37.5% 50%, #fbbf24 50% 62.5%, #b45309 62.5% 75%, #f59e0b 75% 87.5%, #fbbf24 87.5% 100%);
+            box-shadow: 0 0 0 8px rgba(245, 158, 11, 0.08), 0 0 35px rgba(245, 158, 11, 0.22);
+        }
+        .wheel-disc::before { content: ''; position: absolute; inset: 9px; border: 1px dashed rgba(15, 23, 42, 0.5); border-radius: 9999px; }
+        .mystery-box-visual { box-shadow: 0 14px 35px rgba(139, 92, 246, 0.22); }
+        @keyframes boxReveal { 0%, 100% { transform: translateY(0) rotate(0); } 35% { transform: translateY(-8px) rotate(-4deg); } 70% { transform: translateY(0) rotate(4deg); } }
+        .box-reveal { animation: boxReveal 0.8s ease-in-out; }
+        button, input, select, textarea { transition: border-color .2s ease, background-color .2s ease, box-shadow .2s ease, transform .2s ease; }
+        button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--operix-gold); outline-offset: 2px; }
+        button:not(:disabled):hover { transform: translateY(-1px); }
+        #appView { animation: operixReveal .55s ease both; }
+        @keyframes operixReveal { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+        .operix-mark { position: relative; overflow: hidden; background: linear-gradient(145deg, #ffe1a1 0%, #f7b955 38%, #bb7620 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 12px 28px rgba(247,185,85,.2); }
+        .operix-mark::after { content: ''; position: absolute; width: 120%; height: 45%; top: -18%; left: -10%; background: rgba(255,255,255,.28); transform: rotate(-28deg); }
+        .operix-wordmark { letter-spacing: .08em; font-family: Georgia, serif; }
+        #view-home > div:first-child { box-shadow: 0 22px 65px rgba(247,185,85,.12), inset 0 1px 0 rgba(255,255,255,.08); }
+        #appNavBar { box-shadow: 0 -14px 35px rgba(0,0,0,.25); }
+        .glass-card { border-radius: 20px; transition: border-color .25s ease, box-shadow .25s ease, transform .25s ease; }
+        .glass-card:hover { border-color: rgba(247,185,85,.24); box-shadow: 0 22px 60px rgba(0,0,0,.22); }
+        .operix-app-header { background: linear-gradient(105deg, rgba(16,35,54,.92), rgba(8,18,31,.86)); border-color: rgba(247,185,85,.18); box-shadow: 0 16px 45px rgba(0,0,0,.2); }
+        .operix-wallet { background-image: radial-gradient(circle at 100% 0%, rgba(247,185,85,.2), transparent 18rem), linear-gradient(135deg, rgba(247,185,85,.13), rgba(8,18,31,.94) 58%); }
+        .operix-wallet .bg-slate-950\/60 { background: rgba(3,10,19,.46); border-color: rgba(255,255,255,.09); }
+        #appNavBar button { min-height: 48px; }
+        @media (min-width: 768px) { #appView { max-width: 768px; padding: 2rem; } #appNavBar { max-width: 768px; } }
+        .company-intro { min-height: 100vh; background: radial-gradient(circle at 78% 14%, rgba(247,185,85,.16), transparent 23rem), radial-gradient(circle at 8% 78%, rgba(69,214,176,.1), transparent 25rem); }
+        .intro-grid { background-image: linear-gradient(rgba(148,163,184,.045) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,.045) 1px, transparent 1px); background-size: 36px 36px; }
+        .intro-orbit { border: 1px solid rgba(247,185,85,.22); box-shadow: 0 0 0 18px rgba(247,185,85,.025), 0 0 0 42px rgba(69,214,176,.02), 0 25px 80px rgba(0,0,0,.25); }
+        .product-preview { position: relative; width: min(100%, 430px); padding: 12px; border: 1px solid rgba(247,185,85,.25); border-radius: 26px; background: linear-gradient(145deg, rgba(19,39,59,.95), rgba(5,14,25,.96)); box-shadow: 0 30px 90px rgba(0,0,0,.38), 0 0 0 12px rgba(247,185,85,.025); transform: perspective(900px) rotateY(-5deg) rotateX(2deg); }
+        .product-preview::before { content: ''; position: absolute; inset: 8px; border: 1px solid rgba(255,255,255,.06); border-radius: 20px; pointer-events: none; }
+        .preview-topbar { display: flex; align-items: center; justify-content: space-between; padding: 8px 7px 14px; color: #94a3b8; font-size: 9px; }
+        .preview-dots { display: flex; gap: 4px; direction: ltr; }
+        .preview-dots span { width: 5px; height: 5px; border-radius: 50%; background: #334155; }
+        .preview-dots span:first-child { background: #f7b955; }
+        .preview-brand { display: flex; align-items: center; gap: 6px; color: #f8fafc; font-weight: 700; }
+        .preview-brand i { color: #f7b955; font-style: normal; font-family: Georgia, serif; }
+        .preview-balance { padding: 18px; border-radius: 18px; background: radial-gradient(circle at 100% 0%, rgba(247,185,85,.22), transparent 12rem), linear-gradient(135deg, rgba(247,185,85,.16), rgba(7,17,31,.75)); border: 1px solid rgba(247,185,85,.22); }
+        .preview-balance small, .preview-label { color: #94a3b8; font-size: 9px; }
+        .preview-balance strong { display: block; color: #fff; font-size: 28px; line-height: 1.2; margin: 6px 0; letter-spacing: .02em; }
+        .preview-balance em { color: #f7b955; font-size: 10px; font-style: normal; font-weight: 700; }
+        .preview-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-top: 8px; }
+        .preview-stat { padding: 10px; background: rgba(3,10,19,.55); border: 1px solid rgba(148,163,184,.12); border-radius: 13px; }
+        .preview-stat b { display: block; color: #e2e8f0; font-size: 12px; margin-top: 4px; }
+        .preview-stat:nth-child(2) b { color: #45d6b0; }
+        .preview-stat:nth-child(3) b { color: #f7b955; }
+        .preview-lower { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+        .preview-chart, .preview-security { padding: 12px; background: rgba(3,10,19,.48); border: 1px solid rgba(148,163,184,.12); border-radius: 15px; }
+        .preview-bars { display: flex; align-items: end; gap: 5px; height: 55px; margin-top: 12px; }
+        .preview-bars span { flex: 1; border-radius: 4px 4px 1px 1px; background: linear-gradient(#45d6b0, #168a76); }
+        .preview-bars span:nth-child(1) { height: 35%; }.preview-bars span:nth-child(2) { height: 52%; }.preview-bars span:nth-child(3) { height: 45%; }.preview-bars span:nth-child(4) { height: 70%; }.preview-bars span:nth-child(5) { height: 62%; }.preview-bars span:nth-child(6) { height: 88%; }
+        .preview-security .security-ring { width: 52px; height: 52px; margin: 12px auto 7px; display: grid; place-items: center; border-radius: 50%; background: radial-gradient(circle, #07111f 56%, transparent 58%), conic-gradient(#45d6b0 0 100%); color: #45d6b0; font-size: 11px; font-weight: 700; }
+        @media (max-width: 767px) { .product-preview { transform: none; } .preview-balance strong { font-size: 24px; } }
+        .intro-feature { background: rgba(11,24,39,.66); border: 1px solid rgba(148,163,184,.13); }
+        .intro-feature:hover { border-color: rgba(247,185,85,.35); transform: translateY(-3px); }
+        .trust-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin-top: 18px; border: 1px solid rgba(69,214,176,.2); border-radius: 16px; overflow: hidden; background: rgba(69,214,176,.12); }
+        .trust-item { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: rgba(7,17,31,.86); }
+        .trust-item > i { color: #45d6b0; font-size: 15px; }
+        .trust-item b, .trust-item small { display: block; }
+        .trust-item b { color: #f8fafc; font-size: 11px; }
+        .trust-item small { color: #94a3b8; font-size: 9px; line-height: 1.6; }
+        .trust-item a { color: #f7b955; text-decoration: underline; text-underline-offset: 2px; }
+        @media (max-width: 767px) { .trust-strip { grid-template-columns: 1fr; } }
+        .intro-stat { border-right: 1px solid rgba(148,163,184,.16); }
+        .intro-stat:first-child { border-right: 0; }
+        .intro-reveal { animation: operixReveal .7s ease both; }
+        .team-code-card { background: radial-gradient(circle at 0 0, rgba(247,185,85,.16), transparent 14rem), linear-gradient(135deg, rgba(15,35,53,.92), rgba(7,17,31,.8)); border-color: rgba(247,185,85,.25); }
+        .team-level-card { background: rgba(11,24,39,.72); transition: border-color .2s ease, transform .2s ease; }
+        .team-level-card:hover { border-color: rgba(69,214,176,.35); transform: translateY(-2px); }
+        .team-member { background: rgba(3,10,19,.42); border: 1px solid rgba(148,163,184,.12); }
+        .team-filter-active { background: rgba(247,185,85,.15); color: #f7c45e; border-color: rgba(247,185,85,.3); }
+        .about-panel { background: linear-gradient(135deg, rgba(13,31,48,.86), rgba(6,16,28,.78)); border: 1px solid rgba(148,163,184,.14); box-shadow: 0 24px 70px rgba(0,0,0,.2); }
+        .about-kicker { color: #45d6b0; font-size: 10px; letter-spacing: .08em; }
+        .about-principle { border-top: 1px solid rgba(148,163,184,.14); padding-top: 12px; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between pb-20">
+
+    <!-- 1. شاشة التحميل (Loading View) -->
+    <div id="loadingView" class="fixed inset-0 bg-slate-950 z-50 flex flex-col items-center justify-center space-y-4">
+        <div class="w-16 h-16 border-4 border-amber-500/20 border-t-amber-500 rounded-full animate-spin"></div>
+        <span class="text-amber-400 font-bold text-sm tracking-wider">جاري تحميل OPERIX...</span>
+    </div>
+
+    <section id="companyIntroView" class="company-intro intro-grid hide w-full px-5 py-5 md:px-10">
+        <div class="max-w-6xl mx-auto min-h-[calc(100vh-2.5rem)] flex flex-col">
+            <header class="flex items-center justify-between gap-4 py-2 intro-reveal">
+                <a href="/" class="flex items-center gap-3" aria-label="OPERIX">
+                    <img src="/operix-logo.svg" alt="OPERIX" class="h-9 w-auto">
+                </a>
+                <div class="flex items-center gap-2">
+                    <a href="#about-operix" class="hidden sm:block px-4 py-2 text-xs font-bold text-slate-400 hover:text-amber-400">من نحن</a>
+                    <button onclick="showAuthView('login')" class="px-4 py-2 text-xs font-bold text-slate-300 hover:text-white">تسجيل الدخول</button>
+                    <button onclick="showAuthView('register')" class="px-4 py-2.5 bg-amber-500 text-slate-950 rounded-xl text-xs font-black shadow-lg shadow-amber-500/10">ابدأ الآن</button>
+                </div>
+            </header>
+            <div class="trust-strip intro-reveal" aria-label="معلومات الثقة والأمان">
+                <div class="trust-item"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i><span><b>حماية الحساب</b><small>مصادقة ثنائية وإدارة جلسات</small></span></div>
+                <div class="trust-item"><i class="fa-solid fa-list-check" aria-hidden="true"></i><span><b>سجل قابل للمراجعة</b><small>تفاصيل النشاط والمعاملات بوضوح</small></span></div>
+                <div class="trust-item"><i class="fa-solid fa-scale-balanced" aria-hidden="true"></i><span><b>إفصاح واضح</b><small><a href="/transparency.html">الرسوم والمخاطر</a> و<a href="/compliance.html">الامتثال</a></small></span></div>
+            </div>
+            <div class="flex-1 grid lg:grid-cols-[1.1fr_.9fr] items-center gap-12 py-12 md:py-16">
+                <div class="intro-reveal space-y-6">
+                    <span class="inline-flex items-center gap-2 text-[11px] text-emerald-300 border border-emerald-400/20 bg-emerald-400/5 rounded-full px-3 py-1.5"><i class="fa-solid fa-sparkles"></i> بيئة OPERIX الرقمية</span>
+                    <h1 class="text-4xl md:text-6xl font-black leading-tight text-white max-w-2xl">نظام أوضح لبناء <span class="text-amber-400">تقدمك اليومي</span></h1>
+                    <p class="text-sm md:text-base leading-8 text-slate-300 max-w-xl">OPERIX منصة رقمية تجمع المهام، إدارة الحساب، الإحالات، والمكافآت في تجربة واحدة هادئة ومنظمة، مع أدوات واضحة تساعدك على متابعة قراراتك بنفسك.</p>
+                    <div class="flex flex-wrap gap-3">
+                        <button onclick="showAuthView('register')" class="px-6 py-3.5 gold-gradient text-slate-950 rounded-xl text-sm font-black shadow-xl shadow-amber-500/10">إنشاء حساب</button>
+                        <button onclick="showAuthView('login')" class="px-6 py-3.5 bg-slate-900/70 text-white border border-slate-700 rounded-xl text-sm font-bold">الدخول إلى حسابي <i class="fa-solid fa-arrow-left mr-2 text-amber-400"></i></button>
+                    </div>
+                    <div class="grid grid-cols-3 max-w-lg pt-5">
+                        <div class="intro-stat pl-4"><strong class="block text-xl text-white">24/7</strong><span class="text-[10px] text-slate-500">الوصول للحساب</span></div>
+                        <div class="intro-stat px-4"><strong class="block text-xl text-white">2FA</strong><span class="text-[10px] text-slate-500">حماية إضافية</span></div>
+                        <div class="intro-stat px-4"><strong class="block text-xl text-white">واضح</strong><span class="text-[10px] text-slate-500">بيانات قابلة للمتابعة</span></div>
+                    </div>
+                </div>
+                <div class="relative flex justify-center intro-reveal" style="animation-delay:.12s">
+                    <div class="product-preview" aria-label="معاينة لوحة تحكم OPERIX">
+                        <div class="preview-topbar"><div class="preview-brand"><i>OP</i><span>OPERIX</span></div><div class="preview-dots"><span></span><span></span><span></span></div></div>
+                        <div class="preview-balance"><small>إجمالي رصيد المحفظة</small><strong>2,480.50</strong><em>USDT &nbsp; +12.8% هذا الشهر</em></div>
+                        <div class="preview-stats"><div class="preview-stat"><span class="preview-label">المهام</span><b>28 / 33</b></div><div class="preview-stat"><span class="preview-label">الأرباح</span><b>+184.20</b></div><div class="preview-stat"><span class="preview-label">الفريق</span><b>24 نشط</b></div></div>
+                        <div class="preview-lower"><div class="preview-chart"><span class="preview-label">نشاط الحساب</span><div class="preview-bars"><span></span><span></span><span></span><span></span><span></span><span></span></div></div><div class="preview-security"><span class="preview-label">ضوابط الحساب</span><div class="security-ring"><i class="fa-solid fa-check" aria-hidden="true"></i></div><span class="preview-label">مصادقة وإشعارات</span></div></div>
+                    </div>
+                </div>
+            </div>
+            <div class="grid md:grid-cols-3 gap-3 pb-4 intro-reveal" style="animation-delay:.2s">
+                <div class="intro-feature rounded-2xl p-4 flex gap-3 items-start"><i class="fa-solid fa-chart-line text-amber-400 mt-1"></i><div><b class="block text-sm text-white">صورة كاملة للحساب</b><span class="text-[11px] text-slate-400">رصيدك، نشاطك، وأهدافك في مكان واحد.</span></div></div>
+                <div class="intro-feature rounded-2xl p-4 flex gap-3 items-start"><i class="fa-solid fa-shield-halved text-emerald-400 mt-1"></i><div><b class="block text-sm text-white">حماية مدمجة</b><span class="text-[11px] text-slate-400">جلسات ومصادقة وإشعارات للحساب.</span></div></div>
+                <div class="intro-feature rounded-2xl p-4 flex gap-3 items-start"><i class="fa-solid fa-route text-cyan-400 mt-1"></i><div><b class="block text-sm text-white">خطوات مفهومة</b><span class="text-[11px] text-slate-400">تنقل بسيط من المهمة إلى النتيجة.</span></div></div>
+            </div>
+            <section id="about-operix" class="about-panel rounded-3xl p-6 md:p-10 my-10 intro-reveal" style="animation-delay:.28s">
+                <div class="grid lg:grid-cols-[.72fr_1.28fr] gap-8 lg:gap-14">
+                    <div><span class="about-kicker">ABOUT OPERIX / من نحن</span><h2 class="text-2xl md:text-3xl font-black text-white mt-3 leading-relaxed">نبني تجربة رقمية أكثر وضوحًا وانضباطًا</h2><p class="text-xs leading-7 text-slate-400 mt-4">OPERIX هي منصة رقمية صُممت لتجميع أدوات المتابعة اليومية وإدارة الحساب في مساحة واحدة سهلة الفهم، بحيث يستطيع المستخدم الوصول إلى بياناته، مهامه، إحالاته، ومكافآته من خلال تجربة مترابطة وشفافة.</p></div>
+                    <div class="space-y-5 text-xs leading-7 text-slate-300"><p>نؤمن أن التقنية الجيدة لا تُقاس بكثرة التعقيد، بل بقدرتها على تحويل المعلومات المتفرقة إلى خطوات واضحة. لذلك نعمل على تقديم واجهات عملية، مؤشرات مفهومة، وتنبيهات تساعد المستخدم على اتخاذ قراراته بوعي، مع إبقاء تفاصيل الحساب والمعاملات قريبة وسهلة المراجعة.</p><p>تُدار العمليات المالية عبر قنوات دفع مشفّرة، مع تطبيق ضوابط أمنية مستوحاة من المعايير المتّبعة لدى الشركات العالمية في قطاع الأصول الرقمية مثل Binance، وذلك وفق نطاق الخدمات والمتطلبات التنظيمية المعمول بها. وتعتمد OPERIX على المصادقة الثنائية، إدارة الجلسات، سجل النشاط، والتحقق من العمليات الحساسة، مع توضيح أن العوائد والمكافآت تقديرية وغير مضمونة.</p><div class="grid sm:grid-cols-3 gap-4 pt-2"><div class="about-principle"><b class="block text-white">الوضوح</b><span class="text-[10px] text-slate-500">بيانات مفهومة قبل كل خطوة</span></div><div class="about-principle"><b class="block text-white">الحماية</b><span class="text-[10px] text-slate-500">ضوابط للحساب والمعاملات</span></div><div class="about-principle"><b class="block text-white">التطور</b><span class="text-[10px] text-slate-500">تحسين مستمر مبني على الاستخدام</span></div></div></div>
+                </div>
+            </section>
+            <footer class="flex justify-between items-center border-t border-slate-800/70 py-4 text-[10px] text-slate-500"><span>© 2026 OPERIX</span><div class="flex gap-4"><a href="/about.html" class="hover:text-amber-400">من نحن</a><a href="/transparency.html" class="hover:text-amber-400">الشفافية</a><a href="/help.html" class="hover:text-amber-400">المساعدة</a><a href="/status.html" class="hover:text-amber-400">الحالة</a><a href="/changelog.html" class="hover:text-amber-400">التحديثات</a></div></footer>
+        </div>
+    </section>
+
+    <!-- 2. شريط التيكر الحي (Live Ticker Bar) -->
+    <div id="liveTickerBar" class="hide bg-slate-900 border-b border-slate-800 text-xs text-amber-400 py-1.5 px-4 flex items-center justify-between overflow-hidden">
+        <div class="flex items-center space-x-2 space-x-reverse whitespace-nowrap animate-pulse">
+            <span class="bg-amber-500 text-slate-950 px-1.5 py-0.5 rounded text-[10px] font-black">مباشر</span>
+            <span id="liveTickerMessage">جاري تحميل نشاط المنصة الحقيقي...</span>
+        </div>
+    </div>
+
+    <!-- 3. شاشة تسجيل الدخول وإنشاء الحساب (Auth View) -->
+    <div id="authView" class="hide min-h-screen flex items-center justify-center p-4">
+        <div class="w-full max-w-md glass-card p-6 rounded-3xl space-y-6 shadow-2xl border border-slate-800">
+            <div class="text-center space-y-2">
+                <img src="/operix-logo.svg" alt="OPERIX" class="h-14 w-auto mx-auto">
+                <h1 class="text-2xl font-black text-white">منصة OPERIX</h1>
+                <p class="text-xs text-slate-400">بوابتك الذكية للاستثمار وإنجاز المهام</p>
+            </div>
+
+            <!-- أزرار التبديل بين الدخول والتسجيل -->
+            <div class="flex bg-slate-900 p-1 rounded-2xl border border-slate-800">
+                <button type="button" id="tabLoginBtn" onclick="switchAuthTab('login')" class="flex-1 py-2.5 text-sm font-bold rounded-xl bg-amber-500 text-slate-950 transition-all">تسجيل الدخول</button>
+                <button type="button" id="tabRegisterBtn" onclick="switchAuthTab('register')" class="flex-1 py-2.5 text-sm font-bold rounded-xl text-slate-400 transition-all">حساب جديد</button>
+            </div>
+
+            <!-- نموذج الدخول -->
+            <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1">البريد الإلكتروني</label>
+                    <input type="email" id="loginEmail" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:border-amber-500 outline-none transition-all">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1">كلمة المرور</label>
+                    <input type="password" id="loginPassword" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:border-amber-500 outline-none transition-all">
+                </div>
+                <div class="text-left">
+                    <button type="button" onclick="openForgotPasswordModal()" class="text-xs text-amber-400 hover:underline">نسيت كلمة المرور؟</button>
+                    <button type="button" onclick="resendEmailVerification()" class="text-xs text-cyan-300 hover:underline mr-3">إعادة إرسال تحقق البريد</button>
+                </div>
+                <button type="submit" id="btnLoginSubmit" class="w-full py-3.5 gold-gradient text-slate-950 font-black rounded-xl text-sm shadow-lg active:scale-95 transition-all">دخول المنصة</button>
+            </form>
+
+            <!-- نموذج التسجيل -->
+            <form id="registerForm" onsubmit="handleRegister(event)" class="space-y-4 hide">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1">البريد الإلكتروني</label>
+                    <input type="email" id="regEmail" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:border-purple-500 outline-none transition-all">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1">كلمة المرور</label>
+                    <input type="password" id="regPassword" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:border-purple-500 outline-none transition-all">
+                </div>
+                <label class="flex items-start gap-2 text-[11px] text-slate-400"><input type="checkbox" id="regTermsConsent" required class="mt-1 accent-amber-500"><span>أوافق على <a href="/terms.html" target="_blank" class="text-amber-400 hover:underline">شروط الاستخدام</a> و<a href="/privacy.html" target="_blank" class="text-amber-400 hover:underline">سياسة الخصوصية</a>.</span></label>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1">كود الإحالة (اختياري)</label>
+                    <input type="text" id="regReferralCode" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:border-purple-500 outline-none transition-all" placeholder="OPERIX99">
+                </div>
+                <button type="submit" id="btnRegisterSubmit" class="w-full py-3.5 purple-gradient text-white font-black rounded-xl text-sm shadow-lg active:scale-95 transition-all">إنشاء حساب ومحفظة خاصة</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 4. الواجهة الرئيسية للتطبيق (App View) -->
+    <div id="appView" class="hide flex-1 max-w-lg mx-auto w-full p-4 space-y-6">
+        
+        <!-- Header المستخدم -->
+        <div class="operix-app-header flex justify-between items-center bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800">
+            <div class="flex items-center space-x-3 space-x-reverse">
+                <img src="/operix-logo.svg" alt="OPERIX" class="h-9 w-auto">
+                <div>
+                    <span id="lblUserEmail" class="text-xs font-bold text-white block">user@domain.com</span>
+                    <span id="lblUserTierBadge" class="text-[10px] text-amber-400 font-extrabold">مستوى A1 المعتمد</span>
+                </div>
+            </div>
+            <button onclick="openNotificationsModal()" class="w-9 h-9 bg-slate-800 rounded-xl flex items-center justify-center text-slate-300 relative">
+                <i class="fa-solid fa-bell text-sm"></i>
+                <span id="notificationBadge" class="hidden min-w-4 h-4 px-1 bg-rose-500 text-white rounded-full absolute -top-1 -right-1 text-[9px] font-black leading-4">0</span>
+            </button>
+        </div>
+
+        <!-- 4.1 تبويب الرئيسية (Home View) -->
+        <div id="view-home" class="space-y-5">
+            <!-- كارت المحفظة الرئيسي المحدث (تفصيل الأرباح والإيداع) -->
+            <div class="operix-wallet glass-card p-5 rounded-3xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 to-slate-900 relative overflow-hidden shadow-xl space-y-4">
+                <div class="flex justify-between items-center text-xs text-slate-400">
+                    <span>إجمالي رصيد المحفظة</span>
+                    <button onclick="refreshHomeDashboard()" title="تحديث البيانات" class="text-slate-400 hover:text-amber-400 transition-colors"><i id="homeRefreshIcon" class="fa-solid fa-arrows-rotate"></i></button>
+                    <i class="fa-solid fa-wallet text-amber-400 text-base"></i>
+                </div>
+                <div class="flex items-baseline space-x-2 space-x-reverse">
+                    <span id="lblWalletBalance" class="text-4xl font-black text-white">0.00</span>
+                    <span class="text-amber-400 font-bold text-sm">USDT</span>
+                </div>
+
+                <!-- [تعديل 1]: إضافة المعرفات المباشرة lblDepositBalance و lblProfitBalance -->
+                <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800/80">
+                    <div class="bg-slate-950/60 p-2.5 rounded-2xl border border-slate-800">
+                        <span class="text-slate-400 block text-[10px] mb-0.5"><i class="fa-solid fa-piggy-bank text-amber-400 mr-1"></i> رصيد الإيداع</span>
+                        <b id="lblDepositBalance" class="text-white font-black text-sm">$ 0.00</b>
+                    </div>
+                    <div class="bg-slate-950/60 p-2.5 rounded-2xl border border-emerald-500/30">
+                        <span class="text-emerald-400 block text-[10px] font-bold mb-0.5"><i class="fa-solid fa-sack-dollar mr-1"></i> رصيد الأرباح (للسحب)</span>
+                        <b id="lblProfitBalance" class="text-emerald-400 font-black text-sm">$ 0.00</b>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 text-xs border-t border-slate-800/80 pt-3">
+                    <div>
+                        <span class="text-slate-500 block text-[10px]">إجمالي الإيداعات</span>
+                        <b id="lblTotalDeposits" class="text-emerald-400">$ 0.00</b>
+                    </div>
+                    <div>
+                        <span class="text-slate-500 block text-[10px]">إجمالي المسحوبات</span>
+                        <b id="lblTotalWithdrawn" class="text-amber-400">$ 0.00</b>
+                    </div>
+                </div>
+                <div class="flex justify-between items-center text-[10px] text-slate-500"><span id="homeSyncStatus">آخر مزامنة: --</span><span id="homePendingStatus" class="text-amber-400"></span></div>
+
+                <!-- أزرار الإيداع والسحب -->
+                <div class="grid grid-cols-3 gap-2 pt-2">
+                    <button onclick="openDepositModal()" class="py-2.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold rounded-xl text-xs active:scale-95 transition-all">إيداع <i class="fa-solid fa-arrow-down mr-1"></i></button>
+                    <button onclick="openWithdrawModal()" class="py-2.5 bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold rounded-xl text-xs active:scale-95 transition-all">سحب <i class="fa-solid fa-arrow-up mr-1"></i></button>
+                    <button onclick="openHistoryModal()" class="py-2.5 bg-slate-800 text-slate-300 border border-slate-700 font-bold rounded-xl text-xs active:scale-95 transition-all">السجل <i class="fa-solid fa-clock-rotate-left mr-1"></i></button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="glass-card p-5 rounded-3xl border border-emerald-500/20 space-y-3">
+                    <div class="flex justify-between items-center"><h3 class="font-black text-sm text-white">نبض الحساب</h3><i class="fa-solid fa-heart-pulse text-emerald-400"></i></div>
+                    <p id="homePulseMessage" class="text-xs leading-6 text-slate-300">جارٍ تحليل نشاط حسابك...</p>
+                    <span id="homePulseMeta" class="text-[10px] text-slate-500"></span>
+                </div>
+                <div class="glass-card p-5 rounded-3xl border border-amber-500/20 space-y-3">
+                    <div class="flex justify-between items-center"><h3 class="font-black text-sm text-white">هدفك القادم</h3><i class="fa-solid fa-bullseye text-amber-400"></i></div>
+                    <p id="homeNextGoal" class="text-xs leading-6 text-slate-300">جارٍ تحديد الهدف...</p>
+                    <div class="h-2 bg-slate-950 rounded-full overflow-hidden"><div id="homeGoalProgress" class="h-full gold-gradient rounded-full" style="width:0%"></div></div>
+                    <span id="homeGoalMeta" class="text-[10px] text-slate-500"></span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="glass-card p-5 rounded-3xl space-y-3">
+                    <div class="flex justify-between items-center"><h3 class="font-black text-sm text-white">منذ آخر زيارة</h3><i class="fa-solid fa-clock-rotate-left text-cyan-400"></i></div>
+                    <p id="homeSinceVisit" class="text-xs leading-6 text-slate-300">جارٍ التحقق من التحديثات...</p>
+                </div>
+                <div class="glass-card p-5 rounded-3xl space-y-3">
+                    <div class="flex justify-between items-center"><h3 class="font-black text-sm text-white">أمان الحساب</h3><strong id="homeHealthScore" class="text-emerald-400">--%</strong></div>
+                    <div class="h-3 bg-slate-950 rounded-full overflow-hidden"><div id="homeHealthProgress" class="h-full bg-emerald-400 rounded-full" style="width:0%"></div></div>
+                    <p id="homeHealthMessage" class="text-[10px] text-slate-400">جارٍ فحص إعدادات الحساب...</p>
+                </div>
+                <div class="glass-card p-5 rounded-3xl space-y-3">
+                    <div class="flex justify-between items-center"><h3 class="font-black text-sm text-white">نشاط الحساب</h3><i class="fa-solid fa-chart-column text-cyan-400"></i></div>
+                    <div class="grid grid-cols-3 gap-2 text-center text-[10px]"><div><strong id="homeEarnedToday" class="block text-emerald-400">$0</strong><span class="text-slate-500">اليوم</span></div><div><strong id="homeEarnedWeek" class="block text-emerald-400">$0</strong><span class="text-slate-500">7 أيام</span></div><div><strong id="homeEarnedMonth" class="block text-emerald-400">$0</strong><span class="text-slate-500">الشهر</span></div></div>
+                    <p id="homePendingStatusDetail" class="text-[10px] text-slate-400">لا توجد طلبات معلقة.</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="glass-card p-5 rounded-3xl space-y-3">
+                    <div class="flex justify-between items-center"><h3 class="font-black text-sm text-white">خريطة الفرص</h3><i class="fa-solid fa-route text-amber-400"></i></div>
+                    <div id="homeOpportunities" class="space-y-2 text-xs text-slate-300"></div>
+                </div>
+                <div class="glass-card p-5 rounded-3xl space-y-3">
+                    <div class="flex justify-between items-center"><h3 class="font-black text-sm text-white">خط زمني للحساب</h3><i class="fa-solid fa-timeline text-cyan-400"></i></div>
+                    <div id="homeTimeline" class="space-y-2 text-[11px] text-slate-400 max-h-40 overflow-y-auto"></div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 4.2 تبويب المستويات (Tiers View - إرسال targetTier) -->
+        <div id="view-tiers" class="space-y-4 hide">
+            <div class="text-center space-y-1">
+                <h2 class="text-lg font-black text-white" id="lblCardTierName">المستويات الاستثمارية</h2>
+                <p class="text-xs text-slate-400">اختر المستوى المناسب لزيادة عوائدك اليومية</p>
+            </div>
+            
+            <!-- [تعديل 3]: قائمة مستويات الـ VIP مع الترقية الدقيقة بإرسال targetTier -->
+            <div id="tiersListContainer" class="space-y-4">
+                <div class="glass-card p-5 rounded-3xl text-center text-xs text-slate-400">جارٍ تحميل المستويات من الخادم...</div>
+            </div>
+            <div class="glass-card p-5 rounded-3xl border border-amber-500/20 space-y-3"><div class="flex justify-between items-center"><div><span class="text-[10px] text-amber-400 font-bold">خطة التقدم</span><h3 id="nextTierTitle" class="text-sm font-black text-white mt-1">جاري تحديد المستوى التالي...</h3></div><i class="fa-solid fa-arrow-trend-up text-amber-400"></i></div><div id="nextTierRequirements" class="grid grid-cols-2 gap-2 text-[10px] text-slate-400"></div></div>
+            <div class="glass-card p-5 rounded-3xl space-y-3"><div class="flex justify-between items-center"><h3 class="font-bold text-sm text-white">سجل الترقيات</h3><button onclick="loadUpgradeHistory()" title="تحديث السجل" class="text-slate-400 hover:text-amber-400"><i class="fa-solid fa-arrows-rotate"></i></button></div><div id="upgradeHistoryList" class="space-y-2 text-[11px] text-slate-400">جاري تحميل السجل...</div></div>
+        </div>
+
+        <!-- 4.3 تبويب السفر والمكافآت (Travel View) -->
+        <div id="view-travel" class="space-y-4 hide">
+            <div class="glass-card p-6 rounded-3xl text-center space-y-3">
+                <i class="fa-solid fa-clipboard-check text-4xl text-amber-400"></i>
+                <h3 class="font-bold text-white">مركز مهام OPERIX</h3>
+                <p class="text-xs text-slate-400">أنجز مهامك اليومية وتابع تقدمك ومكافآتك داخل المنصة.</p>
+            </div>
+
+            <!-- مهام اليوم -->
+            <div class="glass-card p-5 rounded-3xl space-y-3">
+                <div class="flex justify-between items-center">
+                    <h3 class="font-bold text-sm text-white">مهام اليوم الحالية</h3>
+                    <span class="text-xs text-amber-400 font-bold"><span id="lblCompletedTasks">0</span> / <span id="lblMaxTasks">33</span></span>
+                </div>
+                <div class="w-full bg-slate-950 h-3 rounded-full overflow-hidden p-0.5 border border-slate-800">
+                    <div id="taskProgressBar" class="gold-gradient h-full rounded-full transition-all duration-500" style="width: 0%;"></div>
+                </div>
+                <div class="flex justify-between items-center text-[10px] text-slate-400">
+                    <span>نسبة الإنجاز</span>
+                    <span id="lblProgressPercent" class="font-bold text-white">0%</span>
+                </div>
+                <div class="flex justify-between items-center bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-[10px]">
+                    <span>تجدد المهام بعد</span>
+                    <strong id="taskResetCountdown" class="text-amber-400 dir-ltr">--:--:--</strong>
+                </div>
+                <button id="btnCompleteTask" onclick="completeTask()" class="w-full py-3.5 gold-gradient text-slate-950 font-black rounded-2xl text-xs shadow-lg active:scale-95 transition-all">إنجاز مهمة بنقرة واحدة ✨</button>
+            </div>
+
+            <div class="glass-card p-5 rounded-3xl space-y-4">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="font-bold text-sm text-white">نمو الحساب</h3>
+                        <p class="text-[10px] text-slate-400 mt-1">تطور رصيدك بناءً على المعاملات المعتمدة</p>
+                    </div>
+                    <i class="fa-solid fa-chart-line text-emerald-400 text-xl"></i>
+                </div>
+                <div class="relative h-44 bg-slate-950 border border-slate-800 rounded-2xl p-2 overflow-hidden">
+                    <canvas id="accountGrowthChart" class="w-full h-full" aria-label="مخطط نمو الحساب"></canvas>
+                    <div id="growthChartEmpty" class="absolute inset-0 flex items-center justify-center text-center text-[11px] text-slate-500 px-6">لا توجد معاملات معتمدة كافية لعرض النمو بعد</div>
+                </div>
+                <div class="flex justify-between text-[10px] text-slate-400">
+                    <span id="growthChartStart">البداية: --</span>
+                    <strong id="growthChartCurrent" class="text-emerald-400">الرصيد الحالي: --</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4.4 تبويب المستشار الذكي (AI View) -->
+        <div id="view-ai" class="space-y-4 hide">
+            <div class="glass-card p-4 rounded-3xl space-y-3">
+                <div class="flex justify-between items-center"><h3 class="font-bold text-sm text-amber-400"><i class="fa-solid fa-robot mr-1"></i> مستشار OPERIX الذكي</h3><button onclick="clearAiChat()" title="مسح المحادثة" class="text-slate-500 hover:text-rose-300"><i class="fa-solid fa-trash-can"></i></button></div>
+                <div class="grid grid-cols-3 gap-1.5"><button onclick="setAiMode('platform')" id="aiModePlatform" class="py-2 rounded-lg bg-amber-500 text-slate-950 text-[10px] font-bold">مساعد المنصة</button><button onclick="setAiMode('account')" id="aiModeAccount" class="py-2 rounded-lg bg-slate-900 text-slate-400 text-[10px] font-bold">مساعد الحساب</button><button onclick="setAiMode('support')" id="aiModeSupport" class="py-2 rounded-lg bg-slate-900 text-slate-400 text-[10px] font-bold">الدعم</button></div>
+                <div id="aiQuickQuestions" class="flex gap-1.5 overflow-x-auto pb-1"><button onclick="askAiQuick('كيف أبدأ؟')" class="whitespace-nowrap bg-slate-900 border border-slate-800 px-2.5 py-1.5 rounded-lg text-[10px] text-slate-300">كيف أبدأ؟</button><button onclick="askAiQuick('ما المستوى المناسب لي؟')" class="whitespace-nowrap bg-slate-900 border border-slate-800 px-2.5 py-1.5 rounded-lg text-[10px] text-slate-300">المستوى المناسب</button><button onclick="askAiQuick('كيف أزيد إحالاتي؟')" class="whitespace-nowrap bg-slate-900 border border-slate-800 px-2.5 py-1.5 rounded-lg text-[10px] text-slate-300">زيادة الإحالات</button><button onclick="askAiQuick('كيف أستخدم الألعاب؟')" class="whitespace-nowrap bg-slate-900 border border-slate-800 px-2.5 py-1.5 rounded-lg text-[10px] text-slate-300">استخدام الألعاب</button></div>
+                <div id="aiChatBox" class="h-64 bg-slate-950 p-3 rounded-2xl border border-slate-800 overflow-y-auto space-y-2 text-xs">
+                    <div class="bg-slate-900 p-3 rounded-xl border border-slate-800 text-slate-300">مرحباً بك! أنا مستشارك الذكي، اسألني عن أفضل الاستراتيجيات لزيادة أرباحك.</div>
+                </div>
+                <div id="aiSourceStatus" class="text-[10px] text-slate-600">المصدر: بيانات المنصة وتعليمات المستشار</div>
+                <div class="flex gap-2">
+                    <input type="text" id="aiInput" placeholder="اكتب سؤالك هنا..." class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none">
+                    <button id="aiSendButton" onclick="sendAiMessage()" class="px-4 py-2 gold-gradient text-slate-950 font-bold rounded-xl text-xs"><i class="fa-solid fa-paper-plane"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4.5 تبويب عجلة الحظ (Spin View) -->
+        <div id="view-spin" class="space-y-4 hide text-center">
+            <div class="glass-card p-5 rounded-3xl space-y-2 text-right border border-amber-500/20">
+                <div class="flex justify-between items-center"><div><span class="text-[10px] text-amber-400 font-bold uppercase">ألعاب المكافآت</span><h3 class="font-black text-white text-lg">اختبر حظك</h3></div><span id="gameReferralRequirement" class="text-[10px] text-slate-400">25 إحالة نشطة = دورة</span></div>
+                <p class="text-[11px] text-slate-400 leading-5">كل دورة تمنح مكافأة فعلية تُسجل في سجل المعاملات. لا تُفتح الألعاب إلا بعد توفر دورة وإيداع مفعّل.</p>
+                <div class="flex flex-wrap gap-2 text-[10px]"><p id="gameConfigStatus" class="text-emerald-400">جاري تحميل قيم المكافآت...</p><span id="platformStatus" class="text-slate-500">الخدمة: جاري التحقق...</span></div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="glass-card p-5 rounded-3xl border border-amber-500/25 space-y-4 overflow-hidden relative">
+                    <div class="flex justify-between items-start text-right"><div><h3 class="font-black text-white">عجلة الحظ</h3><p id="wheelRewardRange" class="text-[10px] text-slate-400 mt-1">جاري تحميل نطاق المكافأة...</p></div><span class="bg-amber-500/15 text-amber-400 border border-amber-500/25 rounded-full px-2.5 py-1 text-[10px] font-bold"><b id="lblWheelCredits">0</b> دورة</span></div>
+                    <div class="relative w-44 h-44 mx-auto"><div id="spinWheelVisual" class="wheel-disc relative w-full h-full rounded-full border-4 border-amber-300/70 flex items-center justify-center transition-transform duration-1000"><div class="relative z-10 w-14 h-14 rounded-full bg-slate-950 border-2 border-amber-400 flex items-center justify-center"><i class="fa-solid fa-gift text-2xl text-amber-400"></i></div></div><i class="fa-solid fa-caret-down absolute -top-3 left-1/2 -translate-x-1/2 text-amber-300 text-xl"></i></div>
+                    <p id="wheelGameStatus" class="text-center text-[10px] text-slate-500">تحتاج إلى 25 إحالة نشطة للحصول على دورة.</p>
+                    <button id="btnLuckySpin" disabled aria-disabled="true" onclick="triggerLuckySpin()" class="w-full py-3 gold-gradient text-slate-950 font-black rounded-xl text-xs shadow-lg active:scale-95 transition-all opacity-50 cursor-not-allowed"><i class="fa-solid fa-rotate mr-1"></i> تدوير العجلة</button>
+                </div>
+                <div class="glass-card p-5 rounded-3xl border border-purple-500/25 space-y-4 overflow-hidden relative">
+                    <div class="flex justify-between items-start text-right"><div><h3 class="font-black text-white">الصندوق المجهول</h3><p id="boxRewardRange" class="text-[10px] text-slate-400 mt-1">جاري تحميل نطاق المكافأة...</p></div><span class="bg-purple-500/15 text-purple-300 border border-purple-500/25 rounded-full px-2.5 py-1 text-[10px] font-bold"><b id="lblMysteryBoxCredits">0</b> دورة</span></div>
+                    <div id="mysteryBoxVisual" class="mystery-box-visual w-32 h-32 mx-auto rounded-3xl bg-gradient-to-br from-purple-500 to-indigo-700 border-4 border-purple-300/50 flex items-center justify-center"><i class="fa-solid fa-box-open text-6xl text-white"></i></div>
+                    <p id="boxGameStatus" class="text-center text-[10px] text-slate-500">تحتاج إلى 25 إحالة نشطة للحصول على دورة.</p>
+                    <button id="btnMysteryBox" disabled aria-disabled="true" onclick="openMysteryBox()" class="w-full py-3 purple-gradient text-white font-black rounded-xl text-xs shadow-lg active:scale-95 transition-all opacity-50 cursor-not-allowed"><i class="fa-solid fa-unlock-keyhole mr-1"></i> فتح الصندوق</button>
+                </div>
+            </div>
+            <div class="glass-card p-5 rounded-3xl space-y-3 text-right">
+                <div class="flex justify-between items-center"><h3 class="font-black text-sm text-white">آخر مكافآت الألعاب</h3><button onclick="loadGameHistory()" title="تحديث السجل" class="text-slate-400 hover:text-amber-400"><i class="fa-solid fa-arrows-rotate"></i></button></div>
+                <div id="gameHistoryList" class="space-y-2 text-[11px] text-slate-400"><span>جاري تحميل السجل...</span></div>
+            </div>
+            <div class="glass-card p-5 rounded-3xl space-y-3 text-right"><div class="flex justify-between items-center"><h3 class="font-black text-sm text-white">إحصاءات الألعاب</h3><button onclick="loadGameStats()" title="تحديث الإحصاءات" class="text-slate-400 hover:text-amber-400"><i class="fa-solid fa-arrows-rotate"></i></button></div><div id="gameStatsList" class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-400">جاري تحميل الإحصاءات...</div></div>
+            <div id="gameResultModal" class="hide fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80">
+                <div class="glass-card w-full max-w-sm p-6 rounded-3xl text-center space-y-4 border border-emerald-500/30"><i class="fa-solid fa-circle-check text-4xl text-emerald-400"></i><h3 id="gameResultTitle" class="font-black text-white">تم تسجيل المكافأة</h3><strong id="gameResultAmount" class="block text-3xl text-emerald-400">$0.00</strong><p id="gameResultBalance" class="text-xs text-slate-400"></p><button onclick="closeGameResult()" class="w-full py-3 gold-gradient text-slate-950 font-black rounded-xl text-xs">حسنًا</button></div>
+            </div>
+        </div>
+
+        <!-- 4.6 تبويب الفريق (Team View) -->
+        <div id="view-team" class="space-y-4 hide">
+            <div class="team-code-card glass-card p-5 rounded-3xl space-y-3 text-center">
+                <div class="flex justify-between items-center"><div class="text-right"><span class="text-[10px] text-emerald-300 font-bold tracking-widest">OPERIX NETWORK</span><h3 class="font-bold text-sm text-white mt-1">شارك دعوتك مع فريقك</h3></div><i class="fa-solid fa-share-nodes text-amber-400 text-xl"></i></div>
+                <div class="flex items-center justify-center space-x-2 space-x-reverse bg-slate-950 p-3 rounded-xl border border-slate-800">
+                    <span id="lblReferralCode" class="font-black text-amber-400 text-lg">OPERIX99</span>
+                    <button onclick="copyReferral()" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i></button>
+                </div>
+                <button onclick="copyProfileReferral()" class="w-full py-2.5 bg-amber-500 text-slate-950 rounded-xl text-xs font-black"><i class="fa-solid fa-link ml-1"></i> نسخ رابط الدعوة</button>
+                <p class="text-[10px] text-slate-500">كل إحالة نشطة تساعدك على فتح دورات ومتابعة تقدم الفريق.</p>
+            </div>
+            
+            <div class="grid grid-cols-3 gap-2 text-center text-xs">
+                <div class="team-level-card bg-slate-900 p-3 rounded-2xl border border-slate-800">
+                    <span class="text-slate-400 block text-[10px]">المستوى 1</span>
+                    <b id="lblTeamL1Count" class="text-amber-400">0 شخص</b>
+                </div>
+                <div class="team-level-card bg-slate-900 p-3 rounded-2xl border border-slate-800">
+                    <span class="text-slate-400 block text-[10px]">المستوى 2</span>
+                    <b id="lblTeamL2Count" class="text-amber-400">0 شخص</b>
+                </div>
+                <div class="team-level-card bg-slate-900 p-3 rounded-2xl border border-slate-800">
+                    <span class="text-slate-400 block text-[10px]">المستوى 3</span>
+                    <b id="lblTeamL3Count" class="text-amber-400">0 شخص</b>
+                </div>
+            </div>
+
+            <div class="glass-card p-4 rounded-2xl space-y-2 text-xs">
+                <div class="flex justify-between text-slate-400">
+                    <span id="lblTotalTeamCount">إجمالي الفريق: 0</span>
+                    <span>الأرباح اليومية المقدرة: <b id="lblDailyTeamEarnings" class="text-emerald-400">0.0000 $</b></span>
+                </div>
+            </div>
+            <div class="glass-card p-4 rounded-2xl space-y-3"><div class="flex justify-between items-center"><div><h4 class="text-sm font-bold text-white">شبكة الفريق</h4><p class="text-[10px] text-slate-500 mt-1">تابع نشاط الإحالات عبر المستويات الثلاثة</p></div><button onclick="loadTeamNetwork()" title="تحديث الفريق" class="text-slate-400 hover:text-amber-400"><i class="fa-solid fa-arrows-rotate"></i></button></div><div class="grid grid-cols-3 gap-1.5"><button id="teamFilter1" onclick="setTeamLevel(1)" class="team-filter-active border rounded-lg py-2 text-[10px] font-bold">المستوى 1</button><button id="teamFilter2" onclick="setTeamLevel(2)" class="border border-slate-800 rounded-lg py-2 text-[10px] text-slate-400 font-bold">المستوى 2</button><button id="teamFilter3" onclick="setTeamLevel(3)" class="border border-slate-800 rounded-lg py-2 text-[10px] text-slate-400 font-bold">المستوى 3</button></div><input id="teamSearchInput" oninput="renderTeamLevel()" placeholder="ابحث بالبريد داخل المستوى" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none"><div id="teamLevelSummary" class="text-[10px] text-slate-500"></div><div id="teamMembersList" class="space-y-2"><p class="text-[11px] text-slate-500 text-center py-4">افتح التبويب لتحميل الفريق.</p></div></div>
+
+            <div class="glass-card p-4 rounded-2xl space-y-3 border border-amber-500/20">
+                <div class="flex justify-between items-center">
+                    <div><h4 class="text-xs font-bold text-white">تقدم إحالات الترقية</h4><p class="text-[10px] text-slate-500 mt-1">الإحالات النشطة المرتبطة بفريقك فقط تُحتسب للترقية</p></div>
+                    <i class="fa-solid fa-arrow-up-right-dots text-amber-400"></i>
+                </div>
+                <div class="flex justify-between items-center text-[10px] text-slate-400"><span id="lblActiveReferrals">الإحالات النشطة: 0</span><strong id="lblNextTierReferralGoal" class="text-amber-400">الهدف التالي: 10</strong></div>
+                <div class="h-2 bg-slate-950 rounded-full overflow-hidden"><div id="teamReferralProgress" class="h-full gold-gradient rounded-full" style="width:0%"></div></div>
+                <p id="teamReferralMessage" class="text-[10px] text-slate-400">تحتاج إلى 10 إحالات نشطة للترقية إلى A2.</p>
+            </div>
+
+            <!-- رتب الفريق -->
+            <div class="space-y-2">
+                <h4 class="text-xs font-bold text-slate-400">رتب الإنجاز</h4>
+                <div id="rankTier1" class="p-3 rounded-2xl bg-slate-950 border border-slate-800 flex justify-between items-center opacity-80">
+                    <span class="text-xs font-bold text-white">برونزي (60 عضو)</span>
+                    <span id="badgeRank1Status" class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-900 text-slate-400">0 / 60</span>
+                </div>
+                <div id="rankTier2" class="p-3 rounded-2xl bg-slate-950 border border-slate-800 flex justify-between items-center opacity-80">
+                    <span class="text-xs font-bold text-white">فضي (120 عضو)</span>
+                    <span id="badgeRank2Status" class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-900 text-slate-400">0 / 120</span>
+                </div>
+                <div id="rankTier3" class="p-3 rounded-2xl bg-slate-950 border border-slate-800 flex justify-between items-center opacity-80">
+                    <span class="text-xs font-bold text-white">ذهبي (240 عضو)</span>
+                    <span id="badgeRank3Status" class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-900 text-slate-400">0 / 240</span>
+                </div>
+                <div id="rankTier4" class="p-3 rounded-2xl bg-slate-950 border border-slate-800 flex justify-between items-center opacity-80">
+                    <span class="text-xs font-bold text-white">ماسي (500 عضو)</span>
+                    <span id="badgeRank4Status" class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-900 text-slate-400">0 / 500</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4.7 تبويب الملف الشخصي (Profile View) -->
+        <div id="view-profile" class="space-y-4 hide pb-6">
+            
+            <!-- 1. كارت هوية المستخدم والحالة -->
+            <div class="glass-card p-5 rounded-3xl space-y-3 text-center relative overflow-hidden">
+                <div class="relative w-20 h-20 mx-auto">
+                    <div id="profileAvatarFallback" class="w-20 h-20 gold-gradient rounded-full flex items-center justify-center font-black text-slate-950 text-xl shadow-lg shadow-amber-500/10">
+                    <i class="fa-solid fa-user-shield"></i>
+                    </div>
+                    <img id="profileAvatarImage" class="hidden w-20 h-20 rounded-full object-cover border-2 border-amber-400 shadow-lg shadow-amber-500/10" alt="الصورة الشخصية">
+                    <label for="profileImageInput" class="absolute -bottom-1 -right-1 w-8 h-8 bg-amber-500 text-slate-950 rounded-full flex items-center justify-center cursor-pointer shadow-lg" title="تغيير الصورة الشخصية">
+                        <i class="fa-solid fa-camera text-xs"></i>
+                    </label>
+                    <input id="profileImageInput" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" onchange="previewProfileImage(event)">
+                </div>
+                <div>
+                    <h3 id="lblProfileDisplayName" class="text-base font-black text-white">User</h3>
+                    <span id="lblProfileEmail" class="text-xs text-slate-400 block dir-ltr">user@domain.com</span>
+                </div>
+                <div class="flex justify-center items-center gap-2 pt-1">
+                    <span id="lblProfileTierBadge" class="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-bold px-3 py-1 rounded-full">
+                        <i class="fa-solid fa-ribbon mr-1"></i> مستوى A1 المعتمد
+                    </span>
+                    <span id="lblVerificationStatus" class="bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[10px] font-bold px-3 py-1 rounded-full">
+                        <i class="fa-solid fa-circle-xmark mr-1"></i> حساب غير موثق
+                    </span>
+                </div>
+            </div>
+
+            <!-- 2. ملخص الإحصائيات السريعة -->
+            <div class="grid grid-cols-2 gap-2 text-xs">
+                <div class="bg-slate-900/90 p-3.5 rounded-2xl border border-slate-800 text-center">
+                    <span id="profileEarningsLabel" class="text-slate-400 block text-[10px] mb-0.5">إجمالي الأرباح المكتسبة</span>
+                    <b id="lblProfileTotalEarnings" class="text-emerald-400 font-black text-sm">$0.00</b>
+                </div>
+                <div class="bg-slate-900/90 p-3.5 rounded-2xl border border-slate-800 text-center">
+                    <span id="profileWithdrawnLabel" class="text-slate-400 block text-[10px] mb-0.5">السحوبات الناجحة</span>
+                    <b id="lblProfileTotalWithdrawn" class="text-amber-400 font-black text-sm">$0.00</b>
+                </div>
+            </div>
+
+            <!-- 3. رابط الإحالة السريع -->
+            <div class="glass-card p-4 rounded-2xl space-y-2">
+                <span class="text-xs font-bold text-slate-300 block">رابط الدعوة السريع</span>
+                <div class="flex items-center bg-slate-950 p-2 rounded-xl border border-slate-800">
+                    <input type="text" id="profileReferralLink" readonly value="/index.html?ref=OPERIX99" class="w-full bg-transparent text-[11px] text-amber-400 outline-none px-2 dir-ltr">
+                    <button onclick="copyProfileReferral()" class="bg-amber-500 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs whitespace-nowrap active:scale-95 transition-all">
+                        <i class="fa-regular fa-copy"></i> نسخ
+                    </button>
+                </div>
+            </div>
+
+            <div class="glass-card p-4 rounded-2xl space-y-2"><span class="text-xs font-bold text-slate-300 block">كوبون ترويجي</span><div class="flex gap-2"><input id="couponCodeInput" maxlength="40" placeholder="أدخل الكود" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none"><button onclick="applyCoupon()" class="px-4 py-2 bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 rounded-xl text-xs font-bold">تطبيق</button></div></div>
+
+            <!-- 4. محفظة السحب المثبتة -->
+            <div class="glass-card p-4 rounded-2xl space-y-3">
+                <h4 class="text-xs font-bold text-white flex items-center">
+                    <i class="fa-solid fa-wallet text-amber-400 mr-2"></i> محفظة السحب المعتمدة
+                </h4>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 mb-1">عنوان المحفظة (TRC20 / BEP20)</label>
+                    <input type="text" id="profileWalletAddress" placeholder="أدخل عنوان المحفظة لربطه" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-amber-500 dir-ltr">
+                    <div id="walletStatusContainerProfile" class="mt-2">
+                        <div class="bg-slate-950 border border-slate-800 text-slate-400 p-2 rounded-xl text-[11px] font-bold flex items-center gap-2">
+                            <i class="fa-solid fa-circle-info text-amber-400"></i>
+                            <span>لم يتم تثبيت عنوان محفظة السحب بعد.</span>
+                        </div>
+                    </div>
+                </div>
+                <button type="button" id="btnSaveProfileWallet" onclick="saveProfileWallet()" class="w-full py-2.5 gold-gradient text-slate-950 font-bold rounded-xl text-xs active:scale-95 transition-all">تثبيت المحفظة وقفل الحماية</button>
+            </div>
+
+            <!-- 5. الأمان والحماية -->
+            <div class="glass-card p-4 rounded-2xl space-y-3">
+                <h4 class="text-xs font-bold text-white flex items-center">
+                    <i class="fa-solid fa-shield-halved text-amber-400 mr-2"></i> إعدادات الأمان
+                </h4>
+                <div class="space-y-2">
+                    <button onclick="openChangePasswordModal()" class="w-full py-2.5 bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 font-bold rounded-xl text-xs flex justify-between items-center px-3.5 transition-all">
+                        <span><i class="fa-solid fa-key text-slate-500 mr-2"></i> تغيير كلمة المرور</span>
+                        <i class="fa-solid fa-chevron-left text-[10px] text-slate-500"></i>
+                    </button>
+                    <div class="py-2.5 bg-slate-950 border border-slate-800 text-slate-300 font-bold rounded-xl text-xs flex justify-between items-center px-3.5">
+                        <span><i class="fa-solid fa-mobile-screen-button text-slate-500 mr-2"></i> المصادقة الثنائية (2FA) <small id="twoFactorStatusText" class="text-rose-300 font-normal mr-1">غير مفعلة</small></span>
+                        <input type="checkbox" id="toggle2FA" onchange="toggle2FASetting(this)" class="w-4 h-4 accent-amber-500">
+                    </div>
+                    <div class="py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs px-3.5"><div class="flex justify-between items-center"><span class="font-bold text-slate-300"><i class="fa-solid fa-envelope text-slate-500 mr-2"></i> توثيق البريد الإلكتروني</span><span id="lblEmailVerificationStatus" class="text-rose-400 text-[10px] font-bold">غير موثق</span></div><button id="btnVerifyEmailProfile" onclick="resendEmailVerificationFromProfile()" class="hidden mt-2 text-[11px] text-cyan-300 hover:text-cyan-200 hover:underline">إرسال رابط توثيق البريد الإلكتروني</button></div>
+                    <button onclick="openActiveSessionsModal()" class="w-full py-2.5 bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 font-bold rounded-xl text-xs flex justify-between items-center px-3.5 transition-all">
+                        <span><i class="fa-solid fa-laptop-code text-slate-500 mr-2"></i> الأجهزة والجلسات النشطة</span>
+                        <i class="fa-solid fa-chevron-left text-[10px] text-slate-500"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 6. تفضيلات النظام والدعم -->
+            <div class="glass-card p-4 rounded-2xl space-y-3">
+                <h4 class="text-xs font-bold text-white flex items-center">
+                    <i class="fa-solid fa-sliders text-amber-400 mr-2"></i> إعدادات المنصة والدعم
+                </h4>
+                <div class="space-y-2">
+                    <div class="py-2.5 bg-slate-950 border border-slate-800 text-slate-300 font-bold rounded-xl text-xs flex justify-between items-center px-3.5">
+                        <span><i class="fa-solid fa-volume-high text-slate-500 mr-2"></i> الأصوات والتنبيهات</span>
+                        <input type="checkbox" checked onchange="toggleSound(this)" class="w-4 h-4 accent-amber-500">
+                    </div>
+                    <div class="py-2.5 bg-slate-950 border border-slate-800 text-slate-300 font-bold rounded-xl text-xs flex justify-between items-center px-3.5">
+                        <span><i class="fa-solid fa-language text-slate-500 mr-2"></i> لغة التطبيق</span>
+                        <select onchange="changeLanguage(this.value)" class="bg-slate-900 border border-slate-700 text-amber-400 text-[11px] rounded-lg px-2 py-1 outline-none">
+                            <option value="ar">العربية (AR)</option>
+                            <option value="en">English (EN)</option>
+                        </select>
+                    </div>
+                    <a href="https://t.me/TRADING_KURD3" target="_blank" class="w-full py-2.5 bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 font-bold rounded-xl text-xs flex justify-between items-center px-3.5 transition-all block">
+                        <span><i class="fa-brands fa-telegram text-sky-400 mr-2"></i> الدعم الفني المباشر (Telegram)</span>
+                        <i class="fa-solid fa-arrow-up-right-from-square text-[10px] text-slate-500"></i>
+                    </a>
+                    <button onclick="openSupportModal()" class="w-full py-2.5 bg-cyan-500/10 border border-cyan-500/20 hover:border-cyan-400/40 text-cyan-300 font-bold rounded-xl text-xs flex justify-between items-center px-3.5 transition-all"><span><i class="fa-solid fa-ticket mr-2"></i> فتح تذكرة دعم</span><i class="fa-solid fa-chevron-left text-[10px]"></i></button>
+                </div>
+            </div>
+
+            <!-- 7. الروابط القانونية وتجربة الحساب -->
+            <div class="text-center space-y-3 pt-2">
+                <div class="flex justify-center space-x-4 space-x-reverse text-[11px] text-slate-500">
+                    <a href="/terms.html" class="hover:text-amber-400 transition-all">شروط الاستخدام</a>
+                    <span>•</span>
+                    <a href="/privacy.html" class="hover:text-amber-400 transition-all">سياسة الخصوصية</a>
+                </div>
+                <button onclick="logout()" class="w-full py-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 font-bold rounded-2xl text-xs active:scale-95 transition-all">
+                    <i class="fa-solid fa-right-from-bracket mr-1"></i> تسجيل الخروج من الحساب
+                </button>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- 5. شريط التنقل السفلي (Bottom Navigation) -->
+    <nav id="appNavBar" class="hide fixed bottom-0 left-0 right-0 bg-slate-950/90 backdrop-blur-md border-t border-slate-800 px-4 py-2 flex justify-around items-center z-40 max-w-lg mx-auto">
+        <button id="nav-home" onclick="switchTab('home')" class="flex flex-col items-center flex-1 text-amber-500 transition-all">
+            <i class="fa-solid fa-house text-base"></i>
+            <span class="text-[10px] font-bold mt-1">الرئيسية</span>
+        </button>
+        <button id="nav-tiers" onclick="switchTab('tiers')" class="flex flex-col items-center flex-1 text-slate-400 transition-all">
+            <i class="fa-solid fa-layer-group text-base"></i>
+            <span class="text-[10px] font-bold mt-1">المستويات</span>
+        </button>
+        <button id="nav-travel" onclick="switchTab('travel')" class="flex flex-col items-center flex-1 text-slate-400 transition-all">
+            <i class="fa-solid fa-list-check text-base"></i>
+            <span class="text-[10px] font-bold mt-1">المهام</span>
+        </button>
+        <button id="nav-spin" onclick="switchTab('spin')" class="flex flex-col items-center flex-1 text-slate-400 transition-all">
+            <i class="fa-solid fa-dharmachakra text-base"></i>
+            <span class="text-[10px] font-bold mt-1">الألعاب</span>
+        </button>
+        <button id="nav-ai" onclick="switchTab('ai')" class="flex flex-col items-center flex-1 text-slate-400 transition-all">
+            <i class="fa-solid fa-robot text-base"></i>
+            <span class="text-[10px] font-bold mt-1">OPERIX AI</span>
+        </button>
+        <button id="nav-team" onclick="switchTab('team')" class="flex flex-col items-center flex-1 text-slate-400 transition-all">
+            <i class="fa-solid fa-users text-base"></i>
+            <span class="text-[10px] font-bold mt-1">الفريق</span>
+        </button>
+        <button id="nav-profile" onclick="switchTab('profile')" class="flex flex-col items-center flex-1 text-slate-400 transition-all">
+            <i class="fa-solid fa-user text-base"></i>
+            <span class="text-[10px] font-bold mt-1">حسابي</span>
+        </button>
+    </nav>
+
+    <!-- 6. النوافذ المنبثقة (Modals) -->
+
+    <!-- نافذة الإيداع -->
+    <div id="depositModal" class="hide fixed inset-0 glass-modal z-50 flex items-center justify-center p-4">
+        <div class="glass-card w-full max-w-sm p-5 rounded-3xl space-y-4 border border-amber-500/20 shadow-2xl">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                <h3 class="font-bold text-white text-sm flex items-center">
+                    <i class="fa-solid fa-wallet text-amber-400 mr-2"></i> إيداع رصيد USDT
+                </h3>
+                <button onclick="closeDepositModal()" class="text-slate-400 hover:text-white transition-all"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <div class="bg-slate-950 p-3 rounded-2xl border border-slate-800 space-y-1.5">
+                <span class="text-[10px] text-slate-400 font-bold block">عنوان محفظة الإيداع:</span>
+                <div class="flex items-center space-x-2 space-x-reverse bg-slate-900 p-2 rounded-xl border border-slate-800">
+                    <input type="text" id="platformWalletAddress" readonly value="" class="w-full bg-transparent text-xs text-amber-400 outline-none dir-ltr font-mono">
+                    <button type="button" onclick="copyPlatformWalletAddress()" class="bg-amber-500 text-slate-950 font-black px-3 py-1 rounded-lg text-xs whitespace-nowrap active:scale-95 transition-all">
+                        <i class="fa-regular fa-copy"></i> نسخ
+                    </button>
+                </div>
+            </div>
+
+            <form id="depositForm" onsubmit="handleDepositSubmit(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1 font-bold">المبلغ المراد شحنه ($)</label>
+                    <input type="number" id="depositAmount" value="50" min="10" step="any" placeholder="أدخل المبلغ" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-amber-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1 font-bold">الشبكة</label>
+                    <select id="depositNetwork" onchange="loadDepositAddress()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-amber-500">
+                        <option value="TRC20">TRON (TRC20)</option>
+                        <option value="BEP20">BNB Smart Chain (BEP20)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1 font-bold">معرف المعاملة / TxHash</label>
+                    <input type="text" id="depositTxHash" placeholder="أدخل رمز TxHash بعد التحويل" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-amber-500 dir-ltr">
+                </div>
+                
+                <div id="depositModalStatus" class="text-xs text-center font-bold"></div>
+
+                <button type="submit" id="btnConfirmDeposit" class="w-full py-3.5 gold-gradient text-slate-950 font-black rounded-xl text-xs shadow-lg active:scale-95 transition-all">تأكيد عملية الإيداع</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- [تعديل 2]: نافذة السحب المحدثة بدعم 2FA الكامل -->
+    <div id="withdrawModal" class="hide fixed inset-0 glass-modal z-50 flex items-center justify-center p-4">
+        <div class="glass-card w-full max-w-sm p-5 rounded-3xl space-y-4 border border-amber-500/20 shadow-2xl">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                <h3 class="font-bold text-white text-sm flex items-center">
+                    <i class="fa-solid fa-hand-holding-dollar text-amber-400 mr-2"></i> طلب سحب الأرباح
+                </h3>
+                <button onclick="closeWithdrawModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <div class="bg-amber-500/10 border border-amber-500/20 text-amber-400 p-2.5 rounded-xl text-[11px] font-bold">
+                <i class="fa-solid fa-circle-info mr-1"></i> السحب متاح حصراً من رصيد الأرباح المتاح.
+            </div>
+
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1 font-bold">المبلغ ($)</label>
+                    <input type="number" id="withdrawAmount" placeholder="20.00" min="20" step="any" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-amber-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1 font-bold">عنوان محفظة الاستلام</label>
+                    <input type="text" id="withdrawWallet" placeholder="ثبت عنوانك من الملف الشخصي" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-amber-500 dir-ltr">
+                    <div id="walletStatusContainerWithdraw"></div>
+                </div>
+
+                <!-- إضافة واجهة 2FA بالكامل -->
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1 font-bold">رمز Google Authenticator (6 أرقام)</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="withdraw2faCode" inputmode="numeric" maxlength="6" placeholder="أدخل الرمز الحالي" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-amber-500 dir-ltr font-mono">
+                    </div>
+                </div>
+            </div>
+
+            <div id="withdrawModalStatus" class="text-xs text-center font-bold"></div>
+
+            <button id="btnSubmitWithdraw" onclick="submitWithdraw()" class="w-full py-3.5 gold-gradient text-slate-950 font-black rounded-xl text-xs shadow-lg active:scale-95 transition-all">تأكيد طلب السحب</button>
+        </div>
+    </div>
+
+    <!-- نافذة السجل -->
+    <div id="historyModal" class="hide fixed inset-0 glass-modal z-50 flex items-center justify-center p-4">
+        <div class="glass-card w-full max-w-sm p-5 rounded-3xl space-y-4 max-h-[80vh] flex flex-col">
+            <div class="flex justify-between items-center">
+                <h3 class="font-bold text-white text-sm">السجل المالي</h3>
+                <button onclick="closeHistoryModal()" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="historyList" class="flex-1 overflow-y-auto space-y-2 pr-1"></div>
+        </div>
+    </div>
+
+    <!-- نافذة الإشعارات -->
+    <div id="notificationsModal" class="hide fixed inset-0 glass-modal z-50 flex items-center justify-center p-4">
+        <div class="glass-card w-full max-w-sm p-5 rounded-3xl space-y-4">
+            <div class="flex justify-between items-center">
+                <h3 class="font-bold text-white text-sm">التنبيهات الإدارية</h3>
+                <button onclick="closeNotificationsModal()" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="flex justify-end"><button onclick="markAllNotificationsRead()" class="text-[10px] text-amber-400 hover:underline">تحديد الكل كمقروء</button></div>
+            <div id="notificationsList" class="max-h-80 overflow-y-auto space-y-2"><p class="text-xs text-slate-400 text-center py-4">جاري تحميل الإشعارات...</p></div>
+        </div>
+    </div>
+
+    <div id="supportModal" class="hide fixed inset-0 glass-modal z-50 flex items-center justify-center p-4">
+        <div class="glass-card w-full max-w-sm p-5 rounded-3xl space-y-4 max-h-[85vh] overflow-y-auto">
+            <div class="flex justify-between items-center"><h3 class="font-bold text-white text-sm">مركز الدعم</h3><button onclick="closeSupportModal()" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button></div>
+            <form onsubmit="createSupportTicket(event)" class="space-y-3"><input id="supportSubject" required maxlength="120" placeholder="عنوان المشكلة" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none"><textarea id="supportMessage" required minlength="10" maxlength="2000" rows="4" placeholder="اشرح طلبك بالتفصيل" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none"></textarea><button class="w-full py-2.5 bg-cyan-500 text-slate-950 font-bold rounded-xl text-xs">إرسال التذكرة</button></form>
+            <div class="border-t border-slate-800 pt-3"><h4 class="text-xs text-slate-300 font-bold mb-2">تذاكري السابقة</h4><div id="supportTicketsList" class="space-y-2 text-[10px] text-slate-400">جاري التحميل...</div></div>
+        </div>
+    </div>
+
+    <!-- نافذة استعادة كلمة المرور -->
+    <div id="forgotPasswordModal" class="hide fixed inset-0 glass-modal z-50 flex items-center justify-center p-4">
+        <div class="glass-card w-full max-w-sm p-5 rounded-3xl space-y-4">
+            <div class="flex justify-between items-center">
+                <h3 class="font-bold text-white text-sm">استعادة كلمة المرور</h3>
+                <button onclick="closeForgotPasswordModal()" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <form id="resetRequestForm" onsubmit="handleResetRequest(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">البريد الإلكتروني المسجل</label>
+                    <input type="email" id="resetEmail" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none">
+                </div>
+                <button type="submit" id="btnSendOtp" class="w-full py-2.5 gold-gradient text-slate-950 font-bold rounded-xl text-xs">إرسال رمز التحقق</button>
+            </form>
+
+            <form id="resetConfirmForm" onsubmit="handleResetConfirm(event)" class="space-y-3 hide">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">رمز التحقق (OTP)</label>
+                    <input type="text" id="resetOtp" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">كلمة المرور الجديدة</label>
+                    <input type="password" id="resetNewPassword" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none">
+                </div>
+                <button type="submit" id="btnResetSubmit" class="w-full py-2.5 gold-gradient text-slate-950 font-bold rounded-xl text-xs">تحديث كلمة المرور والدخول</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- نافذة تغيير كلمة المرور المباشرة من الحساب -->
+    <div id="changePasswordModal" class="hide fixed inset-0 glass-modal z-50 flex items-center justify-center p-4">
+        <div class="glass-card w-full max-w-sm p-5 rounded-3xl space-y-4">
+            <div class="flex justify-between items-center">
+                <h3 class="font-bold text-white text-sm">تغيير كلمة المرور</h3>
+                <button onclick="closeChangePasswordModal()" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onsubmit="handleChangePasswordSubmit(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">كلمة المرور الحالية</label>
+                    <input type="password" id="currentPasswordInput" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">كلمة المرور الجديدة</label>
+                    <input type="password" id="newPasswordInput" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none">
+                </div>
+                <button type="submit" class="w-full py-2.5 gold-gradient text-slate-950 font-bold rounded-xl text-xs">حفظ كلمة المرور الجديدة</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- نافذة الأجهزة والجلسات النشطة -->
+    <div id="activeSessionsModal" class="hide fixed inset-0 glass-modal z-50 flex items-center justify-center p-4">
+        <div class="glass-card w-full max-w-sm p-5 rounded-3xl space-y-4">
+            <div class="flex justify-between items-center">
+                <h3 class="font-bold text-white text-sm">الجلسات والأجهزة النشطة</h3>
+                <button onclick="closeActiveSessionsModal()" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="activeSessionsList" class="space-y-2 text-xs"><div class="p-3 bg-slate-950 border border-slate-800 rounded-xl text-slate-400">جاري تحميل الجلسات...</div></div>
+            <div class="grid grid-cols-2 gap-2">
+                <button type="button" onclick="terminateOtherSessions()" class="py-2 bg-rose-500/10 text-rose-300 border border-rose-500/20 font-bold rounded-xl text-xs">إنهاء الجلسات الأخرى</button>
+                <button type="button" onclick="closeActiveSessionsModal()" class="py-2 bg-slate-800 text-slate-300 border border-slate-700 font-bold rounded-xl text-xs">إغلاق</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة إعداد Google Authenticator -->
+    <div id="authenticatorSetupModal" class="hide fixed inset-0 glass-modal z-50 flex items-center justify-center p-4">
+        <div class="glass-card w-full max-w-sm p-5 rounded-3xl space-y-4 border border-amber-500/20 shadow-2xl">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h3 class="font-bold text-white text-sm">تفعيل Google Authenticator</h3>
+                    <p class="text-[10px] text-slate-400 mt-1">اربط حسابك بتطبيق المصادقة لحماية السحوبات</p>
+                </div>
+                <button type="button" onclick="closeAuthenticatorSetup()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="bg-white rounded-2xl p-3 w-fit mx-auto">
+                <img id="authenticatorQrCode" class="w-48 h-48" alt="رمز QR للمصادقة الثنائية">
+            </div>
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 text-center">
+                <span class="block text-[10px] text-slate-400 mb-1">المفتاح اليدوي عند تعذر مسح QR</span>
+                <code id="authenticatorSecret" class="text-xs text-amber-400 tracking-widest break-all"></code>
+            </div>
+            <form onsubmit="confirmGoogleAuthenticator(event)" class="space-y-3">
+                <label class="block text-xs text-slate-300 font-bold">أدخل الرمز الحالي من التطبيق</label>
+                <input id="authenticatorConfirmCode" type="text" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" required placeholder="000000" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-3 text-center text-lg tracking-[0.4em] text-white outline-none focus:border-amber-500 dir-ltr">
+                <button id="btnConfirmAuthenticator" type="submit" class="w-full py-3 gold-gradient text-slate-950 font-black rounded-xl text-xs">تأكيد وتفعيل المصادقة</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 7. التوست التنبيهي (Toast Notification) -->
+    <div id="toast" class="hide fixed top-5 left-1/2 -translate-x-1/2 bg-slate-900 border border-amber-500/50 text-amber-300 text-xs px-4 py-3 rounded-2xl shadow-2xl z-50 text-center max-w-xs font-bold transition-all"></div>
+
+    <!-- كود الجافاسكربت الخاص بالتعامل مع الإيداع والتكامل مع السيرفر -->
+    <script>
+        function openDepositModal() {
+            const modal = document.getElementById('depositModal');
+            if (modal) modal.classList.remove('hide');
+        }
+
+        function closeDepositModal() {
+            const modal = document.getElementById('depositModal');
+            if (modal) modal.classList.add('hide');
+            const statusMsg = document.getElementById('depositModalStatus');
+            if (statusMsg) statusMsg.innerText = '';
+            const btn = document.getElementById('btnConfirmDeposit');
+            if (btn) btn.disabled = false;
+        }
+
+        function copyPlatformWalletAddress() {
+            const input = document.getElementById('platformWalletAddress');
+            if (input) {
+                input.select();
+                navigator.clipboard.writeText(input.value);
+                if (typeof showToast === 'function') {
+                    showToast('تم نسخ عنوان المحفظة بنجاح');
+                } else {
+                    alert('تم نسخ عنوان المحفظة بنجاح');
+                }
+            }
+        }
+
+        async function handleDepositSubmit(event) {
+            event.preventDefault();
+            const amountInput = document.getElementById('depositAmount');
+            const txHashInput = document.getElementById('depositTxHash');
+            const statusMsg = document.getElementById('depositModalStatus');
+            const btn = document.getElementById('btnConfirmDeposit');
+
+            const amount = parseFloat(amountInput.value);
+            const txHash = txHashInput.value.trim();
+
+            if (!amount || amount <= 0) {
+                statusMsg.style.color = '#f87171';
+                statusMsg.innerText = 'يرجى إدخال مبلغ إيداع صحيح';
+                return;
+            }
+
+            btn.disabled = true;
+            statusMsg.style.color = '#fbbf24';
+            statusMsg.innerText = 'جاري إرسال الطلب للسيرفر...';
+
+            const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+            if (!token) {
+                statusMsg.style.color = '#f87171';
+                statusMsg.innerText = 'يرجى تسجيل الدخول أولاً';
+                btn.disabled = false;
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/wallet/deposit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        amount: amount,
+                        network: document.getElementById('depositNetwork').value,
+                        txHash: txHash || 'مباشر من التطبيق'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    statusMsg.style.color = '#34d399';
+                    statusMsg.innerText = data.message || 'تم إرسال طلب الإيداع بنجاح!';
+                    setTimeout(() => {
+                        closeDepositModal();
+                        if (typeof loadUserData === 'function') loadUserData();
+                    }, 2000);
+                } else {
+                    statusMsg.style.color = '#f87171';
+                    statusMsg.innerText = data.error || data.message || 'فشلت العملية، حاول مجدداً';
+                    btn.disabled = false;
+                }
+            } catch (err) {
+                console.error(err);
+                statusMsg.style.color = '#f87171';
+                statusMsg.innerText = 'تعذر الاتصال بالسيرفر';
+                btn.disabled = false;
+            }
+        }
+
+        // ==================== الدوال المضافة للتكامل التام مع السيرفر ==================== //
+
+        // 1. فتح وإغلاق نافذة السحب
+        function openWithdrawModal() {
+            const modal = document.getElementById('withdrawModal');
+            if (modal) modal.classList.remove('hide');
+        }
+        function closeWithdrawModal() {
+            const modal = document.getElementById('withdrawModal');
+            if (modal) modal.classList.add('hide');
+            const statusMsg = document.getElementById('withdrawModalStatus');
+            if (statusMsg) statusMsg.innerText = '';
+        }
+
+        // 2. إرسال كود 2FA الخاص بالسحب إلى البريد
+        async function sendWithdraw2FACode() {
+            const btn = document.getElementById('btnSendWithdraw2FA');
+            const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+            if (!token) {
+                alert('يرجى تسجيل الدخول أولاً');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = 'جاري الإرسال...';
+
+            try {
+                const res = await fetch('/api/auth/send-2fa-otp', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    alert('تم إرسال رمز 2FA إلى بريدك الإلكتروني بنجاح');
+                } else {
+                    alert(data.error || data.message || 'فشل إرسال كود التحقق');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('تعذر الاتصال بالسيرفر');
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'إرسال الكود';
+            }
+        }
+
+        // 3. تأكيد طلب السحب وإرسال twoFactorCode للسيرفر
+        async function submitWithdraw() {
+            const amountInput = document.getElementById('withdrawAmount');
+            const walletInput = document.getElementById('withdrawWallet');
+            const codeInput = document.getElementById('withdraw2faCode');
+            const statusMsg = document.getElementById('withdrawModalStatus');
+            const btn = document.getElementById('btnSubmitWithdraw');
+
+            const amount = parseFloat(amountInput.value);
+            const wallet = walletInput.value.trim();
+            const twoFactorCode = codeInput.value.trim();
+
+            if (!amount || amount <= 0) {
+                statusMsg.style.color = '#f87171';
+                statusMsg.innerText = 'يرجى إدخال مبلغ سحب صحيح';
+                return;
+            }
+            if (!wallet) {
+                statusMsg.style.color = '#f87171';
+                statusMsg.innerText = 'يرجى إدخال عنوان المحفظة';
+                return;
+            }
+            if (currentUserData?.twoFactorEnabled && !twoFactorCode) {
+                statusMsg.style.color = '#f87171';
+                statusMsg.innerText = 'يرجى إدخال رمز التحقق الثنائي (2FA)';
+                return;
+            }
+
+            const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+            btn.disabled = true;
+            statusMsg.style.color = '#fbbf24';
+            statusMsg.innerText = 'جاري معالجة طلب السحب...';
+
+            try {
+                const res = await fetch('/api/wallet/withdraw', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        amount: amount,
+                        walletAddress: wallet,
+                        twoFactorCode: twoFactorCode
+                    })
+                });
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    statusMsg.style.color = '#34d399';
+                    statusMsg.innerText = data.message || 'تم إرسال طلب السحب بنجاح!';
+                    setTimeout(() => {
+                        closeWithdrawModal();
+                        if (typeof loadUserData === 'function') loadUserData();
+                    }, 2000);
+                } else {
+                    statusMsg.style.color = '#f87171';
+                    statusMsg.innerText = data.error || data.message || 'فشلت عملية السحب';
+                    btn.disabled = false;
+                }
+            } catch (err) {
+                console.error(err);
+                statusMsg.style.color = '#f87171';
+                statusMsg.innerText = 'تعذر الاتصال بالسيرفر';
+                btn.disabled = false;
+            }
+        }
+
+    </script>
+
+    <!-- استدعاء ملف الجافاسكربت المفصول الأساسي -->
+    <script src="app.js"></script>
+</body>
+</html>
