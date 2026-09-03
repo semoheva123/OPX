@@ -108,7 +108,11 @@ async function login(req, res) {
     if (!email || !password || typeof email !== 'string' || typeof password !== 'string') return res.status(400).json({ error: 'يرجى إدخال البريد وكلمة المرور' });
     const user = await User.findOne({ email: email.trim().toLowerCase() });
     if (!user || !(await bcrypt.compare(password, user.password))) {
-      await SecurityEvent.create({ email: email.trim().toLowerCase(), event: 'login_failed', ip: req.ip, userAgent: req.get('user-agent') || 'unknown' });
+      try {
+        await SecurityEvent.create({ email: email.trim().toLowerCase(), event: 'login_failed', ip: req.ip, userAgent: req.get('user-agent') || 'unknown' });
+      } catch (securityError) {
+        console.error('Failed to record login failure:', securityError.message);
+      }
       return res.status(400).json({ error: 'بيانات الدخول غير صحيحة' });
     }
     if (user.isBanned) return res.status(403).json({ error: 'حسابك معطل حالياً من قبل الإدارة. يرجى التواصل مع الدعم.' });
