@@ -13,6 +13,11 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const MAX_RESET_OTP_ATTEMPTS = 5;
 const emailFrom = process.env.EMAIL_FROM || 'OPERIX <onboarding@resend.dev>';
 
+function setAdminCookie(res, token) {
+  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+  res.setHeader('Set-Cookie', `operix_admin=${encodeURIComponent(token)}; Max-Age=28800; Path=/; HttpOnly; SameSite=Strict${secure}`);
+}
+
 function hashOtp(otp) {
   return crypto.createHash('sha256').update(String(otp)).digest('hex');
 }
@@ -142,6 +147,7 @@ async function adminLogin(req, res) {
     const token = jwt.sign({ id: user._id, email: user.email, role: user.role, scope: 'admin', jti }, JWT_SECRET, { expiresIn: expiresInSeconds });
     await Session.create({ userId: user._id, scope: 'admin', jti, userAgent, ip: req.ip, expiresAt: new Date(Date.now() + expiresInSeconds * 1000) });
     await SecurityEvent.create({ userId: user._id, email: user.email, event: 'login_success', ip: req.ip, userAgent, metadata: { scope: 'admin' } });
+    setAdminCookie(res, token);
     res.json({ success: true, token, user: { _id: user._id, email: user.email, role: user.role } });
   } catch (error) { res.status(500).json({ error: 'تعذر تسجيل الدخول إلى لوحة الإدارة' }); }
 }
@@ -247,6 +253,7 @@ async function confirmAdminInvite(req, res) {
 
 async function logout(req, res) {
   if (req.session) await Session.findOneAndUpdate({ jti: req.session.jti, userId: req.user.id, revokedAt: null }, { revokedAt: new Date() });
+  if (req.session?.scope === 'admin') res.setHeader('Set-Cookie', 'operix_admin=; Max-Age=0; Path=/; HttpOnly; SameSite=Strict');
   res.json({ success: true, message: 'تم تسجيل الخروج بنجاح' });
 }
 
