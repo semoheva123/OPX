@@ -11,6 +11,7 @@ const QRCode = require('qrcode');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const MAX_RESET_OTP_ATTEMPTS = 5;
+const emailFrom = process.env.EMAIL_FROM || 'OPERIX <onboarding@resend.dev>';
 
 function hashOtp(otp) {
   return crypto.createHash('sha256').update(String(otp)).digest('hex');
@@ -58,7 +59,7 @@ async function register(req, res) {
     await newUser.save();
     if (req.app.locals.resend) {
       const verifyUrl = `${process.env.APP_URL || 'http://localhost:5000'}/api/auth/verify-email?token=${newUser.emailVerificationToken}`;
-      await req.app.locals.resend.emails.send({ from: 'OPERIX <onboarding@resend.dev>', to: newUser.email, subject: 'تأكيد بريدك الإلكتروني - OPERIX', html: `<p>لتأكيد بريدك الإلكتروني، افتح الرابط التالي:</p><p><a href="${verifyUrl}">تأكيد البريد</a></p>` });
+      await req.app.locals.resend.emails.send({ from: emailFrom, to: newUser.email, subject: 'تأكيد بريدك الإلكتروني - OPERIX', html: `<p>لتأكيد بريدك الإلكتروني، افتح الرابط التالي:</p><p><a href="${verifyUrl}">تأكيد البريد</a></p>` });
     }
     res.status(201).json({ success: true, message: 'تم إنشاء الحساب بنجاح' });
   } catch (err) {
@@ -88,7 +89,7 @@ async function resendVerification(req, res) {
     user.emailVerificationToken = crypto.createHash('sha256').update(rawToken).digest('hex');
     user.emailVerificationExpire = new Date(Date.now() + 24 * 60 * 60 * 1000);
     await user.save();
-    if (req.app.locals.resend) { const verifyUrl = `${process.env.APP_URL || 'http://localhost:5000'}/api/auth/verify-email?token=${user.emailVerificationToken}`; await req.app.locals.resend.emails.send({ from: 'OPERIX <onboarding@resend.dev>', to: user.email, subject: 'رابط تأكيد البريد - OPERIX', html: `<p><a href="${verifyUrl}">تأكيد البريد الإلكتروني</a></p>` }); }
+    if (req.app.locals.resend) { const verifyUrl = `${process.env.APP_URL || 'http://localhost:5000'}/api/auth/verify-email?token=${user.emailVerificationToken}`; await req.app.locals.resend.emails.send({ from: emailFrom, to: user.email, subject: 'رابط تأكيد البريد - OPERIX', html: `<p><a href="${verifyUrl}">تأكيد البريد الإلكتروني</a></p>` }); }
     res.json({ success: true, message: 'تم إرسال رابط التحقق إذا كانت خدمة البريد مهيأة' });
   } catch (error) { res.status(500).json({ error: 'تعذر إعادة إرسال رابط التحقق' }); }
 }
@@ -214,7 +215,7 @@ async function inviteAdmin(req, res) {
     user.role = role; user.adminInviteToken = crypto.createHash('sha256').update(rawToken).digest('hex'); user.adminInviteExpire = new Date(Date.now() + 24 * 60 * 60 * 1000); user.adminInviteUsed = false; user.adminTwoFactorEnabled = false; user.adminTwoFactorSecret = null;
     await user.save();
     const inviteUrl = `${process.env.APP_URL || 'http://localhost:5000'}/admin-first-login.html?token=${rawToken}`;
-    if (req.app.locals.resend) await req.app.locals.resend.emails.send({ from: 'OPERIX <onboarding@resend.dev>', to: email, subject: 'دعوة دخول إدارة OPERIX', html: `<p>تمت دعوتك إلى لوحة إدارة OPERIX بدور: ${role}</p><p><a href="${inviteUrl}">إكمال إعداد دخول الإدارة</a></p><p>الرابط صالح لمدة 24 ساعة ويستخدم مرة واحدة.</p>` });
+    if (req.app.locals.resend) await req.app.locals.resend.emails.send({ from: emailFrom, to: email, subject: 'دعوة دخول إدارة OPERIX', html: `<p>تمت دعوتك إلى لوحة إدارة OPERIX بدور: ${role}</p><p><a href="${inviteUrl}">إكمال إعداد دخول الإدارة</a></p><p>الرابط صالح لمدة 24 ساعة ويستخدم مرة واحدة.</p>` });
     res.status(201).json({ success: true, inviteUrl, message: req.app.locals.resend ? 'تم إرسال دعوة الدخول إلى البريد' : 'تم إنشاء الدعوة. انسخ الرابط وأرسله للمدير الجديد' });
   } catch (error) { res.status(500).json({ error: 'تعذر إنشاء دعوة المدير' }); }
 }
@@ -280,7 +281,7 @@ async function forgotPassword(req, res) {
     user.resetOTPExpire = Date.now() + 10 * 60 * 1000;
     user.resetOTPAttempts = 0;
     await user.save();
-    await resend.emails.send({ from: 'OPERIX <onboarding@resend.dev>', to: user.email, subject: 'رمز استعادة كلمة المرور - OPERIX', html: `<p>رمز التحقق الخاص بك: <strong>${otp}</strong></p>` });
+    await resend.emails.send({ from: emailFrom, to: user.email, subject: 'رمز استعادة كلمة المرور - OPERIX', html: `<p>رمز التحقق الخاص بك: <strong>${otp}</strong></p>` });
     res.json({ success: true, message: 'تم إرسال رمز التحقق إلى بريدك الإلكتروني' });
   } catch (err) { res.status(500).json({ error: 'فشل إرسال البريد الإلكتروني' }); }
 }

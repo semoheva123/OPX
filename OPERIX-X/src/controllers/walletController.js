@@ -4,6 +4,7 @@ const Transaction = require('../models/Transaction');
 const VipLevel = require('../models/VipLevel');
 const blockchainService = require('../services/blockchainService');
 const { verifySync } = require('otplib');
+const emailFrom = process.env.EMAIL_FROM || 'OPERIX <onboarding@resend.dev>';
 
 async function deposit(req, res) {
   let session;
@@ -107,7 +108,7 @@ async function withdraw(req, res) {
     if (resend) {
       try {
         await resend.emails.send({
-          from: 'OPERIX <onboarding@resend.dev>',
+          from: emailFrom,
           to: user.email,
           subject: 'تم تقديم طلب سحب جديد - منصة OPERIX',
           html: `<p>تم استلام طلب سحب بقيمة $${withdrawNum} USDT.</p><p>المعرف: ${withdrawal._id}</p><p>العنوان: ${walletAddress.trim()}</p>`

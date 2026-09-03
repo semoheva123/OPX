@@ -7,6 +7,7 @@ const QRCode = require('qrcode');
 const crypto = require('crypto');
 const Session = require('../models/Session');
 const { syncGameCredits } = require('../services/gameAccess');
+const emailFrom = process.env.EMAIL_FROM || 'OPERIX <onboarding@resend.dev>';
 
 async function getProfile(req, res) {
   try {
@@ -168,7 +169,7 @@ async function sendTwoFactorCode(req, res) {
     user.twoFactorCode = code;
     user.twoFactorExpire = Date.now() + 5 * 60 * 1000;
     await user.save();
-    await resend.emails.send({ from: 'OPERIX <onboarding@resend.dev>', to: user.email, subject: 'رمز التحقق الثنائي (2FA) - OPERIX', html: `<p>رمز التحقق الخاص بتأكيد عملية السحب هو: <strong>${code}</strong></p><p>صالح لمدة 5 دقائق.</p>` });
+    await resend.emails.send({ from: emailFrom, to: user.email, subject: 'رمز التحقق الثنائي (2FA) - OPERIX', html: `<p>رمز التحقق الخاص بتأكيد عملية السحب هو: <strong>${code}</strong></p><p>صالح لمدة 5 دقائق.</p>` });
     res.json({ success: true, message: 'تم إرسال رمز التحقق الثنائي إلى بريدك الإلكتروني' });
   } catch (err) { res.status(500).json({ error: 'خطأ في إرسال الرمز' }); }
 }
