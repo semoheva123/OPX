@@ -39,26 +39,31 @@ const verifyToken = async (req, res, next) => {
 
 const adminRoles = ['admin', 'financial_admin', 'support_admin', 'monitor'];
 
+function rejectAdminRequest(req, res, status, error) {
+  if (req.path === '/admin.html' && req.accepts('html')) return res.redirect('/admin-login.html');
+  return res.status(status).json({ error });
+}
+
 const verifyAdmin = async (req, res, next) => {
   try {
     const token = getBearerToken(req);
-    if (!token) return res.status(401).json({ error: 'صيغة التوكن غير صحيحة' });
+    if (!token) return rejectAdminRequest(req, res, 401, 'غير مصرح: لا يوجد توكن');
 
     const decoded = jwt.verify(token, JWT_SECRET);
-    if (decoded.scope !== 'admin') return res.status(401).json({ error: 'تحتاج إلى جلسة إدارية مستقلة' });
+    if (decoded.scope !== 'admin') return rejectAdminRequest(req, res, 401, 'تحتاج إلى جلسة إدارية مستقلة');
     const activeSession = decoded.jti ? await Session.findOne({ jti: decoded.jti, userId: decoded.id, scope: 'admin', revokedAt: null, expiresAt: { $gt: new Date() } }) : null;
-    if (!activeSession) return res.status(401).json({ error: 'جلسة إدارية غير صالحة أو انتهت الصلاحية' });
+    if (!activeSession) return rejectAdminRequest(req, res, 401, 'جلسة إدارية غير صالحة أو انتهت الصلاحية');
     const user = await User.findById(decoded.id);
 
     if (!user || !adminRoles.includes(user.role) || user.isBanned) {
-      return res.status(403).json({ error: 'وصول مرفوض: هذه المنطقة مخصصة للمدير فقط' });
+      return rejectAdminRequest(req, res, 403, 'وصول مرفوض: هذه المنطقة مخصصة للمدير فقط');
     }
 
     req.user = user;
     req.session = activeSession;
     next();
   } catch (error) {
-    return res.status(401).json({ error: 'جلسة غير صالحة أو انتهت الصلاحية' });
+    return rejectAdminRequest(req, res, 401, 'جلسة غير صالحة أو انتهت الصلاحية');
   }
 };
 
