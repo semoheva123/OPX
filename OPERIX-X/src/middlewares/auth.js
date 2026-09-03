@@ -4,6 +4,14 @@ const Session = require('../models/Session');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
+function getBearerToken(req) {
+  const authHeader = req.headers.authorization;
+  if (authHeader) return authHeader.split(' ')[1];
+  const cookies = String(req.headers.cookie || '').split(';').map(cookie => cookie.trim());
+  const adminCookie = cookies.find(cookie => cookie.startsWith('operix_admin='));
+  return adminCookie ? decodeURIComponent(adminCookie.slice('operix_admin='.length)) : null;
+}
+
 const verifyToken = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader) return res.status(403).json({ error: 'مطلوب توكن المصادقة' });
@@ -33,10 +41,7 @@ const adminRoles = ['admin', 'financial_admin', 'support_admin', 'monitor'];
 
 const verifyAdmin = async (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return res.status(401).json({ error: 'غير مصرح: لا يوجد توكن' });
-
-    const token = authHeader.split(' ')[1];
+    const token = getBearerToken(req);
     if (!token) return res.status(401).json({ error: 'صيغة التوكن غير صحيحة' });
 
     const decoded = jwt.verify(token, JWT_SECRET);
