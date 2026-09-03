@@ -42,7 +42,7 @@ function safeUser(user) {
 
 async function register(req, res) {
   try {
-    const { email, password, referralCode, acceptTerms } = req.body;
+    const { email, password, referralCode, acceptTerms } = req.body || {};
     if (!email || !password || typeof email !== 'string' || typeof password !== 'string') return res.status(400).json({ error: 'جميع الحقول مطلوبة وبصيغة صحيحة' });
     if (acceptTerms !== true) return res.status(400).json({ error: 'يجب الموافقة على شروط الاستخدام وسياسة الخصوصية' });
     if (password.length < 8) return res.status(400).json({ error: 'كلمة المرور يجب أن لا تقل عن 8 أحرف' });
@@ -71,6 +71,7 @@ async function register(req, res) {
     }
     res.status(201).json({ success: true, message: 'تم إنشاء الحساب بنجاح' });
   } catch (err) {
+    console.error('Register error:', err.message);
     res.status(400).json({ error: 'فشل في إنشاء الحساب' });
   }
 }
@@ -104,7 +105,7 @@ async function resendVerification(req, res) {
 
 async function login(req, res) {
   try {
-    const { email, password } = req.body;
+    const { email, password } = req.body || {};
     if (!email || !password || typeof email !== 'string' || typeof password !== 'string') return res.status(400).json({ error: 'يرجى إدخال البريد وكلمة المرور' });
     const user = await User.findOne({ email: email.trim().toLowerCase() });
     if (!user || !(await bcrypt.compare(password, user.password))) {
@@ -134,6 +135,7 @@ async function login(req, res) {
     }
     res.status(200).json({ success: true, token, user: safeUser(user) });
   } catch (err) {
+    console.error('Login error:', err.message);
     res.status(500).json({ error: 'حدث خطأ في تسجيل الدخول' });
   }
 }
