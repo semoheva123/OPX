@@ -5,9 +5,12 @@ const User = require('../models/User');
 const Session = require('../models/Session');
 const SecurityEvent = require('../models/SecurityEvent');
 const Notification = require('../models/Notification');
-const { verifySync } = require('otplib');
-const { generateSecret, generateURI } = require('otplib');
+const { authenticator } = require('otplib');
 const QRCode = require('qrcode');
+
+const verifySync = ({ token, secret }) => ({ valid: authenticator.check(token, secret) });
+const generateSecret = () => authenticator.generateSecret();
+const generateURI = ({ issuer, label, secret }) => authenticator.keyuri(label, issuer, secret);
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const MAX_RESET_OTP_ATTEMPTS = 5;
