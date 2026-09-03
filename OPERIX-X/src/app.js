@@ -14,6 +14,7 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const supportRoutes = require('./routes/supportRoutes');
 const couponRoutes = require('./routes/couponRoutes');
 const settingsRoutes = require('./routes/settingsRoutes');
+const { verifyAdmin } = require('./middlewares/auth');
 
 function createApp({ resend, webpush, gameSettings }) {
   const app = express();
@@ -63,6 +64,7 @@ function createApp({ resend, webpush, gameSettings }) {
     if (/^\/\.(env|git|npmrc)(?:\/|$)/i.test(req.path) || /^\/(?:package-lock\.json|package\.json)$/i.test(req.path)) return res.status(404).end();
     next();
   });
+  app.get('/admin.html', verifyAdmin, (req, res) => res.sendFile(path.join(__dirname, '..', 'admin.html')));
   app.use(express.static(path.join(__dirname, '..'), { dotfiles: 'deny' }));
 
   app.use('/api/user', userRoutes);
