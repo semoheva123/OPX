@@ -7,6 +7,7 @@
     <title>OPERIX - لوحة تحكم الإدارة الشاملة</title>
     <link rel="stylesheet" href="/dist/tailwind.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.ably.com/lib/ably.min-2.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap');
         :root { --operix-ink: #07111f; --operix-panel: rgba(11, 24, 39, 0.88); --operix-line: rgba(148, 163, 184, 0.16); --operix-gold: #f7b955; }
@@ -523,7 +524,7 @@
             monitor: ['read_overview', 'read_users', 'read_audit', 'read_referrals']
         };
         let currentAdminRole = 'monitor';
-        let adminRealtimeStream = null;
+        let adminRealtimeClient = null;
         function canAdmin(permission) { return adminPermissions[currentAdminRole]?.includes(permission); }
         function applyRoleVisibility() {
             document.querySelectorAll('[data-permission]').forEach(element => { element.classList.toggle('hidden', !canAdmin(element.dataset.permission)); });
@@ -1121,18 +1122,28 @@
         }
 
         function startAdminRealtimeStream(token) {
-            if (!token || !window.EventSource) return;
-            if (adminRealtimeStream) adminRealtimeStream.close();
-            adminRealtimeStream = new EventSource(`/api/realtime/stream?token=${encodeURIComponent(token)}`);
-            adminRealtimeStream.addEventListener('user_status_changed', () => {
+            if (!token || !window.Ably) return;
+            if (adminRealtimeClient) adminRealtimeClient.close();
+            adminRealtimeClient = new Ably.Realtime({
+                authCallback: async (_tokenParams, callback) => {
+                    try {
+                        const response = await fetch('/api/realtime/token', { headers: { Authorization: `Bearer ${token}` } });
+                        const data = await response.json();
+                        if (!response.ok) throw new Error(data.error || 'realtime auth failed');
+                        callback(null, data);
+                    } catch (error) { callback(error, null); }
+                }
+            });
+            const channel = adminRealtimeClient.channels.get('operix:admin');
+            channel.subscribe('user_status_changed', () => {
                 fetchUsersList(usersCurrentPage);
                 refreshAdminAlerts();
             });
-            adminRealtimeStream.addEventListener('notification_created', () => refreshAdminAlerts());
+            channel.subscribe('notification_created', () => refreshAdminAlerts());
         }
 
         window.onload = () => {
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('adminToken');
             const sessionHeaders = token ? { Authorization: `Bearer ${token}` } : {};
             fetch('/api/auth/admin-session', { credentials: 'same-origin', headers: sessionHeaders })
                 .then(async response => {

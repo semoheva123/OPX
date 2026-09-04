@@ -9,6 +9,7 @@
     "test": "node --check app.js && node --check server.js && node --check src/controllers/authController.js && node --check src/controllers/adminController.js && node --check src/controllers/notificationController.js && node --check src/controllers/supportController.js && node --check src/controllers/couponController.js"
   },
   "dependencies": {
+    "ably": "^2.28.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",

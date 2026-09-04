@@ -10,7 +10,8 @@ let taskCountdownTimer = null;
 let growthChartPoints = [];
 let unreadNotificationCount = null;
 let notificationPollTimer = null;
-let realtimeStream = null;
+let realtimeClient = null;
+let realtimeChannel = null;
 
 let tiersData = [
     { code: 'A1', name: 'المستوى A1 المعتمد', price: 50, tasks: 33, dailyProfit: 2.50, monthlyProfit: 75.00, yearlyProfit: 912.50, badgeColor: 'from-amber-500/20 to-amber-700/20 border-amber-500/40 text-amber-400' },
@@ -480,16 +481,25 @@ async function fetchUnreadNotifications(isLiveUpdate = false) {
 
 function startRealtimeStream() {
     const token = localStorage.getItem('token');
-    if (!token || !window.EventSource) return;
-    if (realtimeStream) realtimeStream.close();
-    realtimeStream = new EventSource(`/api/realtime/stream?token=${encodeURIComponent(token)}`);
-    realtimeStream.addEventListener('notification_created', () => fetchUnreadNotifications(true));
-    realtimeStream.addEventListener('account_status_changed', event => {
-        const data = JSON.parse(event.data || '{}');
+    if (!token || !window.Ably || !currentUserData?._id) return;
+    if (realtimeClient) realtimeClient.close();
+    realtimeClient = new Ably.Realtime({
+        authCallback: async (_tokenParams, callback) => {
+            try {
+                const response = await fetch('/api/realtime/token', { headers: { Authorization: `Bearer ${token}` } });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'realtime auth failed');
+                callback(null, data);
+            } catch (error) { callback(error, null); }
+        }
+    });
+    realtimeChannel = realtimeClient.channels.get(`operix:user:${currentUserData._id}`);
+    realtimeChannel.subscribe('notification_created', () => fetchUnreadNotifications(true));
+    realtimeChannel.subscribe('account_status_changed', event => {
+        const data = event.data || {};
         showToast(data.message || 'تم تحديث حالة الحساب');
         loadUserProfile();
     });
-    realtimeStream.onerror = () => { if (realtimeStream?.readyState === EventSource.CLOSED) realtimeStream = null; };
 }
 
 function startNotificationPolling() {
@@ -1924,8 +1934,9 @@ async function logout() {
         try { await fetch('/api/auth/logout', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } }); } catch (error) { }
     }
     localStorage.removeItem('token');
-    if (realtimeStream) realtimeStream.close();
-    realtimeStream = null;
+    if (realtimeClient) realtimeClient.close();
+    realtimeClient = null;
+    realtimeChannel = null;
     if (notificationPollTimer) clearInterval(notificationPollTimer);
     notificationPollTimer = null;
     unreadNotificationCount = null;
