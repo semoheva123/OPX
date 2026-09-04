@@ -39,12 +39,24 @@
         table tbody tr { transition: background-color .2s ease; }
         table tbody tr:hover { background: rgba(247,185,85,.045); }
         input, select, textarea { box-shadow: inset 0 1px 2px rgba(0,0,0,.18); }
+        #adminConfirmModal .glass-card { animation: operixModalReveal .2s ease both; }
+        @keyframes operixModalReveal { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
         @media (min-width: 768px) { main { padding: 2.5rem 3rem; } }
     </style>
 </head>
 <body class="min-h-screen bg-slate-950 text-slate-100 flex flex-col md:flex-row">
 
     <div id="toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 z-50 hide bg-slate-900 border border-amber-500 text-white px-6 py-3 rounded-2xl shadow-2xl text-sm font-medium transition-all duration-300"></div>
+
+    <div id="adminConfirmModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] hide items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="adminConfirmTitle">
+        <div class="glass-card w-full max-w-sm p-6 rounded-3xl border border-amber-500/30 space-y-4">
+            <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-300 flex items-center justify-center shrink-0"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                <div><h3 id="adminConfirmTitle" class="text-base font-black text-white">تأكيد الإجراء</h3><p id="adminConfirmMessage" class="text-xs text-slate-400 mt-1 leading-6"></p></div>
+            </div>
+            <div class="flex gap-2"><button id="adminConfirmCancel" type="button" class="flex-1 py-2.5 bg-slate-800 text-slate-300 rounded-xl text-xs font-bold">إلغاء</button><button id="adminConfirmAccept" type="button" class="flex-1 py-2.5 bg-amber-400 text-slate-950 rounded-xl text-xs font-black">تأكيد</button></div>
+        </div>
+    </div>
 
     <!-- شريط العرض العلوي للموبايل -->
     <div class="md:hidden flex items-center justify-between p-4 glass-card border-b border-slate-800 shrink-0">
@@ -413,6 +425,23 @@
             setTimeout(() => toast.classList.add('hide'), 3000);
         }
 
+        function showAdminConfirm(message, title = 'تأكيد الإجراء') {
+            return new Promise(resolve => {
+                const modal = document.getElementById('adminConfirmModal');
+                const titleElement = document.getElementById('adminConfirmTitle');
+                const messageElement = document.getElementById('adminConfirmMessage');
+                const accept = document.getElementById('adminConfirmAccept');
+                const cancel = document.getElementById('adminConfirmCancel');
+                titleElement.innerText = title;
+                messageElement.innerText = message;
+                modal.classList.remove('hide');
+                modal.classList.add('flex');
+                const close = result => { modal.classList.add('hide'); modal.classList.remove('flex'); accept.onclick = null; cancel.onclick = null; resolve(result); };
+                accept.onclick = () => close(true);
+                cancel.onclick = () => close(false);
+            });
+        }
+
         function escapeAdminHtml(value) {
             return String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[character]));
         }
@@ -700,7 +729,7 @@
 
         async function toggleUserBan(userId, isBanned) {
             const actionText = isBanned ? 'حظر' : 'إلغاء حظر';
-            if (!confirm(`هل أنت تأكد من رغبتك في ${actionText} هذا المستخدم؟`)) return;
+            if (!await showAdminConfirm(`هل أنت متأكد من رغبتك في ${actionText} هذا المستخدم؟`, `${actionText} مستخدم`)) return;
 
             const token = localStorage.getItem('token');
             try {
@@ -780,7 +809,7 @@
 
         async function handleWithdrawalAction(transactionId, action) {
             const actionText = action === 'approve' ? 'الموافقة على' : 'رفض';
-            if (!confirm(`هل أنت تأكد من رغبتك في ${actionText} هذا الطلب؟`)) return;
+            if (!await showAdminConfirm(`هل أنت متأكد من رغبتك في ${actionText} هذا الطلب؟`, `${actionText} طلب`)) return;
 
             const token = localStorage.getItem('token');
             try {
@@ -972,7 +1001,7 @@
             }
         }
 
-        async function deleteVipPlan(code) { if (!confirm(`هل أنت متأكد من حذف المستوى ${code}؟ لا يمكن التراجع عن هذا الإجراء.`)) return; try { const response = await fetch(`/api/admin/vip-levels/${encodeURIComponent(code)}`, { method: 'DELETE', headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }); const data = await response.json(); if (!response.ok) throw new Error(data.error || 'تعذر حذف المستوى'); showToast(data.message || 'تم حذف المستوى'); fetchVipPlans(); } catch (error) { showToast(error.message); } }
+        async function deleteVipPlan(code) { if (!await showAdminConfirm(`هل أنت متأكد من حذف المستوى ${code}؟ لا يمكن التراجع عن هذا الإجراء.`, 'حذف مستوى VIP')) return; try { const response = await fetch(`/api/admin/vip-levels/${encodeURIComponent(code)}`, { method: 'DELETE', headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }); const data = await response.json(); if (!response.ok) throw new Error(data.error || 'تعذر حذف المستوى'); showToast(data.message || 'تم حذف المستوى'); fetchVipPlans(); } catch (error) { showToast(error.message); } }
 
         async function fetchGameSettings() {
             const token = localStorage.getItem('token');
