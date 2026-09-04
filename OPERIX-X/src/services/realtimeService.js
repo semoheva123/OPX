@@ -1,5 +1,21 @@
 const clients = new Map();
 let nextClientId = 1;
+const Ably = require('ably');
+const ably = process.env.ABLY_API_KEY ? new Ably.Rest(process.env.ABLY_API_KEY) : null;
+
+function channelName({ userId, scope } = {}) {
+  return userId ? `operix:user:${String(userId)}` : scope === 'admin' ? 'operix:admin' : null;
+}
+
+async function publish(event, data = {}, audience = {}) {
+  const name = channelName(audience);
+  if (!ably || !name) return;
+  try {
+    await ably.channels.get(name).publish(event, data);
+  } catch (error) {
+    console.error('Ably publish error:', error.message);
+  }
+}
 
 function addClient({ response, userId, scope, role }) {
   const client = { id: nextClientId++, response, userId: String(userId), scope, role };
@@ -24,6 +40,7 @@ function send(client, event, data) {
 }
 
 function emit(event, data = {}, audience = {}) {
+  void publish(event, data, audience);
   for (const client of clients.values()) {
     const matchesUser = audience.userId && client.userId === String(audience.userId);
     const matchesScope = audience.scope && client.scope === audience.scope;
