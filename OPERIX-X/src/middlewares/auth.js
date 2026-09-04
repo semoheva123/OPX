@@ -6,7 +6,10 @@ const JWT_SECRET = process.env.JWT_SECRET;
 
 function getBearerToken(req) {
   const authHeader = req.headers.authorization;
-  if (authHeader) return authHeader.split(' ')[1];
+  if (authHeader) {
+    const bearerToken = authHeader.split(' ')[1];
+    if (bearerToken && bearerToken !== 'undefined' && bearerToken !== 'null') return bearerToken;
+  }
   const cookies = String(req.headers.cookie || '').split(';').map(cookie => cookie.trim());
   const adminCookie = cookies.find(cookie => cookie.startsWith('operix_admin='));
   return adminCookie ? decodeURIComponent(adminCookie.slice('operix_admin='.length)) : null;
