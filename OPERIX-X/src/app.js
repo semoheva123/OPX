@@ -32,7 +32,7 @@ function createApp({ resend, webpush, gameSettings }) {
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.tailwindcss.com', 'https://cdnjs.cloudflare.com'],
+        scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.tailwindcss.com', 'https://cdnjs.cloudflare.com', 'https://cdn.ably.com'],
         scriptSrcAttr: ["'unsafe-inline'"],
         styleSrc: ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com', 'https://fonts.googleapis.com'],
         fontSrc: ["'self'", 'https://cdnjs.cloudflare.com', 'https://fonts.gstatic.com', 'data:'],
@@ -47,6 +47,29 @@ function createApp({ resend, webpush, gameSettings }) {
   app.use(express.json({ limit: '1mb' }));
   app.use(express.urlencoded({ extended: true, limit: '1mb' }));
   app.get('/api/health', (req, res) => res.json({ success: true, status: 'ok', uptime: Math.floor(process.uptime()), timestamp: new Date().toISOString() }));
+
+  app.get('/api/realtime/token', async (req, res) => {
+    try {
+      if (!process.env.ABLY_API_KEY) return res.status(503).json({ error: 'خدمة التحديث اللحظي غير مهيأة' });
+      const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const scope = decoded.scope === 'admin' ? 'admin' : 'user';
+      const activeSession = decoded.jti
+        ? await Session.findOne({ jti: decoded.jti, userId: decoded.id, scope, revokedAt: null, expiresAt: { $gt: new Date() } })
+        : null;
+      if (!activeSession) return res.status(401).json({ error: 'جلسة غير صالحة أو منتهية' });
+      const user = await User.findById(decoded.id).select('role isBanned');
+      const adminRoles = ['admin', 'financial_admin', 'support_admin', 'monitor'];
+      if (!user || user.isBanned || (scope === 'admin' && !adminRoles.includes(user.role))) return res.status(403).json({ error: 'الوصول إلى التحديث اللحظي مرفوض' });
+      const channel = scope === 'admin' ? 'operix:admin' : `operix:user:${user._id}`;
+      const Ably = require('ably');
+      const client = new Ably.Rest(process.env.ABLY_API_KEY);
+      const tokenRequest = await client.auth.createTokenRequest({ clientId: `${scope}:${user._id}`, capability: JSON.stringify({ [channel]: ['subscribe'] }) });
+      res.json(tokenRequest);
+    } catch (error) {
+      res.status(401).json({ error: 'توكن التحديث اللحظي غير صالح' });
+    }
+  });
 
   app.get('/api/realtime/stream', async (req, res) => {
     try {
