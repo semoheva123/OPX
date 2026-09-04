@@ -23,13 +23,13 @@ async function createAudit(req, action, targetId, details = {}, session) {
   return session ? log.save({ session }) : log.save();
 }
 
-function emitUserDataChanged(userId, reason) {
-  realtimeService.emit('user_data_changed', { reason, timestamp: new Date().toISOString() }, { userId });
+async function emitUserDataChanged(userId, reason) {
+  await realtimeService.publish('user_data_changed', { reason, timestamp: new Date().toISOString() }, { userId });
 }
 
 async function emitPlatformDataChanged(reason) {
   const users = await User.find().select('_id').lean();
-  for (const user of users) emitUserDataChanged(user._id, reason);
+  for (const user of users) await emitUserDataChanged(user._id, reason);
 }
 
 async function saveVipLevel(req, res) {
@@ -134,7 +134,7 @@ async function updateUser(req, res) {
     await user.save();
     await createAudit(req, 'update_user_balance', user._id.toString(), { oldValue: { balance: beforeBalance }, newValue: { balance: user.wallet.balance }, depositBalance, profitBalance });
     const safeUser = user.toObject(); delete safeUser.password; delete safeUser.resetOTP; delete safeUser.twoFactorCode;
-    emitUserDataChanged(user._id, 'balance_updated');
+    await emitUserDataChanged(user._id, 'balance_updated');
     res.json({ success: true, message: 'تم تعديل بيانات المستخدم بنجاح', user: safeUser });
   } catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
 }
@@ -150,7 +150,7 @@ async function updateUserTier(req, res) {
     user.tierCode = normalizedTier;
     await user.save();
     await createAudit(req, 'update_user_tier', user._id.toString(), { oldValue: oldTier, newValue: normalizedTier });
-    emitUserDataChanged(user._id, 'tier_updated');
+    await emitUserDataChanged(user._id, 'tier_updated');
     res.json({ success: true, message: 'تم تحديث مستوى المستخدم' });
   } catch (err) { res.status(500).json({ error: 'تعذر تحديث مستوى المستخدم' }); }
 }
@@ -169,7 +169,7 @@ async function updateUserAccount(req, res) {
     if (walletAddress !== undefined) user.walletAddress = String(walletAddress).trim();
     await user.save();
     await createAudit(req, 'update_user_account', user._id.toString(), { oldValue, newValue: { walletAddress: user.walletAddress, passwordChanged: oldValue.passwordChanged } });
-    emitUserDataChanged(user._id, 'account_updated');
+    await emitUserDataChanged(user._id, 'account_updated');
     res.json({ success: true, message: 'تم تحديث بيانات الحساب بنجاح' });
   } catch (err) { res.status(500).json({ error: 'تعذر تحديث بيانات الحساب' }); }
 }
@@ -194,7 +194,7 @@ async function updateUserRole(req, res) {
     user.role = role;
     await user.save();
     await createAudit(req, 'update_user_role', user._id.toString(), { oldRole, newRole: role });
-    emitUserDataChanged(user._id, 'role_updated');
+    await emitUserDataChanged(user._id, 'role_updated');
     res.json({ success: true, message: 'تم تحديث صلاحيات المستخدم', role: user.role });
   } catch (err) { res.status(500).json({ error: 'تعذر تحديث صلاحيات المستخدم' }); }
 }
@@ -286,7 +286,7 @@ async function withdrawalAction(req, res) {
       await tx.save({ session });
       await createAudit(req, `transaction_${action}`, tx._id.toString(), { type: tx.type, amount: tx.amount, newValue: action }, session);
     });
-    if (tx?.userId?._id) emitUserDataChanged(tx.userId._id, 'transaction_updated');
+    if (tx?.userId?._id) await emitUserDataChanged(tx.userId._id, 'transaction_updated');
     res.json({ success: true, message: `تمت عملية (${req.body.action === 'approve' ? 'الموافقة' : 'الرفض'}) بنجاح` });
   } catch (err) {
     if (session.inTransaction()) await session.abortTransaction();
