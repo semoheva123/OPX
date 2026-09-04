@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const transactionSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  type: { type: String, enum: ['deposit', 'withdraw', 'reward', 'staking_reward', 'referral_commission', 'upgrade_deduction'], required: true },
+  type: { type: String, enum: ['deposit', 'withdraw', 'reward', 'staking_reward', 'referral_commission', 'upgrade_deduction', 'admin_adjustment'], required: true },
   amount: { type: Number, required: true },
   walletAddress: { type: String, required: true, trim: true },
   txHash: { type: String, trim: true },
