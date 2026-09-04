@@ -12,8 +12,13 @@ router.delete('/vip-levels/:code', requirePermission('manage_vip'), adminControl
 router.get('/overview', requirePermission('read_overview'), adminController.overview);
 router.get('/analytics', requirePermission('read_overview'), adminController.analytics);
 router.get('/users', requirePermission('read_users'), adminController.listUsers);
+router.get('/users/:userId/details', requirePermission('read_users'), adminController.userDetails);
 router.post('/reset-daily-tasks', requirePermission('manage_users'), adminController.resetDailyTasks);
 router.post('/users/toggle-ban', requirePermission('manage_users'), adminController.toggleBan);
+router.post('/users/bulk-ban', requirePermission('manage_users'), adminController.bulkToggleBan);
+router.post('/users/:userId/revoke-sessions', requirePermission('manage_users'), adminController.revokeUserSessions);
+router.post('/users/:userId/verify-email', requirePermission('manage_users'), adminController.verifyUserEmail);
+router.post('/users/:userId/disable-2fa', requireFullAdmin, adminController.disableUserTwoFactor);
 router.post('/users/update', requirePermission('finance'), adminController.updateUser);
 router.post('/users/update-account', requirePermission('manage_users'), adminController.updateUserAccount);
 router.post('/users/tier', requirePermission('manage_vip'), adminController.updateUserTier);
