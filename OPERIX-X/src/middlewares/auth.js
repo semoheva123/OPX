@@ -15,6 +15,13 @@ function getBearerToken(req) {
   return adminCookie ? decodeURIComponent(adminCookie.slice('operix_admin='.length)) : null;
 }
 
+function getAdminToken(req) {
+  const cookies = String(req.headers.cookie || '').split(';').map(cookie => cookie.trim());
+  const adminCookie = cookies.find(cookie => cookie.startsWith('operix_admin='));
+  if (adminCookie) return decodeURIComponent(adminCookie.slice('operix_admin='.length));
+  return getBearerToken(req);
+}
+
 const verifyToken = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader) return res.status(403).json({ error: 'مطلوب توكن المصادقة' });
@@ -49,7 +56,7 @@ function rejectAdminRequest(req, res, status, error) {
 
 const verifyAdmin = async (req, res, next) => {
   try {
-    const token = getBearerToken(req);
+    const token = getAdminToken(req);
     if (!token) return rejectAdminRequest(req, res, 401, 'غير مصرح: لا يوجد توكن');
 
     const decoded = jwt.verify(token, JWT_SECRET);
