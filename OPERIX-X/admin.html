@@ -40,6 +40,8 @@
         table tbody tr:hover { background: rgba(247,185,85,.045); }
         input, select, textarea { box-shadow: inset 0 1px 2px rgba(0,0,0,.18); }
         #adminConfirmModal .glass-card { animation: operixModalReveal .2s ease both; }
+        #adminConfirmModal { background: rgba(2, 8, 18, .9); }
+        #adminConfirmModal .glass-card { animation: operixModalReveal .2s ease both; box-shadow: 0 24px 80px rgba(0,0,0,.55), 0 0 0 1px rgba(247,185,85,.08); }
         @keyframes operixModalReveal { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
         @media (min-width: 768px) { main { padding: 2.5rem 3rem; } }
     </style>
@@ -404,6 +406,16 @@
         const adminStorageRemoveItem = localStorage.removeItem.bind(localStorage);
         localStorage.getItem = key => key === 'token' ? adminStorageGetItem('adminToken') : adminStorageGetItem(key);
         localStorage.removeItem = key => adminStorageRemoveItem(key === 'token' ? 'adminToken' : key);
+        const nativeAdminFetch = window.fetch.bind(window);
+        window.fetch = (input, init = {}) => {
+            const url = String(typeof input === 'string' ? input : input?.url || '');
+            if (!url.startsWith('/api/admin') && !url.startsWith('/api/auth/admin')) return nativeAdminFetch(input, init);
+            const headers = new Headers(init.headers || {});
+            headers.delete('Authorization');
+            const adminToken = adminStorageGetItem('adminToken');
+            if (adminToken) headers.set('Authorization', `Bearer ${adminToken}`);
+            return nativeAdminFetch(input, { ...init, credentials: 'same-origin', headers });
+        };
         let allUsersData = [];
         let usersCurrentPage = 1;
         let usersTotalPages = 1;
@@ -436,6 +448,7 @@
                 messageElement.innerText = message;
                 modal.classList.remove('hide');
                 modal.classList.add('flex');
+                accept.focus();
                 const close = result => { modal.classList.add('hide'); modal.classList.remove('flex'); accept.onclick = null; cancel.onclick = null; resolve(result); };
                 accept.onclick = () => close(true);
                 cancel.onclick = () => close(false);
