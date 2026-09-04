@@ -7,6 +7,7 @@ const router = express.Router();
 router.post('/register', authController.register);
 router.post('/login', authController.login);
 router.post('/admin-login', authController.adminLogin);
+router.get('/admin-session', verifyAdmin, authController.adminSession);
 router.post('/admin-2fa/setup', authController.adminSetupTwoFactor);
 router.post('/admin-2fa/confirm', authController.adminConfirmTwoFactor);
 router.post('/admin-invite/setup', authController.acceptAdminInviteSetup);
