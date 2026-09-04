@@ -184,15 +184,23 @@
         <div id="admin-users" class="space-y-6 hide">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div class="flex items-center gap-2"><h2 class="text-xl font-black text-white">إدارة حسابات الأعضاء</h2><button onclick="exportUsersCsv()" title="تصدير CSV" class="px-3 py-2 bg-slate-900 text-emerald-400 rounded-xl"><i class="fa-solid fa-file-csv"></i></button></div>
-                <input type="text" id="txtSearchUser" onkeyup="filterUsersTable()" placeholder="ابحث بالبريد الإلكتروني..." class="bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500 w-full sm:w-64">
+                <input type="text" id="txtSearchUser" onkeydown="if(event.key === 'Enter') fetchUsersList(1)" placeholder="ابحث بالبريد أو كود الإحالة..." class="bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500 w-full sm:w-64">
             </div>
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                <select id="userFilterRole" onchange="fetchUsersList(1)" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white"><option value="">كل الأدوار</option><option value="user">مستخدم</option><option value="admin">مدير كامل</option><option value="financial_admin">مدير مالي</option><option value="support_admin">مدير دعم</option><option value="monitor">مراقب</option></select>
+                <input id="userFilterTier" onkeydown="if(event.key === 'Enter') fetchUsersList(1)" placeholder="المستوى A1" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white">
+                <select id="userFilterStatus" onchange="fetchUsersList(1)" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white"><option value="">كل الحالات</option><option value="active">نشط</option><option value="banned">محظور</option></select>
+                <select id="userFilterVerified" onchange="fetchUsersList(1)" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white"><option value="">توثيق البريد</option><option value="yes">موثق</option><option value="no">غير موثق</option></select>
+                <button onclick="fetchUsersList(1)" class="bg-amber-500/15 text-amber-300 border border-amber-500/20 rounded-xl text-[10px] font-bold"><i class="fa-solid fa-magnifying-glass ml-1"></i> بحث</button>
+            </div>
+            <div class="flex flex-wrap items-center gap-2"><button onclick="bulkUserAction(true)" class="px-3 py-2 bg-rose-500/15 text-rose-300 border border-rose-500/20 rounded-xl text-[10px] font-bold">حظر المحدد</button><button onclick="bulkUserAction(false)" class="px-3 py-2 bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 rounded-xl text-[10px] font-bold">إلغاء حظر المحدد</button><button onclick="clearUserSelection()" class="px-3 py-2 bg-slate-900 text-slate-300 rounded-xl text-[10px]">إلغاء التحديد</button><span id="userSelectionCount" class="text-[10px] text-slate-500">لم يتم تحديد مستخدمين</span></div>
 
             <div class="glass-card rounded-3xl overflow-hidden border border-slate-800">
                 <div class="overflow-x-auto">
                     <table class="w-full text-right text-xs">
                         <thead class="bg-slate-900/80 text-slate-400 border-b border-slate-800">
                             <tr>
-                                <th class="p-4">المستخدم</th>
+                                <th class="p-4"><input type="checkbox" onchange="toggleAllUsers(this.checked)" aria-label="تحديد الكل"></th><th class="p-4">المستخدم</th>
                                 <th class="p-4">المستوى</th>
                                 <th class="p-4">الرصيد</th>
                                 <th class="p-4">الحالة</th>
@@ -400,6 +408,17 @@
                 <button onclick="closeReferralTreeModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
             <div id="referralTreeContent" class="text-xs text-slate-300">جاري تحميل الشجرة...</div>
+        </div>
+    </div>
+
+    <div id="userDetailsModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hide items-center justify-center p-4" role="dialog" aria-modal="true">
+        <div class="glass-card p-6 rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-y-auto space-y-4 border border-cyan-500/30">
+            <div class="flex justify-between items-center"><div><h3 class="text-base font-bold text-white">تفاصيل المستخدم</h3><p id="userDetailsEmail" class="text-[10px] text-slate-500 mt-1"></p></div><button onclick="closeUserDetails()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button></div>
+            <div id="userDetailsSummary" class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs"></div>
+            <div class="flex flex-wrap gap-2"><button onclick="verifyDetailsEmail()" class="px-3 py-2 bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 rounded-xl text-[10px] font-bold">توثيق البريد</button><button onclick="disableDetails2FA()" class="px-3 py-2 bg-amber-500/15 text-amber-300 border border-amber-500/20 rounded-xl text-[10px] font-bold">تعطيل 2FA</button><button onclick="revokeDetailsSessions()" class="px-3 py-2 bg-rose-500/15 text-rose-300 border border-rose-500/20 rounded-xl text-[10px] font-bold">إنهاء جلسات المستخدم</button><button onclick="loadUserDetails(currentDetailsUserId)" class="px-3 py-2 bg-slate-900 text-slate-300 rounded-xl text-[10px]">تحديث التفاصيل</button></div>
+            <div><h4 class="text-sm font-bold text-white mb-2">آخر المعاملات</h4><div id="userDetailsTransactions" class="space-y-2 text-[10px]"></div></div>
+            <div><h4 class="text-sm font-bold text-white mb-2">سجل تعديلات الإدارة</h4><div id="userDetailsAudit" class="space-y-2 text-[10px]"></div></div>
+            <div><h4 class="text-sm font-bold text-white mb-2">الجلسات النشطة</h4><div id="userDetailsSessions" class="space-y-2 text-[10px]"></div></div>
         </div>
     </div>
 
@@ -668,7 +687,8 @@
         async function fetchUsersList(page = 1) {
             const token = localStorage.getItem('token');
             try {
-                const res = await fetch(`/api/admin/users?page=${page}&limit=10`, {
+                const params = new URLSearchParams({ page, limit: 10, search: document.getElementById('txtSearchUser')?.value.trim() || '', role: document.getElementById('userFilterRole')?.value || '', tier: document.getElementById('userFilterTier')?.value.trim() || '', status: document.getElementById('userFilterStatus')?.value || '', verified: document.getElementById('userFilterVerified')?.value || '' });
+                const res = await fetch(`/api/admin/users?${params.toString()}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
 
@@ -717,7 +737,7 @@
         function renderUsersTable(users) {
             const tbody = document.getElementById('tblUsersBody');
             if(!users || users.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-500">لا يوجد مستخدمين لعرضهم</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500">لا يوجد مستخدمين لعرضهم</td></tr>`;
                 return;
             }
             tbody.innerHTML = users.map(u => {
@@ -732,12 +752,14 @@
 
                 return `
                     <tr>
+                        <td class="p-4"><input type="checkbox" class="user-select-checkbox" value="${u._id}" onchange="updateUserSelectionCount()" aria-label="تحديد المستخدم"></td>
                         <td class="p-4 font-bold text-white">${escapeAdminHtml(u.email)}</td>
                         <td class="p-4"><span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 text-[10px] font-bold">${escapeAdminHtml(u.tierCode || 'A1')}</span></td>
                         <td class="p-4 text-emerald-400 font-mono font-bold">${Number(u.wallet?.balance || 0).toFixed(2)} $</td>
                         <td class="p-4">${statusBadge}</td>
                         <td class="p-4 text-slate-400">${u.todayCompletedTasks || 0}</td>
                         <td class="p-4 space-x-2 space-x-reverse">
+                            <button onclick="showUserDetails('${u._id}')" class="px-3 py-1 bg-cyan-600/20 text-cyan-300 rounded-lg text-[10px] font-bold">التفاصيل</button>
                             <button data-action-permission="finance" onclick="openEditUser('${u._id}', '${u.tierCode || 'A1'}', ${u.wallet?.balance || 0}, '${u.role || 'user'}')" class="px-3 py-1 bg-blue-600/20 text-blue-400 rounded-lg text-[10px] font-bold hover:bg-blue-600/40 transition-all">إدارة مالية</button>
                             ${isBanned ? `<button data-action-permission="manage_users" onclick="toggleUserBan('${u._id}', false)" class="px-3 py-1 bg-emerald-600/20 text-emerald-400 rounded-lg text-[10px] font-bold">إلغاء الحظر</button>` : `<button data-action-permission="manage_users" onclick="toggleUserBan('${u._id}', true)" class="px-3 py-1 bg-rose-600/20 text-rose-400 rounded-lg text-[10px] font-bold">حظر</button>`}
                         </td>
@@ -745,7 +767,40 @@
                 `;
             }).join('');
             applyRoleVisibility();
+            updateUserSelectionCount();
         }
+
+        function selectedUserIds() { return [...document.querySelectorAll('.user-select-checkbox:checked')].map(input => input.value); }
+        function updateUserSelectionCount() { const count = selectedUserIds().length; const label = document.getElementById('userSelectionCount'); if (label) label.innerText = count ? `تم تحديد ${count} مستخدم` : 'لم يتم تحديد مستخدمين'; }
+        function toggleAllUsers(checked) { document.querySelectorAll('.user-select-checkbox').forEach(input => { input.checked = checked; }); updateUserSelectionCount(); }
+        function clearUserSelection() { toggleAllUsers(false); }
+        async function bulkUserAction(isBanned) { const userIds = selectedUserIds(); if (!userIds.length) return showToast('حدد مستخدمًا واحدًا على الأقل'); if (!await showAdminConfirm(`سيتم ${isBanned ? 'حظر' : 'إلغاء حظر'} ${userIds.length} مستخدم. هل تتابع؟`, 'إجراء جماعي')) return; const response = await fetch('/api/admin/users/bulk-ban', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` }, body: JSON.stringify({ userIds, isBanned }) }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر تنفيذ الإجراء'); showToast(`تم تعديل ${data.modifiedCount || 0} مستخدم`); clearUserSelection(); fetchUsersList(usersCurrentPage); }
+
+        let currentDetailsUserId = null;
+        async function showUserDetails(userId) { currentDetailsUserId = userId; const modal = document.getElementById('userDetailsModal'); modal.classList.remove('hide'); modal.classList.add('flex'); await loadUserDetails(userId); }
+        function closeUserDetails() { const modal = document.getElementById('userDetailsModal'); modal.classList.add('hide'); modal.classList.remove('flex'); currentDetailsUserId = null; }
+        async function loadUserDetails(userId) {
+            if (!userId) return;
+            const summary = document.getElementById('userDetailsSummary');
+            const transactions = document.getElementById('userDetailsTransactions');
+            const audit = document.getElementById('userDetailsAudit');
+            const sessions = document.getElementById('userDetailsSessions');
+            summary.innerHTML = '<span class="text-slate-400">جاري التحميل...</span>';
+            try {
+                const response = await fetch(`/api/admin/users/${encodeURIComponent(userId)}/details`);
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'تعذر تحميل التفاصيل');
+                const user = data.user;
+                document.getElementById('userDetailsEmail').innerText = user.email || '-';
+                summary.innerHTML = `<span class="bg-slate-950 rounded-xl p-3">المستوى<br><b class="text-amber-300">${escapeAdminHtml(user.tierCode || '-')}</b></span><span class="bg-slate-950 rounded-xl p-3">الرصيد<br><b class="text-emerald-300">$${Number(user.wallet?.balance || 0).toFixed(2)}</b></span><span class="bg-slate-950 rounded-xl p-3">الحالة<br><b class="${user.isBanned ? 'text-rose-300' : 'text-emerald-300'}">${user.isBanned ? 'محظور' : 'نشط'}</b></span><span class="bg-slate-950 rounded-xl p-3">البريد<br><b class="text-cyan-300">${user.emailVerified ? 'موثق' : 'غير موثق'}</b></span>`;
+                transactions.innerHTML = data.transactions?.length ? data.transactions.map(item => `<div class="flex justify-between gap-3 border-b border-slate-800 pb-2"><span>${escapeAdminHtml(item.type)} · ${escapeAdminHtml(item.status)}</span><b class="text-amber-300">${Number(item.amount || 0).toFixed(2)} $</b></div>`).join('') : '<span class="text-slate-500">لا توجد معاملات</span>';
+                audit.innerHTML = data.auditLogs?.length ? data.auditLogs.map(item => `<div class="border-b border-slate-800 pb-2"><b class="text-cyan-300">${escapeAdminHtml(item.action)}</b><span class="text-slate-500 mr-2">${escapeAdminHtml(item.adminId?.email || 'مدير')} · ${escapeAdminHtml(new Date(item.createdAt).toLocaleString('ar'))}</span><div class="text-slate-400 mt-1">${formatAuditDetails(item.details || {})}</div></div>`).join('') : '<span class="text-slate-500">لا توجد تعديلات مسجلة</span>';
+                sessions.innerHTML = data.sessions?.length ? data.sessions.map(item => `<div class="border-b border-slate-800 pb-2"><span class="text-slate-300">${escapeAdminHtml(item.userAgent || 'جهاز غير معروف')}</span><span class="block text-slate-500">${escapeAdminHtml(item.ip || '-')} · آخر نشاط ${escapeAdminHtml(new Date(item.lastSeenAt).toLocaleString('ar'))}</span></div>`).join('') : '<span class="text-slate-500">لا توجد جلسات نشطة</span>';
+            } catch (error) { summary.innerHTML = `<span class="text-rose-300">${escapeAdminHtml(error.message)}</span>`; }
+        }
+        async function revokeDetailsSessions() { if (!currentDetailsUserId || !await showAdminConfirm('سيتم إنهاء جلسات المستخدم الحالية. هل تتابع؟', 'إنهاء الجلسات')) return; const response = await fetch(`/api/admin/users/${encodeURIComponent(currentDetailsUserId)}/revoke-sessions`, { method: 'POST' }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر إنهاء الجلسات'); showToast(data.message || 'تم إنهاء الجلسات'); loadUserDetails(currentDetailsUserId); }
+        async function verifyDetailsEmail() { if (!currentDetailsUserId) return; const response = await fetch(`/api/admin/users/${encodeURIComponent(currentDetailsUserId)}/verify-email`, { method: 'POST' }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر توثيق البريد'); showToast(data.message || 'تم توثيق البريد'); loadUserDetails(currentDetailsUserId); }
+        async function disableDetails2FA() { if (!currentDetailsUserId || !await showAdminConfirm('سيتم تعطيل المصادقة الثنائية لهذا المستخدم. هل تتابع؟', 'تعطيل 2FA')) return; const response = await fetch(`/api/admin/users/${encodeURIComponent(currentDetailsUserId)}/disable-2fa`, { method: 'POST' }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر تعطيل 2FA'); showToast(data.message || 'تم تعطيل 2FA'); loadUserDetails(currentDetailsUserId); }
 
         function filterUsersTable() {
             const term = document.getElementById('txtSearchUser').value.toLowerCase();
