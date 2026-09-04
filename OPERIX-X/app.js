@@ -10,6 +10,7 @@ let taskCountdownTimer = null;
 let growthChartPoints = [];
 let unreadNotificationCount = null;
 let notificationPollTimer = null;
+let profileSyncTimer = null;
 let realtimeClient = null;
 let realtimeChannel = null;
 
@@ -485,7 +486,7 @@ async function fetchUnreadNotifications(isLiveUpdate = false) {
 function startRealtimeStream() {
     const token = localStorage.getItem('token');
     if (!token || !window.Ably || !currentUserData?._id) return;
-    if (realtimeClient) realtimeClient.close();
+    if (realtimeClient) return;
     realtimeClient = new Ably.Realtime({
         authUrl: '/api/realtime/token',
         authHeaders: { Authorization: `Bearer ${token}` },
@@ -514,6 +515,8 @@ function startNotificationPolling() {
     fetchUnreadNotifications();
     if (notificationPollTimer) clearInterval(notificationPollTimer);
     notificationPollTimer = setInterval(() => fetchUnreadNotifications(true), 15000);
+    if (profileSyncTimer) clearInterval(profileSyncTimer);
+    profileSyncTimer = setInterval(() => loadUserProfile(), 15000);
 }
 
 function playBeep(type = 'default') {
@@ -1947,6 +1950,8 @@ async function logout() {
     realtimeChannel = null;
     if (notificationPollTimer) clearInterval(notificationPollTimer);
     notificationPollTimer = null;
+    if (profileSyncTimer) clearInterval(profileSyncTimer);
+    profileSyncTimer = null;
     unreadNotificationCount = null;
     currentUserData = null;
     hasPendingDeposit = false;
