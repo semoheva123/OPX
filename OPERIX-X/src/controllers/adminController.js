@@ -7,6 +7,7 @@ const SecurityEvent = require('../models/SecurityEvent');
 const Broadcast = require('../models/Broadcast');
 const Notification = require('../models/Notification');
 const Session = require('../models/Session');
+const realtimeService = require('../services/realtimeService');
 
 const DEFAULT_BADGE_COLOR = 'from-amber-500/20 to-amber-700/20 border-amber-500/40 text-amber-400';
 const ALLOWED_BADGE_COLORS = new Set([
@@ -97,6 +98,8 @@ async function toggleBan(req, res) {
     const user = await User.findByIdAndUpdate(userId, { isBanned }, { new: true }).select('-password -resetOTP -twoFactorCode');
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     await createAudit(req, isBanned ? 'ban_user' : 'unban_user', user._id.toString(), { newValue: isBanned });
+    realtimeService.emit('user_status_changed', { userId: user._id, isBanned, message: isBanned ? 'تم حظر المستخدم' : 'تم إلغاء حظر المستخدم' }, { scope: 'admin' });
+    realtimeService.emit('account_status_changed', { isBanned, message: isBanned ? 'تم تعليق حسابك من قبل الإدارة' : 'تم إلغاء تعليق حسابك' }, { userId: user._id });
     res.json({ success: true, message: isBanned ? 'تم حظر المستخدم بنجاح' : 'تم إلغاء حظر المستخدم بنجاح', user });
   } catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
 }
@@ -316,7 +319,10 @@ async function deliverBroadcast(campaign, webpush) {
   campaign = claimed;
   const users = await User.find(audienceFilter(campaign)).select('_id pushSubscription');
   const notifications = users.map(user => ({ userId: user._id, broadcastId: campaign._id, title: campaign.title, body: campaign.body, type: 'system' }));
-  if (notifications.length) await Notification.insertMany(notifications, { ordered: false });
+  if (notifications.length) {
+    await Notification.insertMany(notifications, { ordered: false });
+    for (const user of users) realtimeService.emit('notification_created', { broadcastId: campaign._id, title: campaign.title }, { userId: user._id });
+  }
   let pushSent = 0; let pushFailed = 0;
   if (webpush) for (const user of users.filter(item => item.pushSubscription)) {
     try { await webpush.sendNotification(user.pushSubscription, JSON.stringify({ title: campaign.title, body: campaign.body })); pushSent++; }
