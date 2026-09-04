@@ -878,23 +878,24 @@
             const role = document.getElementById('editUserRole').value;
 
             try {
-                const res = await fetch('/api/admin/users/update', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify({ userId, balance })
-                });
-                if(res.ok) {
-                    const accountResponse = await fetch('/api/admin/users/update-account', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ userId, password }) });
-                    const tierResponse = await fetch('/api/admin/users/tier', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ userId, tierCode }) });
-                    showToast(accountResponse.ok && tierResponse.ok ? 'تم تحديث بيانات المستخدم بنجاح' : 'تم حفظ الرصيد، وتحتاج بعض البيانات لصلاحية أعلى');
-                    const roleResponse = await fetch('/api/admin/users/role', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ userId, role }) });
-                    if (!roleResponse.ok) { const roleError = await roleResponse.json(); showToast(roleError.error || 'تم حفظ البيانات دون تغيير الدور'); }
-                    closeEditUserModal();
-                    fetchUsersList(usersCurrentPage);
-                    fetchAdminOverview();
-                } else {
-                    showToast('حدث خطأ أثناء التحديث');
-                }
+                const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+                const operations = [];
+                if (canAdmin('finance')) operations.push(['الرصيد', fetch('/api/admin/users/update', { method: 'POST', headers, body: JSON.stringify({ userId, balance }) })]);
+                if (canAdmin('manage_users') && password) operations.push(['بيانات الحساب', fetch('/api/admin/users/update-account', { method: 'POST', headers, body: JSON.stringify({ userId, password }) })]);
+                if (canAdmin('manage_vip')) operations.push(['المستوى', fetch('/api/admin/users/tier', { method: 'POST', headers, body: JSON.stringify({ userId, tierCode }) })]);
+                if (currentAdminRole === 'admin') operations.push(['الدور', fetch('/api/admin/users/role', { method: 'POST', headers, body: JSON.stringify({ userId, role }) })]);
+                if (!operations.length) return showToast('لا تملك صلاحية لتعديل بيانات هذا المستخدم');
+                const results = await Promise.all(operations.map(async ([label, request]) => {
+                    const response = await request;
+                    const data = await response.json().catch(() => ({}));
+                    return { label, ok: response.ok, error: data.error };
+                }));
+                const failures = results.filter(result => !result.ok);
+                if (failures.length) showToast(`تم الحفظ مع تعذر: ${failures.map(result => result.error || result.label).join('، ')}`);
+                else showToast('تم تحديث بيانات المستخدم بنجاح');
+                closeEditUserModal();
+                fetchUsersList(usersCurrentPage);
+                fetchAdminOverview();
             } catch(e) { showToast('خطأ في الاتصال'); }
         }
 
@@ -954,12 +955,12 @@
                                 <input type="number" id="tasksCount-${escapeAdminHtml(plan.code)}" value="${plan.tasks || 1}" min="1" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
                             </div>
                             <div>
-                                <label class="block text-[11px] text-slate-400 mb-1">نسبة العمولة (%)</label>
-                                <input type="number" step="0.01" id="commissionRate-${plan.code}" value="${plan.commissionRate !== undefined ? plan.commissionRate : 0}" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                                <label class="block text-[11px] text-slate-400 mb-1">الربح الشهري ($)</label>
+                                <input type="number" step="0.01" id="monthlyProfit-${plan.code}" value="${plan.monthlyProfit || 0}" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
                             </div>
                             <div>
-                                <label class="block text-[11px] text-slate-400 mb-1">مدة الخطة (بالأيام)</label>
-                                <input type="number" id="durationDays-${plan.code}" value="${plan.durationDays || 365}" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                                <label class="block text-[11px] text-slate-400 mb-1">الربح السنوي ($)</label>
+                                <input type="number" step="0.01" id="yearlyProfit-${plan.code}" value="${plan.yearlyProfit || 0}" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
                             </div>
                             <div class="grid grid-cols-2 gap-2"><button onclick="updateVipPlan('${plan.code}')" class="py-2 bg-amber-500/20 text-amber-400 hover:bg-amber-500 hover:text-slate-950 text-xs font-bold rounded-xl transition-all">تحديث الخطة</button><button onclick="deleteVipPlan('${plan.code}')" class="py-2 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 text-xs font-bold rounded-xl transition-all">حذف المستوى</button></div>
                         </div>
@@ -989,8 +990,8 @@
             const price = parseNum(`price-${code}`, 0);
             const dailyProfit = parseNum(`dailyProfit-${code}`, 0);
             const tasksCount = parseNum(`tasksCount-${code}`, 1, true);
-            const commissionRate = parseNum(`commissionRate-${code}`, 0);
-            const durationDays = parseNum(`durationDays-${code}`, 365, true);
+            const monthlyProfit = parseNum(`monthlyProfit-${code}`, dailyProfit * 30);
+            const yearlyProfit = parseNum(`yearlyProfit-${code}`, dailyProfit * 365);
             
             const token = localStorage.getItem('token');
 
@@ -1011,8 +1012,8 @@
                         price: price,
                         dailyProfit: dailyProfit,
                         tasks: tasksCount,
-                        commissionRate: commissionRate,
-                        durationDays: durationDays
+                        monthlyProfit,
+                        yearlyProfit
                     })
                 });
 
@@ -1128,15 +1129,13 @@
             if (!token || !window.Ably) return;
             if (adminRealtimeClient) adminRealtimeClient.close();
             adminRealtimeClient = new Ably.Realtime({
-                authCallback: async (_tokenParams, callback) => {
-                    try {
-                        const response = await fetch('/api/realtime/token', { headers: { Authorization: `Bearer ${token}` } });
-                        const data = await response.json();
-                        if (!response.ok) throw new Error(data.error || 'realtime auth failed');
-                        callback(null, data);
-                    } catch (error) { callback(error, null); }
-                }
+                authUrl: '/api/realtime/token',
+                authHeaders: { Authorization: `Bearer ${token}` },
+                disconnectedRetryTimeout: 5000,
+                suspendedRetryTimeout: 10000
             });
+            adminRealtimeClient.connection.on('failed', state => console.error('Ably admin connection failed:', state.reason));
+            adminRealtimeClient.connection.on('suspended', state => console.warn('Ably admin connection suspended:', state.reason));
             const channel = adminRealtimeClient.channels.get('operix:admin');
             channel.subscribe('user_status_changed', () => {
                 fetchUsersList(usersCurrentPage);

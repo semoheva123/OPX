@@ -484,15 +484,13 @@ function startRealtimeStream() {
     if (!token || !window.Ably || !currentUserData?._id) return;
     if (realtimeClient) realtimeClient.close();
     realtimeClient = new Ably.Realtime({
-        authCallback: async (_tokenParams, callback) => {
-            try {
-                const response = await fetch('/api/realtime/token', { headers: { Authorization: `Bearer ${token}` } });
-                const data = await response.json();
-                if (!response.ok) throw new Error(data.error || 'realtime auth failed');
-                callback(null, data);
-            } catch (error) { callback(error, null); }
-        }
+        authUrl: '/api/realtime/token',
+        authHeaders: { Authorization: `Bearer ${token}` },
+        disconnectedRetryTimeout: 5000,
+        suspendedRetryTimeout: 10000
     });
+    realtimeClient.connection.on('failed', state => console.error('Ably user connection failed:', state.reason));
+    realtimeClient.connection.on('suspended', state => console.warn('Ably user connection suspended:', state.reason));
     realtimeChannel = realtimeClient.channels.get(`operix:user:${currentUserData._id}`);
     realtimeChannel.subscribe('notification_created', () => fetchUnreadNotifications(true));
     realtimeChannel.subscribe('account_status_changed', event => {
