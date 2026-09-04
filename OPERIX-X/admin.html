@@ -523,6 +523,7 @@
             monitor: ['read_overview', 'read_users', 'read_audit', 'read_referrals']
         };
         let currentAdminRole = 'monitor';
+        let adminRealtimeStream = null;
         function canAdmin(permission) { return adminPermissions[currentAdminRole]?.includes(permission); }
         function applyRoleVisibility() {
             document.querySelectorAll('[data-permission]').forEach(element => { element.classList.toggle('hidden', !canAdmin(element.dataset.permission)); });
@@ -1119,6 +1120,17 @@
             } catch (error) { return null; }
         }
 
+        function startAdminRealtimeStream(token) {
+            if (!token || !window.EventSource) return;
+            if (adminRealtimeStream) adminRealtimeStream.close();
+            adminRealtimeStream = new EventSource(`/api/realtime/stream?token=${encodeURIComponent(token)}`);
+            adminRealtimeStream.addEventListener('user_status_changed', () => {
+                fetchUsersList(usersCurrentPage);
+                refreshAdminAlerts();
+            });
+            adminRealtimeStream.addEventListener('notification_created', () => refreshAdminAlerts());
+        }
+
         window.onload = () => {
             const token = localStorage.getItem('token');
             const sessionHeaders = token ? { Authorization: `Bearer ${token}` } : {};
@@ -1136,6 +1148,7 @@
                     fetchUsersList();
                     if (canAdmin('finance')) fetchTransactionsList();
                     refreshAdminAlerts();
+                    startAdminRealtimeStream(token);
                     setInterval(refreshAdminAlerts, 30000);
                 })
                 .catch(error => showAdminAccessMessage(error.message));
