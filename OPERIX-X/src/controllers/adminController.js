@@ -23,6 +23,15 @@ async function createAudit(req, action, targetId, details = {}, session) {
   return session ? log.save({ session }) : log.save();
 }
 
+function emitUserDataChanged(userId, reason) {
+  realtimeService.emit('user_data_changed', { reason, timestamp: new Date().toISOString() }, { userId });
+}
+
+async function emitPlatformDataChanged(reason) {
+  const users = await User.find().select('_id').lean();
+  for (const user of users) emitUserDataChanged(user._id, reason);
+}
+
 async function saveVipLevel(req, res) {
   try {
     const { code, name, price, tasks, dailyProfit, monthlyProfit, yearlyProfit, badgeColor } = req.body;
@@ -33,6 +42,7 @@ async function saveVipLevel(req, res) {
     const level = { code: code.trim().toUpperCase(), name, price: Number(price), tasks: Number(tasks), dailyProfit: Number(dailyProfit), monthlyProfit: monthlyProfit ? Number(monthlyProfit) : Number(dailyProfit) * 30, yearlyProfit: yearlyProfit ? Number(yearlyProfit) : Number(dailyProfit) * 365, badgeColor: ALLOWED_BADGE_COLORS.has(badgeColor) ? badgeColor : DEFAULT_BADGE_COLOR };
     const updatedLevel = await VipLevel.findOneAndUpdate({ code: level.code }, level, { upsert: true, new: true });
     await createAudit(req, 'update_vip_level', level.code, { newValue: { price: level.price, tasks: level.tasks, dailyProfit: level.dailyProfit } });
+    await emitPlatformDataChanged('vip_level_updated');
     res.json({ success: true, message: 'تم حفظ المستوى بنجاح', level: updatedLevel });
   } catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
 }
@@ -45,6 +55,7 @@ async function deleteVipLevel(req, res) {
     const deleted = await VipLevel.findOneAndDelete({ code });
     if (!deleted) return res.status(404).json({ error: 'المستوى غير موجود' });
     await createAudit(req, 'delete_vip_level', deleted.code, { oldValue: deleted.toObject() });
+    await emitPlatformDataChanged('vip_level_deleted');
     res.json({ success: true, message: 'تم حذف المستوى بنجاح' });
   } catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
 }
@@ -123,6 +134,7 @@ async function updateUser(req, res) {
     await user.save();
     await createAudit(req, 'update_user_balance', user._id.toString(), { oldValue: { balance: beforeBalance }, newValue: { balance: user.wallet.balance }, depositBalance, profitBalance });
     const safeUser = user.toObject(); delete safeUser.password; delete safeUser.resetOTP; delete safeUser.twoFactorCode;
+    emitUserDataChanged(user._id, 'balance_updated');
     res.json({ success: true, message: 'تم تعديل بيانات المستخدم بنجاح', user: safeUser });
   } catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
 }
@@ -138,6 +150,7 @@ async function updateUserTier(req, res) {
     user.tierCode = normalizedTier;
     await user.save();
     await createAudit(req, 'update_user_tier', user._id.toString(), { oldValue: oldTier, newValue: normalizedTier });
+    emitUserDataChanged(user._id, 'tier_updated');
     res.json({ success: true, message: 'تم تحديث مستوى المستخدم' });
   } catch (err) { res.status(500).json({ error: 'تعذر تحديث مستوى المستخدم' }); }
 }
@@ -156,6 +169,7 @@ async function updateUserAccount(req, res) {
     if (walletAddress !== undefined) user.walletAddress = String(walletAddress).trim();
     await user.save();
     await createAudit(req, 'update_user_account', user._id.toString(), { oldValue, newValue: { walletAddress: user.walletAddress, passwordChanged: oldValue.passwordChanged } });
+    emitUserDataChanged(user._id, 'account_updated');
     res.json({ success: true, message: 'تم تحديث بيانات الحساب بنجاح' });
   } catch (err) { res.status(500).json({ error: 'تعذر تحديث بيانات الحساب' }); }
 }
@@ -180,6 +194,7 @@ async function updateUserRole(req, res) {
     user.role = role;
     await user.save();
     await createAudit(req, 'update_user_role', user._id.toString(), { oldRole, newRole: role });
+    emitUserDataChanged(user._id, 'role_updated');
     res.json({ success: true, message: 'تم تحديث صلاحيات المستخدم', role: user.role });
   } catch (err) { res.status(500).json({ error: 'تعذر تحديث صلاحيات المستخدم' }); }
 }
@@ -271,6 +286,7 @@ async function withdrawalAction(req, res) {
       await tx.save({ session });
       await createAudit(req, `transaction_${action}`, tx._id.toString(), { type: tx.type, amount: tx.amount, newValue: action }, session);
     });
+    if (tx?.userId?._id) emitUserDataChanged(tx.userId._id, 'transaction_updated');
     res.json({ success: true, message: `تمت عملية (${req.body.action === 'approve' ? 'الموافقة' : 'الرفض'}) بنجاح` });
   } catch (err) {
     if (session.inTransaction()) await session.abortTransaction();
@@ -288,6 +304,7 @@ async function updateGameSettings(req, res) {
     const GameSetting = require('../models/GameSetting');
     await GameSetting.findOneAndUpdate({ key: 'default' }, settings, { upsert: true, new: true, runValidators: true });
     await createAudit(req, 'update_game_settings', null, { newValue: { ...settings } });
+    await emitPlatformDataChanged('game_settings_updated');
     res.json({ success: true, message: 'تم حفظ إعدادات الألعاب بنجاح', settings });
   } catch (err) { res.status(500).json({ success: false, error: 'حدث خطأ في معالجة الطلب' }); }
 }
