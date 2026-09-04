@@ -440,7 +440,10 @@ function renderHomeSummary(summary) {
 async function initPushNotifications() {
     if ('serviceWorker' in navigator && 'PushManager' in window) {
         try {
-            const registration = await navigator.serviceWorker.register('/sw.js');
+            const registration = await navigator.serviceWorker.register('/sw.js?v=20260904-2');
+            registration.update();
+            if (registration.waiting) registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+            navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
             navigator.serviceWorker.addEventListener('message', event => { if (event.data?.type === 'OPERIX_NOTIFICATION') { fetchUnreadNotifications(true); } });
             const token = localStorage.getItem('token');
             if (token) {

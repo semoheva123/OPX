@@ -1,3 +1,22 @@
+self.addEventListener('install', event => {
+  event.waitUntil(self.skipWaiting());
+});
+
+self.addEventListener('activate', event => {
+  event.waitUntil(self.clients.claim());
+});
+
+self.addEventListener('message', event => {
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
+});
+
+self.addEventListener('fetch', event => {
+  const request = event.request;
+  if (request.method !== 'GET') return;
+  const isAppAsset = request.mode === 'navigate' || /\.html(?:\?|$)|\.js(?:\?|$)|\.css(?:\?|$)/i.test(new URL(request.url).pathname);
+  if (isAppAsset) event.respondWith(fetch(request, { cache: 'no-store' }));
+});
+
 self.addEventListener('push', event => {
   let payload = { title: 'OPERIX', body: 'لديك تحديث جديد' };
   try { if (event.data) payload = { ...payload, ...event.data.json() }; } catch (error) { }
