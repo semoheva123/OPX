@@ -18,7 +18,7 @@ const emailFrom = process.env.EMAIL_FROM || 'OPERIX <onboarding@resend.dev>';
 
 function setAdminCookie(res, token) {
   const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
-  res.setHeader('Set-Cookie', `operix_admin=${encodeURIComponent(token)}; Max-Age=28800; Path=/; HttpOnly; SameSite=Strict${secure}`);
+  res.setHeader('Set-Cookie', `operix_admin=${encodeURIComponent(token)}; Max-Age=28800; Path=/; HttpOnly; SameSite=Lax${secure}`);
 }
 
 function hashOtp(otp) {
