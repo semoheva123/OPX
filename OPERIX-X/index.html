@@ -726,6 +726,16 @@
 
     <!-- 6. النوافذ المنبثقة (Modals) -->
 
+    <div id="platformConfirmModal" class="hide fixed inset-0 glass-modal z-[60] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="platformConfirmTitle">
+        <div class="glass-card w-full max-w-sm p-6 rounded-3xl space-y-4 border border-amber-500/30 shadow-2xl">
+            <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-300 flex items-center justify-center shrink-0"><i class="fa-solid fa-shield-halved"></i></div>
+                <div><h3 id="platformConfirmTitle" class="text-base font-black text-white">تأكيد العملية</h3><p id="platformConfirmMessage" class="text-xs text-slate-400 mt-1 leading-6 whitespace-pre-line"></p></div>
+            </div>
+            <div class="flex gap-2"><button id="platformConfirmCancel" type="button" class="flex-1 py-2.5 bg-slate-800 text-slate-300 border border-slate-700 rounded-xl text-xs font-bold">إلغاء</button><button id="platformConfirmAccept" type="button" class="flex-1 py-2.5 gold-gradient text-slate-950 rounded-xl text-xs font-black">تأكيد</button></div>
+        </div>
+    </div>
+
     <!-- نافذة الإيداع -->
     <div id="depositModal" class="hide fixed inset-0 glass-modal z-50 flex items-center justify-center p-4">
         <div class="glass-card w-full max-w-sm p-5 rounded-3xl space-y-4 border border-amber-500/20 shadow-2xl">
@@ -958,8 +968,6 @@
                 navigator.clipboard.writeText(input.value);
                 if (typeof showToast === 'function') {
                     showToast('تم نسخ عنوان المحفظة بنجاح');
-                } else {
-                    alert('تم نسخ عنوان المحفظة بنجاح');
                 }
             }
         }
@@ -1047,7 +1055,7 @@
             const btn = document.getElementById('btnSendWithdraw2FA');
             const token = localStorage.getItem('token') || localStorage.getItem('authToken');
             if (!token) {
-                alert('يرجى تسجيل الدخول أولاً');
+                showToast('يرجى تسجيل الدخول أولاً');
                 return;
             }
 
@@ -1064,13 +1072,13 @@
                 });
                 const data = await res.json();
                 if (res.ok && data.success) {
-                    alert('تم إرسال رمز 2FA إلى بريدك الإلكتروني بنجاح');
+                    showToast('تم إرسال رمز 2FA إلى بريدك الإلكتروني بنجاح', 'win');
                 } else {
-                    alert(data.error || data.message || 'فشل إرسال كود التحقق');
+                    showToast(data.error || data.message || 'فشل إرسال كود التحقق');
                 }
             } catch (err) {
                 console.error(err);
-                alert('تعذر الاتصال بالسيرفر');
+                showToast('تعذر الاتصال بالسيرفر');
             } finally {
                 btn.disabled = false;
                 btn.innerText = 'إرسال الكود';

@@ -295,7 +295,8 @@ async function upgradeToSpecificTier(targetTier) {
         switchTab('team');
         return;
     }
-    if (!confirm(`تأكيد ${targetIndex === currentIndex ? 'تفعيل' : 'الترقية إلى'} ${target.name}؟\nالمبلغ المطلوب: $${upgradeCost.toFixed(2)}\nالإحالات النشطة: ${activeReferrals}/${requiredReferrals}`)) return;
+    const confirmed = await showPlatformConfirm(`تأكيد ${targetIndex === currentIndex ? 'تفعيل' : 'الترقية إلى'} ${target.name}؟\nالمبلغ المطلوب: $${upgradeCost.toFixed(2)}\nالإحالات النشطة: ${activeReferrals}/${requiredReferrals}`, 'تأكيد المستوى');
+    if (!confirmed) return;
     try {
         const res = await fetch('/api/user/upgrade', {
             method: 'POST',
@@ -518,6 +519,23 @@ function showToast(msg, soundType = 'default') {
     toast.innerText = msg;
     toast.classList.remove('hide');
     setTimeout(() => toast.classList.add('hide'), 3500);
+}
+
+function showPlatformConfirm(message, title = 'تأكيد العملية') {
+    return new Promise(resolve => {
+        const modal = document.getElementById('platformConfirmModal');
+        if (!modal) return resolve(false);
+        const titleElement = document.getElementById('platformConfirmTitle');
+        const messageElement = document.getElementById('platformConfirmMessage');
+        const accept = document.getElementById('platformConfirmAccept');
+        const cancel = document.getElementById('platformConfirmCancel');
+        titleElement.innerText = title;
+        messageElement.innerText = message;
+        modal.classList.remove('hide');
+        const close = result => { modal.classList.add('hide'); accept.onclick = null; cancel.onclick = null; resolve(result); };
+        accept.onclick = () => close(true);
+        cancel.onclick = () => close(false);
+    });
 }
 
 function toggleSound(el) { soundEnabled = el.checked; }
