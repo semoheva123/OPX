@@ -10,6 +10,7 @@ let taskCountdownTimer = null;
 let growthChartPoints = [];
 let unreadNotificationCount = null;
 let notificationPollTimer = null;
+let realtimeStream = null;
 
 let tiersData = [
     { code: 'A1', name: 'المستوى A1 المعتمد', price: 50, tasks: 33, dailyProfit: 2.50, monthlyProfit: 75.00, yearlyProfit: 912.50, badgeColor: 'from-amber-500/20 to-amber-700/20 border-amber-500/40 text-amber-400' },
@@ -475,6 +476,20 @@ async function fetchUnreadNotifications(isLiveUpdate = false) {
         badge.innerText = count > 99 ? '99+' : count;
         badge.classList.toggle('hidden', count === 0);
     } catch (error) { }
+}
+
+function startRealtimeStream() {
+    const token = localStorage.getItem('token');
+    if (!token || !window.EventSource) return;
+    if (realtimeStream) realtimeStream.close();
+    realtimeStream = new EventSource(`/api/realtime/stream?token=${encodeURIComponent(token)}`);
+    realtimeStream.addEventListener('notification_created', () => fetchUnreadNotifications(true));
+    realtimeStream.addEventListener('account_status_changed', event => {
+        const data = JSON.parse(event.data || '{}');
+        showToast(data.message || 'تم تحديث حالة الحساب');
+        loadUserProfile();
+    });
+    realtimeStream.onerror = () => { if (realtimeStream?.readyState === EventSource.CLOSED) realtimeStream = null; };
 }
 
 function startNotificationPolling() {
@@ -965,6 +980,7 @@ async function loadUserProfile() {
             document.getElementById('liveTickerBar').classList.remove('hide');
             document.getElementById('appNavBar').classList.remove('hide');
             startNotificationPolling();
+            startRealtimeStream();
             
             document.getElementById('lblUserEmail').innerText = data.user.email;
             document.getElementById('lblCompletedTasks').innerText = data.user.todayCompletedTasks || 0;
@@ -1908,6 +1924,8 @@ async function logout() {
         try { await fetch('/api/auth/logout', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } }); } catch (error) { }
     }
     localStorage.removeItem('token');
+    if (realtimeStream) realtimeStream.close();
+    realtimeStream = null;
     if (notificationPollTimer) clearInterval(notificationPollTimer);
     notificationPollTimer = null;
     unreadNotificationCount = null;
