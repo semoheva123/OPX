@@ -15,6 +15,10 @@ const supportRoutes = require('./routes/supportRoutes');
 const couponRoutes = require('./routes/couponRoutes');
 const settingsRoutes = require('./routes/settingsRoutes');
 const { verifyAdmin } = require('./middlewares/auth');
+const jwt = require('jsonwebtoken');
+const Session = require('./models/Session');
+const User = require('./models/User');
+const realtimeService = require('./services/realtimeService');
 
 function createApp({ resend, webpush, gameSettings }) {
   const app = express();
@@ -43,6 +47,28 @@ function createApp({ resend, webpush, gameSettings }) {
   app.use(express.json({ limit: '1mb' }));
   app.use(express.urlencoded({ extended: true, limit: '1mb' }));
   app.get('/api/health', (req, res) => res.json({ success: true, status: 'ok', uptime: Math.floor(process.uptime()), timestamp: new Date().toISOString() }));
+
+  app.get('/api/realtime/stream', async (req, res) => {
+    try {
+      const token = String(req.query.token || '');
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const expectedScope = decoded.scope === 'admin' ? 'admin' : 'user';
+      const activeSession = decoded.jti
+        ? await Session.findOne({ jti: decoded.jti, userId: decoded.id, scope: expectedScope, revokedAt: null, expiresAt: { $gt: new Date() } })
+        : null;
+      if (!activeSession) return res.status(401).json({ error: 'جلسة غير صالحة أو منتهية' });
+      const user = await User.findById(decoded.id).select('role isBanned');
+      if (!user || user.isBanned || (expectedScope === 'admin' && !['admin', 'financial_admin', 'support_admin', 'monitor'].includes(user.role))) {
+        return res.status(403).json({ error: 'الوصول إلى التحديث اللحظي مرفوض' });
+      }
+      res.status(200).set({ 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache, no-transform', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
+      res.flushHeaders();
+      res.write(`event: connected\ndata: ${JSON.stringify({ scope: expectedScope })}\n\n`);
+      realtimeService.addClient({ response: res, userId: user._id, scope: expectedScope, role: user.role });
+    } catch (error) {
+      res.status(401).json({ error: 'توكن التحديث اللحظي غير صالح' });
+    }
+  });
 
   const allowedOrigins = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim().replace(/\/$/, '')).filter(Boolean)
