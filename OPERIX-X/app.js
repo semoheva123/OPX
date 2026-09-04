@@ -493,6 +493,13 @@ function startRealtimeStream() {
     realtimeClient.connection.on('suspended', state => console.warn('Ably user connection suspended:', state.reason));
     realtimeChannel = realtimeClient.channels.get(`operix:user:${currentUserData._id}`);
     realtimeChannel.subscribe('notification_created', () => fetchUnreadNotifications(true));
+    realtimeChannel.subscribe('user_data_changed', event => {
+        const reason = event.data?.reason;
+        loadUserProfile();
+        if (reason === 'vip_level_updated' || reason === 'vip_level_deleted') loadTiers();
+        if (reason === 'game_settings_updated') loadGameConfig();
+        showToast('تم تحديث بيانات حسابك تلقائيًا');
+    });
     realtimeChannel.subscribe('account_status_changed', event => {
         const data = event.data || {};
         showToast(data.message || 'تم تحديث حالة الحساب');
