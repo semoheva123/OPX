@@ -55,4 +55,4 @@ function heartbeat() {
 
 setInterval(heartbeat, 25000).unref();
 
-module.exports = { addClient, removeClient, emit };
+module.exports = { addClient, removeClient, emit, publish };
