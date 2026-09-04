@@ -492,7 +492,6 @@
 
         async function fetchAuditLogs(page = 1) {
             const token = localStorage.getItem('token');
-            if (!token) return adminLogout();
             try {
                 const search = encodeURIComponent(document.getElementById('auditSearch')?.value || '');
                 const date = encodeURIComponent(document.getElementById('auditDate')?.value || '');
@@ -551,8 +550,6 @@
 
         async function fetchAdminOverview() {
             const token = localStorage.getItem('token');
-            if (!token) return adminLogout();
-
             try {
                 const res = await fetch('/api/admin/overview', {
                     headers: { 'Authorization': `Bearer ${token}` }
@@ -615,8 +612,6 @@
 
         async function fetchUsersList(page = 1) {
             const token = localStorage.getItem('token');
-            if (!token) return adminLogout();
-
             try {
                 const res = await fetch(`/api/admin/users?page=${page}&limit=10`, {
                     headers: { 'Authorization': `Bearer ${token}` }
@@ -645,7 +640,6 @@
         let allReferralsData = [];
         async function fetchReferrals() {
             const token = localStorage.getItem('token');
-            if (!token) return adminLogout();
             try {
                 const response = await fetch('/api/admin/referrals?limit=100', { headers: { 'Authorization': `Bearer ${token}` } });
                 if (response.status === 401 || response.status === 403) return adminLogout();
@@ -727,8 +721,6 @@
 
         async function fetchTransactionsList(page = 1) {
             const token = localStorage.getItem('token');
-            if (!token) return adminLogout();
-
             const status = document.getElementById('filterTxStatus').value;
             const type = document.getElementById('filterTxType').value;
 
@@ -1077,21 +1069,25 @@
         }
 
         window.onload = () => {
-            // التحقق السريع من وجود التوكن محلياً قبل تشغيل الدوال
             const token = localStorage.getItem('token');
-            if (!token) {
-                return adminLogout();
-            }
-            currentAdminRole = getTokenRole(token);
-            if (!adminPermissions[currentAdminRole]) {
-                return showAdminAccessMessage('هذا الحساب ليس حساب مدير. تحتاج إلى تسجيل الدخول بحساب إداري للوصول إلى لوحة الإدارة.');
-            }
-            applyRoleVisibility();
-            refreshOverviewDashboard();
-            fetchUsersList();
-            if (canAdmin('finance')) fetchTransactionsList();
-            refreshAdminAlerts();
-            setInterval(refreshAdminAlerts, 30000);
+            const sessionHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+            fetch('/api/auth/admin-session', { credentials: 'same-origin', headers: sessionHeaders })
+                .then(async response => {
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.error || 'جلسة الإدارة غير صالحة');
+                    return data;
+                })
+                .then(data => {
+                    currentAdminRole = data.user?.role || getTokenRole(token || '');
+                    if (!adminPermissions[currentAdminRole]) throw new Error('هذا الحساب ليس حساب مدير.');
+                    applyRoleVisibility();
+                    refreshOverviewDashboard();
+                    fetchUsersList();
+                    if (canAdmin('finance')) fetchTransactionsList();
+                    refreshAdminAlerts();
+                    setInterval(refreshAdminAlerts, 30000);
+                })
+                .catch(error => showAdminAccessMessage(error.message));
         }
     </script>
 </body>
