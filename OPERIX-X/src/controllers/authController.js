@@ -161,6 +161,10 @@ async function adminLogin(req, res) {
   } catch (error) { res.status(500).json({ error: 'تعذر تسجيل الدخول إلى لوحة الإدارة' }); }
 }
 
+function adminSession(req, res) {
+  res.json({ success: true, user: { _id: req.user._id, email: req.user.email, role: req.user.role } });
+}
+
 async function adminSetupTwoFactor(req, res) {
   try {
     const { email, password } = req.body;
@@ -329,4 +333,4 @@ async function resetPassword(req, res) {
   } catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
 }
 
-module.exports = { register, login, adminLogin, adminSetupTwoFactor, adminConfirmTwoFactor, adminSecurityStatus, adminSecuritySetup, adminSecurityConfirm, inviteAdmin, acceptAdminInviteSetup, confirmAdminInvite, logout, logoutOtherSessions, revokeSession, listSessions, verifyEmail, resendVerification, forgotPassword, verifyOtp, resetPassword };
+module.exports = { register, login, adminLogin, adminSession, adminSetupTwoFactor, adminConfirmTwoFactor, adminSecurityStatus, adminSecuritySetup, adminSecurityConfirm, inviteAdmin, acceptAdminInviteSetup, confirmAdminInvite, logout, logoutOtherSessions, revokeSession, listSessions, verifyEmail, resendVerification, forgotPassword, verifyOtp, resetPassword };
