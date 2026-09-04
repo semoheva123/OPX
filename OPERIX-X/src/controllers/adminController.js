@@ -89,13 +89,79 @@ async function listUsers(req, res) {
   try {
     const page = Math.max(1, Number(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 10));
+    const search = String(req.query.search || '').trim().slice(0, 120);
+    const filter = {};
+    if (search) filter.$or = [{ email: { $regex: search, $options: 'i' } }, { referralCode: { $regex: search, $options: 'i' } }];
+    if (['user', 'admin', 'financial_admin', 'support_admin', 'monitor'].includes(req.query.role)) filter.role = req.query.role;
+    if (req.query.tier) filter.tierCode = String(req.query.tier).trim().toUpperCase();
+    if (req.query.status === 'banned') filter.isBanned = true;
+    if (req.query.status === 'active') filter.isBanned = false;
+    if (req.query.verified === 'yes') filter.emailVerified = true;
+    if (req.query.verified === 'no') filter.emailVerified = false;
     const [users, total] = await Promise.all([
-      User.find().select('-password -resetOTP -twoFactorCode').sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit),
-      User.countDocuments()
+      User.find(filter).select('-password -resetOTP -twoFactorCode -twoFactorSecret -adminTwoFactorSecret').sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit),
+      User.countDocuments(filter)
     ]);
     res.json({ success: true, users, page, totalPages: Math.max(1, Math.ceil(total / limit)), total });
   }
   catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
+}
+
+async function userDetails(req, res) {
+  try {
+    const user = await User.findById(req.params.userId).select('-password -resetOTP -twoFactorCode -twoFactorSecret -adminTwoFactorSecret');
+    if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
+    const [transactions, auditLogs, sessions] = await Promise.all([
+      Transaction.find({ userId: user._id }).sort({ createdAt: -1 }).limit(50).lean(),
+      AuditLog.find({ targetId: user._id.toString() }).populate('adminId', 'email').sort({ createdAt: -1 }).limit(50).lean(),
+      Session.find({ userId: user._id, revokedAt: null, expiresAt: { $gt: new Date() } }).select('-jti').sort({ lastSeenAt: -1 }).lean()
+    ]);
+    res.json({ success: true, user, transactions, auditLogs, sessions });
+  } catch (error) { res.status(500).json({ error: 'تعذر تحميل تفاصيل المستخدم' }); }
+}
+
+async function bulkToggleBan(req, res) {
+  try {
+    const userIds = Array.isArray(req.body.userIds) ? req.body.userIds.map(String).slice(0, 100) : [];
+    const isBanned = Boolean(req.body.isBanned);
+    if (!userIds.length) return res.status(400).json({ error: 'لم يتم تحديد مستخدمين' });
+    const result = await User.updateMany({ _id: { $in: userIds } }, { $set: { isBanned } });
+    await createAudit(req, isBanned ? 'bulk_ban_users' : 'bulk_unban_users', null, { userIds, modifiedCount: result.modifiedCount });
+    for (const userId of userIds) {
+      realtimeService.emit('account_status_changed', { isBanned, message: isBanned ? 'تم تعليق حسابك من قبل الإدارة' : 'تم إلغاء تعليق حسابك' }, { userId });
+    }
+    res.json({ success: true, modifiedCount: result.modifiedCount });
+  } catch (error) { res.status(500).json({ error: 'تعذر تنفيذ الإجراء الجماعي' }); }
+}
+
+async function revokeUserSessions(req, res) {
+  try {
+    const user = await User.findById(req.params.userId || req.body.userId).select('email');
+    if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
+    const result = await Session.updateMany({ userId: user._id, scope: 'user', revokedAt: null }, { $set: { revokedAt: new Date() } });
+    await createAudit(req, 'revoke_user_sessions', user._id.toString(), { modifiedCount: result.modifiedCount });
+    res.json({ success: true, modifiedCount: result.modifiedCount, message: 'تم إنهاء جلسات المستخدم' });
+  } catch (error) { res.status(500).json({ error: 'تعذر إنهاء جلسات المستخدم' }); }
+}
+
+async function verifyUserEmail(req, res) {
+  try {
+    const user = await User.findByIdAndUpdate(req.params.userId, { $set: { emailVerified: true, emailVerificationToken: null, emailVerificationExpire: null } }, { new: true }).select('email emailVerified');
+    if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
+    await createAudit(req, 'verify_user_email', user._id.toString());
+    await emitUserDataChanged(user._id, 'email_verified');
+    res.json({ success: true, message: 'تم توثيق البريد الإلكتروني', user });
+  } catch (error) { res.status(500).json({ error: 'تعذر توثيق البريد الإلكتروني' }); }
+}
+
+async function disableUserTwoFactor(req, res) {
+  try {
+    const user = await User.findByIdAndUpdate(req.params.userId, { $set: { twoFactorEnabled: false, twoFactorSecret: null, twoFactorCode: null, twoFactorExpire: null } }, { new: true }).select('email twoFactorEnabled');
+    if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
+    await createAudit(req, 'disable_user_2fa', user._id.toString());
+    await emitUserDataChanged(user._id, 'two_factor_updated');
+    res.json({ success: true, message: 'تم تعطيل المصادقة الثنائية للمستخدم', user });
+  } catch (error) { res.status(500).json({ error: 'تعذر تعطيل المصادقة الثنائية' }); }
 }
 
 async function resetDailyTasks(req, res) {
@@ -133,6 +199,9 @@ async function updateUser(req, res) {
     user.wallet.balance = user.wallet.depositBalance + user.wallet.profitBalance;
     await user.save();
     await createAudit(req, 'update_user_balance', user._id.toString(), { oldValue: { balance: beforeBalance }, newValue: { balance: user.wallet.balance }, depositBalance, profitBalance });
+    if (user.wallet.balance !== beforeBalance) {
+      await Transaction.create({ userId: user._id, type: 'admin_adjustment', amount: user.wallet.balance - beforeBalance, walletAddress: 'ADMIN_ADJUSTMENT', status: 'approved' });
+    }
     const safeUser = user.toObject(); delete safeUser.password; delete safeUser.resetOTP; delete safeUser.twoFactorCode;
     await emitUserDataChanged(user._id, 'balance_updated');
     res.json({ success: true, message: 'تم تعديل بيانات المستخدم بنجاح', user: safeUser });
@@ -358,4 +427,4 @@ async function processScheduledBroadcasts(webpush) {
   for (const campaign of campaigns) await deliverBroadcast(campaign, webpush);
 }
 
-module.exports = { saveVipLevel, deleteVipLevel, overview, analytics, listUsers, resetDailyTasks, toggleBan, updateUser, updateUserAccount, updateUserRole, updateUserTier, listWithdrawals, listAuditLogs, listReferrals, referralTree, withdrawalAction, gameSettings, updateGameSettings, broadcast, listBroadcasts, processScheduledBroadcasts, sendAdminAuditBroadcast };
+module.exports = { saveVipLevel, deleteVipLevel, overview, analytics, listUsers, userDetails, resetDailyTasks, toggleBan, bulkToggleBan, revokeUserSessions, verifyUserEmail, disableUserTwoFactor, updateUser, updateUserAccount, updateUserRole, updateUserTier, listWithdrawals, listAuditLogs, listReferrals, referralTree, withdrawalAction, gameSettings, updateGameSettings, broadcast, listBroadcasts, processScheduledBroadcasts, sendAdminAuditBroadcast };
