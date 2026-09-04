@@ -1,5 +1,6 @@
 const SupportTicket = require('../models/SupportTicket');
 const Notification = require('../models/Notification');
+const realtimeService = require('../services/realtimeService');
 
 async function list(req, res) {
   try {
@@ -45,7 +46,11 @@ async function updateAdmin(req, res) {
     const status = ['open', 'in_progress', 'resolved', 'closed'].includes(req.body.status) ? req.body.status : ticket.status;
     const reply = String(req.body.reply || '').trim();
     ticket.status = status;
-    if (reply) { ticket.adminReply = reply; ticket.repliedAt = new Date(); await Notification.create({ userId: ticket.userId, title: 'تم تحديث تذكرة الدعم', body: reply, type: 'support' }); }
+    if (reply) {
+      ticket.adminReply = reply; ticket.repliedAt = new Date();
+      const notification = await Notification.create({ userId: ticket.userId, title: 'تم تحديث تذكرة الدعم', body: reply, type: 'support' });
+      realtimeService.emit('notification_created', { notificationId: notification._id, title: notification.title, type: notification.type }, { userId: ticket.userId });
+    }
     await ticket.save();
     res.json({ success: true, ticket });
   } catch (error) { res.status(500).json({ error: 'تعذر تحديث التذكرة' }); }

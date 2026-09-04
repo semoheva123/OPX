@@ -5,6 +5,7 @@ const User = require('../models/User');
 const Session = require('../models/Session');
 const SecurityEvent = require('../models/SecurityEvent');
 const Notification = require('../models/Notification');
+const realtimeService = require('../services/realtimeService');
 const { authenticator } = require('otplib');
 const QRCode = require('qrcode');
 
@@ -131,7 +132,8 @@ async function login(req, res) {
     await SecurityEvent.create({ userId: user._id, email: user.email, event: 'login_success', ip: req.ip, userAgent });
     if (previousSession) {
       await SecurityEvent.create({ userId: user._id, email: user.email, event: 'new_device', ip: req.ip, userAgent, metadata: { reason: 'new_ip_and_user_agent' } });
-      await Notification.create({ userId: user._id, title: 'تسجيل دخول من جهاز جديد', body: 'تم تسجيل الدخول إلى حسابك من جهاز أو شبكة مختلفة. راجع الجلسات النشطة إذا لم تكن هذه العملية منك.', type: 'security' });
+      const notification = await Notification.create({ userId: user._id, title: 'تسجيل دخول من جهاز جديد', body: 'تم تسجيل الدخول إلى حسابك من جهاز أو شبكة مختلفة. راجع الجلسات النشطة إذا لم تكن هذه العملية منك.', type: 'security' });
+      realtimeService.emit('notification_created', { notificationId: notification._id, title: notification.title, type: notification.type }, { userId: user._id });
     }
     res.status(200).json({ success: true, token, user: safeUser(user) });
   } catch (err) {
