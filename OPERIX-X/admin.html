@@ -50,13 +50,13 @@
 
     <div id="toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 z-50 hide bg-slate-900 border border-amber-500 text-white px-6 py-3 rounded-2xl shadow-2xl text-sm font-medium transition-all duration-300"></div>
 
-    <div id="adminConfirmModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] hide items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="adminConfirmTitle">
-        <div class="glass-card w-full max-w-sm p-6 rounded-3xl border border-amber-500/30 space-y-4">
+    <div id="adminConfirmModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] hide items-center justify-center p-4 pointer-events-auto" role="dialog" aria-modal="true" aria-labelledby="adminConfirmTitle" aria-hidden="true">
+        <div class="glass-card relative z-10 w-full max-w-sm p-6 rounded-3xl border border-amber-500/30 space-y-4">
             <div class="flex items-start gap-3">
                 <div class="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-300 flex items-center justify-center shrink-0"><i class="fa-solid fa-triangle-exclamation"></i></div>
                 <div><h3 id="adminConfirmTitle" class="text-base font-black text-white">تأكيد الإجراء</h3><p id="adminConfirmMessage" class="text-xs text-slate-400 mt-1 leading-6"></p></div>
             </div>
-            <div class="flex gap-2"><button id="adminConfirmCancel" type="button" class="flex-1 py-2.5 bg-slate-800 text-slate-300 rounded-xl text-xs font-bold">إلغاء</button><button id="adminConfirmAccept" type="button" class="flex-1 py-2.5 bg-amber-400 text-slate-950 rounded-xl text-xs font-black">تأكيد</button></div>
+            <div class="relative z-10 flex gap-2"><button id="adminConfirmCancel" type="button" class="flex-1 py-2.5 bg-slate-800 text-slate-300 rounded-xl text-xs font-bold">إلغاء</button><button id="adminConfirmAccept" type="button" class="flex-1 py-2.5 bg-amber-400 text-slate-950 rounded-xl text-xs font-black">تأكيد</button></div>
         </div>
     </div>
 
@@ -448,10 +448,18 @@
                 messageElement.innerText = message;
                 modal.classList.remove('hide');
                 modal.classList.add('flex');
-                accept.focus();
-                const close = result => { modal.classList.add('hide'); modal.classList.remove('flex'); accept.onclick = null; cancel.onclick = null; resolve(result); };
-                accept.onclick = () => close(true);
-                cancel.onclick = () => close(false);
+                modal.setAttribute('aria-hidden', 'false');
+                const close = result => {
+                    modal.classList.add('hide');
+                    modal.classList.remove('flex');
+                    modal.setAttribute('aria-hidden', 'true');
+                    accept.onclick = null;
+                    cancel.onclick = null;
+                    resolve(result);
+                };
+                accept.onclick = event => { event.preventDefault(); close(true); };
+                cancel.onclick = event => { event.preventDefault(); close(false); };
+                accept.focus({ preventScroll: true });
             });
         }
 
@@ -744,7 +752,8 @@
             const actionText = isBanned ? 'حظر' : 'إلغاء حظر';
             if (!await showAdminConfirm(`هل أنت متأكد من رغبتك في ${actionText} هذا المستخدم؟`, `${actionText} مستخدم`)) return;
 
-            const token = localStorage.getItem('token');
+            const token = adminStorageGetItem('adminToken');
+            if (!token) return showToast('انتهت جلسة الإدارة، يرجى تسجيل الدخول مجددًا');
             try {
                 const res = await fetch('/api/admin/users/toggle-ban', {
                     method: 'POST',
