@@ -1207,11 +1207,16 @@ async function loadUserProfile() {
 
             // الفحص التلقائي لطلبات الإيداع المعلقة
             await checkPendingDepositStatus();
+        } else if (res.status === 401 || res.status === 403) {
+            showToast(data.error || 'انتهت جلسة الدخول، يرجى تسجيل الدخول مجددًا');
+            await logout();
         } else {
-            logout();
+            document.getElementById('loadingView').classList.add('hide');
+            showToast(data.error || 'تعذر تحميل بيانات الحساب. ستبقى جلسة الدخول محفوظة.');
         }
     } catch(err) {
-        logout();
+        document.getElementById('loadingView').classList.add('hide');
+        showToast('تعذر الاتصال بالخادم. تحقق من الشبكة وحاول تحديث الصفحة.');
     }
 }
 
