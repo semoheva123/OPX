@@ -2,8 +2,12 @@ const User = require('../models/User');
 const Transaction = require('../models/Transaction');
 const VipLevel = require('../models/VipLevel');
 const bcrypt = require('bcryptjs');
-const { generateSecret, generateURI, verifySync } = require('otplib');
+const { authenticator } = require('otplib');
 const QRCode = require('qrcode');
+
+const generateSecret = () => authenticator.generateSecret();
+const generateURI = ({ issuer, label, secret }) => authenticator.keyuri(label, issuer, secret);
+const verifySync = ({ token, secret }) => ({ valid: authenticator.check(token, secret) });
 const crypto = require('crypto');
 const Session = require('../models/Session');
 const { syncGameCredits } = require('../services/gameAccess');
