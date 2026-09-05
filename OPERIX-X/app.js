@@ -349,7 +349,7 @@ async function loadHomeSummary() {
     if (!token || !document.getElementById('homePulseMessage')) return;
     if (currentUserData) {
         const fallbackHealthChecks = {
-            email: Boolean(currentUserData.email),
+            email: Boolean(currentUserData.emailVerified),
             twoFactor: Boolean(currentUserData.twoFactorEnabled),
             wallet: Boolean((currentUserData.walletAddress || currentUserData.withdrawWallet || '').trim()),
             deposit: Number(currentUserData.wallet?.totalDeposits) > 0,
@@ -1229,7 +1229,7 @@ function onboardingState() {
     return [
         { label: 'تأكيد البريد الإلكتروني', done: Boolean(currentUserData?.emailVerified), action: () => { closeOnboarding(); switchTab('profile'); document.getElementById('btnVerifyEmailProfile')?.click(); } },
         { label: 'تفعيل المصادقة الثنائية', done: Boolean(currentUserData?.twoFactorEnabled), action: () => { closeOnboarding(); switchTab('profile'); } },
-        { label: 'تثبيت محفظة السحب', done: Boolean(currentUserData?.walletAddress?.trim()), action: () => { closeOnboarding(); switchTab('profile'); document.getElementById('profileWalletAddress')?.focus(); } },
+            { label: 'تثبيت محفظة السحب', done: Boolean((currentUserData?.walletAddress || currentUserData?.withdrawWallet || '').trim()), action: () => { closeOnboarding(); switchTab('profile'); document.getElementById('profileWalletAddress')?.focus(); } },
         { label: 'إكمال توثيق الهوية KYC', done: currentUserData?.kycStatus === 'verified', action: () => { closeOnboarding(); switchTab('profile'); document.getElementById('kycFullNameInput')?.focus(); } }
     ];
 }

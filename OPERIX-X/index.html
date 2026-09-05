@@ -368,10 +368,9 @@
         <div id="view-home" class="space-y-5">
             <!-- كارت المحفظة الرئيسي المحدث (تفصيل الأرباح والإيداع) -->
             <div class="operix-wallet glass-card p-5 rounded-3xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 to-slate-900 relative overflow-hidden shadow-xl space-y-4">
-                <div class="flex justify-between items-center text-xs text-slate-400">
+                <div class="flex items-center justify-between gap-3 text-xs text-slate-400">
                     <span>إجمالي رصيد المحفظة</span>
-                    <button onclick="refreshHomeDashboard()" title="تحديث البيانات" class="text-slate-400 hover:text-amber-400 transition-colors"><i id="homeRefreshIcon" class="fa-solid fa-arrows-rotate"></i></button>
-                    <i class="fa-solid fa-wallet text-amber-400 text-base"></i>
+                    <div class="flex items-center gap-3"><button onclick="refreshHomeDashboard()" title="تحديث البيانات" class="text-slate-400 hover:text-amber-400 transition-colors" aria-label="تحديث بيانات المحفظة"><i id="homeRefreshIcon" class="fa-solid fa-arrows-rotate"></i></button><i class="fa-solid fa-wallet text-amber-400 text-base" aria-hidden="true"></i></div>
                 </div>
                 <div class="flex items-baseline space-x-2 space-x-reverse">
                     <span id="lblWalletBalance" class="text-4xl font-black text-white">0.00</span>
