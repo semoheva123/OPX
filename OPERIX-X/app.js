@@ -1168,7 +1168,7 @@ async function loadUserProfile() {
         const data = await res.json();
         if(res.ok && data.user) {
             currentUserData = data.user;
-            loadHomeSummary();
+            await loadHomeSummary();
             updateGameCredits(data.user);
             loadGameHistory();
             updateProfileAvatar(data.user.profileImage);
