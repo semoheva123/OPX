@@ -1168,6 +1168,7 @@ async function loadUserProfile() {
         const data = await res.json();
         if(res.ok && data.user) {
             currentUserData = data.user;
+            loadHomeSummary();
             updateGameCredits(data.user);
             loadGameHistory();
             updateProfileAvatar(data.user.profileImage);
@@ -1216,7 +1217,6 @@ async function loadUserProfile() {
             document.getElementById('lblProgressPercent').innerText = `${Math.round(percent > 100 ? 100 : percent)}%`;
             updateTaskAvailability(data.user.todayCompletedTasks || 0, maxTasks);
             startTaskResetCountdown();
-            loadHomeSummary();
             loadAccountGrowth();
             
             updateTierDisplay();
