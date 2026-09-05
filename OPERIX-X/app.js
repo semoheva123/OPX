@@ -7,6 +7,7 @@ let soundEnabled = true;
 let currentUserData = null; // الاحتفاظ ببيانات المستخدم محلياً لسهولة الوصول
 let hasPendingDeposit = false; // متغير لتتبع وجود طلب إيداع معلق
 let taskCountdownTimer = null;
+let taskBoardFilter = 'all';
 let growthChartPoints = [];
 let unreadNotificationCount = null;
 let notificationPollTimer = null;
@@ -1327,12 +1328,40 @@ window.addEventListener('resize', () => drawAccountGrowthChart(growthChartPoints
 
 function updateTaskAvailability(completed, maximum) {
     const button = document.getElementById('btnCompleteTask');
-    if (!button) return;
     const finished = completed >= maximum;
-    button.disabled = finished;
-    button.innerText = finished ? 'انتهت مهام اليوم' : 'إنجاز مهمة بنقرة واحدة ✨';
-    button.classList.toggle('opacity-50', finished);
-    button.classList.toggle('cursor-not-allowed', finished);
+    if (button) {
+        button.disabled = finished;
+        button.innerText = finished ? 'اكتملت مهام اليوم' : 'بدء المهمة اليومية';
+        button.classList.toggle('opacity-50', finished);
+        button.classList.toggle('cursor-not-allowed', finished);
+    }
+    const remaining = document.getElementById('lblRemainingTasks');
+    if (remaining) remaining.innerText = Math.max(0, maximum - completed);
+    renderTaskBoard(completed, maximum);
+}
+
+function setTaskFilter(filter) {
+    taskBoardFilter = filter;
+    ['all', 'priority', 'operations'].forEach(item => {
+        const button = document.getElementById(`taskFilter${item.charAt(0).toUpperCase()}${item.slice(1)}`);
+        if (!button) return;
+        button.className = item === filter ? 'task-filter-active rounded-xl border py-2 text-[10px] font-bold' : 'rounded-xl border border-slate-800 py-2 text-[10px] font-bold text-slate-400';
+    });
+    renderTaskBoard(Number(currentUserData?.todayCompletedTasks || 0), tierLimits[currentUserTier] || 33);
+}
+
+function renderTaskBoard(completed, maximum) {
+    const board = document.getElementById('taskBoard');
+    if (!board) return;
+    const tasks = [
+        { id: 'email', category: 'priority', icon: 'fa-envelope-circle-check', title: 'أكد بريدك الإلكتروني', description: 'ارفع جاهزية الحساب واستقبل تنبيهات العمليات المهمة.', done: Boolean(currentUserData?.emailVerified), action: "switchTab('profile'); document.getElementById('btnVerifyEmailProfile')?.click()" },
+        { id: 'twoFactor', category: 'priority', icon: 'fa-shield-halved', title: 'فعّل المصادقة الثنائية', description: 'أضف طبقة حماية قبل السحب والعمليات الحساسة.', done: Boolean(currentUserData?.twoFactorEnabled), action: "switchTab('profile'); document.getElementById('toggle2FA')?.focus()" },
+        { id: 'wallet', category: 'priority', icon: 'fa-wallet', title: 'ثبّت محفظة السحب', description: 'أدخل عنوانًا صحيحًا لتجهيز مسار السحب الآمن.', done: Boolean((currentUserData?.walletAddress || currentUserData?.withdrawWallet || '').trim()), action: "switchTab('profile'); document.getElementById('profileWalletAddress')?.focus()" },
+        { id: 'kyc', category: 'priority', icon: 'fa-id-card', title: 'أكمل توثيق الهوية', description: 'أرسل بيانات KYC لرفع جاهزية الحساب للعمليات الحساسة.', done: currentUserData?.kycStatus === 'verified', action: "switchTab('profile'); document.getElementById('kycFullNameInput')?.focus()" },
+        { id: 'daily', category: 'operations', icon: 'fa-bolt', title: 'نفّذ المهمة اليومية التالية', description: 'أنجز خطوة تشغيلية واحدة وسجّل تقدمك في خطة اليوم.', done: completed >= maximum, action: 'completeTask()' }
+    ];
+    const visibleTasks = tasks.filter(task => taskBoardFilter === 'all' || task.category === taskBoardFilter);
+    board.innerHTML = visibleTasks.map(task => `<article class="task-card rounded-2xl p-3 transition-all"><div class="flex items-start gap-3"><span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${task.done ? 'bg-emerald-400/15 text-emerald-300' : 'bg-amber-400/12 text-amber-300'}"><i class="fa-solid ${task.icon} text-sm"></i></span><div class="min-w-0 flex-1"><div class="flex items-start justify-between gap-2"><div><h4 class="text-xs font-bold text-white">${task.title}</h4><p class="mt-1 text-[10px] leading-5 text-slate-500">${task.description}</p></div><span class="shrink-0 text-[10px] font-bold ${task.done ? 'text-emerald-300' : 'text-amber-300'}">${task.done ? 'مكتملة' : task.category === 'priority' ? 'أولوية' : 'اليوم'}</span></div><button ${task.id === 'daily' ? 'id="btnCompleteTask"' : ''} ${task.done ? 'disabled' : `onclick="${task.action}"`} class="mt-3 rounded-xl border px-3 py-2 text-[10px] font-bold ${task.done ? 'cursor-not-allowed border-emerald-500/15 bg-emerald-500/5 text-emerald-300' : 'border-amber-500/25 bg-amber-500/10 text-amber-300 hover:border-amber-400/50'}">${task.done ? 'تم التحقق من الخطوة' : task.id === 'daily' ? 'بدء المهمة' : 'فتح الإجراء'} <i class="fa-solid ${task.done ? 'fa-check' : 'fa-arrow-left'} mr-1"></i></button></div></div></article>`).join('');
 }
 
 function startTaskResetCountdown() {
@@ -1447,6 +1476,7 @@ function updateRankStatus(rankId, currentTotal, targetCount, cardId, badgeId) {
 async function completeTask() {
     const btn = document.getElementById('btnCompleteTask');
     const token = localStorage.getItem('token');
+    if (!btn || !token) return;
     
     btn.disabled = true;
     try {
@@ -1465,7 +1495,7 @@ async function completeTask() {
     } catch(err) {
         showToast('خطأ في الاتصال');
     } finally {
-        btn.disabled = false;
+        updateTaskAvailability(Number(currentUserData?.todayCompletedTasks || 0), tierLimits[currentUserTier] || 33);
     }
 }
 

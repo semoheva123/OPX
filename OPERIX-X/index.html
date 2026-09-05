@@ -107,6 +107,9 @@
         #appNavBar button { min-height: 48px; }
         .profile-section > summary { list-style: none; cursor: pointer; }
         .profile-section > summary::-webkit-details-marker { display: none; }
+        .task-filter-active { background: rgba(247,185,85,.14); border-color: rgba(247,185,85,.35); color: #f7c45e; }
+        .task-card { background: rgba(3,10,19,.5); border: 1px solid rgba(148,163,184,.14); }
+        .task-card:hover { border-color: rgba(247,185,85,.35); }
         .app-nav-item { position: relative; border-radius: 14px; padding: 5px 4px; }
         .app-nav-item.is-active { background: rgba(247,185,85,.1); box-shadow: inset 0 -2px 0 rgba(247,185,85,.85); }
         .app-nav-item:not(.is-active):hover { background: rgba(148,163,184,.07); }
@@ -485,31 +488,24 @@
 
         <!-- 4.3 تبويب السفر والمكافآت (Travel View) -->
         <div id="view-travel" class="space-y-4 hide">
-            <div class="glass-card p-6 rounded-3xl text-center space-y-3">
-                <i class="fa-solid fa-clipboard-check text-4xl text-amber-400"></i>
-                <h3 class="font-bold text-white">مركز مهام OPERIX</h3>
-                <p class="text-xs text-slate-400">أنجز مهامك اليومية وتابع تقدمك ومكافآتك داخل المنصة.</p>
-            </div>
+            <section class="task-hero glass-card rounded-3xl border border-amber-500/25 p-5 space-y-4">
+                <div class="flex items-start justify-between gap-4">
+                    <div><span class="text-[10px] font-bold tracking-widest text-amber-300">OPERIX / DAILY PLAN</span><h2 class="mt-2 text-xl font-black text-white">خطة عمل واضحة لليوم</h2><p class="mt-2 text-xs leading-6 text-slate-300">نفّذ الخطوات الأساسية أولًا، ثم واصل المهام التشغيلية مع متابعة تقدمك لحظة بلحظة.</p></div>
+                    <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-400/15 text-amber-300"><i class="fa-solid fa-route text-lg"></i></div>
+                </div>
+                <div class="grid grid-cols-3 gap-2 text-center">
+                    <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-3"><strong id="lblCompletedTasks" class="block text-lg text-emerald-300">0</strong><span class="text-[10px] text-slate-500">مكتملة</span></div>
+                    <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-3"><strong id="lblRemainingTasks" class="block text-lg text-amber-300">33</strong><span class="text-[10px] text-slate-500">متبقية</span></div>
+                    <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-3"><strong id="lblProgressPercent" class="block text-lg text-white">0%</strong><span class="text-[10px] text-slate-500">الإنجاز</span></div>
+                </div>
+                <div><div class="mb-2 flex items-center justify-between text-[10px] text-slate-400"><span>التقدم اليومي</span><span>تتجدد الخطة بعد <strong id="taskResetCountdown" class="text-amber-300 dir-ltr">--:--:--</strong></span></div><div class="h-3 w-full overflow-hidden rounded-full border border-slate-800 bg-slate-950 p-0.5"><div id="taskProgressBar" class="gold-gradient h-full rounded-full transition-all duration-500" style="width: 0%;"></div></div></div>
+            </section>
 
-            <!-- مهام اليوم -->
-            <div class="glass-card p-5 rounded-3xl space-y-3">
-                <div class="flex justify-between items-center">
-                    <h3 class="font-bold text-sm text-white">مهام اليوم الحالية</h3>
-                    <span class="text-xs text-amber-400 font-bold"><span id="lblCompletedTasks">0</span> / <span id="lblMaxTasks">33</span></span>
-                </div>
-                <div class="w-full bg-slate-950 h-3 rounded-full overflow-hidden p-0.5 border border-slate-800">
-                    <div id="taskProgressBar" class="gold-gradient h-full rounded-full transition-all duration-500" style="width: 0%;"></div>
-                </div>
-                <div class="flex justify-between items-center text-[10px] text-slate-400">
-                    <span>نسبة الإنجاز</span>
-                    <span id="lblProgressPercent" class="font-bold text-white">0%</span>
-                </div>
-                <div class="flex justify-between items-center bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-[10px]">
-                    <span>تجدد المهام بعد</span>
-                    <strong id="taskResetCountdown" class="text-amber-400 dir-ltr">--:--:--</strong>
-                </div>
-                <button id="btnCompleteTask" onclick="completeTask()" class="w-full py-3.5 gold-gradient text-slate-950 font-black rounded-2xl text-xs shadow-lg active:scale-95 transition-all">إنجاز مهمة بنقرة واحدة ✨</button>
-            </div>
+            <section class="glass-card rounded-3xl p-4 space-y-4">
+                <div class="flex items-center justify-between gap-3"><div><h3 class="text-sm font-black text-white">لوحة المهام</h3><p class="mt-1 text-[10px] text-slate-500">اختر خطوة وابدأ بإجراء قابل للمتابعة.</p></div><i class="fa-solid fa-list-check text-cyan-300"></i></div>
+                <div class="grid grid-cols-3 gap-1.5"><button id="taskFilterAll" onclick="setTaskFilter('all')" class="task-filter-active rounded-xl border py-2 text-[10px] font-bold">الكل</button><button id="taskFilterPriority" onclick="setTaskFilter('priority')" class="rounded-xl border border-slate-800 py-2 text-[10px] font-bold text-slate-400">الأولوية</button><button id="taskFilterOperations" onclick="setTaskFilter('operations')" class="rounded-xl border border-slate-800 py-2 text-[10px] font-bold text-slate-400">تشغيلية</button></div>
+                <div id="taskBoard" class="space-y-2"></div>
+            </section>
 
             <div class="glass-card p-5 rounded-3xl space-y-4">
                 <div class="flex justify-between items-center">
@@ -519,7 +515,7 @@
                     </div>
                     <i class="fa-solid fa-chart-line text-emerald-400 text-xl"></i>
                 </div>
-                <div class="relative h-44 bg-slate-950 border border-slate-800 rounded-2xl p-2 overflow-hidden">
+                <div class="relative h-32 bg-slate-950 border border-slate-800 rounded-2xl p-2 overflow-hidden">
                     <canvas id="accountGrowthChart" class="w-full h-full" aria-label="مخطط نمو الحساب"></canvas>
                     <div id="growthChartEmpty" class="absolute inset-0 flex items-center justify-center text-center text-[11px] text-slate-500 px-6">لا توجد معاملات معتمدة كافية لعرض النمو بعد</div>
                 </div>
