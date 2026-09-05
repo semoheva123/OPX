@@ -547,6 +547,21 @@ function startNotificationPolling() {
     profileSyncTimer = setInterval(() => loadUserProfile(), 15000);
 }
 
+async function stopRealtimeStream() {
+    if (realtimeEventSource) {
+        realtimeEventSource.close();
+        realtimeEventSource = null;
+    }
+    const client = realtimeClient;
+    realtimeClient = null;
+    realtimeChannel = null;
+    if (!client) return;
+    try {
+        const closeResult = client.close();
+        if (closeResult && typeof closeResult.catch === 'function') await closeResult.catch(() => {});
+    } catch (error) { }
+}
+
 function playBeep(type = 'default') {
     if(!soundEnabled) return;
     try {
@@ -2169,10 +2184,8 @@ async function logout() {
     if (token) {
         try { await fetch('/api/auth/logout', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } }); } catch (error) { }
     }
+    await stopRealtimeStream();
     localStorage.removeItem('token');
-    if (realtimeClient) realtimeClient.close();
-    realtimeClient = null;
-    realtimeChannel = null;
     if (notificationPollTimer) clearInterval(notificationPollTimer);
     notificationPollTimer = null;
     if (profileSyncTimer) clearInterval(profileSyncTimer);
