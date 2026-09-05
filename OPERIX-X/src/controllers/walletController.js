@@ -8,6 +8,17 @@ const emailFrom = process.env.EMAIL_FROM || 'OPERIX <onboarding@resend.dev>';
 const realtimeService = require('../services/realtimeService');
 const SecurityEvent = require('../models/SecurityEvent');
 
+const HYBRID_WITHDRAWAL_RATE = 0.05;
+const HYBRID_WITHDRAWAL_FIXED_FEE = 2;
+const MIN_WITHDRAWAL_AMOUNT = 20;
+
+function calculateHybridWithdrawalFee(amount) {
+  const value = Number(amount);
+  const feeAmount = Number((value * HYBRID_WITHDRAWAL_RATE + HYBRID_WITHDRAWAL_FIXED_FEE).toFixed(2));
+  const netAmount = Number(Math.max(0, value - feeAmount).toFixed(2));
+  return { feeAmount, netAmount };
+}
+
 async function calculateWithdrawalRisk(user, amount, ip, session) {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const [failedLogins, newDevices, pendingWithdrawals] = await Promise.all([
@@ -89,8 +100,10 @@ async function withdraw(req, res) {
     const { amount, walletAddress, twoFactorCode } = req.body;
     const idempotencyKey = String(req.get('Idempotency-Key') || '').trim().slice(0, 120);
     const withdrawNum = Number(amount);
-    if (!Number.isFinite(withdrawNum) || withdrawNum < 20) return res.status(400).json({ error: 'الحد الأدنى للسحب هو 20$ USDT' });
+    const feeSummary = calculateHybridWithdrawalFee(withdrawNum);
+    if (!Number.isFinite(withdrawNum) || withdrawNum < MIN_WITHDRAWAL_AMOUNT) return res.status(400).json({ error: `الحد الأدنى للسحب هو ${MIN_WITHDRAWAL_AMOUNT}$ USDT` });
     if (!walletAddress || typeof walletAddress !== 'string' || walletAddress.trim() === '') return res.status(400).json({ error: 'يرجى إدخال عنوان المحفظة' });
+    if (feeSummary.netAmount <= 0) return res.status(400).json({ error: 'مبلغ السحب غير صالح بعد احتساب الرسوم' });
     if (idempotencyKey) {
       const existing = await Transaction.findOne({ userId: req.user.id, type: 'withdraw', idempotencyKey });
       if (existing) return res.json({ success: true, message: 'تم استلام طلب السحب مسبقًا', wallet: null, withdrawal: existing, duplicate: true });
@@ -111,6 +124,7 @@ async function withdraw(req, res) {
         throw Object.assign(new Error('INVALID_2FA'), { statusCode: 400 });
       }
       if (!user.walletAddress || user.walletAddress.trim() !== walletAddress.trim()) throw Object.assign(new Error('WALLET_MISMATCH'), { statusCode: 400 });
+      if (user.wallet.profitBalance < MIN_WITHDRAWAL_AMOUNT) throw Object.assign(new Error(`MINIMUM_BALANCE:${MIN_WITHDRAWAL_AMOUNT}`), { statusCode: 400 });
       const vipLevel = await VipLevel.findOne({ code: user.tierCode }).session(session);
       const maxLimit = vipLevel ? Math.max(20, vipLevel.price * 0.3) : 20;
       if (withdrawNum > maxLimit) throw Object.assign(new Error(`MAX_WITHDRAWAL:${maxLimit}`), { statusCode: 400 });
@@ -130,7 +144,19 @@ async function withdraw(req, res) {
       user.twoFactorCode = null;
       user.twoFactorExpire = null;
       await user.save({ session });
-      withdrawal = new Transaction({ userId: user._id, type: 'withdraw', amount: withdrawNum, walletAddress: walletAddress.trim(), idempotencyKey: idempotencyKey || undefined, status: 'pending', riskScore: risk.riskScore, riskLevel: risk.riskLevel, riskFlags: risk.riskFlags });
+      withdrawal = new Transaction({
+        userId: user._id,
+        type: 'withdraw',
+        amount: withdrawNum,
+        feeAmount: feeSummary.feeAmount,
+        netAmount: feeSummary.netAmount,
+        walletAddress: walletAddress.trim(),
+        idempotencyKey: idempotencyKey || undefined,
+        status: 'pending',
+        riskScore: risk.riskScore,
+        riskLevel: risk.riskLevel,
+        riskFlags: risk.riskFlags
+      });
       await withdrawal.save({ session });
       if (risk.riskLevel !== 'low') {
         await SecurityEvent.create([{ userId: user._id, email: user.email, event: 'withdrawal_risk', ip: req.ip, userAgent: req.get('user-agent') || 'unknown', metadata: { transactionId: withdrawal._id, riskScore: risk.riskScore, riskLevel: risk.riskLevel, riskFlags: risk.riskFlags } }], { session });
@@ -167,6 +193,7 @@ async function withdraw(req, res) {
     if (err.message === 'WALLET_MISMATCH') return res.status(400).json({ error: 'عنوان السحب يجب أن يطابق العنوان المثبت في قسم حسابي' });
     if (err.message?.startsWith('MAX_WITHDRAWAL:')) return res.status(400).json({ error: `الحد الأقصى للسحب الأسبوعي لمستواك هو ${err.message.split(':')[1]}$` });
     if (err.message?.startsWith('WEEKLY_WITHDRAWAL:')) return res.status(400).json({ error: `تجاوزت الحد الأسبوعي للسحب لمستواك وهو ${err.message.split(':')[1]}$` });
+    if (err.message?.startsWith('MINIMUM_BALANCE:')) return res.status(400).json({ error: `لا يمكنك طلب السحب لأن رصيدك أقل من ${err.message.split(':')[1]}$` });
     if (err.message?.startsWith('INSUFFICIENT_PROFIT:')) return res.status(400).json({ error: `رصيد الأرباح القابل للسحب غير كافٍ. المتاح للسحب لديك هو: ${err.message.split(':')[1]}$ (رصيد الإيداع لا يمكن السحب منه).` });
     console.error('Error processing withdrawal:', err);
     res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' });
