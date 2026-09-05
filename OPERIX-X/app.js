@@ -16,6 +16,10 @@ let realtimeClient = null;
 let realtimeChannel = null;
 let realtimeEventSource = null;
 
+function isStandaloneApp() {
+    return window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+
 let tiersData = [
     { code: 'A1', name: 'المستوى A1 المعتمد', price: 50, tasks: 33, dailyProfit: 2.50, monthlyProfit: 75.00, yearlyProfit: 912.50, badgeColor: 'from-amber-500/20 to-amber-700/20 border-amber-500/40 text-amber-400' },
     { code: 'A2', name: 'المستوى A2 المتقدم', price: 150, tasks: 35, dailyProfit: 8.00, monthlyProfit: 240.00, yearlyProfit: 2920.00, badgeColor: 'from-blue-500/20 to-cyan-700/20 border-blue-500/40 text-blue-400' },
@@ -165,7 +169,7 @@ async function loadLiveTicker() {
         }
         renderLiveTickerEvent();
         if (liveTickerTimer) clearInterval(liveTickerTimer);
-        liveTickerTimer = setInterval(renderLiveTickerEvent, 5000);
+        if (!isStandaloneApp()) liveTickerTimer = setInterval(renderLiveTickerEvent, 5000);
         if (!liveTickerRefreshTimer) liveTickerRefreshTimer = setInterval(loadLiveTicker, 30000);
     } catch (error) {
         message.innerText = 'تعذر تحديث نشاط المنصة حاليًا';
@@ -511,6 +515,7 @@ async function fetchUnreadNotifications(isLiveUpdate = false) {
 function startRealtimeStream() {
     const token = localStorage.getItem('token');
     if (!token || !currentUserData?._id) return;
+    if (isStandaloneApp()) return;
     if (!window.Ably) return startRealtimeSse(token);
     if (realtimeClient) return;
     realtimeClient = new Ably.Realtime({
