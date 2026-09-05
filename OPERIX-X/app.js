@@ -150,6 +150,7 @@ let liveTickerEvents = [];
 let liveTickerIndex = 0;
 let liveTickerTimer = null;
 let liveTickerRefreshTimer = null;
+let homeSummaryRetryTimer = null;
 
 async function loadLiveTicker() {
     const message = document.getElementById('liveTickerMessage');
@@ -369,11 +370,13 @@ async function loadHomeSummary() {
         const response = await fetch('/api/user/home-summary', { headers: { Authorization: `Bearer ${token}` } });
         const data = await response.json();
         if (!response.ok || !data.summary) throw new Error('summary unavailable');
+        if (homeSummaryRetryTimer) { clearTimeout(homeSummaryRetryTimer); homeSummaryRetryTimer = null; }
         renderHomeSummary(data.summary);
     } catch (error) {
         document.getElementById('homePulseMessage').innerText = 'بيانات الحساب الأساسية معروضة، تعذر تحديث النشاط التفصيلي.';
         const sinceVisit = document.getElementById('homeSinceVisit');
         if (sinceVisit) sinceVisit.innerText = 'لا تتوفر تحديثات جديدة للتحقق منها الآن.';
+        if (!homeSummaryRetryTimer && localStorage.getItem('token')) homeSummaryRetryTimer = setTimeout(() => { homeSummaryRetryTimer = null; loadHomeSummary(); }, 1500);
     }
 }
 
