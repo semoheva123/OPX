@@ -946,7 +946,8 @@
             <div class="space-y-3">
                 <div>
                     <label class="block text-xs text-slate-400 mb-1 font-bold">المبلغ ($)</label>
-                    <input type="number" id="withdrawAmount" placeholder="20.00" min="20" step="any" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-amber-500">
+                    <input type="number" id="withdrawAmount" oninput="updateHybridWithdrawFee()" placeholder="20.00" min="20" step="any" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-amber-500">
+                    <div id="withdrawFeeSummary" class="mt-2 text-[10px] text-slate-400">الرسوم: 5% + 2$ • الحد الأدنى: 20$</div>
                 </div>
                 <div>
                     <label class="block text-xs text-slate-400 mb-1 font-bold">عنوان محفظة الاستلام</label>

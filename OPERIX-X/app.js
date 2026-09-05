@@ -2085,12 +2085,31 @@ async function sendWithdraw2FACode() {
     }
 }
 
+function updateHybridWithdrawFee() {
+    const amountInput = document.getElementById('withdrawAmount');
+    const feeSummary = document.getElementById('withdrawFeeSummary');
+    if (!amountInput || !feeSummary) return;
+    const amount = Number(amountInput.value);
+    if (!Number.isFinite(amount) || amount <= 0) {
+        feeSummary.innerHTML = 'الرسوم: 5% + 2$ • الحد الأدنى: 20$';
+        return;
+    }
+    const feeAmount = Number((amount * 0.05 + 2).toFixed(2));
+    const netAmount = Number(Math.max(0, amount - feeAmount).toFixed(2));
+    feeSummary.innerHTML = `الرسوم: <span class="text-amber-300 font-bold">$${feeAmount.toFixed(2)}</span> • صافي الدفع: <span class="text-emerald-300 font-bold">$${netAmount.toFixed(2)}</span> • الحد الأدنى: <span class="text-slate-300">20$</span>`;
+}
+
 async function submitWithdraw() {
     const amount = parseFloat(document.getElementById('withdrawAmount').value);
     const walletAddress = document.getElementById('withdrawWallet').value.trim();
     const twoFactorCode = document.getElementById('withdraw2faCode').value.trim();
     const token = localStorage.getItem('token');
     const btn = document.getElementById('btnSubmitWithdraw');
+
+    if (!Number.isFinite(amount) || amount < 20) {
+        showToast('الحد الأدنى للسحب هو 20$ USDT');
+        return;
+    }
 
     if (currentUserData?.kycStatus !== 'verified') {
         const kycStatus = currentUserData?.kycStatus || 'not_started';
