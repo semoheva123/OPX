@@ -4,6 +4,8 @@ const transactionSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   type: { type: String, enum: ['deposit', 'withdraw', 'reward', 'staking_reward', 'referral_commission', 'upgrade_deduction', 'admin_adjustment'], required: true },
   amount: { type: Number, required: true },
+  feeAmount: { type: Number, default: 0 },
+  netAmount: { type: Number, default: 0 },
   walletAddress: { type: String, required: true, trim: true },
   txHash: { type: String, trim: true },
   idempotencyKey: { type: String, trim: true, index: true },
