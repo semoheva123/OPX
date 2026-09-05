@@ -13,6 +13,7 @@
           "styles/**",
           "sw.js",
           "manifest.json",
+          "admin-manifest.json",
           "robots.txt",
           "sitemap.xml"
         ]
