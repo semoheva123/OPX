@@ -285,7 +285,7 @@ function updateTierDisplay() {
     const profileTierBadge = document.getElementById('lblProfileTierBadge');
     const isEnglish = localStorage.getItem('ag_language') === 'en';
     if(cardTierName) cardTierName.innerText = isEnglish ? `Tier ${currentUserTier}` : `المستوى ${currentUserTier}`;
-    if(userTierBadge) userTierBadge.innerText = isEnglish ? `Tier ${currentUserTier} verified` : `مستوى ${currentUserTier} المعتمد`;
+    if(userTierBadge) userTierBadge.innerText = isEnglish ? `Tier ${currentUserTier}` : `المستوى ${currentUserTier}`;
     if(profileTierBadge) {
         const icon = profileTierBadge.querySelector('i');
         profileTierBadge.innerHTML = `${icon ? icon.outerHTML : ''} ${isEnglish ? `Tier ${currentUserTier}` : `مستوى ${currentUserTier}`}`;
@@ -422,6 +422,8 @@ function renderHomeSummary(summary) {
         if (!healthChecks.activity) missingChecks.push('سجّل أول نشاط مالي معتمد');
         healthMessage.innerText = missingChecks.length ? `المتبقي: ${missingChecks.join('، ')}.` : 'حسابك مكتمل الإعدادات الأساسية.';
     }
+    const readiness = document.getElementById('homeAccountReadiness');
+    if (readiness) readiness.innerText = missingChecks.length ? `أكمل ${missingChecks.length} خطوة لرفع جاهزية الحساب.` : 'حسابك جاهز للعمليات الأساسية.';
 
     const earnings = summary.earnings || {};
     const earnedToday = document.getElementById('homeEarnedToday');
@@ -849,10 +851,10 @@ function updateWalletData(wallet) {
     const lblWithdrawn = document.getElementById('lblTotalWithdrawn');
 
     if (lblBalance) lblBalance.innerText = balance;
-    if (lblDepBalance) lblDepBalance.innerText = depositBal + ' $';
-    if (lblProfBalance) lblProfBalance.innerText = profitBal + ' $';
-    if (lblDeposits) lblDeposits.innerText = deposits + ' $';
-    if (lblWithdrawn) lblWithdrawn.innerText = withdrawn + ' $';
+    if (lblDepBalance) lblDepBalance.innerText = `${depositBal} USDT`;
+    if (lblProfBalance) lblProfBalance.innerText = `${profitBal} USDT`;
+    if (lblDeposits) lblDeposits.innerText = `${deposits} USDT`;
+    if (lblWithdrawn) lblWithdrawn.innerText = `${withdrawn} USDT`;
 
     // عناصر الواجهة في الملف الشخصي (Profile)
     const lblProfileEarned = document.getElementById('lblProfileTotalEarnings');
