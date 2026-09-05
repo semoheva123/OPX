@@ -1906,6 +1906,11 @@ function switchTab(tabName) {
         loadGameHistory();
         loadGameStats();
     }
+    if (tabName === 'travel') {
+        const maximum = tierLimits[currentUserTier] || 33;
+        updateTaskAvailability(Number(currentUserData?.todayCompletedTasks || 0), maximum);
+        startTaskResetCountdown();
+    }
     if (tabName === 'team') {
         loadTeamNetwork();
     }
