@@ -17,7 +17,7 @@ let realtimeChannel = null;
 let realtimeEventSource = null;
 
 function isStandaloneApp() {
-    return window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    return window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true || new URLSearchParams(window.location.search).get('source') === 'pwa';
 }
 
 let tiersData = [
@@ -554,6 +554,7 @@ function startRealtimeSse(token = localStorage.getItem('token')) {
 
 function startNotificationPolling() {
     fetchUnreadNotifications();
+    if (isStandaloneApp()) return;
     if (notificationPollTimer) clearInterval(notificationPollTimer);
     notificationPollTimer = setInterval(() => fetchUnreadNotifications(true), 15000);
     if (profileSyncTimer) clearInterval(profileSyncTimer);
