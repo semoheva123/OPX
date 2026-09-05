@@ -1,0 +1,22 @@
+{
+  "name": "OPERIX - المنصة الرقمية المتكاملة",
+  "short_name": "OPERIX",
+  "description": "إدارة الحساب والمهام والإحالات والمكافآت في تطبيق ويب واحد.",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "orientation": "portrait-primary",
+  "theme_color": "#030712",
+  "background_color": "#07111f",
+  "icons": [
+    {
+      "src": "/operix-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

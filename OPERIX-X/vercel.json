@@ -12,6 +12,7 @@
           "dist/**",
           "styles/**",
           "sw.js",
+          "manifest.json",
           "robots.txt",
           "sitemap.xml"
         ]

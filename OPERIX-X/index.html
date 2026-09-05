@@ -7,6 +7,10 @@
 
     <!-- تحسينات السيو وتجربة التطبيق -->
     <meta name="theme-color" content="#030712">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="OPERIX">
     <meta name="description" content="OPERIX - منصة رقمية لإدارة المهام والحساب والإحالات والمكافآت">
     <meta property="og:title" content="OPERIX - المنصة الرقمية المتكاملة">
     <meta property="og:description" content="تجربة أوضح لإدارة الحساب والمهام والإحالات والمكافآت">
@@ -16,6 +20,8 @@
     <meta name="twitter:title" content="OPERIX - المنصة الرقمية المتكاملة">
     <meta name="twitter:description" content="تجربة أوضح لإدارة الحساب والمهام والإحالات والمكافآت">
     <link rel="icon" type="image/svg+xml" href="/operix-icon.svg">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/operix-icon.svg">
     <script src="https://cdn.ably.com/lib/ably.min-2.js"></script>
 
     <link rel="stylesheet" href="/dist/tailwind.css">
@@ -67,7 +73,7 @@
             width: 100vw;
             height: 100dvh;
         }
-        #appView { padding-bottom: 180px !important; }
+        #appView { padding-bottom: calc(180px + env(safe-area-inset-bottom)) !important; }
         .gold-gradient {
             background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%);
         }
@@ -108,7 +114,7 @@
         #appNavBar button { min-height: 48px; }
         .profile-section > summary { list-style: none; cursor: pointer; }
         .profile-section > summary::-webkit-details-marker { display: none; }
-        #view-profile { padding-bottom: 180px !important; }
+        #view-profile { padding-bottom: calc(180px + env(safe-area-inset-bottom)) !important; }
         .task-filter-active { background: rgba(247,185,85,.14); border-color: rgba(247,185,85,.35); color: #f7c45e; }
         .task-card { background: rgba(3,10,19,.5); border: 1px solid rgba(148,163,184,.14); }
         .task-card:hover { border-color: rgba(247,185,85,.35); }
@@ -827,7 +833,7 @@
     </div>
 
     <!-- 5. شريط التنقل السفلي (Bottom Navigation) -->
-    <nav id="appNavBar" class="hide fixed bottom-0 left-0 right-0 bg-slate-950/90 backdrop-blur-md border-t border-slate-800 px-4 py-2 flex justify-around items-center z-40 max-w-lg mx-auto">
+    <nav id="appNavBar" class="hide fixed bottom-0 left-0 right-0 bg-slate-950/90 backdrop-blur-md border-t border-slate-800 px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] flex justify-around items-center z-40 max-w-lg mx-auto">
         <button id="nav-home" onclick="switchTab('home')" class="flex flex-col items-center flex-1 text-amber-500 transition-all">
             <i class="fa-solid fa-house text-base"></i>
             <span class="text-[10px] font-bold mt-1">الرئيسية</span>
@@ -1294,5 +1300,10 @@
 
     <!-- استدعاء ملف الجافاسكربت المفصول الأساسي -->
     <script src="app.js?v=20260905-1"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+        }
+    </script>
 </body>
 </html>
