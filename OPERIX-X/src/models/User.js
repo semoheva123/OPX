@@ -39,7 +39,18 @@ const userSchema = new mongoose.Schema({
   mysteryBoxCredits: { type: Number, default: 0, min: 0 },
   profileImage: { type: String, default: '' },
   pushSubscription: { type: Object, default: null },
-  lastLoginAt: { type: Date, default: null }
+  lastLoginAt: { type: Date, default: null },
+  kycStatus: { type: String, enum: ['not_started', 'pending', 'verified', 'rejected'], default: 'not_started' },
+  kycFullName: { type: String, default: '', trim: true },
+  kycDocumentType: { type: String, default: '', trim: true },
+  kycDocumentNumber: { type: String, default: '', trim: true },
+  kycDocumentUrl: { type: String, default: '', trim: true },
+  kycCountry: { type: String, default: '', trim: true },
+  kycSubmittedAt: { type: Date, default: null },
+  kycReviewedAt: { type: Date, default: null },
+  kycReviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  kycNotes: { type: String, default: '', trim: true },
+  kycReason: { type: String, default: '', trim: true }
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);
