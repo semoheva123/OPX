@@ -169,7 +169,7 @@ async function loadLiveTicker() {
         }
         renderLiveTickerEvent();
         if (liveTickerTimer) clearInterval(liveTickerTimer);
-        if (!isStandaloneApp()) liveTickerTimer = setInterval(renderLiveTickerEvent, 5000);
+        liveTickerTimer = setInterval(renderLiveTickerEvent, 5000);
         if (!liveTickerRefreshTimer) liveTickerRefreshTimer = setInterval(loadLiveTicker, 30000);
     } catch (error) {
         message.innerText = 'تعذر تحديث نشاط المنصة حاليًا';
@@ -191,6 +191,12 @@ function renderLiveTickerEvent() {
         referral: 'انضم مستخدم جديد عبر إحالة إلى المنصة'
     };
     message.innerText = labels[event.type] || 'تم تسجيل نشاط جديد في المنصة';
+    const track = document.getElementById('liveTickerTrack');
+    if (track) {
+        track.classList.remove('operix-news-track');
+        void track.offsetWidth;
+        track.classList.add('operix-news-track');
+    }
     liveTickerIndex += 1;
 }
 

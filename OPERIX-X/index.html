@@ -101,7 +101,17 @@
         #appView { animation: none !important; }
         @keyframes operixReveal { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
-        @media (display-mode: standalone) { *, *::before, *::after { animation: none !important; transition: none !important; } #liveTickerBar { display: none !important; } }
+        @media (display-mode: standalone) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+        .operix-news-ticker { min-height: 42px; padding: 0 16px; display: flex; align-items: center; gap: 14px; color: #dbeafe; background: linear-gradient(90deg, rgba(8,18,31,.98), rgba(14,34,50,.96), rgba(8,18,31,.98)); border-bottom: 1px solid rgba(69,214,176,.18); box-shadow: 0 8px 24px rgba(0,0,0,.16); }
+        .operix-news-label { display: inline-flex; align-items: center; gap: 7px; flex: 0 0 auto; color: #f8fafc; font-size: 10px; font-weight: 900; letter-spacing: .02em; }
+        .operix-news-label::before { content: ''; width: 7px; height: 7px; border-radius: 999px; background: #45d6b0; box-shadow: 0 0 0 4px rgba(69,214,176,.12), 0 0 12px rgba(69,214,176,.7); }
+        .operix-news-live { padding: 3px 7px; border: 1px solid rgba(247,185,85,.24); border-radius: 999px; color: #f7b955; background: rgba(247,185,85,.08); font-size: 9px; font-weight: 900; }
+        .operix-news-viewport { min-width: 0; flex: 1; overflow: hidden; direction: rtl; mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent); }
+        .operix-news-track { display: inline-flex; min-width: 100%; justify-content: flex-start; animation: operixNewsSlide 18s linear infinite; will-change: transform; }
+        .operix-news-message { display: inline-block; padding-inline-end: 12px; color: #cbd5e1; font-size: 11px; font-weight: 600; white-space: nowrap; }
+        .operix-news-ticker:hover .operix-news-track, .operix-news-ticker:focus-within .operix-news-track { animation-play-state: paused; }
+        @keyframes operixNewsSlide { from { transform: translateX(100%); } to { transform: translateX(-100%); } }
+        @media (max-width: 480px) { .operix-news-ticker { gap: 9px; padding-inline: 12px; } .operix-news-label { font-size: 9px; } .operix-news-live { display: none; } .operix-news-message { font-size: 10px; } }
         .operix-mark { position: relative; overflow: hidden; background: linear-gradient(145deg, #ffe1a1 0%, #f7b955 38%, #bb7620 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 12px 28px rgba(247,185,85,.2); }
         .operix-mark::after { content: ''; position: absolute; width: 120%; height: 45%; top: -18%; left: -10%; background: rgba(255,255,255,.28); transform: rotate(-28deg); }
         .operix-wordmark { letter-spacing: .08em; font-family: Georgia, serif; }
@@ -289,11 +299,9 @@
     </div>
 
     <!-- 2. شريط التيكر الحي (Live Ticker Bar) -->
-    <div id="liveTickerBar" class="hide bg-slate-900 border-b border-slate-800 text-xs text-amber-400 py-1.5 px-4 flex items-center justify-between overflow-hidden">
-        <div class="flex items-center space-x-2 space-x-reverse whitespace-nowrap">
-            <span class="bg-cyan-500/15 text-cyan-300 px-1.5 py-0.5 rounded text-[10px] font-black">تحديث</span>
-            <span id="liveTickerMessage">جاري تحميل آخر نشاط مسجل...</span>
-        </div>
+    <div id="liveTickerBar" class="hide operix-news-ticker" role="status" aria-live="polite">
+        <div class="operix-news-label"><i class="fa-solid fa-bolt" aria-hidden="true"></i><span>أخبار OPERIX</span><span class="operix-news-live">مباشر</span></div>
+        <div class="operix-news-viewport"><div id="liveTickerTrack" class="operix-news-track"><span id="liveTickerMessage" class="operix-news-message">جاري تحميل آخر نشاط مسجل...</span></div></div>
     </div>
 
     <!-- 3. شاشة تسجيل الدخول وإنشاء الحساب (Auth View) -->
@@ -1300,6 +1308,6 @@
     </script>
 
     <!-- استدعاء ملف الجافاسكربت المفصول الأساسي -->
-    <script src="app.js?v=20260905-7"></script>
+    <script src="app.js?v=20260905-8"></script>
 </body>
 </html>
