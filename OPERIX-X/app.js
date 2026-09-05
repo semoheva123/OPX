@@ -345,27 +345,30 @@ async function upgradeToSpecificTier(targetTier) {
     }
 }
 
+function renderHomeSummaryFallback() {
+    if (!currentUserData) return;
+    const fallbackHealthChecks = {
+        email: Boolean(currentUserData.emailVerified),
+        twoFactor: Boolean(currentUserData.twoFactorEnabled),
+        wallet: Boolean((currentUserData.walletAddress || currentUserData.withdrawWallet || '').trim()),
+        deposit: Number(currentUserData.wallet?.totalDeposits) > 0,
+        activity: false
+    };
+    renderHomeSummary({
+        todayEarned: 0,
+        health: Object.values(fallbackHealthChecks).filter(Boolean).length * 20,
+        healthChecks: fallbackHealthChecks,
+        referralCount: currentUserData.teamStats?.l1 || 0,
+        completedTasks: currentUserData.todayCompletedTasks || 0,
+        timeline: [{ type: 'registered', date: currentUserData.createdAt || new Date(), title: 'إنشاء الحساب' }],
+        recentActivity: []
+    });
+}
+
 async function loadHomeSummary() {
     const token = localStorage.getItem('token');
     if (!token || !document.getElementById('homePulseMessage')) return;
-    if (currentUserData) {
-        const fallbackHealthChecks = {
-            email: Boolean(currentUserData.emailVerified),
-            twoFactor: Boolean(currentUserData.twoFactorEnabled),
-            wallet: Boolean((currentUserData.walletAddress || currentUserData.withdrawWallet || '').trim()),
-            deposit: Number(currentUserData.wallet?.totalDeposits) > 0,
-            activity: false
-        };
-        renderHomeSummary({
-            todayEarned: 0,
-            health: Object.values(fallbackHealthChecks).filter(Boolean).length * 20,
-            healthChecks: fallbackHealthChecks,
-            referralCount: currentUserData.teamStats?.l1 || 0,
-            completedTasks: currentUserData.todayCompletedTasks || 0,
-            timeline: [{ type: 'registered', date: currentUserData.createdAt || new Date(), title: 'إنشاء الحساب' }],
-            recentActivity: []
-        });
-    }
+    renderHomeSummaryFallback();
     try {
         const response = await fetch('/api/user/home-summary', { headers: { Authorization: `Bearer ${token}` } });
         const data = await response.json();
@@ -1163,6 +1166,7 @@ async function loadUserProfile() {
             updateGameCredits(data.user);
             loadGameHistory();
             updateProfileAvatar(data.user.profileImage);
+            renderHomeSummaryFallback();
             document.getElementById('loadingView').classList.add('hide');
             document.getElementById('authView').classList.add('hide');
             document.getElementById('appView').classList.remove('hide');
