@@ -287,7 +287,7 @@ function updateTierDisplay() {
     if(userTierBadge) userTierBadge.innerText = isEnglish ? `Tier ${currentUserTier} verified` : `مستوى ${currentUserTier} المعتمد`;
     if(profileTierBadge) {
         const icon = profileTierBadge.querySelector('i');
-        profileTierBadge.innerHTML = `${icon ? icon.outerHTML : ''} ${isEnglish ? `Tier ${currentUserTier} verified` : `مستوى ${currentUserTier} المعتمد`}`;
+        profileTierBadge.innerHTML = `${icon ? icon.outerHTML : ''} ${isEnglish ? `Tier ${currentUserTier}` : `مستوى ${currentUserTier}`}`;
     }
     updateNextTierPanel();
 }
@@ -852,6 +852,7 @@ function updateProfileUI() {
     updateProfileAvatar(currentUserData.profileImage);
     updateVerificationStatus(currentUserData.twoFactorEnabled);
     updateKycProfileUI();
+    updateProfileSecuritySummary();
 
     // البريد واسم المستخدم
     const displayNameEl = document.getElementById('lblProfileDisplayName');
@@ -923,6 +924,29 @@ function updateKycProfileUI() {
     }
 }
 
+function updateProfileSecuritySummary() {
+    const checks = [
+        { id: 'profileEmailStatus', done: Boolean(currentUserData?.emailVerified), text: 'البريد: موثق', pending: 'البريد: غير موثق' },
+        { id: 'profileTwoFactorStatus', done: Boolean(currentUserData?.twoFactorEnabled), text: '2FA: مفعلة', pending: '2FA: غير مفعلة' },
+        { id: 'profileWalletStatus', done: Boolean((currentUserData?.walletAddress || currentUserData?.withdrawWallet || '').trim()), text: 'المحفظة: مثبتة', pending: 'المحفظة: غير مثبتة' },
+        { id: 'profileKycStatus', done: currentUserData?.kycStatus === 'verified', text: 'KYC: معتمد', pending: `KYC: ${currentUserData?.kycStatus === 'pending' ? 'قيد المراجعة' : currentUserData?.kycStatus === 'rejected' ? 'مرفوض' : 'لم يبدأ'}` }
+    ];
+    const completed = checks.filter(check => check.done).length;
+    const percent = Math.round((completed / checks.length) * 100);
+    const progress = document.getElementById('profileCompletionProgress');
+    const percentLabel = document.getElementById('profileCompletionPercent');
+    const completionLabel = document.getElementById('profileCompletionLabel');
+    if (progress) progress.style.width = `${percent}%`;
+    if (percentLabel) percentLabel.innerText = `${percent}%`;
+    if (completionLabel) completionLabel.innerText = `${completed} من ${checks.length} خطوات مكتملة`;
+    checks.forEach(check => {
+        const element = document.getElementById(check.id);
+        if (!element) return;
+        element.innerText = check.done ? check.text : check.pending;
+        element.className = `rounded-xl border px-2.5 py-2 ${check.done ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-300' : 'border-rose-500/20 bg-rose-500/5 text-rose-300'}`;
+    });
+}
+
 async function submitUserKyc() {
     const token = localStorage.getItem('token');
     if (!token) return showToast('يجب تسجيل الدخول أولاً');
@@ -967,15 +991,16 @@ async function submitUserKyc() {
     }
 }
 
-function updateVerificationStatus(isEnabled) {
+function updateVerificationStatus() {
     const status = document.getElementById('lblVerificationStatus');
     if (!status) return;
-    status.className = isEnabled
+    const isComplete = Boolean(currentUserData?.emailVerified && currentUserData?.twoFactorEnabled && (currentUserData?.walletAddress || currentUserData?.withdrawWallet || '').trim() && currentUserData?.kycStatus === 'verified');
+    status.className = isComplete
         ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold px-3 py-1 rounded-full'
         : 'bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[10px] font-bold px-3 py-1 rounded-full';
-    status.innerHTML = isEnabled
-        ? '<i class="fa-solid fa-circle-check mr-1"></i> حساب موثق'
-        : '<i class="fa-solid fa-circle-xmark mr-1"></i> حساب غير موثق';
+    status.innerHTML = isComplete
+        ? '<i class="fa-solid fa-circle-check mr-1"></i> إعداد الحساب مكتمل'
+        : '<i class="fa-solid fa-circle-xmark mr-1"></i> يحتاج إكمال الإعداد';
 }
 
 function updateTwoFactorStatus(isEnabled) {

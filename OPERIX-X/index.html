@@ -105,6 +105,8 @@
         .operix-wallet { background-image: radial-gradient(circle at 100% 0%, rgba(247,185,85,.2), transparent 18rem), linear-gradient(135deg, rgba(247,185,85,.13), rgba(8,18,31,.94) 58%); }
         .operix-wallet .bg-slate-950\/60 { background: rgba(3,10,19,.46); border-color: rgba(255,255,255,.09); }
         #appNavBar button { min-height: 48px; }
+        .profile-section > summary { list-style: none; cursor: pointer; }
+        .profile-section > summary::-webkit-details-marker { display: none; }
         .app-nav-item { position: relative; border-radius: 14px; padding: 5px 4px; }
         .app-nav-item.is-active { background: rgba(247,185,85,.1); box-shadow: inset 0 -2px 0 rgba(247,185,85,.85); }
         .app-nav-item:not(.is-active):hover { background: rgba(148,163,184,.07); }
@@ -176,7 +178,7 @@
         .about-principle { border-top: 1px solid rgba(148,163,184,.14); padding-top: 12px; }
     </style>
 </head>
-<body class="min-h-screen flex flex-col justify-between pb-20">
+<body class="min-h-screen flex flex-col justify-between pb-28">
 
     <!-- 1. شاشة التحميل (Loading View) -->
     <div id="loadingView" class="fixed inset-0 bg-slate-950 z-50 flex flex-col items-center justify-center space-y-4">
@@ -644,7 +646,7 @@
         </div>
 
         <!-- 4.7 تبويب الملف الشخصي (Profile View) -->
-        <div id="view-profile" class="space-y-4 hide pb-6">
+        <div id="view-profile" class="space-y-4 hide pb-28">
             
             <!-- 1. كارت هوية المستخدم والحالة -->
             <div class="glass-card p-5 rounded-3xl space-y-3 text-center relative overflow-hidden">
@@ -664,11 +666,25 @@
                 </div>
                 <div class="flex justify-center items-center gap-2 pt-1">
                     <span id="lblProfileTierBadge" class="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-bold px-3 py-1 rounded-full">
-                        <i class="fa-solid fa-ribbon mr-1"></i> مستوى A1 المعتمد
+                        <i class="fa-solid fa-ribbon mr-1"></i> مستوى A1
                     </span>
                     <span id="lblVerificationStatus" class="bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[10px] font-bold px-3 py-1 rounded-full">
-                        <i class="fa-solid fa-circle-xmark mr-1"></i> حساب غير موثق
+                        <i class="fa-solid fa-circle-xmark mr-1"></i> يحتاج إكمال الإعداد
                     </span>
+                </div>
+            </div>
+
+            <div class="glass-card p-4 rounded-2xl space-y-3">
+                <div class="flex items-center justify-between gap-3">
+                    <div><h4 class="text-xs font-bold text-white">اكتمال إعداد الحساب</h4><p id="profileCompletionLabel" class="text-[10px] text-slate-400 mt-1">0 من 4 خطوات مكتملة</p></div>
+                    <strong id="profileCompletionPercent" class="text-sm text-amber-300">0%</strong>
+                </div>
+                <div class="h-2 rounded-full bg-slate-950 overflow-hidden"><div id="profileCompletionProgress" class="h-full gold-gradient rounded-full transition-all" style="width:0%"></div></div>
+                <div class="grid grid-cols-2 gap-2 text-[10px]">
+                    <span id="profileEmailStatus" class="rounded-xl border border-rose-500/20 bg-rose-500/5 px-2.5 py-2 text-rose-300">البريد: غير موثق</span>
+                    <span id="profileTwoFactorStatus" class="rounded-xl border border-rose-500/20 bg-rose-500/5 px-2.5 py-2 text-rose-300">2FA: غير مفعلة</span>
+                    <span id="profileWalletStatus" class="rounded-xl border border-rose-500/20 bg-rose-500/5 px-2.5 py-2 text-rose-300">المحفظة: غير مثبتة</span>
+                    <span id="profileKycStatus" class="rounded-xl border border-rose-500/20 bg-rose-500/5 px-2.5 py-2 text-rose-300">KYC: لم يبدأ</span>
                 </div>
             </div>
 
@@ -698,10 +714,12 @@
             <div class="glass-card p-4 rounded-2xl space-y-2"><span class="text-xs font-bold text-slate-300 block">كوبون ترويجي</span><div class="flex gap-2"><input id="couponCodeInput" maxlength="40" placeholder="أدخل الكود" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none"><button onclick="applyCoupon()" class="px-4 py-2 bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 rounded-xl text-xs font-bold">تطبيق</button></div></div>
 
             <!-- 4. محفظة السحب المثبتة -->
-            <div class="glass-card p-4 rounded-2xl space-y-3">
-                <h4 class="text-xs font-bold text-white flex items-center">
+            <details open class="profile-section glass-card p-4 rounded-2xl space-y-3">
+                <summary class="text-xs font-bold text-white flex items-center justify-between">
+                    <span>
                     <i class="fa-solid fa-wallet text-amber-400 mr-2"></i> محفظة السحب المعتمدة
-                </h4>
+                    </span><i class="fa-solid fa-chevron-down text-[10px] text-slate-500 transition-transform"></i>
+                </summary>
                 <div>
                     <label class="block text-[10px] font-bold text-slate-400 mb-1">عنوان المحفظة (TRC20 / BEP20)</label>
                     <input type="text" id="profileWalletAddress" placeholder="أدخل عنوان المحفظة لربطه" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-amber-500 dir-ltr">
@@ -713,15 +731,15 @@
                     </div>
                 </div>
                 <button type="button" id="btnSaveProfileWallet" onclick="saveProfileWallet()" class="w-full py-2.5 gold-gradient text-slate-950 font-bold rounded-xl text-xs active:scale-95 transition-all">تثبيت المحفظة وقفل الحماية</button>
-            </div>
+            </details>
 
-            <div class="glass-card p-4 rounded-2xl space-y-3">
-                <div class="flex items-center justify-between">
+            <details open class="profile-section glass-card p-4 rounded-2xl space-y-3">
+                <summary class="text-xs font-bold text-white flex items-center justify-between">
                     <h4 class="text-xs font-bold text-white flex items-center">
                         <i class="fa-solid fa-id-card text-cyan-400 mr-2"></i> توثيق الهوية (KYC)
                     </h4>
-                    <span id="kycProfileStatusBadge" class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-800 text-slate-300">لم يبدأ</span>
-                </div>
+                    <span class="flex items-center gap-2"><span id="kycProfileStatusBadge" class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-800 text-slate-300">لم يبدأ</span><i class="fa-solid fa-chevron-down text-[10px] text-slate-500"></i></span>
+                </summary>
                 <div id="kycProfileInfo" class="text-[10px] text-slate-400">قم بإرسال البيانات لتوثيق حسابك ومراجعتها من الإدارة.</div>
                 <div class="space-y-2">
                     <input id="kycFullNameInput" type="text" maxlength="80" placeholder="الاسم الكامل كما في الوثيقة" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-500">
@@ -736,17 +754,20 @@
                         <input id="kycDocumentNumberInput" type="text" maxlength="50" placeholder="رقم الوثيقة" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-500">
                         <input id="kycCountryInput" type="text" maxlength="80" placeholder="الدولة" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-500">
                     </div>
-                    <input id="kycDocumentFileInput" type="file" accept="image/jpeg,image/png,image/webp" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-[11px] text-slate-400 file:mr-2 file:rounded-lg file:border-0 file:bg-cyan-500/15 file:px-2 file:py-1 file:text-cyan-300">
+                    <label for="kycDocumentFileInput" class="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5 text-xs text-slate-300 hover:border-cyan-400/50"><span><i class="fa-solid fa-upload text-cyan-300 mr-2"></i>صورة الوثيقة</span><span id="kycDocumentFileName" class="text-[10px] text-slate-500">اختر ملفًا</span></label>
+                    <input id="kycDocumentFileInput" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" onchange="document.getElementById('kycDocumentFileName').innerText = this.files?.[0]?.name || 'اختر ملفًا'">
                     <input id="kycDocumentUrlInput" type="url" placeholder="أو أدخل رابط صورة الوثيقة" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-500 dir-ltr">
                     <button type="button" id="btnSubmitUserKyc" onclick="submitUserKyc()" class="w-full py-2.5 bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 hover:border-cyan-400/40 rounded-xl text-xs font-bold active:scale-95 transition-all">إرسال طلب التوثيق</button>
                 </div>
-            </div>
+            </details>
 
             <!-- 5. الأمان والحماية -->
-            <div class="glass-card p-4 rounded-2xl space-y-3">
-                <h4 class="text-xs font-bold text-white flex items-center">
+            <details open class="profile-section glass-card p-4 rounded-2xl space-y-3">
+                <summary class="text-xs font-bold text-white flex items-center justify-between">
+                    <span>
                     <i class="fa-solid fa-shield-halved text-amber-400 mr-2"></i> إعدادات الأمان
-                </h4>
+                    </span><i class="fa-solid fa-chevron-down text-[10px] text-slate-500"></i>
+                </summary>
                 <div class="space-y-2">
                     <button onclick="openChangePasswordModal()" class="w-full py-2.5 bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 font-bold rounded-xl text-xs flex justify-between items-center px-3.5 transition-all">
                         <span><i class="fa-solid fa-key text-slate-500 mr-2"></i> تغيير كلمة المرور</span>
@@ -762,13 +783,15 @@
                         <i class="fa-solid fa-chevron-left text-[10px] text-slate-500"></i>
                     </button>
                 </div>
-            </div>
+            </details>
 
             <!-- 6. تفضيلات النظام والدعم -->
-            <div class="glass-card p-4 rounded-2xl space-y-3">
-                <h4 class="text-xs font-bold text-white flex items-center">
+            <details open class="profile-section glass-card p-4 rounded-2xl space-y-3">
+                <summary class="text-xs font-bold text-white flex items-center justify-between">
+                    <span>
                     <i class="fa-solid fa-sliders text-amber-400 mr-2"></i> إعدادات المنصة والدعم
-                </h4>
+                    </span><i class="fa-solid fa-chevron-down text-[10px] text-slate-500"></i>
+                </summary>
                 <div class="space-y-2">
                     <div class="py-2.5 bg-slate-950 border border-slate-800 text-slate-300 font-bold rounded-xl text-xs flex justify-between items-center px-3.5">
                         <span><i class="fa-solid fa-volume-high text-slate-500 mr-2"></i> الأصوات والتنبيهات</span>
@@ -787,7 +810,7 @@
                     </a>
                     <button onclick="openSupportModal()" class="w-full py-2.5 bg-cyan-500/10 border border-cyan-500/20 hover:border-cyan-400/40 text-cyan-300 font-bold rounded-xl text-xs flex justify-between items-center px-3.5 transition-all"><span><i class="fa-solid fa-ticket mr-2"></i> فتح تذكرة دعم</span><i class="fa-solid fa-chevron-left text-[10px]"></i></button>
                 </div>
-            </div>
+            </details>
 
             <!-- 7. الروابط القانونية وتجربة الحساب -->
             <div class="text-center space-y-3 pt-2">
