@@ -20,13 +20,6 @@ function isStandaloneApp() {
     return window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true || new URLSearchParams(window.location.search).get('source') === 'pwa';
 }
 
-function restoreStandaloneScroll() {
-    if (!isStandaloneApp()) return;
-    history.scrollRestoration = 'manual';
-    const savedScroll = Number(sessionStorage.getItem('operix_pwa_scroll_y') || 0);
-    if (savedScroll > 0) requestAnimationFrame(() => window.scrollTo(0, savedScroll));
-}
-
 let tiersData = [
     { code: 'A1', name: 'المستوى A1 المعتمد', price: 50, tasks: 33, dailyProfit: 2.50, monthlyProfit: 75.00, yearlyProfit: 912.50, badgeColor: 'from-amber-500/20 to-amber-700/20 border-amber-500/40 text-amber-400' },
     { code: 'A2', name: 'المستوى A2 المتقدم', price: 150, tasks: 35, dailyProfit: 8.00, monthlyProfit: 240.00, yearlyProfit: 2920.00, badgeColor: 'from-blue-500/20 to-cyan-700/20 border-blue-500/40 text-blue-400' },
@@ -39,8 +32,6 @@ const tierLimits = { 'A1': 33, 'A2': 35, 'A3': 40, 'A4': 45, 'A5': 50 };
 
 // تهيئة التطبيق عند اكتمال تحميل عناصر الصفحة
 document.addEventListener('DOMContentLoaded', () => {
-    restoreStandaloneScroll();
-    if (isStandaloneApp()) window.addEventListener('scroll', () => sessionStorage.setItem('operix_pwa_scroll_y', String(window.scrollY)), { passive: true });
     const urlParams = new URLSearchParams(window.location.search);
     const refCode = urlParams.get('ref');
     
@@ -1162,7 +1153,6 @@ function lockWalletUI(address) {
 
 async function loadUserProfile() {
     const token = localStorage.getItem('token');
-    const preservedScrollY = isStandaloneApp() ? window.scrollY : 0;
     if(!token) {
         document.getElementById('loadingView').classList.add('hide');
         const hasReferral = new URLSearchParams(window.location.search).has('ref') || localStorage.getItem('operix_ref_code') || localStorage.getItem('ag_ref_code');
@@ -1231,7 +1221,6 @@ async function loadUserProfile() {
 
             // الفحص التلقائي لطلبات الإيداع المعلقة
             await checkPendingDepositStatus();
-            if (isStandaloneApp() && preservedScrollY > 0) requestAnimationFrame(() => window.scrollTo(0, preservedScrollY));
         } else if (res.status === 401 || res.status === 403) {
             showToast(data.error || 'انتهت جلسة الدخول، يرجى تسجيل الدخول مجددًا');
             await logout();

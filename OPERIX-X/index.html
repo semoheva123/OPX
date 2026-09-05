@@ -98,10 +98,10 @@
         button, input, select, textarea { transition: border-color .2s ease, background-color .2s ease, box-shadow .2s ease, transform .2s ease; }
         button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--operix-gold); outline-offset: 2px; }
         button:not(:disabled):hover { transform: translateY(-1px); }
-        #appView { animation: operixReveal .55s ease both; }
+        #appView { animation: none !important; }
         @keyframes operixReveal { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
-        @media (display-mode: standalone) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+        @media (display-mode: standalone) { *, *::before, *::after { animation: none !important; transition: none !important; } #liveTickerBar { display: none !important; } }
         .operix-mark { position: relative; overflow: hidden; background: linear-gradient(145deg, #ffe1a1 0%, #f7b955 38%, #bb7620 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 12px 28px rgba(247,185,85,.2); }
         .operix-mark::after { content: ''; position: absolute; width: 120%; height: 45%; top: -18%; left: -10%; background: rgba(255,255,255,.28); transform: rotate(-28deg); }
         .operix-wordmark { letter-spacing: .08em; font-family: Georgia, serif; }
@@ -122,7 +122,7 @@
         .app-nav-item { position: relative; border-radius: 14px; padding: 5px 4px; }
         .app-nav-item.is-active { background: rgba(247,185,85,.1); box-shadow: inset 0 -2px 0 rgba(247,185,85,.85); }
         .app-nav-item:not(.is-active):hover { background: rgba(148,163,184,.07); }
-        .app-tab-view { animation: tabReveal .3s ease both; }
+        .app-tab-view { animation: none !important; }
         @keyframes tabReveal { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         .app-tab-view > .glass-card { border-color: rgba(148,163,184,.14); }
         .company-intro h1 { text-wrap: balance; }
