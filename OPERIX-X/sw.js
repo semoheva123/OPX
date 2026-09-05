@@ -1,4 +1,4 @@
-const CACHE_NAME = 'operix-shell-v1';
+const CACHE_NAME = 'operix-shell-v2';
 const APP_SHELL = ['/', '/index.html', '/app.js?v=20260905-1', '/dist/tailwind.css', '/operix-icon.svg', '/manifest.json'];
 
 self.addEventListener('install', event => {
