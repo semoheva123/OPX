@@ -368,7 +368,6 @@ function renderHomeSummaryFallback() {
 async function loadHomeSummary() {
     const token = localStorage.getItem('token');
     if (!token || !document.getElementById('homePulseMessage')) return;
-    renderHomeSummaryFallback();
     try {
         const response = await fetch('/api/user/home-summary', { headers: { Authorization: `Bearer ${token}` } });
         const data = await response.json();
@@ -376,6 +375,7 @@ async function loadHomeSummary() {
         if (homeSummaryRetryTimer) { clearTimeout(homeSummaryRetryTimer); homeSummaryRetryTimer = null; }
         renderHomeSummary(data.summary);
     } catch (error) {
+        renderHomeSummaryFallback();
         document.getElementById('homePulseMessage').innerText = 'بيانات الحساب الأساسية معروضة، تعذر تحديث النشاط التفصيلي.';
         const sinceVisit = document.getElementById('homeSinceVisit');
         if (sinceVisit) sinceVisit.innerText = 'لا تتوفر تحديثات جديدة للتحقق منها الآن.';
@@ -1166,7 +1166,6 @@ async function loadUserProfile() {
             updateGameCredits(data.user);
             loadGameHistory();
             updateProfileAvatar(data.user.profileImage);
-            renderHomeSummaryFallback();
             document.getElementById('loadingView').classList.add('hide');
             document.getElementById('authView').classList.add('hide');
             document.getElementById('appView').classList.remove('hide');
