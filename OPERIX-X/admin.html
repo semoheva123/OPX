@@ -1445,7 +1445,8 @@
         }
 
         function startAdminRealtimeStream(token) {
-            if (!token || !window.Ably) return;
+            if (!token) return;
+            if (!window.Ably) return startAdminRealtimeSse(token);
             if (adminRealtimeClient) adminRealtimeClient.close();
             adminRealtimeClient = new Ably.Realtime({
                 authUrl: '/api/realtime/token',
@@ -1453,7 +1454,7 @@
                 disconnectedRetryTimeout: 5000,
                 suspendedRetryTimeout: 10000
             });
-            adminRealtimeClient.connection.on('failed', state => console.error('Ably admin connection failed:', state.reason));
+            adminRealtimeClient.connection.on('failed', state => { console.error('Ably admin connection failed:', state.reason); startAdminRealtimeSse(token); });
             adminRealtimeClient.connection.on('suspended', state => console.warn('Ably admin connection suspended:', state.reason));
             const channel = adminRealtimeClient.channels.get('operix:admin');
             channel.subscribe('user_status_changed', () => {
@@ -1463,6 +1464,14 @@
             channel.subscribe('notification_created', () => refreshAdminAlerts());
             channel.subscribe('admin_transaction_updated', () => { fetchTransactionsList(txCurrentPage); refreshAdminAlerts(); });
             channel.subscribe('admin_transaction_created', () => { fetchTransactionsList(1); refreshAdminAlerts(); });
+        }
+
+        function startAdminRealtimeSse(token) {
+            if (!token || !window.EventSource || window.adminRealtimeEventSource) return;
+            window.adminRealtimeEventSource = new EventSource(`/api/realtime/stream?token=${encodeURIComponent(token)}`);
+            const refresh = () => { fetchUsersList(usersCurrentPage); fetchTransactionsList(txCurrentPage); refreshAdminAlerts(); };
+            ['user_status_changed', 'notification_created', 'admin_transaction_updated', 'admin_transaction_created'].forEach(eventName => window.adminRealtimeEventSource.addEventListener(eventName, refresh));
+            window.adminRealtimeEventSource.onerror = () => { if (window.adminRealtimeEventSource?.readyState === EventSource.CLOSED) { window.adminRealtimeEventSource.close(); window.adminRealtimeEventSource = null; setTimeout(() => startAdminRealtimeSse(token), 5000); } };
         }
 
         window.onload = () => {

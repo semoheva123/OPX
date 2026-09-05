@@ -13,6 +13,7 @@ let notificationPollTimer = null;
 let profileSyncTimer = null;
 let realtimeClient = null;
 let realtimeChannel = null;
+let realtimeEventSource = null;
 
 let tiersData = [
     { code: 'A1', name: 'المستوى A1 المعتمد', price: 50, tasks: 33, dailyProfit: 2.50, monthlyProfit: 75.00, yearlyProfit: 912.50, badgeColor: 'from-amber-500/20 to-amber-700/20 border-amber-500/40 text-amber-400' },
@@ -500,7 +501,8 @@ async function fetchUnreadNotifications(isLiveUpdate = false) {
 
 function startRealtimeStream() {
     const token = localStorage.getItem('token');
-    if (!token || !window.Ably || !currentUserData?._id) return;
+    if (!token || !currentUserData?._id) return;
+    if (!window.Ably) return startRealtimeSse(token);
     if (realtimeClient) return;
     realtimeClient = new Ably.Realtime({
         authUrl: '/api/realtime/token',
@@ -508,7 +510,7 @@ function startRealtimeStream() {
         disconnectedRetryTimeout: 5000,
         suspendedRetryTimeout: 10000
     });
-    realtimeClient.connection.on('failed', state => console.error('Ably user connection failed:', state.reason));
+    realtimeClient.connection.on('failed', state => { console.error('Ably user connection failed:', state.reason); startRealtimeSse(token); });
     realtimeClient.connection.on('suspended', state => console.warn('Ably user connection suspended:', state.reason));
     realtimeChannel = realtimeClient.channels.get(`operix:user:${currentUserData._id}`);
     realtimeChannel.subscribe('notification_created', () => fetchUnreadNotifications(true));
@@ -524,6 +526,16 @@ function startRealtimeStream() {
         showToast(data.message || 'تم تحديث حالة الحساب');
         loadUserProfile();
     });
+}
+
+function startRealtimeSse(token = localStorage.getItem('token')) {
+    if (!token || !window.EventSource || realtimeEventSource) return;
+    realtimeEventSource = new EventSource(`/api/realtime/stream?token=${encodeURIComponent(token)}`);
+    const refresh = () => loadUserProfile();
+    realtimeEventSource.addEventListener('user_data_changed', event => { refresh(); if (event.data) showToast('تم تحديث بيانات حسابك تلقائيًا'); });
+    realtimeEventSource.addEventListener('account_status_changed', event => { try { showToast(JSON.parse(event.data).message || 'تم تحديث حالة الحساب'); } catch (error) {} refresh(); });
+    realtimeEventSource.addEventListener('notification_created', () => fetchUnreadNotifications(true));
+    realtimeEventSource.onerror = () => { if (realtimeEventSource?.readyState === EventSource.CLOSED) { realtimeEventSource.close(); realtimeEventSource = null; setTimeout(() => startRealtimeSse(token), 5000); } };
 }
 
 function startNotificationPolling() {
