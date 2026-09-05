@@ -412,10 +412,10 @@ function renderHomeSummary(summary) {
     const healthProgress = document.getElementById('homeHealthProgress');
     const healthMessage = document.getElementById('homeHealthMessage');
     const healthChecks = summary.healthChecks || {};
+    const missingChecks = [];
     if (healthLabel) healthLabel.innerText = `${healthScore}%`;
     if (healthProgress) healthProgress.style.width = `${healthScore}%`;
     if (healthMessage) {
-        const missingChecks = [];
         if (!healthChecks.twoFactor) missingChecks.push('فعّل المصادقة الثنائية');
         if (!healthChecks.wallet) missingChecks.push('ثبّت عنوان محفظة السحب');
         if (!healthChecks.deposit) missingChecks.push('أكمل أول إيداع لتفعيل الحساب');
