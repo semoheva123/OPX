@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
 const helmet = require('helmet');
@@ -20,13 +21,14 @@ const Session = require('./models/Session');
 const User = require('./models/User');
 const realtimeService = require('./services/realtimeService');
 
-function createApp({ resend, webpush, gameSettings }) {
+function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
   const app = express();
   const trustProxy = process.env.TRUST_PROXY;
   app.set('trust proxy', trustProxy === 'true' ? 1 : trustProxy === 'false' || trustProxy === undefined ? false : Number(trustProxy));
   app.locals.resend = resend;
   app.locals.webpush = webpush;
   app.locals.gameSettings = gameSettings;
+  const realtimeRateLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 60, standardHeaders: true, legacyHeaders: false, message: { error: 'تم تجاوز عدد محاولات التحديث اللحظي، يرجى المحاولة لاحقاً' } });
 
   app.use(helmet({
     contentSecurityPolicy: {
@@ -46,9 +48,29 @@ function createApp({ resend, webpush, gameSettings }) {
   }));
   app.use(express.json({ limit: '1mb' }));
   app.use(express.urlencoded({ extended: true, limit: '1mb' }));
-  app.get('/api/health', (req, res) => res.json({ success: true, status: 'ok', uptime: Math.floor(process.uptime()), timestamp: new Date().toISOString() }));
+  app.get('/api/health', (req, res) => {
+    const databaseReady = mongoose.connection.readyState === 1;
+    res.status(databaseReady ? 200 : 503).json({ success: databaseReady, status: databaseReady ? 'ok' : 'degraded', database: databaseReady ? 'connected' : 'disconnected', uptime: Math.floor(process.uptime()), timestamp: new Date().toISOString() });
+  });
 
-  app.get('/api/realtime/token', async (req, res) => {
+  const runCronJob = async (req, res) => {
+    const expectedSecret = process.env.CRON_SECRET;
+    const suppliedSecret = String(req.get('authorization') || '').replace(/^Bearer\s+/i, '') || String(req.get('x-cron-secret') || '');
+    if (!expectedSecret || suppliedSecret !== expectedSecret) return res.status(401).json({ error: 'مصادقة المهمة المجدولة غير صالحة' });
+    const handler = cronHandlers[req.params.job];
+    if (typeof handler !== 'function') return res.status(404).json({ error: 'المهمة المجدولة غير موجودة' });
+    try {
+      const result = await handler();
+      res.json({ success: true, job: req.params.job, result: result || null });
+    } catch (error) {
+      console.error(`Cron job ${req.params.job} error:`, error.message);
+      res.status(500).json({ error: 'فشل تنفيذ المهمة المجدولة' });
+    }
+  };
+  app.get('/api/internal/cron/:job', runCronJob);
+  app.post('/api/internal/cron/:job', runCronJob);
+
+  app.get('/api/realtime/token', realtimeRateLimit, async (req, res) => {
     try {
       if (!process.env.ABLY_API_KEY) return res.status(503).json({ error: 'خدمة التحديث اللحظي غير مهيأة' });
       const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
@@ -71,7 +93,7 @@ function createApp({ resend, webpush, gameSettings }) {
     }
   });
 
-  app.get('/api/realtime/stream', async (req, res) => {
+  app.get('/api/realtime/stream', realtimeRateLimit, async (req, res) => {
     try {
       const token = String(req.query.token || '');
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -110,7 +132,7 @@ function createApp({ resend, webpush, gameSettings }) {
   app.use('/api/', rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true, legacyHeaders: false, message: { error: 'تم تجاوز حد الطلبات المسموح به، يرجى المحاولة لاحقاً' } }));
   app.use('/api/auth/', rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false, message: { error: 'تم تجاوز محاولات الدخول/التسجيل المسموحة، يرجى الانتظار 15 دقيقة.' } }));
   app.use((req, res, next) => {
-    if (/^\/\.(env|git|npmrc)(?:\/|$)/i.test(req.path) || /^\/(?:package-lock\.json|package\.json)$/i.test(req.path)) return res.status(404).end();
+    if (/^\/(?:private|\.)(?:\/|$)/i.test(req.path) || /^\/(?:package-lock\.json|package\.json)$/i.test(req.path)) return res.status(404).end();
     next();
   });
   app.get('/admin.html', (req, res) => res.sendFile(path.join(__dirname, '..', 'admin.html')));
