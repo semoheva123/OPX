@@ -175,7 +175,18 @@
                 <div class="glass-card p-5 rounded-3xl border border-slate-800 space-y-2"><span class="text-xs text-slate-400 font-bold">إجمالي المكافآت</span><h3 id="statTotalRewards" class="text-2xl font-black text-purple-400">0.00 $</h3></div>
             </div>
             <div class="grid grid-cols-1 lg:grid-cols-[1.35fr_.65fr] gap-4"><div class="glass-card p-5 rounded-3xl border border-slate-800"><div class="flex justify-between items-center"><div><h3 class="font-bold text-white text-sm">حركة المعاملات</h3><p class="text-[10px] text-slate-500 mt-1">المجموع اليومي للمعاملات المسجلة</p></div><i class="fa-solid fa-chart-column text-emerald-400"></i></div><div id="overviewChart" class="ops-chart mt-4"></div><div id="overviewChartLabels" class="flex justify-between text-[9px] text-slate-600 mt-2"></div></div><div class="glass-card p-5 rounded-3xl border border-slate-800"><h3 class="font-bold text-white text-sm mb-4">الإجراءات العاجلة</h3><div id="overviewUrgentActions" class="space-y-2"></div></div></div>
-            <div class="glass-card p-5 rounded-3xl border border-slate-800"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-white text-sm">آخر نشاط مالي</h3><button onclick="switchAdminTab('withdrawals')" class="text-[10px] text-amber-400 hover:underline">فتح السجل الكامل</button></div><div id="overviewRecentActivity" class="space-y-2"></div></div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="glass-card p-5 rounded-3xl border border-slate-800"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-white text-sm">ملخص مالي</h3><i class="fa-solid fa-sack-dollar text-emerald-300"></i></div><div id="overviewFinancialSummary" class="space-y-2"></div></div>
+                <div class="glass-card p-5 rounded-3xl border border-slate-800"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-white text-sm">تنبيهات المخاطر</h3><i class="fa-solid fa-shield-heart text-amber-300"></i></div><div id="overviewRiskAlerts" class="space-y-2"></div></div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="glass-card p-5 rounded-3xl border border-slate-800"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-white text-sm">مؤشر المخاطر</h3><button onclick="loadOverviewRiskSummary()" class="text-[10px] text-amber-400 hover:underline">تحديث</button></div><div id="overviewRiskSummary" class="space-y-2"></div></div>
+                <div class="glass-card p-5 rounded-3xl border border-slate-800"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-white text-sm">KYC & التحقق</h3><button onclick="loadOverviewKycSummary()" class="text-[10px] text-cyan-400 hover:underline">تحديث</button></div><div id="overviewKycSummary" class="space-y-2"></div></div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="glass-card p-5 rounded-3xl border border-slate-800"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-white text-sm">آخر نشاط مالي</h3><button onclick="switchAdminTab('withdrawals')" class="text-[10px] text-amber-400 hover:underline">فتح السجل الكامل</button></div><div id="overviewRecentActivity" class="space-y-2"></div></div>
+                <div class="glass-card p-5 rounded-3xl border border-slate-800"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-white text-sm">حالة التوثيق</h3><button onclick="switchAdminTab('users')" class="text-[10px] text-cyan-400 hover:underline">فتح المستخدمين</button></div><div id="overviewKycQuickStatus" class="space-y-2"></div></div>
+            </div>
         </div>
 
         <div id="admin-analytics" class="space-y-6 hide"><div class="flex justify-between items-center"><div><h2 class="text-xl font-black text-white">مركز التحليلات</h2><p class="text-[10px] text-slate-500 mt-1">آخر 30 يومًا من نشاط المنصة والسجل الأمني</p></div><div class="flex gap-2"><button onclick="exportAnalyticsCsv()" title="تصدير التحليلات" class="px-3 py-2 bg-slate-900 text-emerald-400 rounded-xl"><i class="fa-solid fa-file-csv"></i></button><button onclick="fetchAdminAnalytics()" title="تحديث التحليلات" class="px-3 py-2 bg-slate-900 text-slate-300 rounded-xl"><i class="fa-solid fa-arrows-rotate"></i></button></div></div><div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div class="glass-card p-5 rounded-2xl"><span class="text-xs text-slate-400">دخول ناجح</span><strong id="analyticsLoginSuccess" class="block text-3xl text-emerald-400 mt-2">--</strong></div><div class="glass-card p-5 rounded-2xl"><span class="text-xs text-slate-400">محاولات فاشلة</span><strong id="analyticsLoginFailed" class="block text-3xl text-rose-400 mt-2">--</strong></div><div class="glass-card p-5 rounded-2xl"><span class="text-xs text-slate-400">بريد موثق</span><strong id="analyticsEmailVerified" class="block text-3xl text-cyan-400 mt-2">--</strong></div></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-4"><div class="glass-card p-5 rounded-2xl"><h3 class="font-bold text-white text-sm mb-4">توزيع الأدوار</h3><div id="analyticsRoles" class="space-y-3"></div></div><div class="glass-card p-5 rounded-2xl"><h3 class="font-bold text-white text-sm mb-4">نشاط المعاملات اليومية</h3><div id="analyticsDaily" class="space-y-2 max-h-72 overflow-y-auto"></div></div></div></div>
@@ -186,11 +197,12 @@
                 <div class="flex items-center gap-2"><h2 class="text-xl font-black text-white">إدارة حسابات الأعضاء</h2><button onclick="exportUsersCsv()" title="تصدير CSV" class="px-3 py-2 bg-slate-900 text-emerald-400 rounded-xl"><i class="fa-solid fa-file-csv"></i></button></div>
                 <input type="text" id="txtSearchUser" onkeydown="if(event.key === 'Enter') fetchUsersList(1)" placeholder="ابحث بالبريد أو كود الإحالة..." class="bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500 w-full sm:w-64">
             </div>
-            <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
+            <div class="grid grid-cols-2 sm:grid-cols-6 gap-2">
                 <select id="userFilterRole" onchange="fetchUsersList(1)" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white"><option value="">كل الأدوار</option><option value="user">مستخدم</option><option value="admin">مدير كامل</option><option value="financial_admin">مدير مالي</option><option value="support_admin">مدير دعم</option><option value="monitor">مراقب</option></select>
                 <input id="userFilterTier" onkeydown="if(event.key === 'Enter') fetchUsersList(1)" placeholder="المستوى A1" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white">
                 <select id="userFilterStatus" onchange="fetchUsersList(1)" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white"><option value="">كل الحالات</option><option value="active">نشط</option><option value="banned">محظور</option></select>
                 <select id="userFilterVerified" onchange="fetchUsersList(1)" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white"><option value="">توثيق البريد</option><option value="yes">موثق</option><option value="no">غير موثق</option></select>
+                <select id="userFilterKyc" onchange="fetchUsersList(1)" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white"><option value="">كل حالات KYC</option><option value="not_started">لم يبدأ</option><option value="pending">قيد المراجعة</option><option value="verified">معتمد</option><option value="rejected">مرفوض</option></select>
                 <button onclick="fetchUsersList(1)" class="bg-amber-500/15 text-amber-300 border border-amber-500/20 rounded-xl text-[10px] font-bold"><i class="fa-solid fa-magnifying-glass ml-1"></i> بحث</button>
             </div>
             <div class="flex flex-wrap items-center gap-2"><button onclick="bulkUserAction(true)" class="px-3 py-2 bg-rose-500/15 text-rose-300 border border-rose-500/20 rounded-xl text-[10px] font-bold">حظر المحدد</button><button onclick="bulkUserAction(false)" class="px-3 py-2 bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 rounded-xl text-[10px] font-bold">إلغاء حظر المحدد</button><button onclick="clearUserSelection()" class="px-3 py-2 bg-slate-900 text-slate-300 rounded-xl text-[10px]">إلغاء التحديد</button><span id="userSelectionCount" class="text-[10px] text-slate-500">لم يتم تحديد مستخدمين</span></div>
@@ -222,8 +234,12 @@
         <!-- تبويب: طلبات السحب والشحن -->
         <div id="admin-withdrawals" class="space-y-6 hide">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div class="flex items-center gap-2"><div><h2 class="text-xl font-black text-white">إدارة المعاملات المالية</h2><p class="text-[10px] text-slate-500 mt-1">الإيداعات المتحققة من blockchain تعتمد تلقائيًا؛ المعلّق فقط يحتاج قرارًا إداريًا.</p></div><button onclick="exportTransactionsCsv()" title="تصدير CSV" class="px-3 py-2 bg-slate-900 text-emerald-400 rounded-xl"><i class="fa-solid fa-file-csv"></i></button></div>
-                <div class="flex items-center space-x-2 space-x-reverse w-full sm:w-auto">
+                <div class="flex items-center gap-2"><div><h2 class="text-xl font-black text-white">إدارة المعاملات المالية</h2><p class="text-[10px] text-slate-500 mt-1">الإيداعات المتحققة من blockchain تعتمد تلقائيًا؛ المعلّق فقط يحتاج قرارًا إداريًا.</p></div><button onclick="exportTransactionsCsv()" title="تصدير CSV" class="px-3 py-2 bg-slate-900 text-emerald-400 rounded-xl"><i class="fa-solid fa-file-csv"></i></button><button onclick="exportComplianceReport()" title="تصدير تقرير الامتثال" class="px-3 py-2 bg-cyan-500/15 text-cyan-300 rounded-xl"><i class="fa-solid fa-shield-halved"></i></button></div>
+                <div class="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto">
+                    <input id="txSearch" onkeydown="if(event.key === 'Enter') fetchTransactionsList(1)" placeholder="بريد / هاش / محفظة" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white">
+                    <input id="txFrom" type="date" onchange="fetchTransactionsList(1)" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white">
+                    <input id="txTo" type="date" onchange="fetchTransactionsList(1)" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white">
+                    <select id="filterTxNetwork" onchange="fetchTransactionsList(1)" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white"><option value="">كل الشبكات</option><option value="TRC20">TRC20</option><option value="BEP20">BEP20</option></select>
                     <select id="filterTxType" onchange="fetchTransactionsList()" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
                         <option value="all">جميع أنواع المعاملات</option>
                         <option value="withdraw">سحب</option>
@@ -237,13 +253,14 @@
                     </select>
                 </div>
             </div>
+            <div class="flex flex-wrap items-center gap-2"><button onclick="bulkWithdrawalAction('approve')" class="px-3 py-2 bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 rounded-xl text-[10px] font-bold">قبول المحدد</button><button onclick="bulkWithdrawalAction('reject')" class="px-3 py-2 bg-rose-500/15 text-rose-300 border border-rose-500/20 rounded-xl text-[10px] font-bold">رفض المحدد</button><button onclick="clearTransactionSelection()" class="px-3 py-2 bg-slate-900 text-slate-300 rounded-xl text-[10px]">إلغاء التحديد</button><span id="transactionSelectionCount" class="text-[10px] text-slate-500">لم يتم تحديد معاملات</span></div>
 
             <div class="glass-card rounded-3xl overflow-hidden border border-slate-800">
                 <div class="overflow-x-auto">
                     <table class="w-full text-right text-xs">
                         <thead class="bg-slate-900/80 text-slate-400 border-b border-slate-800">
                             <tr>
-                                <th class="p-4">المستخدم</th>
+                                <th class="p-4"><input type="checkbox" onchange="toggleAllTransactions(this.checked)" aria-label="تحديد كل المعاملات"></th><th class="p-4">المستخدم</th>
                                 <th class="p-4">النوع</th>
                                 <th class="p-4">المبلغ</th>
                                 <th class="p-4">تفاصيل المحفظة / الهاش</th>
@@ -416,9 +433,24 @@
             <div class="flex justify-between items-center"><div><h3 class="text-base font-bold text-white">تفاصيل المستخدم</h3><p id="userDetailsEmail" class="text-[10px] text-slate-500 mt-1"></p></div><button onclick="closeUserDetails()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button></div>
             <div id="userDetailsSummary" class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs"></div>
             <div class="flex flex-wrap gap-2"><button onclick="verifyDetailsEmail()" class="px-3 py-2 bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 rounded-xl text-[10px] font-bold">توثيق البريد</button><button onclick="disableDetails2FA()" class="px-3 py-2 bg-amber-500/15 text-amber-300 border border-amber-500/20 rounded-xl text-[10px] font-bold">تعطيل 2FA</button><button onclick="revokeDetailsSessions()" class="px-3 py-2 bg-rose-500/15 text-rose-300 border border-rose-500/20 rounded-xl text-[10px] font-bold">إنهاء جلسات المستخدم</button><button onclick="loadUserDetails(currentDetailsUserId)" class="px-3 py-2 bg-slate-900 text-slate-300 rounded-xl text-[10px]">تحديث التفاصيل</button></div>
-            <div><h4 class="text-sm font-bold text-white mb-2">آخر المعاملات</h4><div id="userDetailsTransactions" class="space-y-2 text-[10px]"></div></div>
-            <div><h4 class="text-sm font-bold text-white mb-2">سجل تعديلات الإدارة</h4><div id="userDetailsAudit" class="space-y-2 text-[10px]"></div></div>
-            <div><h4 class="text-sm font-bold text-white mb-2">الجلسات النشطة</h4><div id="userDetailsSessions" class="space-y-2 text-[10px]"></div></div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="space-y-3">
+                    <div><h4 class="text-sm font-bold text-white mb-2">KYC / التحقق</h4><div id="kycReviewPanel" class="space-y-2 text-[10px]"></div></div>
+                    <div><h4 class="text-sm font-bold text-white mb-2">آخر المعاملات</h4><div id="userDetailsTransactions" class="space-y-2 text-[10px]"></div></div>
+                </div>
+                <div class="space-y-3">
+                    <div><h4 class="text-sm font-bold text-white mb-2">سجل تعديلات الإدارة</h4><div id="userDetailsAudit" class="space-y-2 text-[10px]"></div></div>
+                    <div><h4 class="text-sm font-bold text-white mb-2">الجلسات النشطة</h4><div id="userDetailsSessions" class="space-y-2 text-[10px]"></div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="transactionDetailsModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hide items-center justify-center p-4" role="dialog" aria-modal="true">
+        <div class="glass-card p-6 rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto space-y-4 border border-cyan-500/30">
+            <div class="flex justify-between items-center"><h3 class="text-base font-bold text-white">تفاصيل المعاملة</h3><button onclick="closeTransactionDetails()" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button></div>
+            <div id="transactionDetailsContent" class="text-xs leading-6 text-slate-300"></div>
+            <div id="transactionDetailsAudit" class="space-y-2 text-[10px]"></div>
         </div>
     </div>
 
@@ -456,6 +488,19 @@
             toast.innerText = msg;
             toast.classList.remove('hide');
             setTimeout(() => toast.classList.add('hide'), 3000);
+        }
+
+        function getAdminAuthToken() {
+            return localStorage.getItem('adminToken') || localStorage.getItem('token') || '';
+        }
+
+        function adminHeaders(extra = {}) {
+            const token = getAdminAuthToken();
+            return { ...extra, Authorization: token ? `Bearer ${token}` : '' };
+        }
+
+        function adminJsonHeaders(extra = {}) {
+            return { 'Content-Type': 'application/json', ...adminHeaders(), ...extra };
         }
 
         function showAdminConfirm(message, title = 'تأكيد الإجراء') {
@@ -556,7 +601,7 @@
         async function refreshAdminAlerts() {
             if (!canAdmin('finance')) return;
             try {
-                const response = await fetch('/api/admin/overview', { headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` } });
+                const response = await fetch('/api/admin/overview', { headers: adminHeaders() });
                 const data = await response.json();
                 const badge = document.getElementById('pendingAlertBadge');
                 const count = Number(data.stats?.pendingRequests || 0);
@@ -564,13 +609,140 @@
             } catch (error) { }
         }
 
+        async function loadRiskSignals() {
+            const container = document.getElementById('overviewRiskAlerts');
+            if (!container) return;
+            try {
+                const [overviewRes, analyticsRes] = await Promise.all([
+                    fetch('/api/admin/overview', { headers: adminHeaders() }),
+                    fetch('/api/admin/analytics', { headers: adminHeaders() })
+                ]);
+                if (!overviewRes.ok || !analyticsRes.ok) throw new Error('تعذر تحميل تنبيهات المخاطر');
+                const overviewData = await overviewRes.json();
+                const analyticsData = await analyticsRes.json();
+                const stats = overviewData.stats || {};
+                const riskSummary = overviewData.riskSummary || {};
+                const security = Object.fromEntries((analyticsData.security || []).map(item => [item._id, item.count]));
+                const alerts = [];
+                if (Number(stats.pendingRequests || stats.pendingWithdrawals || 0) > 0) alerts.push({ tone: 'rose', title: 'طلبات معلقة', text: `${stats.pendingRequests || stats.pendingWithdrawals || 0} طلب تحتاج مراجعة حالياً` });
+                if (Number(security.login_failed || 0) > 0) alerts.push({ tone: 'amber', title: 'محاولات دخول فاشلة', text: `${security.login_failed || 0} محاولة فشل في آخر 30 يومًا` });
+                if (Number(security.new_device || 0) > 0) alerts.push({ tone: 'cyan', title: 'أجهزة جديدة', text: `${security.new_device || 0} جهاز جديد تم تسجيله` });
+                if (Number(riskSummary.largeWithdrawals || 0) > 0) alerts.push({ tone: 'rose', title: 'سحوبات كبيرة', text: `${riskSummary.largeWithdrawals || 0} سحوبة كبيرة تحتاج تدقيقًا` });
+                if (!alerts.length) alerts.push({ tone: 'emerald', title: 'المنصة مستقرة', text: 'لا توجد إشارات خطر نشطة في الوقت الحالي' });
+                container.innerHTML = alerts.slice(0, 4).map(alert => {
+                    const border = alert.tone === 'rose' ? 'border-rose-500/30 bg-rose-500/5' : alert.tone === 'amber' ? 'border-amber-500/30 bg-amber-500/5' : alert.tone === 'cyan' ? 'border-cyan-500/30 bg-cyan-500/5' : 'border-emerald-500/30 bg-emerald-500/5';
+                    return `<div class="border ${border} rounded-xl p-3"><div class="flex items-center justify-between gap-3"><span class="text-[11px] font-bold text-white">${escapeAdminHtml(alert.title)}</span><span class="w-2 h-2 rounded-full ${alert.tone === 'rose' ? 'bg-rose-400' : alert.tone === 'amber' ? 'bg-amber-400' : alert.tone === 'cyan' ? 'bg-cyan-400' : 'bg-emerald-400'}"></span></div><p class="text-[10px] text-slate-300 mt-1">${escapeAdminHtml(alert.text)}</p></div>`;
+                }).join('');
+            } catch (error) {
+                container.innerHTML = '<div class="border border-rose-500/30 bg-rose-500/5 rounded-xl p-3 text-[10px] text-rose-300">تعذر تحميل تنبيهات المخاطر</div>';
+            }
+        }
+
+        async function loadOverviewRiskSummary() {
+            const container = document.getElementById('overviewRiskSummary');
+            if (!container) return;
+            try {
+                const response = await fetch('/api/admin/risk-summary', { headers: adminHeaders() });
+                const data = await response.json();
+                if (!response.ok || !data.success) throw new Error(data.error || 'تعذر تحميل ملخص المخاطر');
+                const summary = data.summary || {};
+                const tone = Number(summary.riskScore || 0) >= 70 ? 'text-rose-300' : Number(summary.riskScore || 0) >= 40 ? 'text-amber-300' : 'text-emerald-300';
+                const riskLevelText = summary.riskLevel === 'high' ? 'مرتفع' : summary.riskLevel === 'medium' ? 'متوسط' : 'منخفض';
+                container.innerHTML = `
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <div class="text-[9px] text-slate-400">مؤشر المخاطر</div>
+                            <div class="text-3xl font-black ${tone}">${Number(summary.riskScore || 0)}</div>
+                        </div>
+                        <span class="px-2 py-1 rounded-full text-[9px] font-bold ${summary.riskLevel === 'high' ? 'bg-rose-500/10 text-rose-300' : summary.riskLevel === 'medium' ? 'bg-amber-500/10 text-amber-300' : 'bg-emerald-500/10 text-emerald-300'}">${riskLevelText}</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-[10px] text-slate-300 mt-3">
+                        <div class="rounded-xl bg-slate-950/60 p-2"><span class="text-slate-500 block">محاولات فاشلة</span><b class="text-white">${Number(summary.failedLogins || 0)}</b></div>
+                        <div class="rounded-xl bg-slate-950/60 p-2"><span class="text-slate-500 block">أجهزة جديدة</span><b class="text-white">${Number(summary.newDevices || 0)}</b></div>
+                        <div class="rounded-xl bg-slate-950/60 p-2"><span class="text-slate-500 block">طلبات معلقة</span><b class="text-white">${Number(summary.pendingTransactions || 0)}</b></div>
+                        <div class="rounded-xl bg-slate-950/60 p-2"><span class="text-slate-500 block">سحوبات كبيرة</span><b class="text-white">${Number(summary.largeWithdrawals || 0)}</b></div>
+                    </div>
+                    <div class="mt-3 text-[10px] text-slate-300">
+                        ${(summary.focus || []).map(item => `<div class="mt-1">• ${escapeAdminHtml(item)}</div>`).join('') || '<div>• لا توجد إشارات خطورة</div>'}
+                    </div>
+                `;
+            } catch (error) {
+                container.innerHTML = '<div class="text-[10px] text-rose-300">تعذر تحميل مؤشرات المخاطر</div>';
+            }
+        }
+
+        async function loadOverviewKycSummary() {
+            const container = document.getElementById('overviewKycSummary');
+            const quick = document.getElementById('overviewKycQuickStatus');
+            if (!container && !quick) return;
+            try {
+                const response = await fetch('/api/admin/kyc-summary', { headers: adminHeaders() });
+                const data = await response.json();
+                if (!response.ok || !data.success) throw new Error(data.error || 'تعذر تحميل KYC');
+                const summary = data.summary || {};
+                const rate = Number(summary.verificationRate || 0);
+                const tone = rate >= 80 ? 'text-emerald-300' : rate >= 50 ? 'text-amber-300' : 'text-rose-300';
+                if (container) {
+                    container.innerHTML = `
+                        <div class="flex items-center justify-between gap-3">
+                            <div>
+                                <div class="text-[9px] text-slate-400">معدل الاعتماد</div>
+                                <div class="text-3xl font-black ${tone}">${rate.toFixed(1)}%</div>
+                            </div>
+                            <span class="px-2 py-1 rounded-full text-[9px] font-bold bg-cyan-500/10 text-cyan-300">${Number(summary.reviewQueue || 0)} في fila</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-[10px] text-slate-300 mt-3">
+                            <div class="rounded-xl bg-slate-950/60 p-2"><span class="text-slate-500 block">معتمد</span><b class="text-emerald-300">${Number(summary.verified || 0)}</b></div>
+                            <div class="rounded-xl bg-slate-950/60 p-2"><span class="text-slate-500 block">قيد المراجعة</span><b class="text-amber-300">${Number(summary.pending || 0)}</b></div>
+                            <div class="rounded-xl bg-slate-950/60 p-2"><span class="text-slate-500 block">مرفوض</span><b class="text-rose-300">${Number(summary.rejected || 0)}</b></div>
+                            <div class="rounded-xl bg-slate-950/60 p-2"><span class="text-slate-500 block">لم يبدأ</span><b class="text-slate-300">${Number(summary.notStarted || 0)}</b></div>
+                        </div>
+                    `;
+                }
+                if (quick) {
+                    quick.innerHTML = `
+                        <div class="rounded-xl bg-slate-950/60 p-2 text-[10px] text-slate-300"><span class="text-slate-500 block">الإجمالي</span><b class="text-white">${Number(summary.total || 0)} مستخدم</b></div>
+                        <div class="rounded-xl bg-slate-950/60 p-2 text-[10px] text-slate-300"><span class="text-slate-500 block">قائمة الانتظار</span><b class="text-amber-300">${Number(summary.reviewQueue || 0)} يحتاج مراجعة</b></div>
+                    `;
+                }
+            } catch (error) {
+                if (container) container.innerHTML = '<div class="text-[10px] text-rose-300">تعذر تحميل KYC</div>';
+                if (quick) quick.innerHTML = '<div class="text-[10px] text-rose-300">تعذر تحميل حالة KYC</div>';
+            }
+        }
+
+        async function loadOverviewFinancialSummary() {
+            const container = document.getElementById('overviewFinancialSummary');
+            if (!container) return;
+            try {
+                const response = await fetch('/api/admin/financial-summary', { headers: adminHeaders() });
+                const data = await response.json();
+                if (!response.ok || !data.success) throw new Error(data.error || 'تعذر تحميل الملخص المالي');
+                const summary = data.summary || {};
+                container.innerHTML = `
+                    <div class="grid grid-cols-2 gap-2 text-[10px] text-slate-300">
+                        <div class="rounded-xl bg-slate-950/60 p-2"><span class="text-slate-500 block">إجمالي الإيداعات</span><b class="text-emerald-300">${Number(summary.totalDeposits || 0).toFixed(2)} $</b></div>
+                        <div class="rounded-xl bg-slate-950/60 p-2"><span class="text-slate-500 block">إجمالي المسحوبات</span><b class="text-amber-300">${Number(summary.totalWithdrawals || 0).toFixed(2)} $</b></div>
+                        <div class="rounded-xl bg-slate-950/60 p-2"><span class="text-slate-500 block">صافي الإيراد</span><b class="text-cyan-300">${Number(summary.netRevenue || 0).toFixed(2)} $</b></div>
+                        <div class="rounded-xl bg-slate-950/60 p-2"><span class="text-slate-500 block">طلبات معلقة</span><b class="text-rose-300">${Number(summary.pendingCount || 0)}</b></div>
+                    </div>
+                    <div class="mt-3 text-[10px] text-slate-300">
+                        <div>• المبلغ المعلق: ${Number(summary.pendingAmount || 0).toFixed(2)} $</div>
+                        <div>• عمليات مرفوضة: ${Number(summary.rejectedCount || 0)} / ${Number(summary.rejectedAmount || 0).toFixed(2)} $</div>
+                    </div>
+                `;
+            } catch (error) {
+                container.innerHTML = '<div class="text-[10px] text-rose-300">تعذر تحميل الملخص المالي</div>';
+            }
+        }
+
         async function fetchAuditLogs(page = 1) {
-            const token = localStorage.getItem('token');
+            const token = getAdminAuthToken();
             try {
                 const search = encodeURIComponent(document.getElementById('auditSearch')?.value || '');
                 const date = encodeURIComponent(document.getElementById('auditDate')?.value || '');
                 const action = encodeURIComponent(document.getElementById('auditAction')?.value || 'all');
-                const res = await fetch(`/api/admin/audit-logs?limit=20&page=${page}&action=${action}&search=${search}&date=${date}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                const res = await fetch(`/api/admin/audit-logs?limit=20&page=${page}&action=${action}&search=${search}&date=${date}`, { headers: adminHeaders() });
                 if (res.status === 401 || res.status === 403) return adminLogout();
                 const data = await res.json();
                 const tbody = document.getElementById('tblAuditBody');
@@ -591,7 +763,7 @@
         async function fetchAdminSupport() {
             const list = document.getElementById('adminSupportList');
             try {
-                const response = await fetch('/api/admin/support/tickets', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+                const response = await fetch('/api/admin/support/tickets', { headers: adminHeaders() });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.error || 'تعذر تحميل التذاكر');
                 list.innerHTML = data.tickets?.length ? data.tickets.map(ticket => `<div class="glass-card p-4 rounded-2xl border border-slate-800 space-y-3"><div class="flex justify-between gap-3"><div><b class="text-white">${escapeAdminHtml(ticket.subject)}</b><p class="text-[10px] text-slate-400 mt-1">${escapeAdminHtml(ticket.userId?.email || '-')}</p></div><select id="support-status-${ticket._id}" class="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-[10px] text-cyan-300"><option value="open" ${ticket.status === 'open' ? 'selected' : ''}>مفتوحة</option><option value="in_progress" ${ticket.status === 'in_progress' ? 'selected' : ''}>قيد المعالجة</option><option value="resolved" ${ticket.status === 'resolved' ? 'selected' : ''}>محلولة</option><option value="closed" ${ticket.status === 'closed' ? 'selected' : ''}>مغلقة</option></select></div><p class="text-xs text-slate-300 whitespace-pre-line">${escapeAdminHtml(ticket.message)}</p><textarea id="support-reply-${ticket._id}" rows="2" placeholder="اكتب رد الإدارة..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">${escapeAdminHtml(ticket.adminReply || '')}</textarea><button onclick="updateAdminSupport('${ticket._id}')" class="w-full py-2 bg-cyan-500/15 text-cyan-300 border border-cyan-500/20 rounded-xl text-xs font-bold">حفظ والرد</button></div>`).join('') : '<div class="text-center text-slate-500 py-8">لا توجد تذاكر مفتوحة</div>';
@@ -603,11 +775,11 @@
         async function inviteNewAdmin() { const email = document.getElementById('inviteAdminEmail').value.trim(); const role = document.getElementById('inviteAdminRole').value; const result = document.getElementById('adminInviteResult'); const response = await fetch('/api/admin/security/invite-admin', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('adminToken')}` }, body: JSON.stringify({ email, role }) }); const data = await response.json(); result.classList.remove('hidden'); result.className = `text-[10px] break-all ${response.ok ? 'text-emerald-300' : 'text-rose-300'}`; result.innerHTML = response.ok ? `${data.message}<br><a class="text-amber-300 underline" href="${data.inviteUrl}" target="_blank">${data.inviteUrl}</a>` : (data.error || 'تعذر إنشاء الدعوة'); }
         async function setupAdminSecurity2FA() { const response = await fetch('/api/admin/security/2fa/setup', { method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` } }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر إنشاء الرمز'); document.getElementById('adminSecurityQr').src = data.qrCode; document.getElementById('adminSecuritySecret').innerText = `المفتاح اليدوي: ${data.secret}`; document.getElementById('adminSecuritySetupPanel').classList.remove('hidden'); }
         async function confirmAdminSecurity2FA() { const code = document.getElementById('adminSecurityCode').value.trim(); const response = await fetch('/api/admin/security/2fa/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('adminToken')}` }, body: JSON.stringify({ code }) }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'رمز غير صحيح'); showToast(data.message || 'تم التفعيل'); document.getElementById('adminSecuritySetupPanel').classList.add('hidden'); loadAdminSecurityStatus(); }
-        async function updateAdminSupport(id) { const status = document.getElementById(`support-status-${id}`).value; const reply = document.getElementById(`support-reply-${id}`).value; const response = await fetch(`/api/admin/support/tickets/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` }, body: JSON.stringify({ status, reply }) }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر تحديث التذكرة'); showToast('تم تحديث التذكرة وإرسال الإشعار'); fetchAdminSupport(); }
+        async function updateAdminSupport(id) { const status = document.getElementById(`support-status-${id}`).value; const reply = document.getElementById(`support-reply-${id}`).value; const response = await fetch(`/api/admin/support/tickets/${id}`, { method: 'POST', headers: adminJsonHeaders(), body: JSON.stringify({ status, reply }) }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر تحديث التذكرة'); showToast('تم تحديث التذكرة وإرسال الإشعار'); fetchAdminSupport(); }
 
         async function fetchAdminAnalytics() {
             try {
-                const response = await fetch('/api/admin/analytics', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+                const response = await fetch('/api/admin/analytics', { headers: adminHeaders() });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.error || 'تعذر تحميل التحليلات');
                 const security = Object.fromEntries((data.security || []).map(item => [item._id, item.count]));
@@ -623,10 +795,9 @@
         function exportAnalyticsCsv() { const rows = [['المؤشر', 'القيمة'], ['دخول ناجح', document.getElementById('analyticsLoginSuccess')?.innerText || 0], ['محاولات فاشلة', document.getElementById('analyticsLoginFailed')?.innerText || 0], ['بريد موثق', document.getElementById('analyticsEmailVerified')?.innerText || 0]]; exportCsv(rows, 'operix-analytics.csv'); }
 
         async function fetchAdminOverview() {
-            const token = localStorage.getItem('token');
             try {
                 const res = await fetch('/api/admin/overview', {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: adminHeaders()
                 });
 
                 if (res.status === 401 || res.status === 403) return adminLogout();
@@ -661,7 +832,11 @@
             if (icon) icon.classList.add('fa-spin');
             try {
                 await fetchAdminOverview();
-                const response = await fetch('/api/admin/analytics', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+                await loadOverviewFinancialSummary();
+                await loadOverviewRiskSummary();
+                await loadOverviewKycSummary();
+                await loadRiskSignals();
+                const response = await fetch('/api/admin/analytics', { headers: adminHeaders() });
                 const data = await response.json();
                 if (response.ok) {
                     const period = Number(document.getElementById('overviewPeriod')?.value || 30);
@@ -669,12 +844,12 @@
                     const max = Math.max(1, ...daily.map(item => Number(item.total || 0)));
                     const chart = document.getElementById('overviewChart');
                     const labels = document.getElementById('overviewChartLabels');
-                    if (chart) chart.innerHTML = daily.length ? daily.map(item => `<span class="ops-bar" title="${escapeAdminHtml(item._id.day)}: ${Number(item.total || 0).toFixed(2)} $" style="height:${Math.max(5, Math.round(Number(item.total || 0) / max * 100))}%"></span>`).join('') : '<span class="text-[10px] text-slate-500 self-center">لا توجد بيانات للفترة المحددة</span>';
+                    if (chart) chart.innerHTML = daily.length ? daily.map(item => `<span class="ops-bar" title="${escapeAdminHtml(item._id.day)}: ${Number(item.total || 0).toFixed(2)} $" style="height:${Math.max(5, Math.round(Number(item.total || 0) / max * 100))}%"></span>`).join('') : '<span class="text-[10px] text-slate-500 self-center">لا توجد بيانات للفترة المحدعة</span>';
                     if (labels) labels.innerHTML = daily.length ? `<span>${escapeAdminHtml(daily[0]._id.day)}</span><span>${escapeAdminHtml(daily[daily.length - 1]._id.day)}</span>` : '';
                 }
                 const activity = document.getElementById('overviewRecentActivity');
                 if (activity && canAdmin('finance')) {
-                    const txResponse = await fetch('/api/admin/withdrawals?status=all&type=all&page=1&limit=5', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+                    const txResponse = await fetch('/api/admin/withdrawals?status=all&type=all&page=1&limit=5', { headers: adminHeaders() });
                     const txData = await txResponse.json();
                     activity.innerHTML = txResponse.ok && txData.withdrawals?.length ? txData.withdrawals.map(item => `<div class="flex items-center justify-between gap-3 border-b border-slate-800 pb-2 text-[10px]"><span class="text-slate-300">${escapeAdminHtml(item.userId?.email || 'مستخدم')} · ${item.type === 'withdraw' ? 'سحب' : 'إيداع'}</span><span class="text-amber-400 font-bold">${Number(item.amount || 0).toFixed(2)} $ · ${escapeAdminHtml(item.status)}</span></div>`).join('') : '<span class="text-slate-500">لا توجد عمليات مالية حديثة</span>';
                 } else if (activity) activity.innerHTML = '<span class="text-slate-500">يتطلب عرض العمليات صلاحية الإدارة المالية</span>';
@@ -685,11 +860,10 @@
         }
 
         async function fetchUsersList(page = 1) {
-            const token = localStorage.getItem('token');
             try {
-                const params = new URLSearchParams({ page, limit: 10, search: document.getElementById('txtSearchUser')?.value.trim() || '', role: document.getElementById('userFilterRole')?.value || '', tier: document.getElementById('userFilterTier')?.value.trim() || '', status: document.getElementById('userFilterStatus')?.value || '', verified: document.getElementById('userFilterVerified')?.value || '' });
+                const params = new URLSearchParams({ page, limit: 10, search: document.getElementById('txtSearchUser')?.value.trim() || '', role: document.getElementById('userFilterRole')?.value || '', tier: document.getElementById('userFilterTier')?.value.trim() || '', status: document.getElementById('userFilterStatus')?.value || '', verified: document.getElementById('userFilterVerified')?.value || '', kycStatus: document.getElementById('userFilterKyc')?.value || '' });
                 const res = await fetch(`/api/admin/users?${params.toString()}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: adminHeaders()
                 });
 
                 if (res.status === 401 || res.status === 403) return adminLogout();
@@ -716,7 +890,7 @@
         async function fetchReferrals() {
             const token = localStorage.getItem('token');
             try {
-                const response = await fetch('/api/admin/referrals?limit=100', { headers: { 'Authorization': `Bearer ${token}` } });
+                const response = await fetch('/api/admin/referrals?limit=100', { headers: adminHeaders() });
                 if (response.status === 401 || response.status === 403) return adminLogout();
                 const data = await response.json();
                 allReferralsData = data.referrals || [];
@@ -732,12 +906,19 @@
         function exportCsv(rows, filename) { const csv = rows.map(row => row.map(value => `"${String(value ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n'); const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = filename; link.click(); URL.revokeObjectURL(link.href); }
         function exportReferralsCsv() { exportCsv([['البريد', 'كود الإحالة', 'أحاله', 'المستوى', 'نشطة'], ...allReferralsData.map(item => [item.email, item.referralCode, item.referredBy, item.tierCode, Number(item.wallet?.totalDeposits || 0) > 0 ? 'نعم' : 'لا'])], 'referrals.csv'); }
         function exportUsersCsv() { exportCsv([['البريد', 'المستوى', 'الرصيد', 'الحالة'], ...allUsersData.map(item => [item.email, item.tierCode, item.wallet?.balance || 0, item.isBanned ? 'محظور' : 'نشط'])], 'users.csv'); }
-        function exportTransactionsCsv() { const rows = [...document.querySelectorAll('#tblTransactionsBody tr')].map(row => [...row.querySelectorAll('td')].slice(0, 5).map(cell => cell.innerText.trim())); exportCsv([['المستخدم', 'النوع', 'المبلغ', 'تفاصيل المحفظة', 'الحالة'], ...rows], 'transactions.csv'); }
+        async function exportTransactionsCsv() { const params = new URLSearchParams({ status: document.getElementById('filterTxStatus')?.value || 'all', type: document.getElementById('filterTxType')?.value || 'all', network: document.getElementById('filterTxNetwork')?.value || '', search: document.getElementById('txSearch')?.value.trim() || '', from: document.getElementById('txFrom')?.value || '', to: document.getElementById('txTo')?.value || '' }); const response = await fetch(`/api/admin/withdrawals/export?${params}`, { headers: adminHeaders() }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر تصدير المعاملات'); exportCsv([['المستخدم', 'النوع', 'المبلغ', 'الشبكة', 'الهاش', 'المحفظة', 'الحالة', 'التاريخ'], ...(data.transactions || []).map(item => [item.userId?.email || '-', item.type, item.amount, item.network || '-', item.txHash || '-', item.walletAddress || '-', item.status, new Date(item.createdAt).toISOString()])], 'transactions.csv'); }
+        async function exportComplianceReport() { const params = new URLSearchParams({ kycStatus: document.getElementById('userFilterKyc')?.value || '', from: document.getElementById('txFrom')?.value || '', to: document.getElementById('txTo')?.value || '' }); const response = await fetch(`/api/admin/compliance-report?${params}`, { headers: adminHeaders() }); if (!response.ok) { const data = await response.json(); return showToast(data.error || 'تعذر تصدير تقرير الامتثال'); } const blob = await response.blob(); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `operix-compliance-${new Date().toISOString().slice(0, 10)}.csv`; link.click(); URL.revokeObjectURL(link.href); showToast('تم تصدير تقرير الامتثال بنجاح'); }
+
+        function kycStatusBadge(status) {
+            const labelMap = { not_started: 'لم يبدأ', pending: 'قيد المراجعة', verified: 'معتمد', rejected: 'مرفوض' };
+            const colorMap = { not_started: 'bg-slate-500/20 text-slate-300', pending: 'bg-amber-500/20 text-amber-300', verified: 'bg-emerald-500/20 text-emerald-300', rejected: 'bg-rose-500/20 text-rose-300' };
+            return `<span class="px-2 py-0.5 rounded ${colorMap[status] || 'bg-slate-500/20 text-slate-300'} text-[10px] font-bold">${labelMap[status] || 'غير معروف'}</span>`;
+        }
 
         function renderUsersTable(users) {
             const tbody = document.getElementById('tblUsersBody');
             if(!users || users.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500">لا يوجد مستخدمين لعرضهم</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-slate-500">لا يوجد مستخدمين لعرضهم</td></tr>`;
                 return;
             }
             tbody.innerHTML = users.map(u => {
@@ -745,10 +926,6 @@
                 const statusBadge = isBanned 
                     ? `<span class="px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 text-[10px] font-bold">محظور</span>`
                     : `<span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">نشط</span>`;
-
-                const banBtn = isBanned
-                    ? `<button onclick="toggleUserBan('${u._id}', false)" class="px-3 py-1 bg-emerald-600/20 text-emerald-400 rounded-lg text-[10px] font-bold hover:bg-emerald-600/40 transition-all">إلغاء الحظر</button>`
-                    : `<button onclick="toggleUserBan('${u._id}', true)" class="px-3 py-1 bg-rose-600/20 text-rose-400 rounded-lg text-[10px] font-bold hover:bg-rose-600/40 transition-all">حظر</button>`;
 
                 return `
                     <tr>
@@ -758,6 +935,7 @@
                         <td class="p-4 text-emerald-400 font-mono font-bold">${Number(u.wallet?.balance || 0).toFixed(2)} $</td>
                         <td class="p-4">${statusBadge}</td>
                         <td class="p-4 text-slate-400">${u.todayCompletedTasks || 0}</td>
+                        <td class="p-4">${kycStatusBadge(u.kycStatus || 'not_started')}</td>
                         <td class="p-4 space-x-2 space-x-reverse">
                             <button onclick="showUserDetails('${u._id}')" class="px-3 py-1 bg-cyan-600/20 text-cyan-300 rounded-lg text-[10px] font-bold">التفاصيل</button>
                             <button data-action-permission="finance" onclick="openEditUser('${u._id}', '${u.tierCode || 'A1'}', ${u.wallet?.balance || 0}, '${u.role || 'user'}')" class="px-3 py-1 bg-blue-600/20 text-blue-400 rounded-lg text-[10px] font-bold hover:bg-blue-600/40 transition-all">إدارة مالية</button>
@@ -774,7 +952,7 @@
         function updateUserSelectionCount() { const count = selectedUserIds().length; const label = document.getElementById('userSelectionCount'); if (label) label.innerText = count ? `تم تحديد ${count} مستخدم` : 'لم يتم تحديد مستخدمين'; }
         function toggleAllUsers(checked) { document.querySelectorAll('.user-select-checkbox').forEach(input => { input.checked = checked; }); updateUserSelectionCount(); }
         function clearUserSelection() { toggleAllUsers(false); }
-        async function bulkUserAction(isBanned) { const userIds = selectedUserIds(); if (!userIds.length) return showToast('حدد مستخدمًا واحدًا على الأقل'); if (!await showAdminConfirm(`سيتم ${isBanned ? 'حظر' : 'إلغاء حظر'} ${userIds.length} مستخدم. هل تتابع؟`, 'إجراء جماعي')) return; const response = await fetch('/api/admin/users/bulk-ban', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` }, body: JSON.stringify({ userIds, isBanned }) }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر تنفيذ الإجراء'); showToast(`تم تعديل ${data.modifiedCount || 0} مستخدم`); clearUserSelection(); fetchUsersList(usersCurrentPage); }
+        async function bulkUserAction(isBanned) { const userIds = selectedUserIds(); if (!userIds.length) return showToast('حدد مستخدمًا واحدًا على الأقل'); if (!await showAdminConfirm(`سيتم ${isBanned ? 'حظر' : 'إلغاء حظر'} ${userIds.length} مستخدم. هل تتابع؟`, 'إجراء جماعي')) return; const response = await fetch('/api/admin/users/bulk-ban', { method: 'POST', headers: adminJsonHeaders(), body: JSON.stringify({ userIds, isBanned }) }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر تنفيذ الإجراء'); showToast(`تم تعديل ${data.modifiedCount || 0} مستخدم`); clearUserSelection(); fetchUsersList(usersCurrentPage); }
 
         let currentDetailsUserId = null;
         async function showUserDetails(userId) { currentDetailsUserId = userId; const modal = document.getElementById('userDetailsModal'); modal.classList.remove('hide'); modal.classList.add('flex'); await loadUserDetails(userId); }
@@ -785,6 +963,7 @@
             const transactions = document.getElementById('userDetailsTransactions');
             const audit = document.getElementById('userDetailsAudit');
             const sessions = document.getElementById('userDetailsSessions');
+            const kycPanel = document.getElementById('kycReviewPanel');
             summary.innerHTML = '<span class="text-slate-400">جاري التحميل...</span>';
             try {
                 const response = await fetch(`/api/admin/users/${encodeURIComponent(userId)}/details`);
@@ -793,10 +972,56 @@
                 const user = data.user;
                 document.getElementById('userDetailsEmail').innerText = user.email || '-';
                 summary.innerHTML = `<span class="bg-slate-950 rounded-xl p-3">المستوى<br><b class="text-amber-300">${escapeAdminHtml(user.tierCode || '-')}</b></span><span class="bg-slate-950 rounded-xl p-3">الرصيد<br><b class="text-emerald-300">$${Number(user.wallet?.balance || 0).toFixed(2)}</b></span><span class="bg-slate-950 rounded-xl p-3">الحالة<br><b class="${user.isBanned ? 'text-rose-300' : 'text-emerald-300'}">${user.isBanned ? 'محظور' : 'نشط'}</b></span><span class="bg-slate-950 rounded-xl p-3">البريد<br><b class="text-cyan-300">${user.emailVerified ? 'موثق' : 'غير موثق'}</b></span>`;
+                const kycStatus = user.kycStatus || 'not_started';
+                const kycInfo = `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+                        <div class="rounded-xl bg-slate-950/60 p-3"><div class="text-[10px] text-slate-400">حالة KYC</div><div class="mt-1">${kycStatusBadge(kycStatus)}</div></div>
+                        <div class="rounded-xl bg-slate-950/60 p-3"><div class="text-[10px] text-slate-400">الاسم الكامل</div><div class="text-xs text-white mt-1">${escapeAdminHtml(user.kycFullName || 'غير مُدخل')}</div></div>
+                        <div class="rounded-xl bg-slate-950/60 p-3"><div class="text-[10px] text-slate-400">نوع الوثيقة</div><div class="text-xs text-white mt-1">${escapeAdminHtml(user.kycDocumentType || 'غير محدد')}</div></div>
+                        <div class="rounded-xl bg-slate-950/60 p-3"><div class="text-[10px] text-slate-400">رقم الوثيقة</div><div class="text-xs text-white mt-1">${escapeAdminHtml(user.kycDocumentNumber || 'غير محدد')}</div></div>
+                        <div class="rounded-xl bg-slate-950/60 p-3"><div class="text-[10px] text-slate-400">الدولة</div><div class="text-xs text-white mt-1">${escapeAdminHtml(user.kycCountry || 'غير محددة')}</div></div>
+                        <div class="rounded-xl bg-slate-950/60 p-3 md:col-span-2"><div class="text-[10px] text-slate-400">الوثيقة</div><div class="text-xs text-cyan-300 mt-1 break-all">${user.kycDocumentUrl ? (String(user.kycDocumentUrl).startsWith('private://') ? `<a href="/api/admin/users/${encodeURIComponent(user._id)}/kyc-document" target="_blank" class="underline">عرض الملف المحمي</a>` : `<a href="${escapeAdminHtml(user.kycDocumentUrl)}" target="_blank" rel="noopener noreferrer" class="underline">عرض الرابط القديم</a>`) : 'لا توجد وثيقة'}</div></div>
+                        <div class="rounded-xl bg-slate-950/60 p-3"><div class="text-[10px] text-slate-400">تاريخ الإرسال</div><div class="text-xs text-white mt-1">${user.kycSubmittedAt ? escapeAdminHtml(new Date(user.kycSubmittedAt).toLocaleString('ar')) : 'غير متوفر'}</div></div>
+                        <div class="rounded-xl bg-slate-950/60 p-3"><div class="text-[10px] text-slate-400">آخر مراجعة</div><div class="text-xs text-white mt-1">${user.kycReviewedAt ? escapeAdminHtml(new Date(user.kycReviewedAt).toLocaleString('ar')) : 'لم تتم المراجعة'}</div></div>
+                        <div class="rounded-xl bg-slate-950/60 p-3 md:col-span-2"><div class="text-[10px] text-slate-400">ملاحظات المراجعة</div><div class="text-xs text-slate-300 mt-1 whitespace-pre-wrap">${escapeAdminHtml(user.kycNotes || user.kycReason || 'لا توجد ملاحظات بعد')}</div></div>
+                    </div>
+                `;
+                if (kycPanel) kycPanel.innerHTML = kycInfo + `
+                    <div class="mt-4 space-y-3">
+                        <div class="grid grid-cols-2 gap-2">
+                            <select id="kycReviewStatus" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white">
+                                <option value="pending" ${kycStatus === 'pending' ? 'selected' : ''}>قيد المراجعة</option>
+                                <option value="verified" ${kycStatus === 'verified' ? 'selected' : ''}>معتمد</option>
+                                <option value="rejected" ${kycStatus === 'rejected' ? 'selected' : ''}>مرفوض</option>
+                                <option value="not_started" ${kycStatus === 'not_started' ? 'selected' : ''}>لم يبدأ</option>
+                            </select>
+                            <button onclick="reviewCurrentUserKyc()" class="px-3 py-2 bg-cyan-500/15 text-cyan-300 border border-cyan-500/20 rounded-xl text-[10px] font-bold">تحديث حالة KYC</button>
+                        </div>
+                        <textarea id="kycReviewNotes" rows="3" placeholder="أدخل ملاحظات المراجعة أو سبب الرفض..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">${escapeAdminHtml(user.kycNotes || '')}</textarea>
+                    </div>
+                `;
                 transactions.innerHTML = data.transactions?.length ? data.transactions.map(item => `<div class="flex justify-between gap-3 border-b border-slate-800 pb-2"><span>${escapeAdminHtml(item.type)} · ${escapeAdminHtml(item.status)}</span><b class="text-amber-300">${Number(item.amount || 0).toFixed(2)} $</b></div>`).join('') : '<span class="text-slate-500">لا توجد معاملات</span>';
                 audit.innerHTML = data.auditLogs?.length ? data.auditLogs.map(item => `<div class="border-b border-slate-800 pb-2"><b class="text-cyan-300">${escapeAdminHtml(item.action)}</b><span class="text-slate-500 mr-2">${escapeAdminHtml(item.adminId?.email || 'مدير')} · ${escapeAdminHtml(new Date(item.createdAt).toLocaleString('ar'))}</span><div class="text-slate-400 mt-1">${formatAuditDetails(item.details || {})}</div></div>`).join('') : '<span class="text-slate-500">لا توجد تعديلات مسجلة</span>';
                 sessions.innerHTML = data.sessions?.length ? data.sessions.map(item => `<div class="border-b border-slate-800 pb-2"><span class="text-slate-300">${escapeAdminHtml(item.userAgent || 'جهاز غير معروف')}</span><span class="block text-slate-500">${escapeAdminHtml(item.ip || '-')} · آخر نشاط ${escapeAdminHtml(new Date(item.lastSeenAt).toLocaleString('ar'))}</span></div>`).join('') : '<span class="text-slate-500">لا توجد جلسات نشطة</span>';
             } catch (error) { summary.innerHTML = `<span class="text-rose-300">${escapeAdminHtml(error.message)}</span>`; }
+        }
+        async function reviewCurrentUserKyc() {
+            if (!currentDetailsUserId) return;
+            const status = document.getElementById('kycReviewStatus')?.value || 'pending';
+            const notes = document.getElementById('kycReviewNotes')?.value || '';
+            try {
+                const response = await fetch(`/api/admin/users/${encodeURIComponent(currentDetailsUserId)}/kyc-review`, {
+                    method: 'POST',
+                    headers: adminJsonHeaders(),
+                    body: JSON.stringify({ status, notes })
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'تعذر تحديث حالة KYC');
+                showToast(data.message || 'تم تحديث حالة KYC');
+                loadUserDetails(currentDetailsUserId);
+                fetchUsersList(usersCurrentPage);
+                loadOverviewKycSummary();
+            } catch (error) { showToast(error.message); }
         }
         async function revokeDetailsSessions() { if (!currentDetailsUserId || !await showAdminConfirm('سيتم إنهاء جلسات المستخدم الحالية. هل تتابع؟', 'إنهاء الجلسات')) return; const response = await fetch(`/api/admin/users/${encodeURIComponent(currentDetailsUserId)}/revoke-sessions`, { method: 'POST' }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر إنهاء الجلسات'); showToast(data.message || 'تم إنهاء الجلسات'); loadUserDetails(currentDetailsUserId); }
         async function verifyDetailsEmail() { if (!currentDetailsUserId) return; const response = await fetch(`/api/admin/users/${encodeURIComponent(currentDetailsUserId)}/verify-email`, { method: 'POST' }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر توثيق البريد'); showToast(data.message || 'تم توثيق البريد'); loadUserDetails(currentDetailsUserId); }
@@ -812,12 +1037,12 @@
             const actionText = isBanned ? 'حظر' : 'إلغاء حظر';
             if (!await showAdminConfirm(`هل أنت متأكد من رغبتك في ${actionText} هذا المستخدم؟`, `${actionText} مستخدم`)) return;
 
-            const token = adminStorageGetItem('adminToken');
+            const token = getAdminAuthToken();
             if (!token) return showToast('انتهت جلسة الإدارة، يرجى تسجيل الدخول مجددًا');
             try {
                 const res = await fetch('/api/admin/users/toggle-ban', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    headers: adminJsonHeaders(),
                     body: JSON.stringify({ userId, isBanned })
                 });
                 const data = await res.json();
@@ -831,13 +1056,14 @@
         }
 
         async function fetchTransactionsList(page = 1) {
-            const token = localStorage.getItem('token');
+            const token = getAdminAuthToken();
             const status = document.getElementById('filterTxStatus').value;
             const type = document.getElementById('filterTxType').value;
+            const params = new URLSearchParams({ status, type, network: document.getElementById('filterTxNetwork')?.value || '', search: document.getElementById('txSearch')?.value.trim() || '', from: document.getElementById('txFrom')?.value || '', to: document.getElementById('txTo')?.value || '', page, limit: 10 });
 
             try {
-                const res = await fetch(`/api/admin/withdrawals?status=${status}&type=${type}&page=${page}&limit=10`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                const res = await fetch(`/api/admin/withdrawals?${params.toString()}`, {
+                    headers: adminHeaders()
                 });
 
                 if (res.status === 401 || res.status === 403) return adminLogout();
@@ -851,7 +1077,7 @@
 
                     const tbody = document.getElementById('tblTransactionsBody');
                     if (!data.withdrawals || data.withdrawals.length === 0) {
-                        tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-500">لا توجد طلبات مطابقة</td></tr>`;
+                        tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500">لا توجد طلبات مطابقة</td></tr>`;
                         return;
                     }
                     tbody.innerHTML = data.withdrawals.map(tx => {
@@ -868,15 +1094,17 @@
 
                         return `
                             <tr>
+                                <td class="p-4"><input type="checkbox" class="transaction-select-checkbox" value="${tx._id}" onchange="updateTransactionSelectionCount()" aria-label="تحديد المعاملة"></td>
                                 <td class="p-4 font-bold text-white">${escapeAdminHtml(tx.userId ? tx.userId.email : 'غير معروف')}</td>
-                                <td class="p-4 font-semibold text-slate-300">${tx.type === 'withdraw' ? 'سحب رصيد' : 'شحن/إيداع'}</td>
+                                <td class="p-4 font-semibold text-slate-300">${tx.type === 'withdraw' ? 'سحب رصيد' : 'شحن/إيداع'}<span class="block text-[9px] text-slate-500">${escapeAdminHtml(tx.network || '-')}</span>${tx.type === 'withdraw' && tx.riskLevel !== 'low' ? `<span class="inline-block mt-1 px-2 py-0.5 rounded bg-rose-500/15 text-rose-300 text-[9px] font-bold">خطر ${escapeAdminHtml(tx.riskLevel === 'high' ? 'مرتفع' : 'متوسط')} (${Number(tx.riskScore || 0)})</span>` : ''}</td>
                                 <td class="p-4 text-amber-400 font-mono font-bold">${Number(tx.amount || 0).toFixed(2)} $</td>
                                 <td class="p-4 text-slate-300 font-mono text-[11px] select-all">${escapeAdminHtml(tx.walletAddress || tx.hash || 'غير محدد')}</td>
                                 <td class="p-4">${statusBadge}</td>
-                                <td class="p-4 space-x-1 space-x-reverse">${actionButtons}</td>
+                                <td class="p-4 space-x-1 space-x-reverse"><button onclick="showTransactionDetails('${tx._id}')" class="px-2 py-1 bg-cyan-500/15 text-cyan-300 rounded-lg text-[10px]">تفاصيل</button>${actionButtons}</td>
                             </tr>
                         `;
                     }).join('');
+                    updateTransactionSelectionCount();
                 }
             } catch (e) { console.error('خطأ المعاملات:', e); }
         }
@@ -886,18 +1114,41 @@
             if(target >= 1 && target <= txTotalPages) fetchTransactionsList(target);
         }
 
+        function selectedTransactionIds() { return [...document.querySelectorAll('.transaction-select-checkbox:checked')].map(input => input.value); }
+        function updateTransactionSelectionCount() { const count = selectedTransactionIds().length; const label = document.getElementById('transactionSelectionCount'); if (label) label.innerText = count ? `تم تحديد ${count} معاملة` : 'لم يتم تحديد معاملات'; }
+        function toggleAllTransactions(checked) { document.querySelectorAll('.transaction-select-checkbox').forEach(input => { input.checked = checked; }); updateTransactionSelectionCount(); }
+        function clearTransactionSelection() { toggleAllTransactions(false); }
+        async function bulkWithdrawalAction(action) { const transactionIds = selectedTransactionIds(); if (!transactionIds.length) return showToast('حدد معاملة واحدة على الأقل'); if (!await showAdminConfirm(`سيتم ${action === 'approve' ? 'قبول' : 'رفض'} ${transactionIds.length} معاملات. هل تتابع؟`, 'إجراء مالي جماعي')) return; const response = await fetch('/api/admin/withdrawals/bulk-action', { method: 'POST', headers: adminJsonHeaders(), body: JSON.stringify({ transactionIds, action }) }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر تنفيذ الإجراء'); showToast(`تمت معالجة ${data.processed || 0} معاملة، وفشل ${data.failed || 0}`); clearTransactionSelection(); fetchTransactionsList(txCurrentPage); }
+        async function showTransactionDetails(transactionId) {
+            const modal = document.getElementById('transactionDetailsModal');
+            const content = document.getElementById('transactionDetailsContent');
+            const audit = document.getElementById('transactionDetailsAudit');
+            modal.classList.remove('hide');
+            modal.classList.add('flex');
+            content.innerHTML = 'جاري التحميل...';
+            try {
+                const response = await fetch(`/api/admin/withdrawals/${encodeURIComponent(transactionId)}`);
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'تعذر تحميل التفاصيل');
+                const tx = data.transaction;
+                content.innerHTML = `<div class="grid grid-cols-2 gap-2"><span>المستخدم<br><b>${escapeAdminHtml(tx.userId?.email || '-')}</b></span><span>المبلغ<br><b class="text-amber-300">${Number(tx.amount || 0).toFixed(2)} $</b></span><span>النوع<br><b>${escapeAdminHtml(tx.type)}</b></span><span>الحالة<br><b>${escapeAdminHtml(tx.status)}</b></span><span>الشبكة<br><b>${escapeAdminHtml(tx.network || '-')}</b></span><span>التاريخ<br><b>${escapeAdminHtml(new Date(tx.createdAt).toLocaleString('ar'))}</b></span></div><p class="mt-3 break-all">الهاش: ${escapeAdminHtml(tx.txHash || '-')}</p><p class="break-all">المحفظة: ${escapeAdminHtml(tx.walletAddress || '-')}</p>`;
+                audit.innerHTML = data.auditLogs?.length ? `<h4 class="font-bold text-white mt-4">سجل القرار</h4>${data.auditLogs.map(item => `<div class="border-b border-slate-800 pb-2">${escapeAdminHtml(item.action)} · ${escapeAdminHtml(item.adminId?.email || 'مدير')} · ${escapeAdminHtml(new Date(item.createdAt).toLocaleString('ar'))}</div>`).join('')}` : '';
+            } catch (error) { content.innerHTML = `<span class="text-rose-300">${escapeAdminHtml(error.message)}</span>`; }
+        }
+        function closeTransactionDetails() { const modal = document.getElementById('transactionDetailsModal'); modal.classList.add('hide'); modal.classList.remove('flex'); }
+
         function toggleAddVipLevel(force) { const panel = document.getElementById('addVipLevelPanel'); panel.classList.toggle('hidden', force === undefined ? !panel.classList.contains('hidden') : !force); }
-        async function createVipLevel() { const payload = { code: document.getElementById('newVipCode').value.trim().toUpperCase(), name: document.getElementById('newVipName').value.trim(), price: Number(document.getElementById('newVipPrice').value), tasks: Number(document.getElementById('newVipTasks').value), dailyProfit: Number(document.getElementById('newVipDaily').value), monthlyProfit: document.getElementById('newVipMonthly').value ? Number(document.getElementById('newVipMonthly').value) : undefined, yearlyProfit: document.getElementById('newVipYearly').value ? Number(document.getElementById('newVipYearly').value) : undefined }; if (!payload.code || !payload.name || !Number.isFinite(payload.price) || !Number.isInteger(payload.tasks) || !Number.isFinite(payload.dailyProfit)) return showToast('أكمل بيانات المستوى بقيم صحيحة'); try { const response = await fetch('/api/admin/vip-levels', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` }, body: JSON.stringify(payload) }); const data = await response.json(); if (!response.ok) throw new Error(data.error || 'تعذر حفظ المستوى'); showToast('تم إنشاء المستوى بنجاح'); document.querySelectorAll('#addVipLevelPanel input').forEach(input => { input.value = ''; }); toggleAddVipLevel(false); fetchVipPlans(); } catch (error) { showToast(error.message); } }
+        async function createVipLevel() { const payload = { code: document.getElementById('newVipCode').value.trim().toUpperCase(), name: document.getElementById('newVipName').value.trim(), price: Number(document.getElementById('newVipPrice').value), tasks: Number(document.getElementById('newVipTasks').value), dailyProfit: Number(document.getElementById('newVipDaily').value), monthlyProfit: document.getElementById('newVipMonthly').value ? Number(document.getElementById('newVipMonthly').value) : undefined, yearlyProfit: document.getElementById('newVipYearly').value ? Number(document.getElementById('newVipYearly').value) : undefined }; if (!payload.code || !payload.name || !Number.isFinite(payload.price) || !Number.isInteger(payload.tasks) || !Number.isFinite(payload.dailyProfit)) return showToast('أكمل بيانات المستوى بقيم صحيحة'); try { const response = await fetch('/api/admin/vip-levels', { method: 'POST', headers: adminJsonHeaders(), body: JSON.stringify(payload) }); const data = await response.json(); if (!response.ok) throw new Error(data.error || 'تعذر حفظ المستوى'); showToast('تم إنشاء المستوى بنجاح'); document.querySelectorAll('#addVipLevelPanel input').forEach(input => { input.value = ''; }); toggleAddVipLevel(false); fetchVipPlans(); } catch (error) { showToast(error.message); } }
 
         async function handleWithdrawalAction(transactionId, action) {
             const actionText = action === 'approve' ? 'الموافقة على' : 'رفض';
             if (!await showAdminConfirm(`هل أنت متأكد من رغبتك في ${actionText} هذا الطلب؟`, `${actionText} طلب`)) return;
 
-            const token = localStorage.getItem('token');
+            const token = getAdminAuthToken();
             try {
                 const res = await fetch('/api/admin/withdrawals/action', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    headers: adminJsonHeaders(),
                     body: JSON.stringify({ transactionId, action })
                 });
                 const data = await res.json();
@@ -925,7 +1176,7 @@
         }
 
         async function submitEditUser() {
-            const token = localStorage.getItem('token');
+            const token = getAdminAuthToken();
             const userId = document.getElementById('editUserId').value;
             const tierCode = document.getElementById('editUserTier').value;
             const balance = parseFloat(document.getElementById('editUserBalance').value);
@@ -933,7 +1184,7 @@
             const role = document.getElementById('editUserRole').value;
 
             try {
-                const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+                const headers = adminJsonHeaders();
                 const operations = [];
                 if (canAdmin('finance')) operations.push(['الرصيد', fetch('/api/admin/users/update', { method: 'POST', headers, body: JSON.stringify({ userId, balance }) })]);
                 if (canAdmin('manage_users') && password) operations.push(['بيانات الحساب', fetch('/api/admin/users/update-account', { method: 'POST', headers, body: JSON.stringify({ userId, password }) })]);
@@ -969,7 +1220,7 @@
             modal.classList.remove('hide');
             content.innerHTML = 'جاري تحميل الشجرة...';
             try {
-                const response = await fetch(`/api/admin/referrals/tree/${encodeURIComponent(userId)}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
+                const response = await fetch(`/api/admin/referrals/tree/${encodeURIComponent(userId)}`, { headers: adminHeaders() });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.error || 'تعذر تحميل الشجرة');
                 content.innerHTML = referralTreeNodeHtml(data.tree);
@@ -980,10 +1231,9 @@
         // --- إدارة مستويات VIP المربوطة بالسيرفر بشكل مكتمل ونظامي ---
         async function fetchVipPlans() {
             const container = document.getElementById('plansContainer');
-            const token = localStorage.getItem('token');
             try {
                 const res = await fetch('/api/vip-levels', {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: adminHeaders()
                 });
                 const levels = await res.json();
                 
@@ -1048,7 +1298,7 @@
             const monthlyProfit = parseNum(`monthlyProfit-${code}`, dailyProfit * 30);
             const yearlyProfit = parseNum(`yearlyProfit-${code}`, dailyProfit * 365);
             
-            const token = localStorage.getItem('token');
+            const token = getAdminAuthToken();
 
             if (!name || tasksCount <= 0) {
                 return showToast('يرجى التأكد من كتابة اسم المستوى وعدد مهام صحيح');
@@ -1084,13 +1334,12 @@
             }
         }
 
-        async function deleteVipPlan(code) { if (!await showAdminConfirm(`هل أنت متأكد من حذف المستوى ${code}؟ لا يمكن التراجع عن هذا الإجراء.`, 'حذف مستوى VIP')) return; try { const response = await fetch(`/api/admin/vip-levels/${encodeURIComponent(code)}`, { method: 'DELETE', headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }); const data = await response.json(); if (!response.ok) throw new Error(data.error || 'تعذر حذف المستوى'); showToast(data.message || 'تم حذف المستوى'); fetchVipPlans(); } catch (error) { showToast(error.message); } }
+        async function deleteVipPlan(code) { if (!await showAdminConfirm(`هل أنت متأكد من حذف المستوى ${code}؟ لا يمكن التراجع عن هذا الإجراء.`, 'حذف مستوى VIP')) return; try { const response = await fetch(`/api/admin/vip-levels/${encodeURIComponent(code)}`, { method: 'DELETE', headers: adminHeaders() }); const data = await response.json(); if (!response.ok) throw new Error(data.error || 'تعذر حذف المستوى'); showToast(data.message || 'تم حذف المستوى'); fetchVipPlans(); } catch (error) { showToast(error.message); } }
 
         async function fetchGameSettings() {
-            const token = localStorage.getItem('token');
             try {
                 const res = await fetch('/api/admin/settings/games', {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: adminHeaders()
                 });
                 const data = await res.json();
                 if (res.ok && data.success && data.settings) {
@@ -1105,7 +1354,7 @@
         }
 
         async function saveGameSettings() {
-            const token = localStorage.getItem('token');
+            const token = getAdminAuthToken();
             const spinMin = parseFloat(document.getElementById('cfgSpinMin').value);
             const spinMax = parseFloat(document.getElementById('cfgSpinMax').value);
             const boxMin = parseFloat(document.getElementById('cfgBoxMin').value);
@@ -1129,14 +1378,13 @@
             const audienceType = document.getElementById('broadcastAudienceType').value;
             const audienceValue = document.getElementById('broadcastAudienceValue').value;
             const scheduledValue = document.getElementById('broadcastScheduledAt').value;
-            const token = localStorage.getItem('token');
 
             if(!title || !body) return showToast('يرجى ملء جميع الحقول');
 
             try {
                 const res = await fetch('/api/admin/broadcast', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    headers: adminJsonHeaders(),
                     body: JSON.stringify({ title, body, audienceType, audienceValue, scheduledAt: scheduledValue ? new Date(scheduledValue).toISOString() : undefined })
                 });
                 const data = await res.json();
@@ -1159,7 +1407,23 @@
                 preview.innerHTML = `<b class="block text-white">${escapeAdminHtml(title)}</b><span>${escapeAdminHtml(body)}</span>`; 
             }
 
-        async function fetchBroadcasts() { const tbody = document.getElementById('tblBroadcastsBody'); if (!tbody) return; try { const response = await fetch('/api/admin/broadcasts', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }); const data = await response.json(); if (!response.ok) throw new Error(data.error); const audience = { all: 'الجميع', active: 'النشطون', tier: 'مستوى ', role: 'دور ' }; tbody.innerHTML = data.campaigns?.length ? data.campaigns.map(item => `<tr><td class="p-4"><b class="text-white">${escapeAdminHtml(item.title)}</b><span class="block text-[10px] text-slate-500">${escapeAdminHtml(item.body)}</span></td><td class="p-4 text-slate-400">${audience[item.audienceType] || ''}${escapeAdminHtml(item.audienceValue || '')}</td><td class="p-4 text-cyan-300">${escapeAdminHtml(item.status)}</td><td class="p-4 text-emerald-400">${item.internalSent || 0}/${item.recipientCount || 0}</td><td class="p-4 text-amber-400">${item.pushSent || 0} <span class="text-rose-300">(${item.pushFailed || 0})</span></td><td class="p-4 text-slate-300">${item.readCount || 0}</td></tr>`).join('') : '<tr><td colspan="6" class="p-4 text-center text-slate-500">لا توجد حملات بعد</td></tr>'; } catch (error) { tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-rose-300">${escapeAdminHtml(error.message || 'تعذر تحميل الحملات')}</td></tr>`; } }
+        async function fetchBroadcasts() { const tbody = document.getElementById('tblBroadcastsBody'); if (!tbody) return; try { const response = await fetch('/api/admin/broadcasts', { headers: adminHeaders() }); const data = await response.json(); if (!response.ok) throw new Error(data.error); const audience = { all: 'الجميع', active: 'النشطون', tier: 'مستوى ', role: 'دور ' }; tbody.innerHTML = data.campaigns?.length ? data.campaigns.map(item => `<tr><td class="p-4"><b class="text-white">${escapeAdminHtml(item.title)}</b><span class="block text-[10px] text-slate-500">${escapeAdminHtml(item.body)}</span></td><td class="p-4 text-slate-400">${audience[item.audienceType] || ''}${escapeAdminHtml(item.audienceValue || '')}</td><td class="p-4 text-cyan-300">${escapeAdminHtml(item.status)}</td><td class="p-4 text-emerald-400">${item.internalSent || 0}/${item.recipientCount || 0}</td><td class="p-4 text-amber-400">${item.pushSent || 0} <span class="text-rose-300">(${item.pushFailed || 0})</span></td><td class="p-4 text-slate-300">${item.readCount || 0}</td></tr>`).join('') : '<tr><td colspan="6" class="p-4 text-center text-slate-500">لا توجد حملات بعد</td></tr>'; } catch (error) { tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-rose-300">${escapeAdminHtml(error.message || 'تعذر تحميل الحملات')}</td></tr>`; } }
+
+        function loadBroadcastPreview() {
+            const preview = document.getElementById('broadcastPreview');
+            const title = document.getElementById('txtBroadcastTitle')?.value?.trim() || '';
+            const body = document.getElementById('txtBroadcastBody')?.value?.trim() || '';
+            if (!preview) return;
+            if (!title && !body) { preview.classList.add('hidden'); return; }
+            preview.classList.remove('hidden');
+            preview.innerHTML = `
+                <div class="bg-slate-950 border border-slate-800 rounded-2xl p-3 space-y-2">
+                    <div class="flex items-center justify-between"><span class="text-[10px] text-amber-300 font-bold">معاينة الإشعار</span><span class="text-[10px] text-slate-400">OPERIX</span></div>
+                    <div class="text-sm font-bold text-white">${escapeAdminHtml(title || 'عنوان الإشعار')}</div>
+                    <div class="text-[10px] text-slate-300">${escapeAdminHtml(body || 'نص الإشعار سيظهر هنا')}</div>
+                </div>
+            `;
+        }
 
         async function adminLogout() {
             const token = localStorage.getItem('adminToken');
@@ -1197,10 +1461,12 @@
                 refreshAdminAlerts();
             });
             channel.subscribe('notification_created', () => refreshAdminAlerts());
+            channel.subscribe('admin_transaction_updated', () => { fetchTransactionsList(txCurrentPage); refreshAdminAlerts(); });
+            channel.subscribe('admin_transaction_created', () => { fetchTransactionsList(1); refreshAdminAlerts(); });
         }
 
         window.onload = () => {
-            const token = localStorage.getItem('adminToken');
+            const token = getAdminAuthToken();
             const sessionHeaders = token ? { Authorization: `Bearer ${token}` } : {};
             fetch('/api/auth/admin-session', { credentials: 'same-origin', headers: sessionHeaders })
                 .then(async response => {

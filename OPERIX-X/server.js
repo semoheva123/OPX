@@ -21,7 +21,7 @@ const Staking = require('./src/models/Staking');
 const VipLevel = require('./src/models/VipLevel');
 const GameSetting = require('./src/models/GameSetting');
 const { connectDatabase, closeDatabase } = require('./src/config/database');
-const { scheduleDailyTaskReset } = require('./src/jobs/dailyTasksReset');
+const { resetDailyTasks, scheduleDailyTaskReset } = require('./src/jobs/dailyTasksReset');
 const { processScheduledBroadcasts } = require('./src/controllers/adminController');
 
 
@@ -62,7 +62,15 @@ let gameSettings = {
   dailyGameRewardCap: 100
   , referralsPerCycle: 25
 };
-const app = createApp({ resend, webpush, gameSettings });
+const app = createApp({
+  resend,
+  webpush,
+  gameSettings,
+  cronHandlers: {
+    'reset-daily-tasks': resetDailyTasks,
+    'process-broadcasts': () => processScheduledBroadcasts(webpush)
+  }
+});
 
 // دالة تهيئة مستويات VIP الافتراضية
 async function seedVipLevels() {

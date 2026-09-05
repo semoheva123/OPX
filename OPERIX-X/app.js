@@ -49,6 +49,20 @@ document.addEventListener('DOMContentLoaded', () => {
     loadUserProfile();
     changeLanguage(localStorage.getItem('ag_language') || 'ar');
     document.getElementById('aiInput')?.addEventListener('keydown', event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendAiMessage(); } });
+    const passwordInput = document.getElementById('regPassword');
+    const passwordConfirmInput = document.getElementById('regPasswordConfirm');
+    const updatePasswordFeedback = () => {
+        const password = passwordInput?.value || '';
+        const score = (password.length >= 8 ? 25 : 0) + (/[a-zA-Z]/.test(password) ? 25 : 0) + (/\d/.test(password) ? 25 : 0) + (/[^a-zA-Z\d]/.test(password) ? 25 : 0);
+        const strength = document.getElementById('registerPasswordStrength');
+        const hint = document.getElementById('registerPasswordHint');
+        if (strength) { strength.style.width = `${score}%`; strength.className = `h-full rounded-full transition-all ${score >= 75 ? 'bg-emerald-400' : score >= 50 ? 'bg-amber-400' : score ? 'bg-rose-400' : 'bg-slate-700'}`; }
+        if (hint) hint.innerText = score >= 75 ? 'كلمة المرور قوية.' : 'استخدم 8 أحرف على الأقل مع حروف وأرقام ورمز.';
+        const match = document.getElementById('registerPasswordMatch');
+        if (match) { match.innerText = passwordConfirmInput?.value ? (password === passwordConfirmInput.value ? 'كلمتا المرور متطابقتان.' : 'كلمتا المرور غير متطابقتين.') : ''; match.className = `block text-[10px] mt-1 ${passwordConfirmInput?.value && password === passwordConfirmInput.value ? 'text-emerald-300' : 'text-rose-300'}`; }
+    };
+    passwordInput?.addEventListener('input', updatePasswordFeedback);
+    passwordConfirmInput?.addEventListener('input', updatePasswordFeedback);
 });
 
 let gameConfig = { spinMin: 1, spinMax: 10, boxMin: 5, boxMax: 25, referralsPerCycle: 25 };
@@ -75,15 +89,16 @@ async function loadGameConfig() {
 
 async function loadPlatformStatus() {
     const status = document.getElementById('platformStatus');
-    if (!status) return;
+    const homeStatus = document.getElementById('homePlatformStatus');
+    if (!status && !homeStatus) return;
     try {
         const response = await fetch('/api/health');
         if (!response.ok) throw new Error('health unavailable');
-        status.innerText = 'الخدمة: متصلة';
-        status.className = 'text-[10px] text-emerald-400';
+        if (status) { status.innerText = 'الخدمة: متصلة'; status.className = 'text-[10px] text-emerald-400'; }
+        if (homeStatus) { homeStatus.innerText = 'الخدمة متصلة'; homeStatus.className = 'text-[10px] font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2.5 py-1'; }
     } catch (error) {
-        status.innerText = 'الخدمة: غير متاحة';
-        status.className = 'text-[10px] text-rose-300';
+        if (status) { status.innerText = 'الخدمة: غير متاحة'; status.className = 'text-[10px] text-rose-300'; }
+        if (homeStatus) { homeStatus.innerText = 'الخدمة تحت التحقق'; homeStatus.className = 'text-[10px] font-bold text-rose-300 bg-rose-500/10 border border-rose-500/20 rounded-full px-2.5 py-1'; }
     }
 }
 
@@ -713,8 +728,11 @@ async function handleRegister(e) {
     e.preventDefault();
     const email = document.getElementById('regEmail').value.trim();
     const password = document.getElementById('regPassword').value;
+    const passwordConfirm = document.getElementById('regPasswordConfirm').value;
     const referralCode = document.getElementById('regReferralCode').value.trim();
     const btn = document.getElementById('btnRegisterSubmit');
+
+    if (password !== passwordConfirm) { showToast('كلمتا المرور غير متطابقتين'); return; }
 
     btn.disabled = true;
     btn.innerText = 'جاري إنشاء الحساب...';
@@ -821,6 +839,7 @@ function updateProfileUI() {
 
     updateProfileAvatar(currentUserData.profileImage);
     updateVerificationStatus(currentUserData.twoFactorEnabled);
+    updateKycProfileUI();
 
     // البريد واسم المستخدم
     const displayNameEl = document.getElementById('lblProfileDisplayName');
@@ -843,6 +862,97 @@ function updateProfileUI() {
 
     if (totalEarnedEl) totalEarnedEl.innerText = `$${parseFloat(totalEarned).toFixed(2)}`;
     if (totalWithdrawnEl) totalWithdrawnEl.innerText = `$${parseFloat(totalWithdrawn).toFixed(2)}`;
+}
+
+function updateKycProfileUI() {
+    const statusBadge = document.getElementById('kycProfileStatusBadge');
+    const infoText = document.getElementById('kycProfileInfo');
+    const fullNameInput = document.getElementById('kycFullNameInput');
+    const documentTypeInput = document.getElementById('kycDocumentTypeInput');
+    const documentNumberInput = document.getElementById('kycDocumentNumberInput');
+    const countryInput = document.getElementById('kycCountryInput');
+    const documentUrlInput = document.getElementById('kycDocumentUrlInput');
+    const submitButton = document.getElementById('btnSubmitUserKyc');
+    if (!statusBadge && !infoText && !fullNameInput && !documentTypeInput && !documentNumberInput && !countryInput && !documentUrlInput && !submitButton) return;
+
+    const status = currentUserData?.kycStatus || 'not_started';
+    const lookup = {
+        not_started: { label: 'لم يبدأ', className: 'bg-slate-800 text-slate-300' },
+        pending: { label: 'قيد المراجعة', className: 'bg-amber-500/15 text-amber-300 border border-amber-500/20' },
+        verified: { label: 'معتمد', className: 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/20' },
+        rejected: { label: 'مرفوض', className: 'bg-rose-500/15 text-rose-300 border border-rose-500/20' }
+    };
+
+    if (statusBadge) {
+        const config = lookup[status] || lookup.not_started;
+        statusBadge.className = `text-[10px] font-bold px-2.5 py-1 rounded-full ${config.className}`;
+        statusBadge.innerText = config.label;
+    }
+
+    const statusText = {
+        not_started: 'قم بإرسال البيانات لتوثيق حسابك ومراجعتها من الإدارة.',
+        pending: 'تم إرسال طلبك بنجاح. جاري مراجعة الوثائق من الإدارة.',
+        verified: 'تم اعتماد حسابك بنجاح. يمكنك استخدام جميع ميزات المنصة بدون قيود.',
+        rejected: 'تم رفض الوثائق الحالية. أعد إرسال بيانات جديدة أو عدّل الوثيقة وقدمها مجددًا.'
+    };
+    if (infoText) infoText.innerText = statusText[status] || statusText.not_started;
+
+    if (fullNameInput) fullNameInput.value = currentUserData?.kycFullName || '';
+    if (documentTypeInput) documentTypeInput.value = currentUserData?.kycDocumentType || '';
+    if (documentNumberInput) documentNumberInput.value = currentUserData?.kycDocumentNumber || '';
+    if (countryInput) countryInput.value = currentUserData?.kycCountry || '';
+    if (documentUrlInput) documentUrlInput.value = currentUserData?.kycDocumentUrl || '';
+    if (submitButton) {
+        const locked = status === 'pending' || status === 'verified';
+        submitButton.disabled = locked;
+        submitButton.classList.toggle('opacity-50', locked);
+        submitButton.classList.toggle('cursor-not-allowed', locked);
+        submitButton.innerText = status === 'verified' ? 'تم اعتماد التوثيق' : status === 'pending' ? 'طلب التوثيق قيد المراجعة' : 'إرسال طلب التوثيق';
+    }
+}
+
+async function submitUserKyc() {
+    const token = localStorage.getItem('token');
+    if (!token) return showToast('يجب تسجيل الدخول أولاً');
+
+    const fullName = document.getElementById('kycFullNameInput')?.value.trim() || '';
+    const documentType = document.getElementById('kycDocumentTypeInput')?.value || '';
+    const documentNumber = document.getElementById('kycDocumentNumberInput')?.value.trim() || '';
+    const country = document.getElementById('kycCountryInput')?.value.trim() || '';
+    const documentUrl = document.getElementById('kycDocumentUrlInput')?.value.trim() || '';
+    const documentFile = document.getElementById('kycDocumentFileInput')?.files?.[0];
+
+    try {
+        let documentImage = '';
+        if (documentFile) {
+            if (!['image/jpeg', 'image/png', 'image/webp'].includes(documentFile.type)) return showToast('يرجى اختيار صورة JPG أو PNG أو WebP');
+            if (documentFile.size > 650 * 1024) return showToast('حجم صورة الوثيقة يجب ألا يتجاوز 650 كيلوبايت');
+            documentImage = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(new Error('تعذر قراءة صورة الوثيقة'));
+                reader.readAsDataURL(documentFile);
+            });
+        }
+
+        const response = await fetch('/api/user/kyc/submit', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ fullName, documentType, documentNumber, country, documentUrl, documentImage })
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'فشل إرسال طلب KYC');
+
+        currentUserData = { ...(currentUserData || {}), ...data.user, kycStatus: data.user?.kycStatus || 'pending' };
+        updateProfileUI();
+        showToast(data.message || 'تم إرسال طلب التوثيق بنجاح', 'win');
+    } catch (error) {
+        showToast(`❌ ${error.message}`);
+    }
 }
 
 function updateVerificationStatus(isEnabled) {
@@ -1000,6 +1110,7 @@ async function loadUserProfile() {
             document.getElementById('appView').classList.remove('hide');
             document.getElementById('liveTickerBar').classList.remove('hide');
             document.getElementById('appNavBar').classList.remove('hide');
+            maybeShowOnboarding();
             startNotificationPolling();
             startRealtimeStream();
             
@@ -1049,6 +1160,43 @@ async function loadUserProfile() {
     } catch(err) {
         logout();
     }
+}
+
+function onboardingState() {
+    return [
+        { label: 'تأكيد البريد الإلكتروني', done: Boolean(currentUserData?.emailVerified), action: () => { closeOnboarding(); switchTab('profile'); document.getElementById('btnVerifyEmailProfile')?.click(); } },
+        { label: 'تفعيل المصادقة الثنائية', done: Boolean(currentUserData?.twoFactorEnabled), action: () => { closeOnboarding(); switchTab('profile'); } },
+        { label: 'تثبيت محفظة السحب', done: Boolean(currentUserData?.walletAddress?.trim()), action: () => { closeOnboarding(); switchTab('profile'); document.getElementById('profileWalletAddress')?.focus(); } },
+        { label: 'إكمال توثيق الهوية KYC', done: currentUserData?.kycStatus === 'verified', action: () => { closeOnboarding(); switchTab('profile'); document.getElementById('kycFullNameInput')?.focus(); } }
+    ];
+}
+
+function maybeShowOnboarding() {
+    if (!currentUserData || localStorage.getItem('operix_onboarding_seen') === '1') return;
+    renderOnboarding();
+    document.getElementById('onboardingModal')?.classList.remove('hide');
+}
+
+function renderOnboarding() {
+    const steps = onboardingState();
+    const completed = steps.filter(step => step.done).length;
+    const progress = document.getElementById('onboardingProgress');
+    const label = document.getElementById('onboardingProgressLabel');
+    const container = document.getElementById('onboardingSteps');
+    if (progress) progress.style.width = `${Math.round((completed / steps.length) * 100)}%`;
+    if (label) label.innerText = `${completed} من ${steps.length} خطوات مكتملة`;
+    if (container) container.innerHTML = steps.map((step, index) => `<button type="button" onclick="onboardingState()[${index}].action()" class="w-full flex items-center gap-3 rounded-2xl border ${step.done ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-slate-800 bg-slate-950/45'} p-3 text-right"><span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${step.done ? 'bg-emerald-400/15 text-emerald-300' : 'bg-slate-800 text-slate-400'}"><i class="fa-solid ${step.done ? 'fa-check' : 'fa-arrow-left'} text-xs"></i></span><span class="text-xs font-bold ${step.done ? 'text-emerald-200' : 'text-slate-200'}">${step.label}</span></button>`).join('');
+}
+
+function continueOnboarding() {
+    const nextStep = onboardingState().find(step => !step.done);
+    if (nextStep) return nextStep.action();
+    closeOnboarding();
+}
+
+function closeOnboarding() {
+    localStorage.setItem('operix_onboarding_seen', '1');
+    document.getElementById('onboardingModal')?.classList.add('hide');
 }
 
 function showAuthView(tab = 'login') {
@@ -1646,14 +1794,14 @@ function switchTab(tabName) {
         const el = document.getElementById(`view-${t}`);
         if(el) el.classList.add('hide');
         const nav = document.getElementById(`nav-${t}`);
-        if(nav) nav.className = "flex flex-col items-center flex-1 text-slate-400 transition-all";
+        if(nav) { nav.className = "app-nav-item flex flex-col items-center flex-1 text-slate-400 transition-all"; nav.removeAttribute('aria-current'); }
     });
     
     const targetView = document.getElementById(`view-${tabName}`);
-    if(targetView) targetView.classList.remove('hide');
+    if(targetView) { targetView.classList.remove('hide'); targetView.classList.add('app-tab-view'); }
     
     const activeNav = document.getElementById(`nav-${tabName}`);
-    if(activeNav) activeNav.className = "flex flex-col items-center flex-1 text-amber-500 transition-all";
+    if(activeNav) { activeNav.className = "app-nav-item is-active flex flex-col items-center flex-1 text-amber-500 transition-all"; activeNav.setAttribute('aria-current', 'page'); }
 
     if (tabName === 'profile') {
         updateProfileUI();
@@ -1826,6 +1974,13 @@ async function submitWithdraw() {
     const token = localStorage.getItem('token');
     const btn = document.getElementById('btnSubmitWithdraw');
 
+    if (currentUserData?.kycStatus !== 'verified') {
+        const kycStatus = currentUserData?.kycStatus || 'not_started';
+        showToast(kycStatus === 'pending' ? 'طلب توثيق هويتك قيد المراجعة. انتظر الاعتماد قبل السحب.' : kycStatus === 'rejected' ? 'تم رفض توثيق هويتك. حدّث وثائق KYC قبل السحب.' : 'يجب توثيق هويتك قبل طلب السحب.');
+        switchTab('profile');
+        return;
+    }
+
     if (!walletAddress) {
         showToast('يرجى تثبيت عنوان المحفظة أولاً من الملف الشخصي');
         return;
@@ -1838,15 +1993,18 @@ async function submitWithdraw() {
 
     btn.disabled = true;
     try {
+        const idempotencyKey = sessionStorage.getItem('operix_withdraw_key') || (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
+        sessionStorage.setItem('operix_withdraw_key', idempotencyKey);
         const res = await fetch('/api/wallet/withdraw', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
+            headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'Idempotency-Key': idempotencyKey},
             body: JSON.stringify({ amount, walletAddress, twoFactorCode })
         });
         const data = await res.json();
         if(res.ok) {
             showToast('تم تقديم طلب السحب وخصم المبلغ من محفظتك بنجاح');
             closeWithdrawModal();
+            sessionStorage.removeItem('operix_withdraw_key');
             if (data.wallet) updateWalletData(data.wallet);
             await loadUserProfile(); // مزامنة وتحديث قيم الرصيد في الأماكن كافة فور نجاح الطلب
         } else {

@@ -98,6 +98,26 @@
         .operix-wallet { background-image: radial-gradient(circle at 100% 0%, rgba(247,185,85,.2), transparent 18rem), linear-gradient(135deg, rgba(247,185,85,.13), rgba(8,18,31,.94) 58%); }
         .operix-wallet .bg-slate-950\/60 { background: rgba(3,10,19,.46); border-color: rgba(255,255,255,.09); }
         #appNavBar button { min-height: 48px; }
+        .app-nav-item { position: relative; border-radius: 14px; padding: 5px 4px; }
+        .app-nav-item.is-active { background: rgba(247,185,85,.1); box-shadow: inset 0 -2px 0 rgba(247,185,85,.85); }
+        .app-nav-item:not(.is-active):hover { background: rgba(148,163,184,.07); }
+        .app-tab-view { animation: tabReveal .3s ease both; }
+        @keyframes tabReveal { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .app-tab-view > .glass-card { border-color: rgba(148,163,184,.14); }
+        .company-intro h1 { text-wrap: balance; }
+        .company-intro .intro-feature, .company-intro .about-panel { box-shadow: 0 18px 45px rgba(0,0,0,.16); }
+        .company-intro button, .company-intro a { min-height: 44px; }
+        .auth-panel { box-shadow: 0 24px 80px rgba(0,0,0,.3); }
+        @media (max-width: 480px) {
+            #appNavBar { justify-content: flex-start; overflow-x: auto; scrollbar-width: none; padding-left: 8px; padding-right: 8px; }
+            #appNavBar::-webkit-scrollbar { display: none; }
+            #appNavBar button { flex: 0 0 64px; font-size: 10px; }
+            #appNavBar button i { font-size: 14px; }
+            #appNavBar button span { white-space: nowrap; transform: scale(.92); }
+            .company-intro { padding-left: 14px; padding-right: 14px; }
+            .company-intro h1 { font-size: 2.15rem; }
+            .company-intro .trust-item { padding: 11px; }
+        }
         @media (min-width: 768px) { #appView { max-width: 768px; padding: 2rem; } #appNavBar { max-width: 768px; } }
         .company-intro { min-height: 100vh; background: radial-gradient(circle at 78% 14%, rgba(247,185,85,.16), transparent 23rem), radial-gradient(circle at 8% 78%, rgba(69,214,176,.1), transparent 25rem); }
         .intro-grid { background-image: linear-gradient(rgba(148,163,184,.045) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,.045) 1px, transparent 1px); background-size: 36px 36px; }
@@ -182,6 +202,7 @@
                     <div class="flex flex-wrap gap-3">
                         <button onclick="showAuthView('register')" class="px-6 py-3.5 gold-gradient text-slate-950 rounded-xl text-sm font-black shadow-xl shadow-amber-500/10">إنشاء حساب</button>
                         <button onclick="showAuthView('login')" class="px-6 py-3.5 bg-slate-900/70 text-white border border-slate-700 rounded-xl text-sm font-bold">الدخول إلى حسابي <i class="fa-solid fa-arrow-left mr-2 text-amber-400"></i></button>
+                        <button onclick="openProductTour()" class="px-5 py-3.5 bg-cyan-400/10 text-cyan-200 border border-cyan-400/25 rounded-xl text-sm font-bold"><i class="fa-solid fa-play mr-2"></i> جولة سريعة</button>
                     </div>
                     <div class="grid grid-cols-3 max-w-lg pt-5">
                         <div class="intro-stat pl-4"><strong class="block text-xl text-white">24/7</strong><span class="text-[10px] text-slate-500">الوصول للحساب</span></div>
@@ -190,9 +211,9 @@
                     </div>
                 </div>
                 <div class="relative flex justify-center intro-reveal" style="animation-delay:.12s">
-                    <div class="product-preview" aria-label="معاينة لوحة تحكم OPERIX">
+                    <div class="product-preview" aria-label="معاينة توضيحية للوحة تحكم OPERIX">
                         <div class="preview-topbar"><div class="preview-brand"><i>OP</i><span>OPERIX</span></div><div class="preview-dots"><span></span><span></span><span></span></div></div>
-                        <div class="preview-balance"><small>إجمالي رصيد المحفظة</small><strong>2,480.50</strong><em>USDT &nbsp; +12.8% هذا الشهر</em></div>
+                        <div class="preview-balance"><small>معاينة توضيحية للوحة الحساب</small><strong>بياناتك في مكان واحد</strong><em>الرصيد والنشاط والحماية بوضوح</em></div>
                         <div class="preview-stats"><div class="preview-stat"><span class="preview-label">المهام</span><b>28 / 33</b></div><div class="preview-stat"><span class="preview-label">الأرباح</span><b>+184.20</b></div><div class="preview-stat"><span class="preview-label">الفريق</span><b>24 نشط</b></div></div>
                         <div class="preview-lower"><div class="preview-chart"><span class="preview-label">نشاط الحساب</span><div class="preview-bars"><span></span><span></span><span></span><span></span><span></span><span></span></div></div><div class="preview-security"><span class="preview-label">ضوابط الحساب</span><div class="security-ring"><i class="fa-solid fa-check" aria-hidden="true"></i></div><span class="preview-label">مصادقة وإشعارات</span></div></div>
                     </div>
@@ -209,9 +230,42 @@
                     <div class="space-y-5 text-xs leading-7 text-slate-300"><p>نؤمن أن التقنية الجيدة لا تُقاس بكثرة التعقيد، بل بقدرتها على تحويل المعلومات المتفرقة إلى خطوات واضحة. لذلك نعمل على تقديم واجهات عملية، مؤشرات مفهومة، وتنبيهات تساعد المستخدم على اتخاذ قراراته بوعي، مع إبقاء تفاصيل الحساب والمعاملات قريبة وسهلة المراجعة.</p><p>تُدار العمليات المالية عبر قنوات دفع مشفّرة، مع تطبيق ضوابط أمنية مستوحاة من المعايير المتّبعة لدى الشركات العالمية في قطاع الأصول الرقمية مثل Binance، وذلك وفق نطاق الخدمات والمتطلبات التنظيمية المعمول بها. وتعتمد OPERIX على المصادقة الثنائية، إدارة الجلسات، سجل النشاط، والتحقق من العمليات الحساسة، مع توضيح أن العوائد والمكافآت تقديرية وغير مضمونة.</p><div class="grid sm:grid-cols-3 gap-4 pt-2"><div class="about-principle"><b class="block text-white">الوضوح</b><span class="text-[10px] text-slate-500">بيانات مفهومة قبل كل خطوة</span></div><div class="about-principle"><b class="block text-white">الحماية</b><span class="text-[10px] text-slate-500">ضوابط للحساب والمعاملات</span></div><div class="about-principle"><b class="block text-white">التطور</b><span class="text-[10px] text-slate-500">تحسين مستمر مبني على الاستخدام</span></div></div></div>
                 </div>
             </section>
+            <section id="landing-faq" class="about-panel rounded-3xl p-6 md:p-10 mb-10 intro-reveal" style="animation-delay:.34s">
+                <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-5"><div><span class="about-kicker">FAQ / الأسئلة الشائعة</span><h2 class="text-2xl font-black text-white mt-2">إجابات واضحة قبل أن تبدأ</h2></div><a href="/help.html" class="text-xs font-bold text-cyan-300 hover:text-cyan-200">عرض مركز المساعدة <i class="fa-solid fa-arrow-left mr-1"></i></a></div>
+                <div class="space-y-2">
+                    <details class="group rounded-2xl border border-slate-800 bg-slate-950/45 p-4"><summary class="cursor-pointer list-none text-sm font-bold text-white flex items-center justify-between gap-3">ما الذي تقدمه OPERIX؟<i class="fa-solid fa-chevron-down text-[10px] text-slate-500 transition-transform group-open:rotate-180"></i></summary><p class="text-xs leading-6 text-slate-400 mt-3">توفر المنصة مساحة موحدة لمتابعة المهام والحساب والإحالات والمكافآت وسجل المعاملات، مع أدوات أمان ومؤشرات تساعدك على فهم نشاطك.</p></details>
+                    <details class="group rounded-2xl border border-slate-800 bg-slate-950/45 p-4"><summary class="cursor-pointer list-none text-sm font-bold text-white flex items-center justify-between gap-3">هل العوائد أو المكافآت مضمونة؟<i class="fa-solid fa-chevron-down text-[10px] text-slate-500 transition-transform group-open:rotate-180"></i></summary><p class="text-xs leading-6 text-slate-400 mt-3">لا. أي عوائد أو مكافآت تقديرية وغير مضمونة، ويجب مراجعة الشروط والمخاطر وعدم استخدام أموال لا يمكنك تحمل خسارتها.</p></details>
+                    <details class="group rounded-2xl border border-slate-800 bg-slate-950/45 p-4"><summary class="cursor-pointer list-none text-sm font-bold text-white flex items-center justify-between gap-3">كيف أحمي حسابي؟<i class="fa-solid fa-chevron-down text-[10px] text-slate-500 transition-transform group-open:rotate-180"></i></summary><p class="text-xs leading-6 text-slate-400 mt-3">ابدأ بتأكيد البريد، فعّل Google Authenticator، ثبّت محفظة السحب، وأكمل KYC. راجع الجلسات وسجل المعاملات بانتظام.</p></details>
+                    <details class="group rounded-2xl border border-slate-800 bg-slate-950/45 p-4"><summary class="cursor-pointer list-none text-sm font-bold text-white flex items-center justify-between gap-3">أين أراجع الرسوم وحدود السحب؟<i class="fa-solid fa-chevron-down text-[10px] text-slate-500 transition-transform group-open:rotate-180"></i></summary><p class="text-xs leading-6 text-slate-400 mt-3">تجد التفاصيل المحدثة في صفحة <a href="/transparency.html" class="text-amber-400 underline">الشفافية</a>، وتظهر قيود السحب المناسبة لحسابك قبل إرسال الطلب.</p></details>
+                </div>
+            </section>
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-3xl border border-amber-500/20 bg-amber-500/5 p-5 mb-8 intro-reveal" style="animation-delay:.4s"><div><b class="block text-sm text-white">هل تريد رؤية التفاصيل بنفسك؟</b><span class="text-xs text-slate-400">ابدأ بجولة قصيرة أو تواصل مع الدعم قبل إنشاء الحساب.</span></div><div class="flex gap-2"><button onclick="openProductTour()" class="rounded-xl border border-cyan-400/25 bg-cyan-400/10 px-4 py-2.5 text-xs font-bold text-cyan-200"><i class="fa-solid fa-play mr-1"></i> الجولة</button><a href="/help.html" class="rounded-xl bg-amber-400 px-4 py-2.5 text-xs font-black text-slate-950">مركز المساعدة</a></div></div>
             <footer class="flex justify-between items-center border-t border-slate-800/70 py-4 text-[10px] text-slate-500"><span>© 2026 OPERIX</span><div class="flex gap-4"><a href="/about.html" class="hover:text-amber-400">من نحن</a><a href="/transparency.html" class="hover:text-amber-400">الشفافية</a><a href="/help.html" class="hover:text-amber-400">المساعدة</a><a href="/status.html" class="hover:text-amber-400">الحالة</a><a href="/changelog.html" class="hover:text-amber-400">التحديثات</a></div></footer>
         </div>
     </section>
+
+    <div id="productTourModal" class="hide fixed inset-0 glass-modal z-[70] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="productTourTitle">
+        <div class="glass-card w-full max-w-lg rounded-3xl border border-cyan-400/25 p-6 shadow-2xl">
+            <div class="flex items-start justify-between gap-4"><div><span class="text-[10px] font-bold text-cyan-300">OPERIX / جولة المنتج</span><h2 id="productTourTitle" class="mt-2 text-xl font-black text-white">تعرّف على التجربة خلال دقيقة</h2></div><button onclick="closeProductTour()" class="text-slate-400 hover:text-white" aria-label="إغلاق الجولة"><i class="fa-solid fa-xmark text-lg"></i></button></div>
+            <div class="mt-6 grid gap-3">
+                <div class="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4"><div class="flex items-center gap-3"><span class="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-400/15 text-amber-300 font-black">1</span><div><b class="block text-sm text-white">ابدأ بحساب واضح</b><span class="text-xs text-slate-400">تابع الرصيد والمهام والإحالات من لوحة واحدة.</span></div></div></div>
+                <div class="rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-4"><div class="flex items-center gap-3"><span class="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-400/15 text-emerald-300 font-black">2</span><div><b class="block text-sm text-white">فعّل طبقات الحماية</b><span class="text-xs text-slate-400">البريد، 2FA، KYC، وإدارة الجلسات للعمليات الحساسة.</span></div></div></div>
+                <div class="rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4"><div class="flex items-center gap-3"><span class="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-400/15 text-cyan-300 font-black">3</span><div><b class="block text-sm text-white">اتخذ قراراتك بوعي</b><span class="text-xs text-slate-400">راجع الرسوم والمخاطر وسجل المعاملات قبل أي خطوة مالية.</span></div></div></div>
+            </div>
+            <div class="mt-6 flex flex-wrap gap-2"><button onclick="showAuthView('register'); closeProductTour()" class="flex-1 rounded-xl bg-amber-400 px-4 py-3 text-sm font-black text-slate-950">إنشاء حساب</button><a href="/transparency.html" class="flex-1 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-center text-sm font-bold text-slate-200">قراءة الشفافية</a></div>
+        </div>
+    </div>
+
+    <div id="onboardingModal" class="hide fixed inset-0 glass-modal z-[75] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
+        <div class="glass-card w-full max-w-md rounded-3xl border border-amber-400/25 p-6 shadow-2xl">
+            <div class="flex items-start justify-between gap-4"><div><span class="text-[10px] font-bold text-amber-300">خطوتك الأولى في OPERIX</span><h2 id="onboardingTitle" class="mt-2 text-xl font-black text-white">جهّز حسابك بثقة</h2></div><button onclick="closeOnboarding()" class="text-slate-400 hover:text-white" aria-label="إغلاق الإعداد"><i class="fa-solid fa-xmark text-lg"></i></button></div>
+            <p class="mt-3 text-xs leading-6 text-slate-400">أكمل الخطوات الأساسية لتستفيد من أدوات الحساب وتعرف حالة كل إعداد قبل استخدام العمليات الحساسة.</p>
+            <div class="mt-5 h-2 rounded-full bg-slate-950 overflow-hidden"><div id="onboardingProgress" class="h-full gold-gradient rounded-full transition-all" style="width:0%"></div></div>
+            <p id="onboardingProgressLabel" class="mt-2 text-[10px] text-slate-500"></p>
+            <div id="onboardingSteps" class="mt-4 space-y-2"></div>
+            <button onclick="continueOnboarding()" class="mt-5 w-full rounded-xl bg-amber-400 px-4 py-3 text-sm font-black text-slate-950">متابعة الإعداد</button>
+        </div>
+    </div>
 
     <!-- 2. شريط التيكر الحي (Live Ticker Bar) -->
     <div id="liveTickerBar" class="hide bg-slate-900 border-b border-slate-800 text-xs text-amber-400 py-1.5 px-4 flex items-center justify-between overflow-hidden">
@@ -223,7 +277,7 @@
 
     <!-- 3. شاشة تسجيل الدخول وإنشاء الحساب (Auth View) -->
     <div id="authView" class="hide min-h-screen flex items-center justify-center p-4">
-        <div class="w-full max-w-md glass-card p-6 rounded-3xl space-y-6 shadow-2xl border border-slate-800">
+        <div class="auth-panel w-full max-w-md glass-card p-6 rounded-3xl space-y-6 shadow-2xl border border-slate-800">
             <div class="text-center space-y-2">
                 <img src="/operix-logo.svg" alt="OPERIX" class="h-14 w-auto mx-auto">
                 <h1 class="text-2xl font-black text-white">منصة OPERIX</h1>
@@ -240,11 +294,11 @@
             <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
                 <div>
                     <label class="block text-xs font-bold text-slate-400 mb-1">البريد الإلكتروني</label>
-                    <input type="email" id="loginEmail" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:border-amber-500 outline-none transition-all">
+                    <input type="email" id="loginEmail" autocomplete="email" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:border-amber-500 outline-none transition-all">
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-400 mb-1">كلمة المرور</label>
-                    <input type="password" id="loginPassword" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:border-amber-500 outline-none transition-all">
+                    <input type="password" id="loginPassword" autocomplete="current-password" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:border-amber-500 outline-none transition-all">
                 </div>
                 <div class="text-left">
                     <button type="button" onclick="openForgotPasswordModal()" class="text-xs text-amber-400 hover:underline">نسيت كلمة المرور؟</button>
@@ -257,11 +311,18 @@
             <form id="registerForm" onsubmit="handleRegister(event)" class="space-y-4 hide">
                 <div>
                     <label class="block text-xs font-bold text-slate-400 mb-1">البريد الإلكتروني</label>
-                    <input type="email" id="regEmail" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:border-purple-500 outline-none transition-all">
+                    <input type="email" id="regEmail" autocomplete="email" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:border-purple-500 outline-none transition-all">
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-400 mb-1">كلمة المرور</label>
-                    <input type="password" id="regPassword" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:border-purple-500 outline-none transition-all">
+                    <input type="password" id="regPassword" autocomplete="new-password" minlength="8" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:border-purple-500 outline-none transition-all">
+                    <div class="h-1.5 bg-slate-950 rounded-full overflow-hidden mt-2"><div id="registerPasswordStrength" class="h-full bg-slate-700 rounded-full transition-all" style="width:0%"></div></div>
+                    <span id="registerPasswordHint" class="block text-[10px] text-slate-500 mt-1">استخدم 8 أحرف على الأقل مع مزيج من الحروف والأرقام.</span>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1">تأكيد كلمة المرور</label>
+                    <input type="password" id="regPasswordConfirm" autocomplete="new-password" minlength="8" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:border-purple-500 outline-none transition-all">
+                    <span id="registerPasswordMatch" class="block text-[10px] text-slate-500 mt-1" aria-live="polite"></span>
                 </div>
                 <label class="flex items-start gap-2 text-[11px] text-slate-400"><input type="checkbox" id="regTermsConsent" required class="mt-1 accent-amber-500"><span>أوافق على <a href="/terms.html" target="_blank" class="text-amber-400 hover:underline">شروط الاستخدام</a> و<a href="/privacy.html" target="_blank" class="text-amber-400 hover:underline">سياسة الخصوصية</a>.</span></label>
                 <div>
@@ -378,6 +439,23 @@
                     <div id="homeTimeline" class="space-y-2 text-[11px] text-slate-400 max-h-40 overflow-y-auto"></div>
                 </div>
             </div>
+
+            <section class="glass-card p-5 rounded-3xl border border-cyan-500/20 space-y-4" aria-labelledby="homeTrustTitle">
+                <div class="flex justify-between items-start gap-3">
+                    <div><h3 id="homeTrustTitle" class="font-black text-sm text-white">مركز الثقة والوضوح</h3><p class="text-[10px] text-slate-500 mt-1">كل ما تحتاجه لفهم حسابك واستخدام المنصة بوعي.</p></div>
+                    <span id="homePlatformStatus" class="text-[10px] font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2.5 py-1">الخدمة متصلة</span>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-3"><i class="fa-solid fa-shield-halved text-emerald-400"></i><b class="block text-[11px] text-white mt-2">حماية الحساب</b><span class="text-[9px] text-slate-500">2FA والجلسات النشطة</span></div>
+                    <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-3"><i class="fa-solid fa-receipt text-cyan-400"></i><b class="block text-[11px] text-white mt-2">سجل واضح</b><span class="text-[9px] text-slate-500">راجع كل حركة مالية</span></div>
+                    <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-3"><i class="fa-solid fa-user-check text-amber-400"></i><b class="block text-[11px] text-white mt-2">توثيق منظم</b><span class="text-[9px] text-slate-500">حالة KYC محدثة</span></div>
+                    <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-3"><i class="fa-solid fa-headset text-rose-300"></i><b class="block text-[11px] text-white mt-2">دعم مباشر</b><span class="text-[9px] text-slate-500">مساعدة عند الحاجة</span></div>
+                </div>
+                <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-800 pt-3">
+                    <p class="text-[10px] leading-5 text-slate-400 max-w-xl">المكافآت والعوائد تقديرية وغير مضمونة. راجع الرسوم والمخاطر قبل أي إيداع أو ترقية، ولا تستخدم أموالاً لا يمكنك تحمل خسارتها.</p>
+                    <div class="flex gap-3 text-[10px] font-bold"><a href="/transparency.html" class="text-amber-400 hover:text-amber-300">الشفافية</a><a href="/status.html" class="text-cyan-300 hover:text-cyan-200">حالة الخدمات</a><a href="/help.html" class="text-slate-300 hover:text-white">المساعدة</a></div>
+                </div>
+            </section>
 
         </div>
 
@@ -628,6 +706,33 @@
                     </div>
                 </div>
                 <button type="button" id="btnSaveProfileWallet" onclick="saveProfileWallet()" class="w-full py-2.5 gold-gradient text-slate-950 font-bold rounded-xl text-xs active:scale-95 transition-all">تثبيت المحفظة وقفل الحماية</button>
+            </div>
+
+            <div class="glass-card p-4 rounded-2xl space-y-3">
+                <div class="flex items-center justify-between">
+                    <h4 class="text-xs font-bold text-white flex items-center">
+                        <i class="fa-solid fa-id-card text-cyan-400 mr-2"></i> توثيق الهوية (KYC)
+                    </h4>
+                    <span id="kycProfileStatusBadge" class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-800 text-slate-300">لم يبدأ</span>
+                </div>
+                <div id="kycProfileInfo" class="text-[10px] text-slate-400">قم بإرسال البيانات لتوثيق حسابك ومراجعتها من الإدارة.</div>
+                <div class="space-y-2">
+                    <input id="kycFullNameInput" type="text" maxlength="80" placeholder="الاسم الكامل كما في الوثيقة" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-500">
+                    <select id="kycDocumentTypeInput" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-500">
+                        <option value="">اختر نوع الوثيقة</option>
+                        <option value="national_id">بطاقة الهوية</option>
+                        <option value="passport">جواز السفر</option>
+                        <option value="driver_license">رخصة القيادة</option>
+                        <option value="residence_card">بطاقة الإقامة</option>
+                    </select>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input id="kycDocumentNumberInput" type="text" maxlength="50" placeholder="رقم الوثيقة" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-500">
+                        <input id="kycCountryInput" type="text" maxlength="80" placeholder="الدولة" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-500">
+                    </div>
+                    <input id="kycDocumentFileInput" type="file" accept="image/jpeg,image/png,image/webp" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-[11px] text-slate-400 file:mr-2 file:rounded-lg file:border-0 file:bg-cyan-500/15 file:px-2 file:py-1 file:text-cyan-300">
+                    <input id="kycDocumentUrlInput" type="url" placeholder="أو أدخل رابط صورة الوثيقة" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-500 dir-ltr">
+                    <button type="button" id="btnSubmitUserKyc" onclick="submitUserKyc()" class="w-full py-2.5 bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 hover:border-cyan-400/40 rounded-xl text-xs font-bold active:scale-95 transition-all">إرسال طلب التوثيق</button>
+                </div>
             </div>
 
             <!-- 5. الأمان والحماية -->
@@ -948,6 +1053,9 @@
 
     <!-- كود الجافاسكربت الخاص بالتعامل مع الإيداع والتكامل مع السيرفر -->
     <script>
+        function openProductTour() { document.getElementById('productTourModal')?.classList.remove('hide'); }
+        function closeProductTour() { document.getElementById('productTourModal')?.classList.add('hide'); }
+        document.addEventListener('keydown', event => { if (event.key === 'Escape') closeProductTour(); });
         function openDepositModal() {
             const modal = document.getElementById('depositModal');
             if (modal) modal.classList.remove('hide');
@@ -1064,7 +1172,7 @@
             btn.innerText = 'جاري الإرسال...';
 
             try {
-                const res = await fetch('/api/auth/send-2fa-otp', {
+                const res = await fetch('/api/user/2fa/send-code', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

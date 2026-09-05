@@ -23,5 +23,15 @@
       "src": "/(.*)",
       "dest": "server.js"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/internal/cron/reset-daily-tasks",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/internal/cron/process-broadcasts",
+      "schedule": "* * * * *"
+    }
   ]
 }
