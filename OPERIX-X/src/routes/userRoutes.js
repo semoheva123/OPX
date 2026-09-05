@@ -6,6 +6,7 @@ const router = express.Router();
 
 router.get('/profile', verifyToken, userController.getProfile);
 router.post('/wallet-address', verifyToken, userController.setWalletAddress);
+router.post('/kyc/submit', verifyToken, userController.submitKyc);
 router.post('/profile-image', verifyToken, userController.updateProfileImage);
 router.get('/referrals', verifyToken, userController.getReferrals);
 router.get('/team-network', verifyToken, userController.getTeamNetwork);
