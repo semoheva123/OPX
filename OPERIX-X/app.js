@@ -515,6 +515,7 @@ async function fetchUnreadNotifications(isLiveUpdate = false) {
 function startRealtimeStream() {
     const token = localStorage.getItem('token');
     if (!token || !currentUserData?._id) return;
+    if (isStandaloneApp()) return;
     if (!window.Ably) return startRealtimeSse(token);
     if (realtimeClient) return;
     realtimeClient = new Ably.Realtime({
@@ -1176,8 +1177,12 @@ async function loadUserProfile() {
             document.getElementById('liveTickerBar').classList.remove('hide');
             document.getElementById('appNavBar').classList.remove('hide');
             maybeShowOnboarding();
-            startNotificationPolling();
-            startRealtimeStream();
+            try {
+                startNotificationPolling();
+                startRealtimeStream();
+            } catch (error) {
+                console.error('Realtime initialization failed:', error);
+            }
             
             document.getElementById('lblUserEmail').innerText = data.user.email;
             document.getElementById('lblCompletedTasks').innerText = data.user.todayCompletedTasks || 0;
