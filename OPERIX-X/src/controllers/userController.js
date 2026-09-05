@@ -8,6 +8,7 @@ const crypto = require('crypto');
 const Session = require('../models/Session');
 const { syncGameCredits } = require('../services/gameAccess');
 const emailFrom = process.env.EMAIL_FROM || 'OPERIX <onboarding@resend.dev>';
+const kycStorage = require('../services/kycStorage');
 
 async function getProfile(req, res) {
   try {
@@ -44,6 +45,91 @@ async function setWalletAddress(req, res) {
     await user.save();
     res.json({ success: true, message: 'تم حفظ وتثبيت عنوان المحفظة بنجاح', walletAddress: user.walletAddress });
   } catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
+}
+
+async function submitKyc(req, res) {
+  try {
+    const {
+      fullName,
+      documentType,
+      documentNumber,
+      country,
+      documentUrl,
+      documentImage
+    } = req.body || {};
+
+    const safeFullName = String(fullName || '').trim();
+    const safeDocumentNumber = String(documentNumber || '').trim();
+    const safeCountry = String(country || '').trim();
+    const allowedDocumentTypes = ['national_id', 'passport', 'driver_license', 'residence_card'];
+
+    if (!safeFullName || safeFullName.length < 2 || safeFullName.length > 80) {
+      return res.status(400).json({ error: 'يرجى إدخال اسم كامل صحيح' });
+    }
+
+    if (!allowedDocumentTypes.includes(String(documentType || ''))) {
+      return res.status(400).json({ error: 'نوع الوثيقة غير صالح' });
+    }
+
+    if (!safeDocumentNumber || safeDocumentNumber.length < 4 || safeDocumentNumber.length > 50) {
+      return res.status(400).json({ error: 'رقم الوثيقة غير صالح' });
+    }
+
+    if (!safeCountry || safeCountry.length < 2 || safeCountry.length > 80) {
+      return res.status(400).json({ error: 'يرجى تحديد الدولة' });
+    }
+
+    const rawDocumentReference = String(documentUrl || documentImage || '').trim();
+    if (!rawDocumentReference) {
+      return res.status(400).json({ error: 'يرجى إرفاق صورة أو رابط الوثيقة' });
+    }
+
+    let normalizedDocumentUrl = '';
+    if (rawDocumentReference.startsWith('data:image/')) {
+      if (!/^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(rawDocumentReference) || rawDocumentReference.length > 900000) {
+        return res.status(400).json({ error: 'صورة الوثيقة يجب أن تكون JPG أو PNG أو WebP وألا تتجاوز 650 كيلوبايت' });
+      }
+      normalizedDocumentUrl = await kycStorage.store(rawDocumentReference);
+      if (!normalizedDocumentUrl) return res.status(400).json({ error: 'تعذر حفظ صورة الوثيقة' });
+    } else if (/^https?:\/\//i.test(rawDocumentReference)) {
+      normalizedDocumentUrl = rawDocumentReference;
+    } else {
+      return res.status(400).json({ error: 'رابط أو صورة الوثيقة غير صالحة' });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
+
+    user.kycFullName = safeFullName;
+    user.kycDocumentType = String(documentType);
+    user.kycDocumentNumber = safeDocumentNumber;
+    user.kycCountry = safeCountry;
+    user.kycDocumentUrl = normalizedDocumentUrl;
+    user.kycStatus = 'pending';
+    user.kycSubmittedAt = new Date();
+    user.kycReviewedAt = null;
+    user.kycNotes = '';
+    user.kycReason = '';
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'تم إرسال طلب التوثيق بنجاح وسيتم مراجعته من الإدارة',
+      user: {
+        kycFullName: user.kycFullName,
+        kycDocumentType: user.kycDocumentType,
+        kycDocumentNumber: user.kycDocumentNumber,
+        kycCountry: user.kycCountry,
+        kycDocumentUrl: user.kycDocumentUrl,
+        kycStatus: user.kycStatus,
+        kycSubmittedAt: user.kycSubmittedAt
+      }
+    });
+  } catch (err) {
+    console.error('Submit KYC error:', err);
+    res.status(500).json({ error: 'حدث خطأ أثناء إرسال طلب التوثيق' });
+  }
 }
 
 async function updateProfileImage(req, res) {
@@ -232,4 +318,4 @@ async function subscribePush(req, res) {
   } catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
 }
 
-module.exports = { getProfile, setWalletAddress, updateProfileImage, getReferrals, getTeamNetwork, getGrowth, getUpgradeHistory, getHomeSummary, sendTwoFactorCode, toggleTwoFactor, setupTwoFactor, confirmTwoFactor, changePassword, subscribePush };
+module.exports = { getProfile, setWalletAddress, submitKyc, updateProfileImage, getReferrals, getTeamNetwork, getGrowth, getUpgradeHistory, getHomeSummary, sendTwoFactorCode, toggleTwoFactor, setupTwoFactor, confirmTwoFactor, changePassword, subscribePush };

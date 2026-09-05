@@ -8,6 +8,7 @@ const Broadcast = require('../models/Broadcast');
 const Notification = require('../models/Notification');
 const Session = require('../models/Session');
 const realtimeService = require('../services/realtimeService');
+const kycStorage = require('../services/kycStorage');
 
 const DEFAULT_BADGE_COLOR = 'from-amber-500/20 to-amber-700/20 border-amber-500/40 text-amber-400';
 const ALLOWED_BADGE_COLORS = new Set([
@@ -62,15 +63,64 @@ async function deleteVipLevel(req, res) {
 
 async function overview(req, res) {
   try {
-    const [totalUsers, pendingWithdrawals, pendingDeposits, activeUsers, deposits, withdrawals, rewards] = await Promise.all([
-      User.countDocuments(), Transaction.countDocuments({ type: 'withdraw', status: 'pending' }), Transaction.countDocuments({ type: 'deposit', status: 'pending' }),
+    const [totalUsers, pendingWithdrawals, pendingDeposits, activeUsers, deposits, withdrawals, rewards, riskSummaryInfo, financialSummaryInfo, kycSummaryInfo] = await Promise.all([
+      User.countDocuments(),
+      Transaction.countDocuments({ type: 'withdraw', status: 'pending' }),
+      Transaction.countDocuments({ type: 'deposit', status: 'pending' }),
       User.countDocuments({ updatedAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } }),
       Transaction.aggregate([{ $match: { type: 'deposit', status: 'approved' } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
       Transaction.aggregate([{ $match: { type: 'withdraw', status: 'approved' } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
-      Transaction.aggregate([{ $match: { type: { $in: ['reward', 'staking_reward', 'referral_commission'] }, status: 'approved' } }, { $group: { _id: null, total: { $sum: '$amount' } } }])
+      Transaction.aggregate([{ $match: { type: { $in: ['reward', 'staking_reward', 'referral_commission'] }, status: 'approved' } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
+      buildRiskSummary(30),
+      buildFinancialSummary(30),
+      buildKycSummary()
     ]);
-    res.json({ success: true, stats: { totalUsers, activeUsers, totalDeposits: deposits[0]?.total || 0, totalWithdrawals: withdrawals[0]?.total || 0, totalRewards: rewards[0]?.total || 0, pendingWithdrawals, pendingDeposits, pendingRequests: pendingWithdrawals + pendingDeposits } });
+    res.json({
+      success: true,
+      stats: {
+        totalUsers,
+        totalDeposits: deposits[0]?.total || 0,
+        totalWithdrawals: withdrawals[0]?.total || 0,
+        totalRewards: rewards[0]?.total || 0,
+        activeUsers,
+        pendingWithdrawals,
+        pendingDeposits,
+        pendingRequests: pendingWithdrawals + pendingDeposits
+      },
+      riskSummary: riskSummaryInfo,
+      financialSummary: financialSummaryInfo,
+      kycSummary: kycSummaryInfo
+    });
   } catch (err) { res.status(500).json({ success: false, error: 'حدث خطأ في معالجة الطلب' }); }
+}
+
+async function buildKycSummary() {
+  const [total, pending, verified, rejected, notStarted] = await Promise.all([
+    User.countDocuments(),
+    User.countDocuments({ kycStatus: 'pending' }),
+    User.countDocuments({ kycStatus: 'verified' }),
+    User.countDocuments({ kycStatus: 'rejected' }),
+    User.countDocuments({ kycStatus: 'not_started' })
+  ]);
+
+  return {
+    total,
+    pending,
+    verified,
+    rejected,
+    notStarted,
+    verificationRate: total ? Number(((verified / total) * 100).toFixed(2)) : 0,
+    reviewQueue: pending + rejected
+  };
+}
+
+async function kycSummary(req, res) {
+  try {
+    const summary = await buildKycSummary();
+    res.json({ success: true, summary });
+  } catch (error) {
+    res.status(500).json({ error: 'تعذر تحميل ملخص KYC' });
+  }
 }
 
 async function analytics(req, res) {
@@ -83,6 +133,109 @@ async function analytics(req, res) {
     ]);
     res.json({ success: true, periodDays: 30, daily, usersByRole, security });
   } catch (err) { res.status(500).json({ error: 'تعذر تحميل التحليلات' }); }
+}
+
+async function buildFinancialSummary(days = 30) {
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  const [approved, pending, rejected, byDay] = await Promise.all([
+    Transaction.aggregate([
+      { $match: { createdAt: { $gte: since }, status: 'approved' } },
+      {
+        $group: {
+          _id: null,
+          deposits: { $sum: { $cond: [{ $eq: ['$type', 'deposit'] }, '$amount', 0] } },
+          withdrawals: { $sum: { $cond: [{ $eq: ['$type', 'withdraw'] }, '$amount', 0] } },
+          net: { $sum: { $cond: [{ $eq: ['$type', 'deposit'] }, '$amount', { $multiply: ['$amount', -1] }] } }
+        }
+      }
+    ]),
+    Transaction.aggregate([
+      { $match: { createdAt: { $gte: since }, status: 'pending' } },
+      { $group: { _id: null, count: { $sum: 1 }, total: { $sum: '$amount' } } }
+    ]),
+    Transaction.aggregate([
+      { $match: { createdAt: { $gte: since }, status: 'rejected' } },
+      { $group: { _id: null, count: { $sum: 1 }, total: { $sum: '$amount' } } }
+    ]),
+    Transaction.aggregate([
+      { $match: { createdAt: { $gte: since } } },
+      {
+        $group: {
+          _id: { day: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } } },
+          deposits: { $sum: { $cond: [{ $eq: ['$type', 'deposit'] }, '$amount', 0] } },
+          withdrawals: { $sum: { $cond: [{ $eq: ['$type', 'withdraw'] }, '$amount', 0] } },
+          net: { $sum: { $cond: [{ $eq: ['$type', 'deposit'] }, '$amount', { $multiply: ['$amount', -1] }] } },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { '_id.day': 1 } }
+    ])
+  ]);
+
+  const approvedSummary = approved[0] || { deposits: 0, withdrawals: 0, net: 0 };
+  const pendingSummary = pending[0] || { count: 0, total: 0 };
+  const rejectedSummary = rejected[0] || { count: 0, total: 0 };
+
+  return {
+    periodDays: days,
+    totalDeposits: Number(approvedSummary.deposits || 0),
+    totalWithdrawals: Number(approvedSummary.withdrawals || 0),
+    netRevenue: Number(approvedSummary.net || 0),
+    pendingCount: Number(pendingSummary.count || 0),
+    pendingAmount: Number(pendingSummary.total || 0),
+    rejectedCount: Number(rejectedSummary.count || 0),
+    rejectedAmount: Number(rejectedSummary.total || 0),
+    byDay: byDay.map(item => ({ date: item._id.day, deposits: Number(item.deposits || 0), withdrawals: Number(item.withdrawals || 0), net: Number(item.net || 0), count: Number(item.count || 0) }))
+  };
+}
+
+async function buildRiskSummary(days = 30) {
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  const [failedLogins, newDevices, pendingTransactions, largeWithdrawals] = await Promise.all([
+    SecurityEvent.countDocuments({ event: 'login_failed', createdAt: { $gte: since } }),
+    SecurityEvent.countDocuments({ event: 'new_device', createdAt: { $gte: since } }),
+    Transaction.countDocuments({ status: 'pending', createdAt: { $gte: since } }),
+    Transaction.countDocuments({ type: 'withdraw', status: 'pending', amount: { $gte: 500 }, createdAt: { $gte: since } })
+  ]);
+
+  const riskScore = Math.min(100, Math.round((failedLogins * 2.5) + (newDevices * 3) + (pendingTransactions * 5) + (largeWithdrawals * 8)));
+  let riskLevel = 'low';
+  if (riskScore >= 70) riskLevel = 'high';
+  else if (riskScore >= 40) riskLevel = 'medium';
+
+  const focus = [];
+  if (failedLogins > 5) focus.push('محاولات دخول فاشلة متكررة');
+  if (pendingTransactions > 3) focus.push('طلبات معلقة تحتاج مراجعة');
+  if (newDevices > 2) focus.push('أجهزة جديدة سجّلت مؤخراً');
+  if (largeWithdrawals > 0) focus.push('سحوبات كبيرة تحتاج فحصًا دقيقًا');
+  if (!focus.length) focus.push('لا توجد إشارات خطر فورية');
+
+  return {
+    periodDays: days,
+    riskScore,
+    riskLevel,
+    failedLogins,
+    newDevices,
+    pendingTransactions,
+    largeWithdrawals,
+    focus
+  };
+}
+
+async function financialSummary(req, res) {
+  try {
+    const days = Math.max(1, Math.min(365, Number(req.query.days) || 30));
+    const summary = await buildFinancialSummary(days);
+    res.json({ success: true, summary });
+  } catch (err) { res.status(500).json({ error: 'تعذر تحميل الملخص المالي' }); }
+}
+
+async function riskSummary(req, res) {
+  try {
+    const days = Math.max(1, Math.min(365, Number(req.query.days) || 30));
+    const summary = await buildRiskSummary(days);
+    res.json({ success: true, summary });
+  } catch (err) { res.status(500).json({ error: 'تعذر تحميل ملخص المخاطر' }); }
 }
 
 async function listUsers(req, res) {
@@ -98,6 +251,7 @@ async function listUsers(req, res) {
     if (req.query.status === 'active') filter.isBanned = false;
     if (req.query.verified === 'yes') filter.emailVerified = true;
     if (req.query.verified === 'no') filter.emailVerified = false;
+    if (['not_started', 'pending', 'verified', 'rejected'].includes(req.query.kycStatus)) filter.kycStatus = req.query.kycStatus;
     const [users, total] = await Promise.all([
       User.find(filter).select('-password -resetOTP -twoFactorCode -twoFactorSecret -adminTwoFactorSecret').sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit),
       User.countDocuments(filter)
@@ -118,6 +272,94 @@ async function userDetails(req, res) {
     ]);
     res.json({ success: true, user, transactions, auditLogs, sessions });
   } catch (error) { res.status(500).json({ error: 'تعذر تحميل تفاصيل المستخدم' }); }
+}
+
+async function streamKycDocument(req, res) {
+  try {
+    const user = await User.findById(req.params.userId).select('kycDocumentUrl');
+    const reference = String(user?.kycDocumentUrl || '');
+    if (!/^private:\/\/|^gridfs:\/\//.test(reference)) return res.status(404).json({ error: 'وثيقة KYC غير موجودة أو قديمة' });
+    await createAudit(req, 'view_kyc_document', user._id.toString(), { referenceType: reference.startsWith('gridfs://') ? 'gridfs' : 'private' });
+    res.set({ 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' });
+    if (!kycStorage.stream(reference, res)) return res.status(404).json({ error: 'ملف الوثيقة غير موجود' });
+  } catch (error) {
+    res.status(500).json({ error: 'تعذر عرض وثيقة KYC' });
+  }
+}
+
+function csvCell(value) {
+  return `"${String(value ?? '').replace(/"/g, '""')}"`;
+}
+
+async function complianceReport(req, res) {
+  try {
+    const filter = {};
+    if (['not_started', 'pending', 'verified', 'rejected'].includes(req.query.kycStatus)) filter.kycStatus = req.query.kycStatus;
+    const since = req.query.from ? new Date(`${req.query.from}T00:00:00.000Z`) : null;
+    const until = req.query.to ? new Date(`${req.query.to}T00:00:00.000Z`) : null;
+    if (until && !Number.isNaN(until.valueOf())) until.setUTCDate(until.getUTCDate() + 1);
+    if ((since && !Number.isNaN(since.valueOf())) || (until && !Number.isNaN(until.valueOf()))) {
+      filter.updatedAt = {};
+      if (since && !Number.isNaN(since.valueOf())) filter.updatedAt.$gte = since;
+      if (until && !Number.isNaN(until.valueOf())) filter.updatedAt.$lt = until;
+    }
+
+    const users = await User.find(filter).select('email kycStatus kycCountry kycDocumentType kycSubmittedAt kycReviewedAt kycReviewedBy kycReason isBanned').populate('kycReviewedBy', 'email').sort({ updatedAt: -1 }).limit(10000).lean();
+    const userIds = users.map(user => user._id);
+    const riskTotals = userIds.length ? await Transaction.aggregate([
+      { $match: { userId: { $in: userIds }, type: 'withdraw', riskScore: { $gt: 0 } } },
+      { $group: { _id: '$userId', maxRiskScore: { $max: '$riskScore' }, highRiskCount: { $sum: { $cond: [{ $eq: ['$riskLevel', 'high'] }, 1, 0] } }, riskFlags: { $push: '$riskFlags' } } }
+    ]) : [];
+    const riskByUser = new Map(riskTotals.map(item => [String(item._id), item]));
+    const rows = [
+      ['البريد', 'حالة KYC', 'الدولة', 'نوع الوثيقة', 'تاريخ الإرسال', 'آخر مراجعة', 'راجع بواسطة', 'سبب الرفض', 'أعلى درجة خطر', 'سحوبات عالية الخطورة', 'محظور']
+    ];
+    for (const user of users) {
+      const risk = riskByUser.get(String(user._id)) || {};
+      rows.push([user.email, user.kycStatus || 'not_started', user.kycCountry, user.kycDocumentType, user.kycSubmittedAt?.toISOString?.() || '', user.kycReviewedAt?.toISOString?.() || '', user.kycReviewedBy?.email || '', user.kycReason, risk.maxRiskScore || 0, risk.highRiskCount || 0, user.isBanned ? 'نعم' : 'لا']);
+    }
+    const csv = rows.map(row => row.map(csvCell).join(',')).join('\r\n');
+    res.set({ 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="operix-compliance-${new Date().toISOString().slice(0, 10)}.csv"`, 'Cache-Control': 'no-store' });
+    await createAudit(req, 'export_compliance_report', null, { count: users.length, kycStatus: req.query.kycStatus || 'all' });
+    res.send(`\ufeff${csv}`);
+  } catch (error) {
+    res.status(500).json({ error: 'تعذر تصدير تقرير الامتثال' });
+  }
+}
+
+async function reviewUserKyc(req, res) {
+  try {
+    const { status, notes } = req.body;
+    const validStatuses = ['not_started', 'pending', 'verified', 'rejected'];
+    if (!validStatuses.includes(status)) return res.status(400).json({ error: 'حالة KYC غير صالحة' });
+
+    const user = await User.findById(req.params.userId);
+    if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
+
+    const previousStatus = user.kycStatus;
+    user.kycStatus = status;
+    user.kycReviewedAt = new Date();
+    user.kycReviewedBy = req.user._id;
+    user.kycNotes = String(notes || '').trim().slice(0, 500);
+    if (status === 'rejected') user.kycReason = String(notes || '').trim().slice(0, 200) || 'الوثيقة غير مكتملة أو غير واضحة';
+    else user.kycReason = '';
+    if (status === 'pending' && !user.kycSubmittedAt) user.kycSubmittedAt = new Date();
+
+    await user.save();
+    await createAudit(req, 'review_user_kyc', user._id.toString(), { oldStatus: previousStatus, newStatus: status, notes: user.kycNotes });
+    const notification = await Notification.create({
+      userId: user._id,
+      title: status === 'verified' ? 'تم اعتماد توثيق هويتك' : status === 'rejected' ? 'تحتاج وثائق KYC إلى تحديث' : 'تم تحديث حالة توثيق هويتك',
+      body: status === 'verified' ? 'تمت الموافقة على مستندات التحقق الخاصة بك.' : status === 'rejected' ? (user.kycReason || 'يرجى مراجعة الملاحظات وإرسال وثائق واضحة مجدداً.') : 'تم تحديث حالة طلب التحقق الخاص بك.',
+      type: 'system'
+    });
+    realtimeService.emit('notification_created', { notificationId: notification._id, title: notification.title, type: notification.type }, { userId: user._id });
+    await emitUserDataChanged(user._id, 'kyc_reviewed');
+
+    res.json({ success: true, message: status === 'verified' ? 'تم اعتماد KYC بنجاح' : status === 'rejected' ? 'تم رفض KYC بنجاح' : 'تم تحديث حالة KYC', user });
+  } catch (error) {
+    res.status(500).json({ error: 'تعذر مراجعة KYC' });
+  }
 }
 
 async function bulkToggleBan(req, res) {
@@ -182,30 +424,34 @@ async function toggleBan(req, res) {
 }
 
 async function updateUser(req, res) {
+  let session;
   try {
     const { userId, depositBalance, profitBalance, balance } = req.body;
-    const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
-    const beforeBalance = Number(user.wallet?.balance || 0);
     for (const value of [depositBalance, profitBalance, balance]) {
       if (value !== undefined && (!Number.isFinite(Number(value)) || Number(value) < 0)) return res.status(400).json({ error: 'قيمة الرصيد غير صالحة' });
     }
-    if (depositBalance !== undefined) user.wallet.depositBalance = Number(depositBalance);
-    if (profitBalance !== undefined) user.wallet.profitBalance = Number(profitBalance);
-    if (balance !== undefined && depositBalance === undefined && profitBalance === undefined) {
-      user.wallet.balance = Number(balance);
-      user.wallet.profitBalance = Math.max(0, user.wallet.balance - Number(user.wallet.depositBalance || 0));
-    }
-    user.wallet.balance = user.wallet.depositBalance + user.wallet.profitBalance;
-    await user.save();
-    await createAudit(req, 'update_user_balance', user._id.toString(), { oldValue: { balance: beforeBalance }, newValue: { balance: user.wallet.balance }, depositBalance, profitBalance });
-    if (user.wallet.balance !== beforeBalance) {
-      await Transaction.create({ userId: user._id, type: 'admin_adjustment', amount: user.wallet.balance - beforeBalance, walletAddress: 'ADMIN_ADJUSTMENT', status: 'approved' });
-    }
-    const safeUser = user.toObject(); delete safeUser.password; delete safeUser.resetOTP; delete safeUser.twoFactorCode;
-    await emitUserDataChanged(user._id, 'balance_updated');
+    session = await mongoose.startSession();
+    let safeUser;
+    await session.withTransaction(async () => {
+      const user = await User.findById(userId).session(session);
+      if (!user) throw Object.assign(new Error('USER_NOT_FOUND'), { statusCode: 404 });
+      const beforeBalance = Number(user.wallet?.balance || 0);
+      if (depositBalance !== undefined) user.wallet.depositBalance = Number(depositBalance);
+      if (profitBalance !== undefined) user.wallet.profitBalance = Number(profitBalance);
+      if (balance !== undefined && depositBalance === undefined && profitBalance === undefined) {
+        user.wallet.balance = Number(balance);
+        user.wallet.profitBalance = Math.max(0, user.wallet.balance - Number(user.wallet.depositBalance || 0));
+      }
+      user.wallet.balance = user.wallet.depositBalance + user.wallet.profitBalance;
+      await user.save({ session });
+      await createAudit(req, 'update_user_balance', user._id.toString(), { oldValue: { balance: beforeBalance }, newValue: { balance: user.wallet.balance }, depositBalance, profitBalance }, session);
+      if (user.wallet.balance !== beforeBalance) await Transaction.create([{ userId: user._id, type: 'admin_adjustment', amount: user.wallet.balance - beforeBalance, walletAddress: 'ADMIN_ADJUSTMENT', status: 'approved' }], { session });
+      safeUser = user.toObject(); delete safeUser.password; delete safeUser.resetOTP; delete safeUser.twoFactorCode;
+    });
+    await session.endSession(); session = null;
+    await emitUserDataChanged(userId, 'balance_updated');
     res.json({ success: true, message: 'تم تعديل بيانات المستخدم بنجاح', user: safeUser });
-  } catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
+  } catch (err) { if (session) { if (session.inTransaction()) await session.abortTransaction(); await session.endSession(); } if (err.statusCode === 404) return res.status(404).json({ error: 'المستخدم غير موجود' }); res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
 }
 
 async function updateUserTier(req, res) {
@@ -275,13 +521,54 @@ async function listWithdrawals(req, res) {
     const filter = { type: { $in: ['withdraw', 'deposit'] } };
     if (req.query.status && req.query.status !== 'all') filter.status = req.query.status;
     if (req.query.type && req.query.type !== 'all') filter.type = req.query.type;
+    if (req.query.network && ['TRC20', 'BEP20'].includes(req.query.network)) filter.network = req.query.network;
+    if (req.query.search) {
+      const search = String(req.query.search).trim().slice(0, 120);
+      const users = await User.find({ email: { $regex: search, $options: 'i' } }).select('_id').lean();
+      filter.$or = [{ txHash: { $regex: search, $options: 'i' } }, { walletAddress: { $regex: search, $options: 'i' } }, { userId: { $in: users.map(user => user._id) } }];
+    }
+    if (req.query.from || req.query.to) {
+      filter.createdAt = {};
+      if (req.query.from) filter.createdAt.$gte = new Date(`${req.query.from}T00:00:00.000Z`);
+      if (req.query.to) { const end = new Date(`${req.query.to}T00:00:00.000Z`); end.setUTCDate(end.getUTCDate() + 1); filter.createdAt.$lt = end; }
+    }
     const [withdrawals, total] = await Promise.all([
-      Transaction.find(filter).populate('userId', 'email tierCode').sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit),
+      Transaction.find(filter).populate('userId', 'email tierCode kycStatus').sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit),
       Transaction.countDocuments(filter)
     ]);
     res.json({ success: true, withdrawals, page, totalPages: Math.max(1, Math.ceil(total / limit)), total });
   }
   catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
+}
+
+async function transactionDetails(req, res) {
+  try {
+    const transaction = await Transaction.findById(req.params.transactionId).populate('userId', 'email tierCode wallet walletAddress').lean();
+    if (!transaction) return res.status(404).json({ error: 'المعاملة غير موجودة' });
+    const auditLogs = await AuditLog.find({ targetId: transaction._id.toString() }).populate('adminId', 'email').sort({ createdAt: -1 }).limit(20).lean();
+    res.json({ success: true, transaction, auditLogs });
+  } catch (error) { res.status(500).json({ error: 'تعذر تحميل تفاصيل المعاملة' }); }
+}
+
+async function exportTransactions(req, res) {
+  try {
+    const filter = { type: { $in: ['withdraw', 'deposit'] } };
+    if (req.query.status && req.query.status !== 'all') filter.status = req.query.status;
+    if (req.query.type && req.query.type !== 'all') filter.type = req.query.type;
+    if (req.query.network && ['TRC20', 'BEP20'].includes(req.query.network)) filter.network = req.query.network;
+    if (req.query.search) {
+      const search = String(req.query.search).trim().slice(0, 120);
+      const users = await User.find({ email: { $regex: search, $options: 'i' } }).select('_id').lean();
+      filter.$or = [{ txHash: { $regex: search, $options: 'i' } }, { walletAddress: { $regex: search, $options: 'i' } }, { userId: { $in: users.map(user => user._id) } }];
+    }
+    if (req.query.from || req.query.to) {
+      filter.createdAt = {};
+      if (req.query.from) filter.createdAt.$gte = new Date(`${req.query.from}T00:00:00.000Z`);
+      if (req.query.to) { const end = new Date(`${req.query.to}T00:00:00.000Z`); end.setUTCDate(end.getUTCDate() + 1); filter.createdAt.$lt = end; }
+    }
+    const transactions = await Transaction.find(filter).populate('userId', 'email tierCode').sort({ createdAt: -1 }).limit(10000).lean();
+    res.json({ success: true, transactions });
+  } catch (error) { res.status(500).json({ error: 'تعذر تصدير المعاملات' }); }
 }
 
 async function listAuditLogs(req, res) {
@@ -339,12 +626,11 @@ async function referralTree(req, res) {
   } catch (err) { res.status(500).json({ error: 'تعذر تحميل شجرة الإحالات' }); }
 }
 
-async function withdrawalAction(req, res) {
+async function applyWithdrawalAction(transactionId, action, req) {
   const session = await mongoose.startSession();
   try {
     let tx;
     await session.withTransaction(async () => {
-      const { transactionId, action } = req.body;
       tx = await Transaction.findById(transactionId).populate('userId').session(session);
       if (!tx) throw Object.assign(new Error('NOT_FOUND'), { statusCode: 404 });
       if (tx.status !== 'pending') throw Object.assign(new Error('PROCESSED'), { statusCode: 400 });
@@ -355,13 +641,39 @@ async function withdrawalAction(req, res) {
       await tx.save({ session });
       await createAudit(req, `transaction_${action}`, tx._id.toString(), { type: tx.type, amount: tx.amount, newValue: action }, session);
     });
-    if (tx?.userId?._id) await emitUserDataChanged(tx.userId._id, 'transaction_updated');
-    res.json({ success: true, message: `تمت عملية (${req.body.action === 'approve' ? 'الموافقة' : 'الرفض'}) بنجاح` });
+    if (tx?.userId?._id) {
+      await emitUserDataChanged(tx.userId._id, 'transaction_updated');
+      await realtimeService.publish('admin_transaction_updated', { transactionId: tx._id, action, userId: tx.userId._id }, { scope: 'admin' });
+    }
+    return tx;
   } catch (err) {
     if (session.inTransaction()) await session.abortTransaction();
-    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message === 'NOT_FOUND' ? 'المعاملة غير موجودة' : err.message === 'PROCESSED' ? 'تمت معالجة هذه المعاملة سابقاً' : 'الإجراء المطلوب غير صالح' });
-    res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' });
+    throw err;
   } finally { await session.endSession(); }
+}
+
+function transactionErrorResponse(res, err) {
+  if (err.statusCode) return res.status(err.statusCode).json({ error: err.message === 'NOT_FOUND' ? 'المعاملة غير موجودة' : err.message === 'PROCESSED' ? 'تمت معالجة هذه المعاملة سابقاً' : 'الإجراء المطلوب غير صالح' });
+  return res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' });
+}
+
+async function withdrawalAction(req, res) {
+  try {
+    await applyWithdrawalAction(req.body.transactionId, req.body.action, req);
+    res.json({ success: true, message: `تمت عملية (${req.body.action === 'approve' ? 'الموافقة' : 'الرفض'}) بنجاح` });
+  } catch (err) { transactionErrorResponse(res, err); }
+}
+
+async function bulkWithdrawalAction(req, res) {
+  const transactionIds = Array.isArray(req.body.transactionIds) ? req.body.transactionIds.map(String).slice(0, 50) : [];
+  const action = req.body.action;
+  if (!transactionIds.length || !['approve', 'reject'].includes(action)) return res.status(400).json({ error: 'حدد معاملات وإجراءً صالحًا' });
+  const results = [];
+  for (const transactionId of transactionIds) {
+    try { await applyWithdrawalAction(transactionId, action, req); results.push({ transactionId, success: true }); }
+    catch (error) { results.push({ transactionId, success: false, error: error.message }); }
+  }
+  res.json({ success: true, processed: results.filter(item => item.success).length, failed: results.filter(item => !item.success).length, results });
 }
 
 function gameSettings(req, res) { res.json({ success: true, settings: req.app.locals.gameSettings }); }
@@ -427,4 +739,4 @@ async function processScheduledBroadcasts(webpush) {
   for (const campaign of campaigns) await deliverBroadcast(campaign, webpush);
 }
 
-module.exports = { saveVipLevel, deleteVipLevel, overview, analytics, listUsers, userDetails, resetDailyTasks, toggleBan, bulkToggleBan, revokeUserSessions, verifyUserEmail, disableUserTwoFactor, updateUser, updateUserAccount, updateUserRole, updateUserTier, listWithdrawals, listAuditLogs, listReferrals, referralTree, withdrawalAction, gameSettings, updateGameSettings, broadcast, listBroadcasts, processScheduledBroadcasts, sendAdminAuditBroadcast };
+module.exports = { saveVipLevel, deleteVipLevel, overview, analytics, financialSummary, riskSummary, kycSummary, listUsers, userDetails, streamKycDocument, complianceReport, reviewUserKyc, resetDailyTasks, toggleBan, bulkToggleBan, revokeUserSessions, verifyUserEmail, disableUserTwoFactor, updateUser, updateUserAccount, updateUserRole, updateUserTier, listWithdrawals, transactionDetails, exportTransactions, listAuditLogs, listReferrals, referralTree, withdrawalAction, bulkWithdrawalAction, gameSettings, updateGameSettings, broadcast, listBroadcasts, processScheduledBroadcasts, sendAdminAuditBroadcast };

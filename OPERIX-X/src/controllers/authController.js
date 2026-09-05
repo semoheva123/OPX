@@ -326,7 +326,12 @@ async function resetPassword(req, res) {
     const { email, otp, newPassword } = req.body;
     if (!email || !otp || typeof newPassword !== 'string' || newPassword.length < 8) return res.status(400).json({ error: 'كلمة المرور يجب أن لا تقل عن 8 أحرف وجميع الحقول مطلوبة' });
     const user = await User.findOne({ email: email.trim().toLowerCase() }).select('+resetOTP');
-    if (!user || !user.resetOTP || !user.resetOTPExpire || user.resetOTPExpire <= Date.now() || user.resetOTPAttempts >= MAX_RESET_OTP_ATTEMPTS || !matchesHash(String(otp), user.resetOTP)) return res.status(400).json({ error: 'جلسة التغيير غير صالحة أو انتهت الصلاحية' });
+    if (!user || !user.resetOTP || !user.resetOTPExpire || user.resetOTPExpire <= Date.now() || user.resetOTPAttempts >= MAX_RESET_OTP_ATTEMPTS) return res.status(400).json({ error: 'جلسة التغيير غير صالحة أو انتهت الصلاحية' });
+    user.resetOTPAttempts += 1;
+    if (!matchesHash(String(otp), user.resetOTP)) {
+      await user.save();
+      return res.status(400).json({ error: 'جلسة التغيير غير صالحة أو انتهت الصلاحية' });
+    }
     user.password = await bcrypt.hash(newPassword, 12);
     user.resetOTP = null; user.resetOTPExpire = null; user.resetOTPAttempts = 0;
     await user.save();
