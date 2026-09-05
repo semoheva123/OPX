@@ -6,7 +6,11 @@ const transactionSchema = new mongoose.Schema({
   amount: { type: Number, required: true },
   walletAddress: { type: String, required: true, trim: true },
   txHash: { type: String, trim: true },
+  idempotencyKey: { type: String, trim: true, index: true },
   network: { type: String, enum: ['TRC20', 'BEP20'] },
+  riskScore: { type: Number, min: 0, max: 100, default: 0 },
+  riskLevel: { type: String, enum: ['low', 'medium', 'high'], default: 'low' },
+  riskFlags: { type: [String], default: [] },
   status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' }
 }, { timestamps: true });
 
