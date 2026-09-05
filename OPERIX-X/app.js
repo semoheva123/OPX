@@ -1212,11 +1212,14 @@ async function loadUserProfile() {
             await logout();
         } else {
             document.getElementById('loadingView').classList.add('hide');
-            showToast(data.error || 'تعذر تحميل بيانات الحساب. ستبقى جلسة الدخول محفوظة.');
+            if (!currentUserData) showToast(data.error || 'تعذر تحميل بيانات الحساب. ستبقى جلسة الدخول محفوظة.');
         }
     } catch(err) {
         document.getElementById('loadingView').classList.add('hide');
-        showToast('تعذر الاتصال بالخادم. تحقق من الشبكة وحاول تحديث الصفحة.');
+        if (!currentUserData) {
+            showToast('تعذر الاتصال بالخادم. ستتم إعادة المحاولة تلقائيًا.');
+            setTimeout(() => { if (!currentUserData && localStorage.getItem('token')) loadUserProfile(); }, 1500);
+        }
     }
 }
 
