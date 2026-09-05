@@ -515,7 +515,6 @@ async function fetchUnreadNotifications(isLiveUpdate = false) {
 function startRealtimeStream() {
     const token = localStorage.getItem('token');
     if (!token || !currentUserData?._id) return;
-    if (isStandaloneApp()) return;
     if (!window.Ably) return startRealtimeSse(token);
     if (realtimeClient) return;
     realtimeClient = new Ably.Realtime({
@@ -554,7 +553,6 @@ function startRealtimeSse(token = localStorage.getItem('token')) {
 
 function startNotificationPolling() {
     fetchUnreadNotifications();
-    if (isStandaloneApp()) return;
     if (notificationPollTimer) clearInterval(notificationPollTimer);
     notificationPollTimer = setInterval(() => fetchUnreadNotifications(true), 15000);
     if (profileSyncTimer) clearInterval(profileSyncTimer);
