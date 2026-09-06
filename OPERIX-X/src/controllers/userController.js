@@ -4,6 +4,7 @@ const VipLevel = require('../models/VipLevel');
 const bcrypt = require('bcryptjs');
 const { authenticator } = require('otplib');
 const QRCode = require('qrcode');
+const { twoFactorTemplate } = require('../services/emailTemplates');
 
 const generateSecret = () => authenticator.generateSecret();
 const generateURI = ({ issuer, label, secret }) => authenticator.keyuri(label, issuer, secret);
@@ -262,7 +263,12 @@ async function sendTwoFactorCode(req, res) {
 
     if (resend) {
       try {
-        await resend.emails.send({ from: emailFrom, to: user.email, subject: 'رمز التحقق الثنائي (2FA) - OPERIX', html: `<p>رمز التحقق الخاص بتأكيد عملية السحب هو: <strong>${code}</strong></p><p>صالح لمدة 5 دقائق.</p>` });
+        await resend.emails.send({
+          from: emailFrom,
+          to: user.email,
+          subject: 'رمز التحقق الثنائي (2FA) - OPERIX',
+          html: twoFactorTemplate({ code, expiresInMinutes: 5 })
+        });
         return res.json({ success: true, message: 'تم إرسال رمز التحقق الثنائي إلى بريدك الإلكتروني' });
       } catch (emailError) {
         console.error('2FA email send failed:', emailError.message);

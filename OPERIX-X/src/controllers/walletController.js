@@ -7,6 +7,7 @@ const { verifySync } = require('otplib');
 const emailFrom = process.env.EMAIL_FROM || 'OPERIX <onboarding@resend.dev>';
 const realtimeService = require('../services/realtimeService');
 const SecurityEvent = require('../models/SecurityEvent');
+const { withdrawalRequestTemplate } = require('../services/emailTemplates');
 
 const HYBRID_WITHDRAWAL_RATE = 0.05;
 const HYBRID_WITHDRAWAL_FIXED_FEE = 2;
@@ -170,7 +171,11 @@ async function withdraw(req, res) {
           from: emailFrom,
           to: user.email,
           subject: 'تم تقديم طلب سحب جديد - منصة OPERIX',
-          html: `<p>تم استلام طلب سحب بقيمة $${withdrawNum} USDT.</p><p>المعرف: ${withdrawal._id}</p><p>العنوان: ${walletAddress.trim()}</p>`
+          html: withdrawalRequestTemplate({
+            amount: `${withdrawNum}`,
+            transactionId: withdrawal._id,
+            walletAddress: walletAddress.trim()
+          })
         });
       } catch (emailErr) {
         console.error('فشل إرسال إشعار السحب عبر البريد:', emailErr.message);

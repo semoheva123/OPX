@@ -8,6 +8,7 @@ const Notification = require('../models/Notification');
 const realtimeService = require('../services/realtimeService');
 const { authenticator } = require('otplib');
 const QRCode = require('qrcode');
+const { emailVerificationTemplate, passwordResetTemplate, adminInviteTemplate } = require('../services/emailTemplates');
 
 const verifySync = ({ token, secret }) => ({ valid: authenticator.check(token, secret) });
 const generateSecret = () => authenticator.generateSecret();
@@ -68,7 +69,12 @@ async function register(req, res) {
     await newUser.save();
     if (req.app.locals.resend) {
       const verifyUrl = `${process.env.APP_URL || 'http://localhost:5000'}/api/auth/verify-email?token=${newUser.emailVerificationToken}`;
-      await req.app.locals.resend.emails.send({ from: emailFrom, to: newUser.email, subject: 'تأكيد بريدك الإلكتروني - OPERIX', html: `<p>لتأكيد بريدك الإلكتروني، افتح الرابط التالي:</p><p><a href="${verifyUrl}">تأكيد البريد</a></p>` });
+      await req.app.locals.resend.emails.send({
+        from: emailFrom,
+        to: newUser.email,
+        subject: 'تأكيد بريدك الإلكتروني - OPERIX',
+        html: emailVerificationTemplate({ verifyUrl, userEmail: newUser.email })
+      });
     }
     res.status(201).json({ success: true, message: 'تم إنشاء الحساب بنجاح' });
   } catch (err) {
@@ -99,7 +105,15 @@ async function resendVerification(req, res) {
     user.emailVerificationToken = crypto.createHash('sha256').update(rawToken).digest('hex');
     user.emailVerificationExpire = new Date(Date.now() + 24 * 60 * 60 * 1000);
     await user.save();
-    if (req.app.locals.resend) { const verifyUrl = `${process.env.APP_URL || 'http://localhost:5000'}/api/auth/verify-email?token=${user.emailVerificationToken}`; await req.app.locals.resend.emails.send({ from: emailFrom, to: user.email, subject: 'رابط تأكيد البريد - OPERIX', html: `<p><a href="${verifyUrl}">تأكيد البريد الإلكتروني</a></p>` }); }
+    if (req.app.locals.resend) {
+      const verifyUrl = `${process.env.APP_URL || 'http://localhost:5000'}/api/auth/verify-email?token=${user.emailVerificationToken}`;
+      await req.app.locals.resend.emails.send({
+        from: emailFrom,
+        to: user.email,
+        subject: 'رابط تأكيد البريد - OPERIX',
+        html: emailVerificationTemplate({ verifyUrl, userEmail: user.email })
+      });
+    }
     res.json({ success: true, message: 'تم إرسال رابط التحقق إذا كانت خدمة البريد مهيأة' });
   } catch (error) { res.status(500).json({ error: 'تعذر إعادة إرسال رابط التحقق' }); }
 }
@@ -236,7 +250,12 @@ async function inviteAdmin(req, res) {
     user.role = role; user.adminInviteToken = crypto.createHash('sha256').update(rawToken).digest('hex'); user.adminInviteExpire = new Date(Date.now() + 24 * 60 * 60 * 1000); user.adminInviteUsed = false; user.adminTwoFactorEnabled = false; user.adminTwoFactorSecret = null;
     await user.save();
     const inviteUrl = `${process.env.APP_URL || 'http://localhost:5000'}/admin-first-login.html?token=${rawToken}`;
-    if (req.app.locals.resend) await req.app.locals.resend.emails.send({ from: emailFrom, to: email, subject: 'دعوة دخول إدارة OPERIX', html: `<p>تمت دعوتك إلى لوحة إدارة OPERIX بدور: ${role}</p><p><a href="${inviteUrl}">إكمال إعداد دخول الإدارة</a></p><p>الرابط صالح لمدة 24 ساعة ويستخدم مرة واحدة.</p>` });
+    if (req.app.locals.resend) await req.app.locals.resend.emails.send({
+      from: emailFrom,
+      to: email,
+      subject: 'دعوة دخول إدارة OPERIX',
+      html: adminInviteTemplate({ inviteUrl, role })
+    });
     res.status(201).json({ success: true, inviteUrl, message: req.app.locals.resend ? 'تم إرسال دعوة الدخول إلى البريد' : 'تم إنشاء الدعوة. انسخ الرابط وأرسله للمدير الجديد' });
   } catch (error) { res.status(500).json({ error: 'تعذر إنشاء دعوة المدير' }); }
 }
@@ -308,7 +327,12 @@ async function forgotPassword(req, res) {
 
     if (resend) {
       try {
-        await resend.emails.send({ from: emailFrom, to: user.email, subject: 'رمز استعادة كلمة المرور - OPERIX', html: `<p>رمز التحقق الخاص بك: <strong>${otp}</strong></p>` });
+        await resend.emails.send({
+      from: emailFrom,
+      to: user.email,
+      subject: 'رمز استعادة كلمة المرور - OPERIX',
+      html: passwordResetTemplate({ otp, expiresInMinutes: 10 })
+    });
         return res.json({ success: true, message: 'تم إرسال رمز التحقق إلى بريدك الإلكتروني' });
       } catch (emailError) {
         console.error('Forgot password email send failed:', emailError.message);
