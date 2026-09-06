@@ -11,9 +11,9 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="OPERIX">
-    <meta name="description" content="OPERIX - منصة رقمية لإدارة المهام والحساب والإحالات والمكافآت">
+    <meta name="description" content="OPERIX - منصة رقمية لإدارة المهام والحساب والإحالات والمكافآت، مع OPX عملة رقمية جديدة برؤية واعدة للمنظومة">
     <meta property="og:title" content="OPERIX - المنصة الرقمية المتكاملة">
-    <meta property="og:description" content="تجربة أوضح لإدارة الحساب والمهام والإحالات والمكافآت">
+    <meta property="og:description" content="تجربة أوضح لإدارة الحساب والمهام والإحالات والمكافآت، مع OPX عملة رقمية جديدة برؤية واعدة للمنظومة">
     <meta property="og:type" content="website">
     <meta property="og:image" content="/operix-logo.svg">
     <meta name="twitter:card" content="summary">
@@ -198,6 +198,11 @@
         .preview-stat:nth-child(3) b { color: #f7b955; }
         .preview-lower { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
         .preview-chart, .preview-security { padding: 12px; background: rgba(3,10,19,.48); border: 1px solid rgba(148,163,184,.12); border-radius: 15px; }
+        .preview-opx { padding: 12px; margin-top: 8px; background: linear-gradient(135deg, rgba(34,211,238,.12), rgba(3,10,19,.48)); border: 1px solid rgba(34,211,238,.22); border-radius: 15px; }
+        .preview-opx-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .preview-opx-price { color: #a5f3fc; font-size: 15px; font-weight: 900; }
+        .preview-opx-status { color: #fcd34d; font-size: 8px; white-space: nowrap; }
+        .preview-opx-chart { display: block; width: 100%; height: 46px; margin-top: 7px; }
         .preview-bars { display: flex; align-items: end; gap: 5px; height: 55px; margin-top: 12px; }
         .preview-bars span { flex: 1; border-radius: 4px 4px 1px 1px; background: linear-gradient(#45d6b0, #168a76); }
         .preview-bars span:nth-child(1) { height: 35%; }.preview-bars span:nth-child(2) { height: 52%; }.preview-bars span:nth-child(3) { height: 45%; }.preview-bars span:nth-child(4) { height: 70%; }.preview-bars span:nth-child(5) { height: 62%; }.preview-bars span:nth-child(6) { height: 88%; }
@@ -253,9 +258,9 @@
             </div>
             <div class="flex-1 grid lg:grid-cols-[1.1fr_.9fr] items-center gap-12 py-12 md:py-16">
                 <div class="intro-reveal space-y-6">
-                    <span class="inline-flex items-center gap-2 text-[11px] text-emerald-300 border border-emerald-400/20 bg-emerald-400/5 rounded-full px-3 py-1.5"><i class="fa-solid fa-sparkles"></i> بيئة OPERIX الرقمية</span>
+                    <span class="inline-flex items-center gap-2 text-[11px] text-cyan-200 border border-cyan-400/25 bg-cyan-400/10 rounded-full px-3 py-1.5"><i class="fa-solid fa-coins"></i> OPX — عملة رقمية جديدة واعدة</span>
                     <h1 class="text-4xl md:text-6xl font-black leading-tight text-white max-w-2xl">نظام أوضح لبناء <span class="text-amber-400">تقدمك اليومي</span></h1>
-                    <p class="text-sm md:text-base leading-8 text-slate-300 max-w-xl">OPERIX منصة رقمية تجمع المهام، إدارة الحساب، الإحالات، والمكافآت في تجربة واحدة هادئة ومنظمة، مع أدوات واضحة تساعدك على متابعة قراراتك بنفسك.</p>
+                    <p class="text-sm md:text-base leading-8 text-slate-300 max-w-xl">OPERIX منصة رقمية تجمع المهام، إدارة الحساب، الإحالات، والمكافآت في تجربة واحدة هادئة ومنظمة، وتقدم OPX كعملة رقمية جديدة لدعم الترقيات وبناء منظومة استخدام قابلة للتوسع.</p>
                     <div class="flex flex-wrap gap-3">
                         <button onclick="showAuthView('register')" class="px-6 py-3.5 gold-gradient text-slate-950 rounded-xl text-sm font-black shadow-xl shadow-amber-500/10">إنشاء حساب</button>
                         <button onclick="showAuthView('login')" class="px-6 py-3.5 bg-slate-900/70 text-white border border-slate-700 rounded-xl text-sm font-bold">الدخول إلى حسابي <i class="fa-solid fa-arrow-left mr-2 text-amber-400"></i></button>
@@ -271,8 +276,9 @@
                     <div class="product-preview" aria-label="معاينة توضيحية للوحة تحكم OPERIX">
                         <div class="preview-topbar"><div class="preview-brand"><i>OP</i><span>OPERIX</span></div><div class="preview-dots"><span></span><span></span><span></span></div></div>
                         <div class="preview-balance"><small>معاينة توضيحية للوحة الحساب</small><strong>بياناتك في مكان واحد</strong><em>الرصيد والنشاط والحماية بوضوح</em></div>
-                        <div class="preview-stats"><div class="preview-stat"><span class="preview-label">المهام</span><b>28 / 33</b></div><div class="preview-stat"><span class="preview-label">الأرباح</span><b>+184.20</b></div><div class="preview-stat"><span class="preview-label">الفريق</span><b>24 نشط</b></div></div>
+                        <div class="preview-stats"><div class="preview-stat"><span class="preview-label">المهام</span><b>28 / 33</b></div><div class="preview-stat"><span class="preview-label">OPX</span><b>10 لكل $1</b></div><div class="preview-stat"><span class="preview-label">الفريق</span><b>24 نشط</b></div></div>
                         <div class="preview-lower"><div class="preview-chart"><span class="preview-label">نشاط الحساب</span><div class="preview-bars"><span></span><span></span><span></span><span></span><span></span><span></span></div></div><div class="preview-security"><span class="preview-label">ضوابط الحساب</span><div class="security-ring"><i class="fa-solid fa-check" aria-hidden="true"></i></div><span class="preview-label">مصادقة وإشعارات</span></div></div>
+                        <div class="preview-opx"><div class="preview-opx-head"><div><span class="preview-label">OPX / USD</span><b class="preview-opx-price">$0.10</b></div><span class="preview-opx-status">السوق قيد الإطلاق</span></div><canvas id="opxLandingChart" class="preview-opx-chart" aria-label="معاينة محاكاة OPX للزوار"></canvas><span class="preview-label">عملة رقمية جديدة برؤية واعدة · محاكاة داخلية</span></div>
                     </div>
                 </div>
             </div>
@@ -281,6 +287,21 @@
                 <div class="intro-feature rounded-2xl p-4 flex gap-3 items-start"><i class="fa-solid fa-shield-halved text-emerald-400 mt-1"></i><div><b class="block text-sm text-white">حماية مدمجة</b><span class="text-[11px] text-slate-400">جلسات ومصادقة وإشعارات للحساب.</span></div></div>
                 <div class="intro-feature rounded-2xl p-4 flex gap-3 items-start"><i class="fa-solid fa-route text-cyan-400 mt-1"></i><div><b class="block text-sm text-white">خطوات مفهومة</b><span class="text-[11px] text-slate-400">تنقل بسيط من المهمة إلى النتيجة.</span></div></div>
             </div>
+            <section class="about-panel rounded-3xl p-6 md:p-8 mb-10 intro-reveal" style="animation-delay:.24s" aria-labelledby="opx-intro-title">
+                <div class="grid md:grid-cols-[auto_1fr] items-start gap-5 md:gap-7">
+                    <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-cyan-300/25 bg-cyan-300/10 text-cyan-200 text-xl font-black">OPX</div>
+                    <div>
+                        <span class="about-kicker">OPX / عملة OPERIX الرقمية</span>
+                        <h2 id="opx-intro-title" class="text-2xl md:text-3xl font-black text-white mt-2 leading-relaxed">عملة رقمية جديدة برؤية واعدة</h2>
+                        <p class="text-xs md:text-sm leading-7 text-slate-300 mt-3">OPX هي العملة الرقمية الجديدة في منظومة OPERIX، صُممت لتدعم تجربة المستخدم والترقيات داخل المنصة، مع توجه مستقبلي لبناء قيمة واستخدامات أوسع وفق تطور المنظومة واعتماد السياسات المناسبة.</p>
+                        <div class="grid sm:grid-cols-3 gap-3 mt-5">
+                            <div class="rounded-2xl border border-cyan-400/15 bg-cyan-400/5 p-3"><b class="block text-sm text-cyan-200">بداية واعدة</b><span class="text-[10px] leading-5 text-slate-400">السعر الداخلي الحالي $0.10 لكل OPX ضمن المنصة.</span></div>
+                            <div class="rounded-2xl border border-amber-400/15 bg-amber-400/5 p-3"><b class="block text-sm text-amber-200">ترقيات فقط</b><span class="text-[10px] leading-5 text-slate-400">يمكن حرقه لتغطية حتى 30%، مع دفع 70% USDT على الأقل.</span></div>
+                            <div class="rounded-2xl border border-slate-700 bg-slate-950/35 p-3"><b class="block text-sm text-white">مرحلة التأسيس</b><span class="text-[10px] leading-5 text-slate-400">غير قابل للسحب حاليًا ولا يمثل سعرًا سوقيًا أو عائدًا مضمونًا.</span></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
             <section id="about-operix" class="about-panel rounded-3xl p-6 md:p-10 my-10 intro-reveal" style="animation-delay:.28s">
                 <div class="grid lg:grid-cols-[.72fr_1.28fr] gap-8 lg:gap-14">
                     <div><span class="about-kicker">ABOUT OPERIX / من نحن</span><h2 class="text-2xl md:text-3xl font-black text-white mt-3 leading-relaxed">نبني تجربة رقمية أكثر وضوحًا وانضباطًا</h2><p class="text-xs leading-7 text-slate-400 mt-4">OPERIX هي منصة رقمية صُممت لتجميع أدوات المتابعة اليومية وإدارة الحساب في مساحة واحدة سهلة الفهم، بحيث يستطيع المستخدم الوصول إلى بياناته، مهامه، إحالاته، ومكافآته من خلال تجربة مترابطة وشفافة.</p></div>
@@ -439,9 +460,13 @@
                     <p class="text-slate-500 text-[10px] mt-1">السعر الداخلي الحالي: $0.10 لكل OPX. يمكن حرقه لتغطية حتى 30% من الترقية، مع دفع 70% USDT من رصيد الإيداع على الأقل. الحرق نهائي. سعر الإدراج المستقبلي المستهدف: $3.00، ولا يُطبق قبل الإطلاق.</p>
                 </div>
                 <div class="rounded-2xl border border-cyan-500/20 bg-slate-950/60 p-3 space-y-2">
-                    <div class="flex items-center justify-between gap-3"><div><span class="text-[10px] font-bold text-cyan-300">محاكاة OPX</span><p class="text-[10px] text-slate-500 mt-1">مسار افتراضي لمدة 9 أسابيع · +3% أسبوعيًا</p></div><span class="rounded-full border border-slate-700 px-2 py-1 text-[9px] text-slate-500">ليس سعرًا سوقيًا</span></div>
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div><div class="flex items-center gap-2"><span class="text-[10px] font-black text-white">OPX / USD</span><span class="rounded-full border border-amber-400/25 bg-amber-400/10 px-2 py-1 text-[9px] font-bold text-amber-300">السوق قيد الإطلاق</span></div><p class="text-[10px] text-slate-500 mt-1">معاينة المسار الداخلي · 9 أسابيع</p></div>
+                        <div class="text-left"><strong class="block text-sm text-cyan-200">$0.10</strong><span class="text-[9px] text-slate-500">السعر الداخلي</span></div>
+                    </div>
                     <div class="relative h-44 md:h-52"><canvas id="opxProjectionChart" class="h-full w-full" aria-label="رسم محاكاة افتراضية لسعر OPX"></canvas></div>
-                    <p class="text-[10px] leading-5 text-slate-500">هذه محاكاة تعليمية وليست توقعًا أو عائدًا مضمونًا. قد يصبح تحويل OPX إلى نقد متاحًا فقط بعد إدراج فعلي، وتوفر سيولة، واعتماد سياسة سحب رسمية.</p>
+                    <div class="flex items-center justify-between gap-3 border-t border-slate-800/80 pt-2"><span class="text-[9px] text-slate-500"><i class="fa-solid fa-chart-line text-cyan-300 mr-1"></i> سيتم ربط TradingView عند توفر زوج تداول رسمي</span><span class="text-[9px] font-bold text-cyan-300">+3% / أسبوعيًا*</span></div>
+                    <p class="text-[10px] leading-5 text-slate-500">* محاكاة تعليمية افتراضية وليست سعرًا سوقيًا أو توقعًا أو عائدًا مضمونًا. التحويل النقدي لا يتاح إلا بعد إدراج فعلي، وتوفر سيولة، واعتماد سياسة سحب رسمية.</p>
                 </div>
 
                 <div class="grid grid-cols-2 gap-2 text-xs border-t border-slate-800/80 pt-3">

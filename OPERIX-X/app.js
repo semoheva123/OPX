@@ -956,6 +956,45 @@ function drawOpxProjectionChart() {
     context.fillText(`$${maxValue.toFixed(3)}`, Math.max(padding.left, width - 54), points[points.length - 1].y - 10);
 }
 
+function drawOpxLandingChart() {
+    const canvas = document.getElementById('opxLandingChart');
+    if (!canvas) return;
+    const context = canvas.getContext('2d');
+    const width = canvas.clientWidth || 280;
+    const height = canvas.clientHeight || 46;
+    const scale = window.devicePixelRatio || 1;
+    canvas.width = width * scale;
+    canvas.height = height * scale;
+    context.setTransform(scale, 0, 0, scale, 0, 0);
+    context.clearRect(0, 0, width, height);
+    const values = [0.10, 0.104, 0.108, 0.113, 0.117, 0.122, 0.127, 0.133, 0.137];
+    const padding = { top: 5, right: 2, bottom: 5, left: 2 };
+    const chartWidth = width - padding.left - padding.right;
+    const chartHeight = height - padding.top - padding.bottom;
+    const minValue = values[0];
+    const maxValue = values[values.length - 1];
+    const valueRange = maxValue - minValue;
+    const points = values.map((value, index) => ({ x: padding.left + chartWidth * index / (values.length - 1), y: padding.top + chartHeight - (value - minValue) / valueRange * chartHeight }));
+    context.beginPath();
+    points.forEach((point, index) => index ? context.lineTo(point.x, point.y) : context.moveTo(point.x, point.y));
+    context.lineTo(points[points.length - 1].x, height - padding.bottom);
+    context.lineTo(points[0].x, height - padding.bottom);
+    context.closePath();
+    context.fillStyle = 'rgba(34, 211, 238, 0.12)';
+    context.fill();
+    context.beginPath();
+    points.forEach((point, index) => index ? context.lineTo(point.x, point.y) : context.moveTo(point.x, point.y));
+    context.strokeStyle = '#67e8f9';
+    context.lineWidth = 2;
+    context.lineJoin = 'round';
+    context.stroke();
+    const latest = points[points.length - 1];
+    context.fillStyle = '#a5f3fc';
+    context.beginPath();
+    context.arc(latest.x, latest.y, 3, 0, Math.PI * 2);
+    context.fill();
+}
+
 async function loadInvestmentVaults() {
     const list = document.getElementById('investmentVaultList');
     const token = localStorage.getItem('token');
@@ -1518,7 +1557,11 @@ function drawAccountGrowthChart(points) {
 
 window.addEventListener('resize', () => drawAccountGrowthChart(growthChartPoints));
 window.addEventListener('resize', drawOpxProjectionChart);
-document.addEventListener('DOMContentLoaded', drawOpxProjectionChart);
+window.addEventListener('resize', drawOpxLandingChart);
+document.addEventListener('DOMContentLoaded', () => {
+    drawOpxProjectionChart();
+    drawOpxLandingChart();
+});
 
 function updateTaskAvailability(completed, maximum) {
     const button = document.getElementById('btnCompleteTask');
