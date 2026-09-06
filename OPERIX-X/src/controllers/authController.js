@@ -16,7 +16,7 @@ const generateURI = ({ issuer, label, secret }) => authenticator.keyuri(label, i
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const MAX_RESET_OTP_ATTEMPTS = 5;
-const emailFrom = process.env.EMAIL_FROM || 'OPERIX <onboarding@resend.dev>';
+const emailFrom = String(process.env.EMAIL_FROM || '').trim();
 
 function setAdminCookie(res, token) {
   const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
@@ -86,14 +86,18 @@ async function register(req, res) {
 async function verifyEmail(req, res) {
   try {
     const token = String(req.query.token || '').trim();
-    if (!token) return res.status(400).send('رابط التحقق غير صالح');
+    const resultPage = (statusCode, title, message, actionText = 'العودة إلى OPERIX') => res.status(statusCode).send(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title} - OPERIX</title></head><body style="margin:0;background:#060d18;color:#f8fafc;font-family:Tahoma,Arial,sans-serif;display:grid;place-items:center;min-height:100vh;padding:24px"><main style="width:100%;max-width:520px;background:#0d1726;border:1px solid #26364b;border-radius:18px;padding:36px 28px;text-align:center;box-sizing:border-box"><div style="display:inline-block;background:#eeb34e;color:#08111e;font-size:22px;font-weight:700;letter-spacing:1px;padding:12px 18px;border-radius:10px;margin-bottom:24px">OPERIX</div><h1 style="margin:0 0 14px;font-size:26px">${title}</h1><p style="margin:0 0 26px;color:#cbd5e1;line-height:1.9">${message}</p><a href="/" style="display:inline-block;background:#eeb34e;color:#08111e;text-decoration:none;font-weight:700;padding:14px 22px;border-radius:9px">${actionText}</a></main></body></html>`);
+    if (!token) return resultPage(400, 'رابط التحقق غير صالح', 'يرجى طلب رابط توثيق جديد من قسم حسابي.');
     const user = await User.findOne({ emailVerificationToken: token, emailVerificationExpire: { $gt: new Date() } }).select('+emailVerificationToken +emailVerificationExpire');
-    if (!user) return res.status(400).send('رابط التحقق غير صالح أو منتهي الصلاحية');
+    if (!user) return resultPage(400, 'الرابط غير صالح أو منتهي الصلاحية', 'يرجى طلب رابط توثيق جديد من قسم حسابي.');
     user.emailVerified = true; user.emailVerificationToken = null; user.emailVerificationExpire = null;
     await user.save();
     await SecurityEvent.create({ userId: user._id, email: user.email, event: 'email_verified', ip: req.ip, userAgent: req.get('user-agent') || 'unknown' });
-    res.send('<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><title>OPERIX</title><body style="font-family:Arial;padding:40px;background:#07111f;color:#fff"><h1>تم تأكيد البريد بنجاح</h1><a style="color:#f7b955" href="/">العودة إلى OPERIX</a></body></html>');
-  } catch (error) { res.status(500).send('تعذر تأكيد البريد'); }
+    return resultPage(200, 'تم تأكيد البريد بنجاح', 'تم توثيق بريدك الإلكتروني ويمكنك الآن العودة إلى المنصة واستخدام جميع ميزات الحساب.');
+  } catch (error) {
+    console.error('Verify email error:', error.message);
+    res.status(500).send('تعذر تأكيد البريد');
+  }
 }
 
 async function resendVerification(req, res) {
@@ -107,15 +111,24 @@ async function resendVerification(req, res) {
     await user.save();
     if (req.app.locals.resend) {
       const verifyUrl = `${process.env.APP_URL || 'http://localhost:5000'}/api/auth/verify-email?token=${user.emailVerificationToken}`;
-      await req.app.locals.resend.emails.send({
+      const emailResult = await req.app.locals.resend.emails.send({
         from: emailFrom,
         to: user.email,
         subject: 'رابط تأكيد البريد - OPERIX',
         html: emailVerificationTemplate({ verifyUrl, userEmail: user.email })
       });
+      if (emailResult?.error) {
+        throw new Error(`Resend verification email failed: ${emailResult.error.message || 'provider rejected the email'}`);
+      }
+    } else {
+      console.error('Resend verification email skipped: RESEND_API_KEY is not configured');
+      return res.status(503).json({ error: 'خدمة البريد الإلكتروني غير مهيأة حاليًا' });
     }
     res.json({ success: true, message: 'تم إرسال رابط التحقق إذا كانت خدمة البريد مهيأة' });
-  } catch (error) { res.status(500).json({ error: 'تعذر إعادة إرسال رابط التحقق' }); }
+  } catch (error) {
+    console.error('Resend verification error:', error.message);
+    res.status(502).json({ error: 'تعذر إرسال رابط توثيق البريد الإلكتروني. تحقق من إعدادات البريد أو حاول لاحقًا.' });
+  }
 }
 
 async function login(req, res) {
