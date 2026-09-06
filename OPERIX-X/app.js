@@ -331,8 +331,9 @@ async function upgradeToSpecificTier(targetTier) {
         return;
     }
     const opxRequired = (upgradeCost * opxMaxUpgradeDiscountShare / opxInternalUsdPrice).toFixed(4);
+    const maxOpxValue = (upgradeCost * opxMaxUpgradeDiscountShare).toFixed(2);
     const minUsdtRequired = (upgradeCost * (1 - opxMaxUpgradeDiscountShare)).toFixed(2);
-    const confirmed = await showPlatformConfirm(`تأكيد ${targetIndex === currentIndex ? 'تفعيل' : 'الترقية إلى'} ${target.name}؟\nالتكلفة: $${upgradeCost.toFixed(2)}\nيمكن حرق حتى ${opxRequired} OPX (السعر الداخلي $${opxInternalUsdPrice.toFixed(2)})، مع دفع $${minUsdtRequired} USDT نقدية على الأقل.\nسيتم حرق OPX نهائيًا ولا يمكن عكس العملية.\nالإحالات النشطة: ${activeReferrals}/${requiredReferrals}`, 'تأكيد المستوى');
+    const confirmed = await showPlatformConfirm(`تأكيد ${targetIndex === currentIndex ? 'تفعيل' : 'الترقية إلى'} ${target.name}؟\nالتكلفة الإجمالية: $${upgradeCost.toFixed(2)}\nحد OPX الأقصى: ${opxRequired} OPX = $${maxOpxValue} (30% من التكلفة)\nالحد الأدنى للدفع النقدي: $${minUsdtRequired} USDT (70% من التكلفة)\nسيتم تحديد الحرق الفعلي حسب رصيد OPX المتاح، وأي نقص يُدفع USDT. الحرق نهائي ولا يمكن عكسه.\nالإحالات النشطة: ${activeReferrals}/${requiredReferrals}`, 'تأكيد المستوى');
     if (!confirmed) return;
     try {
         const res = await fetch('/api/user/upgrade', {
