@@ -393,8 +393,6 @@ async function loadHomeSummary() {
     } catch (error) {
         renderHomeSummaryFallback();
         document.getElementById('homePulseMessage').innerText = 'بيانات الحساب الأساسية معروضة، تعذر تحديث النشاط التفصيلي.';
-        const sinceVisit = document.getElementById('homeSinceVisit');
-        if (sinceVisit) sinceVisit.innerText = 'لا تتوفر تحديثات جديدة للتحقق منها الآن.';
         if (!homeSummaryRetryTimer && localStorage.getItem('token')) homeSummaryRetryTimer = setTimeout(() => { homeSummaryRetryTimer = null; loadHomeSummary(); }, 1500);
     }
 }
@@ -421,13 +419,6 @@ function renderHomeSummary(summary) {
     if (goal) goal.innerText = completedTasks < taskLimit ? `أكمل ${taskLimit - completedTasks} مهمة للوصول إلى هدف اليوم.` : 'أكملت هدف المهام اليومية.';
     if (goalMeta) goalMeta.innerText = `${taskProgress}% من هدف اليوم`;
     if (goalProgress) goalProgress.style.width = `${taskProgress}%`;
-
-    const lastVisitKey = 'ag_last_home_visit';
-    const lastVisit = Number(localStorage.getItem(lastVisitKey) || 0);
-    const newEvents = (summary.recentActivity || []).filter(event => new Date(event.createdAt).getTime() > lastVisit);
-    const sinceVisit = document.getElementById('homeSinceVisit');
-    if (sinceVisit) sinceVisit.innerText = lastVisit ? (newEvents.length ? `حدث ${newEvents.length} نشاط جديد في حسابك منذ آخر زيارة.` : 'لم يحدث تغيير جديد في حسابك منذ آخر زيارة.') : 'هذه أول زيارة مسجلة من هذا الجهاز.';
-    localStorage.setItem(lastVisitKey, Date.now().toString());
 
     const healthScore = Number(summary.health || 0);
     const healthLabel = document.getElementById('homeHealthScore');
@@ -897,33 +888,29 @@ function drawOpxProjectionChart() {
     if (!canvas) return;
     const context = canvas.getContext('2d');
     const width = canvas.clientWidth || 320;
-    const height = canvas.clientHeight || 112;
+    const height = canvas.clientHeight || 238;
     const scale = window.devicePixelRatio || 1;
     canvas.width = width * scale;
     canvas.height = height * scale;
     context.setTransform(scale, 0, 0, scale, 0, 0);
     context.clearRect(0, 0, width, height);
     const values = Array.from({ length: 9 }, (_, index) => 0.10 * Math.pow(1.03, index));
-    const padding = { top: 14, right: 14, bottom: 28, left: 46 };
+    const padding = { top: 14, right: 14, bottom: 28, left: 8 };
     const minValue = values[0];
     const maxValue = values[values.length - 1];
     const chartWidth = width - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
     const valueRange = Math.max(maxValue - minValue, 0.001);
     const points = values.map((value, index) => ({ x: padding.left + chartWidth * index / (values.length - 1), y: padding.top + chartHeight - (value - minValue) / valueRange * chartHeight }));
-    context.font = '10px IBM Plex Sans Arabic, sans-serif';
-    context.textAlign = 'right';
+    context.font = '9px IBM Plex Sans Arabic, sans-serif';
     for (let index = 0; index <= 4; index += 1) {
         const y = padding.top + chartHeight * index / 4;
-        const value = maxValue - valueRange * index / 4;
         context.strokeStyle = 'rgba(148, 163, 184, 0.13)';
         context.lineWidth = 1;
         context.beginPath();
         context.moveTo(padding.left, y);
         context.lineTo(width - padding.right, y);
         context.stroke();
-        context.fillStyle = '#64748b';
-        context.fillText(`$${value.toFixed(3)}`, padding.left - 8, y + 3);
     }
     context.textAlign = 'center';
     ['الأسبوع 1', 'الأسبوع 3', 'الأسبوع 5', 'الأسبوع 7', 'الأسبوع 9'].forEach((label, index) => {
@@ -941,19 +928,27 @@ function drawOpxProjectionChart() {
     context.fillStyle = areaGradient;
     context.fill();
     context.beginPath();
-    points.forEach((point, index) => index ? context.lineTo(point.x, point.y) : context.moveTo(point.x, point.y));
+    points.forEach((point, index) => {
+        if (!index) return context.moveTo(point.x, point.y);
+        const previous = points[index - 1];
+        const middleX = (previous.x + point.x) / 2;
+        context.quadraticCurveTo(previous.x, previous.y, middleX, (previous.y + point.y) / 2);
+        context.quadraticCurveTo(point.x, point.y, point.x, point.y);
+    });
     context.strokeStyle = '#67e8f9';
-    context.lineWidth = 2.5;
-    context.shadowColor = 'rgba(34, 211, 238, 0.55)';
-    context.shadowBlur = 8;
+    context.lineWidth = 2.2;
+    context.shadowColor = 'rgba(34, 211, 238, 0.45)';
+    context.shadowBlur = 7;
     context.stroke();
     context.shadowBlur = 0;
-    context.fillStyle = '#67e8f9';
-    points.forEach((point, index) => { context.beginPath(); context.arc(point.x, point.y, index === points.length - 1 ? 4 : 2.5, 0, Math.PI * 2); context.fill(); });
-    context.fillStyle = '#e2e8f0';
-    context.textAlign = 'left';
-    context.font = '700 10px IBM Plex Sans Arabic, sans-serif';
-    context.fillText(`$${maxValue.toFixed(3)}`, Math.max(padding.left, width - 54), points[points.length - 1].y - 10);
+    const latest = points[points.length - 1];
+    context.fillStyle = '#07111f';
+    context.strokeStyle = '#a5f3fc';
+    context.lineWidth = 2;
+    context.beginPath();
+    context.arc(latest.x, latest.y, 5, 0, Math.PI * 2);
+    context.fill();
+    context.stroke();
 }
 
 function drawOpxLandingChart() {

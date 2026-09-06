@@ -154,6 +154,24 @@
         .opx-chart-caption { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
         .opx-chart-caption strong { color: #f8fafc; font-size: 12px; }
         .opx-chart-caption span { color: #64748b; font-size: 10px; }
+        .opx-market-card { padding: 18px; background: linear-gradient(145deg, rgba(13,35,51,.94), rgba(5,14,25,.96)); box-shadow: 0 22px 60px rgba(0,0,0,.2); overflow: hidden; }
+        .opx-market-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+        .opx-market-symbol { color: #f8fafc; font-size: 13px; font-weight: 900; letter-spacing: .02em; }
+        .opx-market-status { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border: 1px solid rgba(247,185,85,.25); border-radius: 999px; color: #fcd34d; background: rgba(247,185,85,.08); font-size: 9px; font-weight: 800; }
+        .opx-market-status::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: #f7b955; box-shadow: 0 0 8px rgba(247,185,85,.8); }
+        .opx-market-subtitle { margin-top: 6px; color: #64748b; font-size: 10px; }
+        .opx-market-price { flex: 0 0 auto; text-align: left; }
+        .opx-market-price strong { display: block; color: #a5f3fc; font-size: 19px; line-height: 1.1; }
+        .opx-market-price span { display: block; margin-top: 4px; color: #64748b; font-size: 9px; }
+        .opx-chart-stage { position: relative; height: 238px; margin-top: 18px; padding: 4px 0 0 42px; border-top: 1px solid rgba(148,163,184,.08); border-bottom: 1px solid rgba(148,163,184,.08); }
+        .opx-market-chart { display: block; width: 100%; height: 100%; }
+        .opx-chart-ylabels { position: absolute; inset: 12px auto 29px 0; display: flex; width: 36px; flex-direction: column; justify-content: space-between; color: #64748b; font-size: 9px; direction: ltr; }
+        .opx-market-footer { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 16px; padding-top: 12px; color: #64748b; font-size: 9px; }
+        .opx-market-footer i { margin-left: 3px; color: #67e8f9; }
+        .opx-market-footer strong { color: #67e8f9; font-size: 10px; }
+        .opx-market-link { margin-right: auto; color: #94a3b8; }
+        .opx-market-disclaimer { margin-top: 9px; color: #64748b; font-size: 9px; line-height: 1.8; }
+        @media (max-width: 480px) { .opx-market-card { padding: 14px; } .opx-market-head { gap: 10px; } .opx-market-symbol { font-size: 12px; } .opx-market-status { font-size: 8px; } .opx-chart-stage { height: 208px; } .opx-market-link { width: 100%; margin-right: 0; } }
         #view-home > .operix-wallet { display: block; padding: 20px; background: radial-gradient(circle at 100% 0%, rgba(247,185,85,.14), transparent 22rem), rgba(11,24,39,.84); border: 1px solid rgba(247,185,85,.22); box-shadow: 0 22px 65px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.05); overflow: hidden; }
         #view-home > .operix-wallet > :first-child { padding: 0; border: 0; border-radius: 0; background: transparent; }
         #view-home > .operix-wallet > :nth-child(2) { padding: 4px 0 16px; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
@@ -459,16 +477,6 @@
                     </div>
                     <p class="text-slate-500 text-[10px] mt-1">السعر الداخلي الحالي: $0.10 لكل OPX. يمكن حرقه لتغطية حتى 30% من الترقية، مع دفع 70% USDT من رصيد الإيداع على الأقل. الحرق نهائي. سعر الإدراج المستقبلي المستهدف: $3.00، ولا يُطبق قبل الإطلاق.</p>
                 </div>
-                <div class="rounded-2xl border border-cyan-500/20 bg-slate-950/60 p-3 space-y-2">
-                    <div class="flex flex-wrap items-start justify-between gap-3">
-                        <div><div class="flex items-center gap-2"><span class="text-[10px] font-black text-white">OPX / USD</span><span class="rounded-full border border-amber-400/25 bg-amber-400/10 px-2 py-1 text-[9px] font-bold text-amber-300">السوق قيد الإطلاق</span></div><p class="text-[10px] text-slate-500 mt-1">معاينة المسار الداخلي · 9 أسابيع</p></div>
-                        <div class="text-left"><strong class="block text-sm text-cyan-200">$0.10</strong><span class="text-[9px] text-slate-500">السعر الداخلي</span></div>
-                    </div>
-                    <div class="relative h-44 md:h-52"><canvas id="opxProjectionChart" class="h-full w-full" aria-label="رسم محاكاة افتراضية لسعر OPX"></canvas></div>
-                    <div class="flex items-center justify-between gap-3 border-t border-slate-800/80 pt-2"><span class="text-[9px] text-slate-500"><i class="fa-solid fa-chart-line text-cyan-300 mr-1"></i> سيتم ربط TradingView عند توفر زوج تداول رسمي</span><span class="text-[9px] font-bold text-cyan-300">+3% / أسبوعيًا*</span></div>
-                    <p class="text-[10px] leading-5 text-slate-500">* محاكاة تعليمية افتراضية وليست سعرًا سوقيًا أو توقعًا أو عائدًا مضمونًا. التحويل النقدي لا يتاح إلا بعد إدراج فعلي، وتوفر سيولة، واعتماد سياسة سحب رسمية.</p>
-                </div>
-
                 <div class="grid grid-cols-2 gap-2 text-xs border-t border-slate-800/80 pt-3">
                     <div>
                         <span class="text-slate-500 block text-[10px]">إجمالي الإيداعات</span>
@@ -490,12 +498,20 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="glass-card p-5 rounded-3xl border border-emerald-500/20 space-y-3">
-                    <div class="flex justify-between items-center"><h3 class="font-black text-sm text-white">نبض الحساب</h3><i class="fa-solid fa-heart-pulse text-emerald-400"></i></div>
-                    <p id="homePulseMessage" class="text-xs leading-6 text-slate-300">جارٍ تحليل نشاط حسابك...</p>
-                    <span id="homePulseMeta" class="text-[10px] text-slate-500"></span>
+            <section class="opx-market-card glass-card rounded-3xl border border-cyan-400/20" aria-labelledby="opx-market-title">
+                <div class="opx-market-head">
+                    <div>
+                        <div class="flex items-center gap-2"><span class="opx-market-symbol">OPX / USD</span><span class="opx-market-status">السوق قيد الإطلاق</span></div>
+                        <p id="opx-market-title" class="opx-market-subtitle">نظرة عامة على المسار الداخلي للعملة</p>
+                    </div>
+                    <div class="opx-market-price"><strong>$0.10</strong><span>السعر الداخلي</span></div>
                 </div>
+                <div class="opx-chart-stage"><div class="opx-chart-ylabels" aria-hidden="true"><span>$0.14</span><span>$0.12</span><span>$0.10</span></div><canvas id="opxProjectionChart" class="opx-market-chart" aria-label="رسم محاكاة افتراضية لمسار OPX"></canvas></div>
+                <div class="opx-market-footer"><span><i class="fa-solid fa-chart-line" aria-hidden="true"></i> محاكاة داخلية · 9 أسابيع</span><strong>+3% أسبوعيًا*</strong><span class="opx-market-link">TradingView بعد الإدراج الرسمي</span></div>
+                <p class="opx-market-disclaimer">* محاكاة تعليمية وليست سعرًا سوقيًا أو توقعًا أو عائدًا مضمونًا. التحويل النقدي لا يتاح إلا بعد إدراج فعلي وتوفر سيولة واعتماد سياسة سحب رسمية.</p>
+            </section>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="glass-card p-5 rounded-3xl border border-amber-500/20 space-y-3">
                     <div class="flex justify-between items-center"><h3 class="font-black text-sm text-white">هدفك القادم</h3><i class="fa-solid fa-bullseye text-amber-400"></i></div>
                     <p id="homeNextGoal" class="text-xs leading-6 text-slate-300">جارٍ تحديد الهدف...</p>
@@ -506,10 +522,6 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="glass-card p-5 rounded-3xl space-y-3">
-                    <div class="flex justify-between items-center"><h3 class="font-black text-sm text-white">منذ آخر زيارة</h3><i class="fa-solid fa-clock-rotate-left text-cyan-400"></i></div>
-                    <p id="homeSinceVisit" class="text-xs leading-6 text-slate-300">جارٍ التحقق من التحديثات...</p>
-                </div>
-                <div class="glass-card p-5 rounded-3xl space-y-3">
                     <div class="flex justify-between items-center"><h3 class="font-black text-sm text-white">جاهزية الحساب</h3><strong id="homeHealthScore" class="text-emerald-400">--%</strong></div>
                     <div class="h-3 bg-slate-950 rounded-full overflow-hidden"><div id="homeHealthProgress" class="h-full bg-emerald-400 rounded-full" style="width:0%"></div></div>
                     <p id="homeHealthMessage" class="text-[10px] text-slate-400">جارٍ فحص إعدادات الحساب...</p>
@@ -519,6 +531,12 @@
                     <div class="grid grid-cols-3 gap-2 text-center text-[10px]"><div><strong id="homeEarnedToday" class="block text-emerald-400">$0</strong><span class="text-slate-500">اليوم</span></div><div><strong id="homeEarnedWeek" class="block text-emerald-400">$0</strong><span class="text-slate-500">7 أيام</span></div><div><strong id="homeEarnedMonth" class="block text-emerald-400">$0</strong><span class="text-slate-500">الشهر</span></div></div>
                     <p id="homePendingStatusDetail" class="text-[10px] text-slate-400">لا توجد طلبات معلقة.</p>
                 </div>
+            </div>
+
+            <div class="glass-card p-5 rounded-3xl border border-emerald-500/20 space-y-3">
+                <div class="flex justify-between items-center"><h3 class="font-black text-sm text-white">نبض الحساب</h3><i class="fa-solid fa-heart-pulse text-emerald-400"></i></div>
+                <p id="homePulseMessage" class="text-xs leading-6 text-slate-300">جارٍ تحليل نشاط حسابك...</p>
+                <span id="homePulseMeta" class="text-[10px] text-slate-500"></span>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
