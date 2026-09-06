@@ -13,6 +13,11 @@ router.get('/overview', requirePermission('read_overview'), adminController.over
 router.get('/analytics', requirePermission('read_overview'), adminController.analytics);
 router.get('/risk-summary', requirePermission('read_overview'), adminController.riskSummary);
 router.get('/financial-summary', requirePermission('finance'), adminController.financialSummary);
+router.get('/investment-vault/summary', requirePermission('finance'), adminController.investmentVaultSummary);
+router.get('/investment-vault/contracts', requirePermission('finance'), adminController.getInvestmentVaultContracts);
+router.post('/investment-vault/contracts', requireFullAdmin, adminController.updateInvestmentVaultContracts);
+router.get('/investment-vault/list', requirePermission('finance'), adminController.listInvestmentVaults);
+router.post('/investment-vault/:vaultId/emergency-release', requireFullAdmin, adminController.emergencyReleaseInvestmentVault);
 router.get('/kyc-summary', requirePermission('read_overview'), adminController.kycSummary);
 router.get('/users', requirePermission('read_users'), adminController.listUsers);
 router.get('/users/:userId/details', requirePermission('read_users'), adminController.userDetails);
