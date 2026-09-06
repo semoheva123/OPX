@@ -3,10 +3,10 @@ const User = require('../models/User');
 const Transaction = require('../models/Transaction');
 const VipLevel = require('../models/VipLevel');
 const { applyRewardToUser, rewardTransactionFields } = require('../services/hybridRewardLedger');
-const { OPX_INTERNAL_USD_PRICE, OPX_FUTURE_LISTING_USD_PRICE, OPX_MAX_UPGRADE_DISCOUNT_SHARE, OPX_MIN_USDT_UPGRADE_SHARE, calculateOpxForUsd, applyOpxUpgradePayment } = require('../services/opxPricing');
+const { OPX_INTERNAL_USD_PRICE, OPX_FUTURE_LISTING_USD_PRICE, OPX_MAX_UPGRADE_DISCOUNT_SHARE, OPX_MIN_USDT_UPGRADE_SHARE, OPX_MAX_UPGRADE_VALUE_USD, calculateOpxForUsd, applyOpxUpgradePayment } = require('../services/opxPricing');
 
 function getOpxPricing(req, res) {
-  res.json({ symbol: 'OPX', internalUsdPrice: OPX_INTERNAL_USD_PRICE, futureListingUsdPrice: OPX_FUTURE_LISTING_USD_PRICE, upgradeRate: calculateOpxForUsd(1), maxUpgradeDiscountShare: OPX_MAX_UPGRADE_DISCOUNT_SHARE, minUsdtUpgradeShare: OPX_MIN_USDT_UPGRADE_SHARE });
+  res.json({ symbol: 'OPX', internalUsdPrice: OPX_INTERNAL_USD_PRICE, futureListingUsdPrice: OPX_FUTURE_LISTING_USD_PRICE, upgradeRate: calculateOpxForUsd(1), maxUpgradeDiscountShare: OPX_MAX_UPGRADE_DISCOUNT_SHARE, maxUpgradeValueUsd: OPX_MAX_UPGRADE_VALUE_USD, minUsdtUpgradeShare: OPX_MIN_USDT_UPGRADE_SHARE });
 }
 
 async function getVipLevels(req, res) {
@@ -76,13 +76,14 @@ async function upgrade(req, res) {
       const targetIndex = codes.indexOf(targetLevel.code);
       const currentLevel = levels.find(level => level.code === user.tierCode);
       const currentActivated = Boolean(currentLevel && user.wallet.totalDeposits > 0);
+      const initialActivation = targetIndex === currentIndex && !currentActivated;
       if (targetIndex < currentIndex || (targetIndex === currentIndex && currentActivated)) throw Object.assign(new Error('INVALID_TIER_ORDER'), { statusCode: 400 });
       if (targetIndex > currentIndex + 1) throw Object.assign(new Error('TIER_SEQUENCE'), { statusCode: 400 });
       const requiredReferrals = targetIndex * 10;
       const activeReferrals = await User.countDocuments({ referredBy: user.referralCode?.trim().toUpperCase(), isBanned: false, 'wallet.totalDeposits': { $gt: 0 } }).session(session);
       if (activeReferrals < requiredReferrals) throw Object.assign(new Error(`REFERRALS_REQUIRED:${requiredReferrals}:${activeReferrals}`), { statusCode: 400 });
       upgradeCost = targetIndex === currentIndex ? targetLevel.price : Math.max(0, targetLevel.price - (currentLevel?.price || 0));
-      try { payment = applyOpxUpgradePayment(user, upgradeCost); }
+      try { payment = applyOpxUpgradePayment(user, upgradeCost, { allowOpx: !initialActivation }); }
       catch (error) { throw Object.assign(new Error(`INSUFFICIENT:${targetLevel.name}:${error.message.replace('INSUFFICIENT:', '')}`), { statusCode: 400 }); }
       user.tierCode = targetLevel.code;
       await user.save({ session });
@@ -98,7 +99,7 @@ async function upgrade(req, res) {
         }
       }
     });
-    res.json({ success: true, message: `تمت الترقية بنجاح إلى ${targetLevel.name}.`, tierCode: user.tierCode, wallet: user.wallet, OPX_balance: user.OPX_balance, upgradeCost, opxAmount: payment.opxAmount, usdtAmount: payment.usdtAmount });
+    res.json({ success: true, message: `تمت الترقية بنجاح إلى ${targetLevel.name}.`, tierCode: user.tierCode, wallet: user.wallet, OPX_balance: user.OPX_balance, upgradeCost, opxAmount: payment.opxAmount, usdtAmount: payment.usdtAmount, initialActivation: payment.opxAmount === 0 && payment.usdtAmount === upgradeCost });
   } catch (err) {
     if (session.inTransaction()) await session.abortTransaction();
     if (err.statusCode === 404) return res.status(404).json({ error: 'المستخدم غير موجود' });
