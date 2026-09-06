@@ -904,28 +904,56 @@ function drawOpxProjectionChart() {
     context.setTransform(scale, 0, 0, scale, 0, 0);
     context.clearRect(0, 0, width, height);
     const values = Array.from({ length: 9 }, (_, index) => 0.10 * Math.pow(1.03, index));
-    const padding = { top: 10, right: 8, bottom: 16, left: 8 };
+    const padding = { top: 14, right: 14, bottom: 28, left: 46 };
+    const minValue = values[0];
     const maxValue = values[values.length - 1];
     const chartWidth = width - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
-    const points = values.map((value, index) => ({ x: padding.left + chartWidth * index / (values.length - 1), y: padding.top + chartHeight - value / maxValue * chartHeight }));
-    context.strokeStyle = 'rgba(34, 211, 238, 0.16)';
-    context.lineWidth = 1;
-    context.beginPath();
-    context.moveTo(padding.left, height - padding.bottom);
-    context.lineTo(width - padding.right, height - padding.bottom);
-    context.stroke();
+    const valueRange = Math.max(maxValue - minValue, 0.001);
+    const points = values.map((value, index) => ({ x: padding.left + chartWidth * index / (values.length - 1), y: padding.top + chartHeight - (value - minValue) / valueRange * chartHeight }));
+    context.font = '10px IBM Plex Sans Arabic, sans-serif';
+    context.textAlign = 'right';
+    for (let index = 0; index <= 4; index += 1) {
+        const y = padding.top + chartHeight * index / 4;
+        const value = maxValue - valueRange * index / 4;
+        context.strokeStyle = 'rgba(148, 163, 184, 0.13)';
+        context.lineWidth = 1;
+        context.beginPath();
+        context.moveTo(padding.left, y);
+        context.lineTo(width - padding.right, y);
+        context.stroke();
+        context.fillStyle = '#64748b';
+        context.fillText(`$${value.toFixed(3)}`, padding.left - 8, y + 3);
+    }
+    context.textAlign = 'center';
+    ['الأسبوع 1', 'الأسبوع 3', 'الأسبوع 5', 'الأسبوع 7', 'الأسبوع 9'].forEach((label, index) => {
+        context.fillStyle = '#64748b';
+        context.fillText(label, padding.left + chartWidth * index / 4, height - 8);
+    });
+    const areaGradient = context.createLinearGradient(0, padding.top, 0, height - padding.bottom);
+    areaGradient.addColorStop(0, 'rgba(34, 211, 238, 0.24)');
+    areaGradient.addColorStop(1, 'rgba(34, 211, 238, 0)');
     context.beginPath();
     points.forEach((point, index) => index ? context.lineTo(point.x, point.y) : context.moveTo(point.x, point.y));
-    context.strokeStyle = '#22d3ee';
-    context.lineWidth = 2;
+    context.lineTo(points[points.length - 1].x, height - padding.bottom);
+    context.lineTo(points[0].x, height - padding.bottom);
+    context.closePath();
+    context.fillStyle = areaGradient;
+    context.fill();
+    context.beginPath();
+    points.forEach((point, index) => index ? context.lineTo(point.x, point.y) : context.moveTo(point.x, point.y));
+    context.strokeStyle = '#67e8f9';
+    context.lineWidth = 2.5;
+    context.shadowColor = 'rgba(34, 211, 238, 0.55)';
+    context.shadowBlur = 8;
     context.stroke();
+    context.shadowBlur = 0;
     context.fillStyle = '#67e8f9';
-    points.forEach(point => { context.beginPath(); context.arc(point.x, point.y, 2.5, 0, Math.PI * 2); context.fill(); });
-    context.fillStyle = '#64748b';
-    context.font = '10px sans-serif';
-    context.fillText('$0.10', padding.left, height - 3);
-    context.fillText(`$${maxValue.toFixed(3)}`, Math.max(padding.left, width - 46), 10);
+    points.forEach((point, index) => { context.beginPath(); context.arc(point.x, point.y, index === points.length - 1 ? 4 : 2.5, 0, Math.PI * 2); context.fill(); });
+    context.fillStyle = '#e2e8f0';
+    context.textAlign = 'left';
+    context.font = '700 10px IBM Plex Sans Arabic, sans-serif';
+    context.fillText(`$${maxValue.toFixed(3)}`, Math.max(padding.left, width - 54), points[points.length - 1].y - 10);
 }
 
 async function loadInvestmentVaults() {
