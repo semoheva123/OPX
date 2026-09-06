@@ -15,6 +15,7 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const supportRoutes = require('./routes/supportRoutes');
 const couponRoutes = require('./routes/couponRoutes');
 const settingsRoutes = require('./routes/settingsRoutes');
+const investmentVaultRoutes = require('./routes/investmentVaultRoutes');
 const { verifyAdmin } = require('./middlewares/auth');
 const jwt = require('jsonwebtoken');
 const Session = require('./models/Session');
@@ -149,6 +150,7 @@ function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
   app.use('/api/support', supportRoutes);
   app.use('/api/coupons', couponRoutes);
   app.use('/api/settings', settingsRoutes);
+  app.use('/api', investmentVaultRoutes);
 
   app.use((req, res, next) => {
     if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'المسار غير موجود' });
