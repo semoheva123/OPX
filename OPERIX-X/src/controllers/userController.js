@@ -251,16 +251,29 @@ async function getHomeSummary(req, res) {
 async function sendTwoFactorCode(req, res) {
   try {
     const resend = req.app.locals.resend;
-    if (!resend) return res.status(500).json({ error: 'خدمة البريد الإلكتروني غير مهيأة' });
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     if (!user.twoFactorEnabled) return res.status(400).json({ error: 'فعّل المصادقة الثنائية أولاً من قسم حسابي' });
+
     const code = crypto.randomInt(100000, 1000000).toString();
     user.twoFactorCode = code;
     user.twoFactorExpire = Date.now() + 5 * 60 * 1000;
     await user.save();
-    await resend.emails.send({ from: emailFrom, to: user.email, subject: 'رمز التحقق الثنائي (2FA) - OPERIX', html: `<p>رمز التحقق الخاص بتأكيد عملية السحب هو: <strong>${code}</strong></p><p>صالح لمدة 5 دقائق.</p>` });
-    res.json({ success: true, message: 'تم إرسال رمز التحقق الثنائي إلى بريدك الإلكتروني' });
+
+    if (resend) {
+      try {
+        await resend.emails.send({ from: emailFrom, to: user.email, subject: 'رمز التحقق الثنائي (2FA) - OPERIX', html: `<p>رمز التحقق الخاص بتأكيد عملية السحب هو: <strong>${code}</strong></p><p>صالح لمدة 5 دقائق.</p>` });
+        return res.json({ success: true, message: 'تم إرسال رمز التحقق الثنائي إلى بريدك الإلكتروني' });
+      } catch (emailError) {
+        console.error('2FA email send failed:', emailError.message);
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: resend ? 'تم إنشاء رمز التحقق، لكن إرسال البريد فشل.' : 'خدمة البريد غير مهيأة. تم إنشاء رمز التحقق محليًا للاختبار.',
+      devCode: process.env.NODE_ENV !== 'production' || process.env.DEBUG_RESET_OTP === 'true' ? code : undefined
+    });
   } catch (err) { res.status(500).json({ error: 'خطأ في إرسال الرمز' }); }
 }
 

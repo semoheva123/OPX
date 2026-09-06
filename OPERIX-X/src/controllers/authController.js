@@ -294,18 +294,39 @@ async function listSessions(req, res) {
 async function forgotPassword(req, res) {
   try {
     const resend = req.app.locals.resend;
-    if (!resend) return res.status(500).json({ error: 'خدمة البريد الإلكتروني غير مهيأة' });
     if (!req.body.email || typeof req.body.email !== 'string') return res.status(400).json({ error: 'يرجى إدخال البريد الإلكتروني' });
-    const user = await User.findOne({ email: req.body.email.trim().toLowerCase() });
+
+    const email = req.body.email.trim().toLowerCase();
+    const user = await User.findOne({ email });
     if (!user) return res.status(200).json({ success: true, message: 'إذا كان البريد مسجلاً، فستصلك تعليمات استعادة كلمة المرور' });
+
     const otp = crypto.randomInt(100000, 1000000).toString();
     user.resetOTP = hashOtp(otp);
     user.resetOTPExpire = Date.now() + 10 * 60 * 1000;
     user.resetOTPAttempts = 0;
     await user.save();
-    await resend.emails.send({ from: emailFrom, to: user.email, subject: 'رمز استعادة كلمة المرور - OPERIX', html: `<p>رمز التحقق الخاص بك: <strong>${otp}</strong></p>` });
-    res.json({ success: true, message: 'تم إرسال رمز التحقق إلى بريدك الإلكتروني' });
-  } catch (err) { res.status(500).json({ error: 'فشل إرسال البريد الإلكتروني' }); }
+
+    if (resend) {
+      try {
+        await resend.emails.send({ from: emailFrom, to: user.email, subject: 'رمز استعادة كلمة المرور - OPERIX', html: `<p>رمز التحقق الخاص بك: <strong>${otp}</strong></p>` });
+        return res.json({ success: true, message: 'تم إرسال رمز التحقق إلى بريدك الإلكتروني' });
+      } catch (emailError) {
+        console.error('Forgot password email send failed:', emailError.message);
+      }
+    }
+
+    const isLocalDebug = process.env.NODE_ENV !== 'production' || process.env.DEBUG_RESET_OTP === 'true';
+    const payload = {
+      success: true,
+      message: resend ? 'تم إنشاء رمز التحقق، ولكن فشل إرسال البريد. حاول مرة أخرى لاحقًا.' : 'خدمة البريد غير مهيأة في الخادم. تم إنشاء رمز التحقق محليًا لإجراء الاختبار.',
+      devOtp: isLocalDebug ? otp : undefined
+    };
+
+    return res.status(200).json(payload);
+  } catch (err) {
+    console.error('Forgot password error:', err.message);
+    res.status(500).json({ error: 'حدث خطأ داخلي في الخادم أثناء استعادة كلمة المرور' });
+  }
 }
 
 async function verifyOtp(req, res) {
