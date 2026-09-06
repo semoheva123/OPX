@@ -95,6 +95,7 @@ function renderEmailTemplate({
             <tr>
               <td style="padding:26px 28px 8px;">
                 <a href="${safeActionUrl}" style="display:inline-block;text-decoration:none;background:#eeb34e;color:#08111e;font-weight:700;padding:15px 26px;border-radius:9px;font-size:15px;">${safeActionText}</a>
+                <p style="margin:16px 0 0;font-size:11px;line-height:1.7;color:#8190a3;word-break:break-all;direction:ltr;text-align:left;">إذا لم يعمل الزر، افتح الرابط التالي مباشرة:<br /><a href="${safeActionUrl}" style="color:#eeb34e;">${safeActionUrl}</a></p>
               </td>
             </tr>
             ` : ''}
