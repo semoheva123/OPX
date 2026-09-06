@@ -154,6 +154,16 @@
         .opx-chart-caption { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
         .opx-chart-caption strong { color: #f8fafc; font-size: 12px; }
         .opx-chart-caption span { color: #64748b; font-size: 10px; }
+        #view-home > .operix-wallet { display: block; padding: 20px; background: radial-gradient(circle at 100% 0%, rgba(247,185,85,.14), transparent 22rem), rgba(11,24,39,.84); border: 1px solid rgba(247,185,85,.22); box-shadow: 0 22px 65px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.05); overflow: hidden; }
+        #view-home > .operix-wallet > :first-child { padding: 0; border: 0; border-radius: 0; background: transparent; }
+        #view-home > .operix-wallet > :nth-child(2) { padding: 4px 0 16px; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+        #view-home > .operix-wallet > :nth-child(3) { background: transparent; box-shadow: none; }
+        #view-home > .operix-wallet > :nth-child(4), #view-home > .operix-wallet > :nth-child(5) { margin-top: 12px; }
+        #view-home > .operix-wallet > :nth-child(6) { margin-top: 16px; }
+        #view-home > .operix-wallet > :nth-child(7) { margin-top: 8px; }
+        #view-home > .operix-wallet > :nth-child(8) { margin-top: 12px; }
+        #view-home > .operix-wallet > :nth-child(9) { margin-top: 12px; }
+        @media (min-width: 768px) { #view-home > .operix-wallet { display: block; } }
         @media (min-width: 768px) { #view-home > .operix-wallet { grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); } #view-home > .operix-wallet > :first-child, #view-home > .operix-wallet > :nth-child(2), #view-home > .operix-wallet > :nth-child(3), #view-home > .operix-wallet > :nth-child(6), #view-home > .operix-wallet > :nth-child(7), #view-home > .operix-wallet > :nth-child(8), #view-home > .operix-wallet > :nth-child(9) { grid-column: 1 / -1; } #view-home > .operix-wallet > :nth-child(4), #view-home > .operix-wallet > :nth-child(5) { grid-column: auto; } }
         @media (max-width: 480px) {
             #appNavBar { justify-content: flex-start; overflow-x: auto; scrollbar-width: none; padding-left: 8px; padding-right: 8px; }
@@ -429,8 +439,7 @@
                     <p class="text-slate-500 text-[10px] mt-1">السعر الداخلي الحالي: $0.10 لكل OPX. يمكن حرقه لتغطية حتى 30% من الترقية، مع دفع 70% USDT من رصيد الإيداع على الأقل. الحرق نهائي. سعر الإدراج المستقبلي المستهدف: $3.00، ولا يُطبق قبل الإطلاق.</p>
                 </div>
                 <div class="rounded-2xl border border-cyan-500/20 bg-slate-950/60 p-3 space-y-2">
-                    <div class="flex items-center justify-between gap-3"><div><span class="text-[10px] font-bold text-cyan-300">محاكاة OPX</span><p class="text-[10px] text-slate-500 mt-1">سيناريو افتراضي بزيادة 3% أسبوعيًا</p></div><span class="text-[10px] text-slate-500">ليس سعرًا سوقيًا</span></div>
-                    <div class="opx-chart-caption"><strong>المسار الافتراضي</strong><span>9 أسابيع · +3% أسبوعيًا</span></div>
+                    <div class="flex items-center justify-between gap-3"><div><span class="text-[10px] font-bold text-cyan-300">محاكاة OPX</span><p class="text-[10px] text-slate-500 mt-1">مسار افتراضي لمدة 9 أسابيع · +3% أسبوعيًا</p></div><span class="rounded-full border border-slate-700 px-2 py-1 text-[9px] text-slate-500">ليس سعرًا سوقيًا</span></div>
                     <div class="relative h-44 md:h-52"><canvas id="opxProjectionChart" class="h-full w-full" aria-label="رسم محاكاة افتراضية لسعر OPX"></canvas></div>
                     <p class="text-[10px] leading-5 text-slate-500">هذه محاكاة تعليمية وليست توقعًا أو عائدًا مضمونًا. قد يصبح تحويل OPX إلى نقد متاحًا فقط بعد إدراج فعلي، وتوفر سيولة، واعتماد سياسة سحب رسمية.</p>
                 </div>
