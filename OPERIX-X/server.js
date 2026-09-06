@@ -23,6 +23,12 @@ const GameSetting = require('./src/models/GameSetting');
 const { connectDatabase, closeDatabase } = require('./src/config/database');
 const { resetDailyTasks, scheduleDailyTaskReset } = require('./src/jobs/dailyTasksReset');
 const { processScheduledBroadcasts } = require('./src/controllers/adminController');
+const {
+  passwordResetTemplate,
+  twoFactorTemplate,
+  withdrawalRequestTemplate,
+  withdrawalCompletedTemplate
+} = require('./src/services/emailTemplates');
 
 
 // 🔐 إعداد المفاتيح السرية وتجنب الثغرات الافتراضية
@@ -405,17 +411,8 @@ app.post('/api/user/2fa/send-code', verifyToken, async (req, res) => {
     await resend.emails.send({
       from: emailFrom,
       to: user.email,
-      subject: 'رمز التحقق الثنائي (2FA) - BOOST',
-      html: `
-        <div style="direction: rtl; font-family: Arial, sans-serif; padding: 20px; text-align: center; background-color: #0f172a; color: #ffffff; border-radius: 10px;">
-          <h2 style="color: #38bdf8; margin-bottom: 20px;">منصة OPERIX - تأكيد العملية</h2>
-          <p style="font-size: 16px;">رمز التحقق الخاص لتأكيد عملية السحب هو:</p>
-          <div style="background-color: #1e293b; padding: 15px 25px; border-radius: 8px; display: inline-block; margin: 15px 0;">
-            <h1 style="color: #fbbf24; font-size: 36px; letter-spacing: 6px; margin: 0;">${code}</h1>
-          </div>
-          <p style="color: #94a3b8; font-size: 13px; margin-top: 20px;">هذا الرمز صالح لمدة 5 دقائق فقط.</p>
-        </div>
-      `
+      subject: 'رمز التحقق الثنائي (2FA) - OPERIX',
+      html: twoFactorTemplate({ code, expiresInMinutes: 5 })
     });
 
     res.status(200).json({ success: true, message: 'تم إرسال رمز التحقق الثنائي إلى بريدك الإلكتروني' });
@@ -693,16 +690,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
       from: emailFrom,
       to: user.email,
       subject: 'رمز استعادة كلمة المرور - OPERIX',
-      html: `
-        <div style="direction: rtl; font-family: Arial, sans-serif; padding: 20px; text-align: center; background-color: #0f172a; color: #ffffff; border-radius: 10px;">
-          <h2 style="color: #38bdf8; margin-bottom: 20px;">منصة OPERIX</h2>
-          <p style="font-size: 16px;">أهلاً بك، رمز التحقق الخاص بك لإعادة تعيين كلمة المرور هو:</p>
-          <div style="background-color: #1e293b; padding: 15px 25px; border-radius: 8px; display: inline-block; margin: 15px 0;">
-            <h1 style="color: #fbbf24; font-size: 36px; letter-spacing: 6px; margin: 0;">${otp}</h1>
-          </div>
-          <p style="color: #94a3b8; font-size: 13px; margin-top: 20px;">هذا الرمز صالِح لمدة 10 دقائق فقط.</p>
-        </div>
-      `
+      html: passwordResetTemplate({ otp, expiresInMinutes: 10 })
     });
 
     res.status(200).json({ success: true, message: 'تم إرسال رمز التحقق إلى بريدك الإلكتروني' });
@@ -1008,53 +996,13 @@ app.post('/api/wallet/withdraw', verifyToken, async (req, res) => {
         await resend.emails.send({
           from: emailFrom,
           to: user.email,
-          subject: '⚠️ تم تقديم طلب سحب جديد - منصة OPERIX',
-          html: `
-            <div style="direction: rtl; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 25px; background-color: #0b1329; color: #ffffff; border-radius: 12px; max-width: 600px; margin: auto; border: 1px solid #1e293b;">
-              <div style="text-align: center; border-bottom: 2px solid #38bdf8; padding-bottom: 15px; margin-bottom: 20px;">
-                <h1 style="color: #38bdf8; margin: 0; font-size: 24px;">منصة OPERIX</h1>
-                <p style="color: #94a3b8; font-size: 14px; margin-top: 5px;">إشعار استلام طلب السحب</p>
-              </div>
-
-              <p style="font-size: 16px; color: #e2e8f0;">مرحباً <strong>${user.email.split('@')[0]}</strong>،</p>
-              <p style="font-size: 15px; color: #cbd5e1; line-height: 1.6;">تم استلام طلب السحب الخاص بك بنجاح، وهو حالياً قيد المراجعة والمعالجة من قبل الفريق المالي.</p>
-
-              <div style="background-color: #1e293b; padding: 20px; border-radius: 10px; margin: 20px 0; border-right: 4px solid #f59e0b;">
-                <h3 style="color: #fbbf24; margin-top: 0; margin-bottom: 15px; font-size: 18px;">تفاصيل الطلب:</h3>
-                
-                <table style="width: 100%; border-collapse: collapse; text-align: right; color: #f8fafc; font-size: 14px;">
-                  <tr>
-                    <td style="padding: 8px 0; color: #94a3b8;">المبلغ المطلوب:</td>
-                    <td style="padding: 8px 0; font-weight: bold; color: #34d399; font-size: 16px;">$${withdrawNum} USDT</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 8px 0; color: #94a3b8;">معرف المعاملة (TxID):</td>
-                    <td style="padding: 8px 0; font-family: monospace; color: #38bdf8;">#${withdrawal._id}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 8px 0; color: #94a3b8;">عنوان المحفظة:</td>
-                    <td style="padding: 8px 0; font-family: monospace; word-break: break-all; color: #f1f5f9;">${walletAddress.trim()}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 8px 0; color: #94a3b8;">الحالة الحالية:</td>
-                    <td style="padding: 8px 0;"><span style="background-color: #b45309; color: #fff; padding: 3px 8px; border-radius: 5px; font-size: 12px;">قيد المراجعة</span></td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 8px 0; color: #94a3b8;">تاريخ الطلب:</td>
-                    <td style="padding: 8px 0; color: #cbd5e1;">${formattedDate}</td>
-                  </tr>
-                </table>
-              </div>
-
-              <p style="font-size: 13px; color: #94a3b8; line-height: 1.5;">
-                * سيتم تحويل المبالغ وإرسال تأكيد فور الموافقة على العملية.
-              </p>
-
-              <div style="text-align: center; margin-top: 25px; padding-top: 15px; border-top: 1px solid #334155; font-size: 12px; color: #64748b;">
-                جميع الحقوق محفوظة © منصة OPERIX 2026
-              </div>
-            </div>
-          `
+          subject: 'تم تقديم طلب سحب جديد - OPERIX',
+          html: withdrawalRequestTemplate({
+            amount: withdrawNum,
+            transactionId: withdrawal._id,
+            walletAddress: walletAddress.trim(),
+            requestedAt: formattedDate
+          })
         });
       } catch (emailErr) {
         console.error('⚠️ فشل إرسال إشعار السحب عبر البريد:', emailErr.message);
@@ -1269,53 +1217,13 @@ app.post('/api/admin/withdrawals/action', verifyAdmin, async (req, res) => {
           await resend.emails.send({
             from: emailFrom,
             to: user.email,
-            subject: '✅ تم إتمام عملية السحب بنجاح - منصة OPERIX',
-            html: `
-              <div style="direction: rtl; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 25px; background-color: #0b1329; color: #ffffff; border-radius: 12px; max-width: 600px; margin: auto; border: 1px solid #10b981;">
-                <div style="text-align: center; border-bottom: 2px solid #10b981; padding-bottom: 15px; margin-bottom: 20px;">
-                  <h1 style="color: #10b981; margin: 0; font-size: 24px;">منصة OPERIX</h1>
-                  <p style="color: #94a3b8; font-size: 14px; margin-top: 5px;">تأكيد تحويل واستلام الأرباح</p>
-                </div>
-
-                <p style="font-size: 16px; color: #e2e8f0;">مرحباً <strong>${user.email.split('@')[0]}</strong>،</p>
-                <p style="font-size: 15px; color: #cbd5e1; line-height: 1.6;">يسعدنا إبلاغك بأنه تم قبول طلب السحب الخاص بك وتحويل المبلغ بنجاح إلى محفظتك الإلكترونية!</p>
-
-                <div style="background-color: #1e293b; padding: 20px; border-radius: 10px; margin: 20px 0; border-right: 4px solid #10b981;">
-                  <h3 style="color: #34d399; margin-top: 0; margin-bottom: 15px; font-size: 18px;">تفاصيل المعاملة المكتملة:</h3>
-                  
-                  <table style="width: 100%; border-collapse: collapse; text-align: right; color: #f8fafc; font-size: 14px;">
-                    <tr>
-                      <td style="padding: 8px 0; color: #94a3b8;">المبلغ المحول:</td>
-                      <td style="padding: 8px 0; font-weight: bold; color: #10b981; font-size: 18px;">$${tx.amount} USDT</td>
-                    </tr>
-                    <tr>
-                      <td style="padding: 8px 0; color: #94a3b8;">معرف المعاملة (TxID):</td>
-                      <td style="padding: 8px 0; font-family: monospace; color: #38bdf8;">#${tx._id}</td>
-                    </tr>
-                    <tr>
-                      <td style="padding: 8px 0; color: #94a3b8;">إلى المحفظة:</td>
-                      <td style="padding: 8px 0; font-family: monospace; word-break: break-all; color: #f1f5f9;">${tx.walletAddress}</td>
-                    </tr>
-                    <tr>
-                      <td style="padding: 8px 0; color: #94a3b8;">حالة العملية:</td>
-                      <td style="padding: 8px 0;"><span style="background-color: #065f46; color: #34d399; padding: 4px 10px; border-radius: 5px; font-size: 13px; font-weight: bold;">مكتملة بنجاح ✅</span></td>
-                    </tr>
-                    <tr>
-                      <td style="padding: 8px 0; color: #94a3b8;">تاريخ التجهيز:</td>
-                      <td style="padding: 8px 0; color: #cbd5e1;">${completedDate}</td>
-                    </tr>
-                  </table>
-                </div>
-
-                <p style="font-size: 14px; color: #cbd5e1; text-align: center; margin-top: 20px;">
-                  شكراً لثقتك واستخدامك منصة <strong>OPERIX</strong>. ونتمنى لك المزيد من الأرباح والنجاح!
-                </p>
-
-                <div style="text-align: center; margin-top: 25px; padding-top: 15px; border-top: 1px solid #334155; font-size: 12px; color: #64748b;">
-                  جميع الحقوق محفوظة © منصة OPERIX 2026
-                </div>
-              </div>
-            `
+            subject: 'تم إتمام عملية السحب بنجاح - OPERIX',
+            html: withdrawalCompletedTemplate({
+              amount: tx.amount,
+              transactionId: tx._id,
+              walletAddress: tx.walletAddress,
+              completedAt: completedDate
+            })
           });
         } catch (emailErr) {
           console.error('⚠️ فشل إرسال بريد إتمام السحب:', emailErr.message);
