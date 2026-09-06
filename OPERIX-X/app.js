@@ -307,13 +307,16 @@ function updateTierDisplay() {
 
 let opxInternalUsdPrice = 0.10;
 let opxMaxUpgradeDiscountShare = 0.30;
-async function loadOpxPricing() { try { const response = await fetch('/api/opx-price'); const data = await response.json(); if (response.ok && Number(data.internalUsdPrice) > 0) { opxInternalUsdPrice = Number(data.internalUsdPrice); opxMaxUpgradeDiscountShare = Number(data.maxUpgradeDiscountShare) || opxMaxUpgradeDiscountShare; } } catch (error) { /* Keep the documented local price as fallback. */ } }
+let opxMaxUpgradeValueUsd = 60;
+async function loadOpxPricing() { try { const response = await fetch('/api/opx-price'); const data = await response.json(); if (response.ok && Number(data.internalUsdPrice) > 0) { opxInternalUsdPrice = Number(data.internalUsdPrice); opxMaxUpgradeDiscountShare = Number(data.maxUpgradeDiscountShare) || opxMaxUpgradeDiscountShare; opxMaxUpgradeValueUsd = Number(data.maxUpgradeValueUsd) || opxMaxUpgradeValueUsd; } } catch (error) { /* Keep the documented local price as fallback. */ } }
 async function upgradeToSpecificTier(targetTier) {
     const token = localStorage.getItem('token');
     const target = tiersData.find(tier => tier.code === targetTier);
     const current = tiersData.find(tier => tier.code === currentUserTier);
     const currentIndex = tiersData.findIndex(tier => tier.code === currentUserTier);
     const targetIndex = tiersData.findIndex(tier => tier.code === targetTier);
+    const currentActivated = Boolean(current?.price && Number(currentUserData?.wallet?.totalDeposits || 0) > 0);
+    const initialActivation = targetIndex === currentIndex && !currentActivated;
     const activeReferrals = Number(currentUserData?.teamStats?.activeReferrals || 0);
     const requiredReferrals = Math.max(0, targetIndex * 10);
     const upgradeCost = targetIndex === currentIndex ? Number(target?.price || 0) : Math.max(0, Number(target?.price || 0) - Number(current?.price || 0));
@@ -330,10 +333,13 @@ async function upgradeToSpecificTier(targetTier) {
         switchTab('team');
         return;
     }
-    const opxRequired = (upgradeCost * opxMaxUpgradeDiscountShare / opxInternalUsdPrice).toFixed(4);
-    const maxOpxValue = (upgradeCost * opxMaxUpgradeDiscountShare).toFixed(2);
+    const maxOpxValue = Math.min(upgradeCost * opxMaxUpgradeDiscountShare, opxMaxUpgradeValueUsd);
+    const opxRequired = (maxOpxValue / opxInternalUsdPrice).toFixed(4);
     const minUsdtRequired = (upgradeCost * (1 - opxMaxUpgradeDiscountShare)).toFixed(2);
-    const confirmed = await showPlatformConfirm(`تأكيد ${targetIndex === currentIndex ? 'تفعيل' : 'الترقية إلى'} ${target.name}؟\nالتكلفة الإجمالية: $${upgradeCost.toFixed(2)}\nحد OPX الأقصى: ${opxRequired} OPX = $${maxOpxValue} (30% من التكلفة)\nالحد الأدنى للدفع النقدي: $${minUsdtRequired} USDT (70% من التكلفة)\nسيتم تحديد الحرق الفعلي حسب رصيد OPX المتاح، وأي نقص يُدفع USDT. الحرق نهائي ولا يمكن عكسه.\nالإحالات النشطة: ${activeReferrals}/${requiredReferrals}`, 'تأكيد المستوى');
+    const paymentText = initialActivation
+        ? `التفعيل الأول يتطلب دفع $${upgradeCost.toFixed(2)} USDT بالكامل. لا يتم استخدام OPX قبل حصول الحساب على مكافآت.`
+        : `حد OPX الأقصى: ${opxRequired} OPX = $${maxOpxValue.toFixed(2)} (الأقل من 30% أو $${opxMaxUpgradeValueUsd})\nالحد الأدنى للدفع النقدي: $${minUsdtRequired} USDT (70% من التكلفة على الأقل)\nسيتم تحديد الحرق الفعلي حسب رصيد OPX المتاح، وأي نقص يُدفع USDT. الحرق نهائي ولا يمكن عكسه.`;
+    const confirmed = await showPlatformConfirm(`تأكيد ${targetIndex === currentIndex ? 'تفعيل' : 'الترقية إلى'} ${target.name}؟\nالتكلفة الإجمالية: $${upgradeCost.toFixed(2)}\n${paymentText}\nالإحالات النشطة: ${activeReferrals}/${requiredReferrals}`, 'تأكيد المستوى');
     if (!confirmed) return;
     try {
         const res = await fetch('/api/user/upgrade', {
