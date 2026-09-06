@@ -306,7 +306,7 @@ function updateTierDisplay() {
 }
 
 let opxInternalUsdPrice = 0.10;
-let opxMaxUpgradeDiscountShare = 0.70;
+let opxMaxUpgradeDiscountShare = 0.30;
 async function loadOpxPricing() { try { const response = await fetch('/api/opx-price'); const data = await response.json(); if (response.ok && Number(data.internalUsdPrice) > 0) { opxInternalUsdPrice = Number(data.internalUsdPrice); opxMaxUpgradeDiscountShare = Number(data.maxUpgradeDiscountShare) || opxMaxUpgradeDiscountShare; } } catch (error) { /* Keep the documented local price as fallback. */ } }
 async function upgradeToSpecificTier(targetTier) {
     const token = localStorage.getItem('token');
