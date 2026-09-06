@@ -12,7 +12,7 @@ const verifySync = ({ token, secret }) => ({ valid: authenticator.check(token, s
 const crypto = require('crypto');
 const Session = require('../models/Session');
 const { syncGameCredits } = require('../services/gameAccess');
-const emailFrom = process.env.EMAIL_FROM || 'OPERIX <onboarding@resend.dev>';
+const emailFrom = String(process.env.EMAIL_FROM || '').trim();
 const kycStorage = require('../services/kycStorage');
 
 async function getProfile(req, res) {
@@ -195,7 +195,7 @@ async function getGrowth(req, res) {
 
 async function getUpgradeHistory(req, res) {
   try {
-    const history = await Transaction.find({ userId: req.user.id, type: 'upgrade_deduction' }).sort({ createdAt: -1 }).limit(30).select('amount walletAddress createdAt status').lean();
+    const history = await Transaction.find({ userId: req.user.id, type: { $in: ['upgrade_deduction', 'token_burn'] } }).sort({ createdAt: -1 }).limit(30).select('type amount usdtAmount opxAmount walletAddress createdAt status').lean();
     res.json({ success: true, history });
   } catch (err) { res.status(500).json({ error: 'تعذر تحميل سجل الترقيات' }); }
 }

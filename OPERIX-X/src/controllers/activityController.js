@@ -5,6 +5,13 @@ const Staking = require('../models/Staking');
 const VipLevel = require('../models/VipLevel');
 const { syncGameCredits } = require('../services/gameAccess');
 
+function splitHybridReward(amount) {
+  const value = Number(amount) || 0;
+  const usdtAmount = Number((value * 0.7).toFixed(4));
+  const opxAmount = Number((value * 0.3).toFixed(4));
+  return { usdtAmount, opxAmount };
+}
+
 function getGameConfig(req, res) {
   const settings = req.app.locals.gameSettings;
   res.json({ success: true, settings: { spinMin: settings.spinMin, spinMax: settings.spinMax, boxMin: settings.boxMin, boxMax: settings.boxMax, dailyGameRewardCap: settings.dailyGameRewardCap, referralsPerCycle: settings.referralsPerCycle || 25 } });
@@ -38,7 +45,8 @@ async function completeTask(req, res) {
       const maxTasks = vipLevel ? vipLevel.tasks : 33;
       const dailyProfit = vipLevel ? vipLevel.dailyProfit : 2.5;
       const commission = parseFloat((dailyProfit / maxTasks).toFixed(4));
-      updatedUser = await User.findOneAndUpdate({ _id: req.user.id, todayCompletedTasks: { $lt: maxTasks } }, { $inc: { assetWallet: commission, 'wallet.profitBalance': commission, 'wallet.balance': commission, todayCompletedTasks: 1 } }, { new: true, session }).select('-password -resetOTP -twoFactorCode');
+      const split = splitHybridReward(commission);
+      updatedUser = await User.findOneAndUpdate({ _id: req.user.id, todayCompletedTasks: { $lt: maxTasks } }, { $inc: { assetWallet: commission, 'wallet.profitBalance': split.usdtAmount, 'wallet.balance': split.usdtAmount, USDT_balance: split.usdtAmount, OPX_balance: split.opxAmount, todayCompletedTasks: 1 } }, { new: true, session }).select('-password -resetOTP -twoFactorCode');
       if (!updatedUser) throw Object.assign(new Error('TASK_LIMIT'), { statusCode: 400 });
       await new Transaction({ userId: updatedUser._id, type: 'reward', amount: commission, walletAddress: 'Daily Task Reward', status: 'approved' }).save({ session });
     });
@@ -67,14 +75,17 @@ async function reward(req, res, min, max, label) {
       }
       user[creditField] -= 1;
       rewardAmount = parseFloat((Math.random() * (max - min) + min).toFixed(2));
+      const split = splitHybridReward(rewardAmount);
       const dailyStart = new Date(); dailyStart.setUTCHours(0, 0, 0, 0);
       const dailyRewardTotal = await Transaction.aggregate([
         { $match: { userId: user._id, type: 'reward', walletAddress: { $in: ['Lucky Spin Wheel', 'Mystery Box'] }, status: 'approved', createdAt: { $gte: dailyStart } } },
         { $group: { _id: null, total: { $sum: '$amount' } } }
       ]).session(session);
       if ((dailyRewardTotal[0]?.total || 0) + rewardAmount > (req.app.locals.gameSettings.dailyGameRewardCap || 100)) throw Object.assign(new Error('DAILY_GAME_CAP'), { statusCode: 400 });
-      user.wallet.profitBalance += rewardAmount;
+      user.wallet.profitBalance += split.usdtAmount;
       user.wallet.balance = user.wallet.depositBalance + user.wallet.profitBalance;
+      user.USDT_balance = Number((Number(user.USDT_balance || 0) + split.usdtAmount).toFixed(4));
+      user.OPX_balance = Number((Number(user.OPX_balance || 0) + split.opxAmount).toFixed(4));
       updatedUser = await user.save({ session });
       await new Transaction({ userId: updatedUser._id, type: 'reward', amount: rewardAmount, walletAddress: label, status: 'approved' }).save({ session });
     });

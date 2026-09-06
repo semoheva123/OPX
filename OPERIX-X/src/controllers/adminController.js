@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const Transaction = require('../models/Transaction');
+const InvestmentVault = require('../models/InvestmentVault');
+const InvestmentVaultContract = require('../models/InvestmentVaultContract');
 const VipLevel = require('../models/VipLevel');
 const AuditLog = require('../models/AuditLog');
 const SecurityEvent = require('../models/SecurityEvent');
@@ -9,6 +11,7 @@ const Notification = require('../models/Notification');
 const Session = require('../models/Session');
 const realtimeService = require('../services/realtimeService');
 const kycStorage = require('../services/kycStorage');
+const DEFAULT_VAULT_CONTRACTS = [90, 180, 365].map(durationDays => ({ durationDays, expectedReturnRate: 0, enabled: true, label: '' }));
 
 const DEFAULT_BADGE_COLOR = 'from-amber-500/20 to-amber-700/20 border-amber-500/40 text-amber-400';
 const ALLOWED_BADGE_COLORS = new Set([
@@ -230,6 +233,99 @@ async function financialSummary(req, res) {
   } catch (err) { res.status(500).json({ error: 'تعذر تحميل الملخص المالي' }); }
 }
 
+async function investmentVaultSummary(req, res) {
+  try {
+    const now = new Date();
+    const [active, matured, claimed] = await Promise.all([
+      InvestmentVault.aggregate([{ $match: { status: 'active', maturityDate: { $gt: now } } }, { $group: { _id: null, count: { $sum: 1 }, total: { $sum: '$amount' }, users: { $addToSet: '$userId' } } }]),
+      InvestmentVault.aggregate([{ $match: { status: 'active', maturityDate: { $lte: now } } }, { $group: { _id: null, count: { $sum: 1 }, total: { $sum: '$amount' }, users: { $addToSet: '$userId' } } }]),
+      InvestmentVault.aggregate([{ $match: { status: 'claimed' } }, { $group: { _id: null, count: { $sum: 1 }, total: { $sum: '$amount' } } }])
+    ]);
+    const activeSummary = active[0] || { count: 0, total: 0, users: [] };
+    const maturedSummary = matured[0] || { count: 0, total: 0, users: [] };
+    const claimedSummary = claimed[0] || { count: 0, total: 0 };
+    res.json({ success: true, summary: { activeCount: activeSummary.count, activeAmount: activeSummary.total, activeUsers: activeSummary.users.length, maturedCount: maturedSummary.count, maturedAmount: maturedSummary.total, maturedUsers: maturedSummary.users.length, claimedCount: claimedSummary.count, claimedAmount: claimedSummary.total } });
+  } catch (error) { res.status(500).json({ error: 'تعذر تحميل ملخص خزنة الاستثمار' }); }
+}
+
+async function getInvestmentVaultContracts(req, res) {
+  try {
+    const storedContracts = await InvestmentVaultContract.find().sort({ durationDays: 1 }).lean();
+    const contracts = storedContracts.length ? storedContracts : DEFAULT_VAULT_CONTRACTS;
+    res.json({ success: true, contracts });
+  } catch (error) { res.status(500).json({ error: 'تعذر تحميل عقود الخزنة' }); }
+}
+
+async function updateInvestmentVaultContracts(req, res) {
+  try {
+    if (!Array.isArray(req.body.contracts) || !req.body.contracts.length) return res.status(400).json({ error: 'يجب إدخال عقد واحد على الأقل' });
+    const contracts = req.body.contracts.map(contract => ({ durationDays: Number(contract.durationDays), expectedReturnRate: Number(contract.expectedReturnRate), enabled: contract.enabled !== false, label: String(contract.label || '').trim().slice(0, 120) }));
+    if (contracts.some(contract => ![90, 180, 365].includes(contract.durationDays) || !Number.isFinite(contract.expectedReturnRate) || contract.expectedReturnRate < 0 || contract.expectedReturnRate > 100)) return res.status(400).json({ error: 'بيانات عقود الخزنة غير صالحة' });
+    if (new Set(contracts.map(contract => contract.durationDays)).size !== contracts.length) return res.status(400).json({ error: 'لا يمكن تكرار مدة العقد' });
+    const saved = [];
+    for (const contract of contracts) saved.push(await InvestmentVaultContract.findOneAndUpdate({ durationDays: contract.durationDays }, contract, { upsert: true, new: true, runValidators: true }));
+    await createAudit(req, 'update_investment_vault_contracts', null, { newValue: contracts });
+    await emitPlatformDataChanged('vault_contracts_updated');
+    res.json({ success: true, message: 'تم حفظ عقود الخزنة', contracts: saved });
+  } catch (error) { res.status(500).json({ error: 'تعذر حفظ عقود الخزنة' }); }
+}
+
+async function listInvestmentVaults(req, res) {
+  try {
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
+    const filter = {};
+    if (['active', 'claimed', 'emergency_released'].includes(req.query.status)) filter.status = req.query.status;
+    const [vaults, total] = await Promise.all([
+      InvestmentVault.find(filter).populate('userId', 'email tierCode').sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+      InvestmentVault.countDocuments(filter)
+    ]);
+    const now = Date.now();
+    res.json({ success: true, vaults: vaults.map(vault => ({ ...vault, displayStatus: vault.status === 'active' && new Date(vault.maturityDate).getTime() <= now ? 'matured' : vault.status })), page, totalPages: Math.max(1, Math.ceil(total / limit)), total });
+  } catch (error) { res.status(500).json({ error: 'تعذر تحميل قائمة خزائن الاستثمار' }); }
+}
+
+async function emergencyReleaseInvestmentVault(req, res) {
+  const ownerId = String(process.env.VAULT_OWNER_USER_ID || '').trim();
+  if (!mongoose.isValidObjectId(ownerId)) return res.status(503).json({ error: 'حساب مالك الخزنة غير مهيأ، تم رفض الفتح الاضطراري' });
+  const session = await mongoose.startSession();
+  try {
+    let vault;
+    let user;
+    let owner;
+    await session.withTransaction(async () => {
+      vault = await InvestmentVault.findOne({ _id: req.params.vaultId, status: 'active' }).session(session);
+      if (!vault) throw Object.assign(new Error('VAULT_NOT_FOUND'), { statusCode: 404 });
+      user = await User.findById(vault.userId).session(session);
+      owner = await User.findById(ownerId).session(session);
+      if (!user || !owner) throw Object.assign(new Error('ACCOUNT_NOT_FOUND'), { statusCode: 404 });
+      const penaltyAmount = Number((vault.amount * 0.30).toFixed(4));
+      const releaseAmount = Number((vault.amount - penaltyAmount).toFixed(4));
+      user.USDT_balance = Number((Number(user.USDT_balance || 0) + releaseAmount).toFixed(4));
+      owner.USDT_balance = Number((Number(owner.USDT_balance || 0) + penaltyAmount).toFixed(4));
+      user.wallet.profitBalance = Number((Number(user.wallet.profitBalance || 0) + releaseAmount).toFixed(4));
+      user.wallet.balance = Number((Number(user.wallet.depositBalance || 0) + user.wallet.profitBalance).toFixed(2));
+      owner.wallet.profitBalance = Number((Number(owner.wallet.profitBalance || 0) + penaltyAmount).toFixed(4));
+      owner.wallet.balance = Number((Number(owner.wallet.depositBalance || 0) + owner.wallet.profitBalance).toFixed(2));
+      vault.penaltyAmount = penaltyAmount;
+      vault.status = 'emergency_released';
+      await Promise.all([user.save({ session }), owner.save({ session }), vault.save({ session })]);
+      await new Transaction({ userId: user._id, type: 'vault_early_release', amount: releaseAmount, grossAmount: vault.amount, usdtAmount: releaseAmount, walletAddress: `Emergency release ${vault._id}`, status: 'approved' }).save({ session });
+      await new Transaction({ userId: owner._id, type: 'vault_penalty', amount: penaltyAmount, grossAmount: penaltyAmount, usdtAmount: penaltyAmount, walletAddress: `Early release penalty ${vault._id}`, status: 'approved' }).save({ session });
+      await createAudit(req, 'emergency_release_investment_vault', vault._id.toString(), { userId: user._id.toString(), ownerId: owner._id.toString(), principal: vault.amount, penaltyAmount, releaseAmount }, session);
+    });
+    await realtimeService.publish('user_data_changed', { reason: 'vault_emergency_released', timestamp: new Date().toISOString() }, { userId: user._id });
+    await realtimeService.publish('admin_transaction_created', { type: 'vault_early_release', userId: user._id, vaultId: vault._id }, { scope: 'admin' });
+    res.json({ success: true, message: 'تم تنفيذ الفتح الاضطراري بخصم غرامة 30% من أصل الخزنة وتحويلها إلى حساب المالك', vault, releasedAmount: Number((vault.amount - vault.penaltyAmount).toFixed(4)), penaltyAmount: vault.penaltyAmount });
+  } catch (error) {
+    if (session.inTransaction()) await session.abortTransaction();
+    if (error.statusCode === 404) return res.status(404).json({ error: 'الخزنة أو الحساب المرتبط غير موجود' });
+    if (error.message === 'VAULT_NOT_FOUND') return res.status(404).json({ error: 'الخزنة غير موجودة أو تم استردادها مسبقًا' });
+    console.error('Error during emergency vault release:', error);
+    res.status(500).json({ error: 'تعذر تنفيذ الفتح الاضطراري للخزنة' });
+  } finally { await session.endSession(); }
+}
+
 async function riskSummary(req, res) {
   try {
     const days = Math.max(1, Math.min(365, Number(req.query.days) || 30));
@@ -367,7 +463,10 @@ async function bulkToggleBan(req, res) {
     const userIds = Array.isArray(req.body.userIds) ? req.body.userIds.map(String).slice(0, 100) : [];
     const isBanned = Boolean(req.body.isBanned);
     if (!userIds.length) return res.status(400).json({ error: 'لم يتم تحديد مستخدمين' });
-    const result = await User.updateMany({ _id: { $in: userIds } }, { $set: { isBanned } });
+    const protectedRoles = ['admin', 'financial_admin', 'support_admin', 'monitor'];
+    const protectedUsers = await User.countDocuments({ _id: { $in: userIds }, role: { $in: protectedRoles } });
+    if (isBanned && protectedUsers > 0) return res.status(400).json({ error: 'لا يمكن حظر حسابات الإدارة أو المراقبة' });
+    const result = await User.updateMany({ _id: { $in: userIds }, role: { $nin: protectedRoles } }, { $set: { isBanned } });
     await createAudit(req, isBanned ? 'bulk_ban_users' : 'bulk_unban_users', null, { userIds, modifiedCount: result.modifiedCount });
     for (const userId of userIds) {
       realtimeService.emit('account_status_changed', { isBanned, message: isBanned ? 'تم تعليق حسابك من قبل الإدارة' : 'تم إلغاء تعليق حسابك' }, { userId });
@@ -414,8 +513,10 @@ async function resetDailyTasks(req, res) {
 async function toggleBan(req, res) {
   try {
     const { userId, isBanned } = req.body;
-    const user = await User.findByIdAndUpdate(userId, { isBanned }, { new: true }).select('-password -resetOTP -twoFactorCode');
-    if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
+    const existingUser = await User.findById(userId).select('role');
+    if (!existingUser) return res.status(404).json({ error: 'المستخدم غير موجود' });
+    if (isBanned && ['admin', 'financial_admin', 'support_admin', 'monitor'].includes(existingUser.role)) return res.status(400).json({ error: 'لا يمكن حظر حسابات الإدارة أو المراقبة' });
+    const user = await User.findByIdAndUpdate(userId, { isBanned: Boolean(isBanned) }, { new: true }).select('-password -resetOTP -twoFactorCode');
     await createAudit(req, isBanned ? 'ban_user' : 'unban_user', user._id.toString(), { newValue: isBanned });
     realtimeService.emit('user_status_changed', { userId: user._id, isBanned, message: isBanned ? 'تم حظر المستخدم' : 'تم إلغاء حظر المستخدم' }, { scope: 'admin' });
     realtimeService.emit('account_status_changed', { isBanned, message: isBanned ? 'تم تعليق حسابك من قبل الإدارة' : 'تم إلغاء تعليق حسابك' }, { userId: user._id });
@@ -518,9 +619,10 @@ async function listWithdrawals(req, res) {
   try {
     const page = Math.max(1, Number(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 10));
-    const filter = { type: { $in: ['withdraw', 'deposit'] } };
+    const financialTypes = ['withdraw', 'deposit', 'vault_lock', 'vault_release', 'vault_early_release', 'vault_penalty', 'token_burn'];
+    const filter = { type: { $in: financialTypes } };
     if (req.query.status && req.query.status !== 'all') filter.status = req.query.status;
-    if (req.query.type && req.query.type !== 'all') filter.type = req.query.type;
+    if (req.query.type && req.query.type !== 'all' && financialTypes.includes(req.query.type)) filter.type = req.query.type;
     if (req.query.network && ['TRC20', 'BEP20'].includes(req.query.network)) filter.network = req.query.network;
     if (req.query.search) {
       const search = String(req.query.search).trim().slice(0, 120);
@@ -552,9 +654,10 @@ async function transactionDetails(req, res) {
 
 async function exportTransactions(req, res) {
   try {
-    const filter = { type: { $in: ['withdraw', 'deposit'] } };
+    const financialTypes = ['withdraw', 'deposit', 'vault_lock', 'vault_release', 'vault_early_release', 'vault_penalty', 'token_burn'];
+    const filter = { type: { $in: financialTypes } };
     if (req.query.status && req.query.status !== 'all') filter.status = req.query.status;
-    if (req.query.type && req.query.type !== 'all') filter.type = req.query.type;
+    if (req.query.type && req.query.type !== 'all' && financialTypes.includes(req.query.type)) filter.type = req.query.type;
     if (req.query.network && ['TRC20', 'BEP20'].includes(req.query.network)) filter.network = req.query.network;
     if (req.query.search) {
       const search = String(req.query.search).trim().slice(0, 120);
@@ -739,4 +842,4 @@ async function processScheduledBroadcasts(webpush) {
   for (const campaign of campaigns) await deliverBroadcast(campaign, webpush);
 }
 
-module.exports = { saveVipLevel, deleteVipLevel, overview, analytics, financialSummary, riskSummary, kycSummary, listUsers, userDetails, streamKycDocument, complianceReport, reviewUserKyc, resetDailyTasks, toggleBan, bulkToggleBan, revokeUserSessions, verifyUserEmail, disableUserTwoFactor, updateUser, updateUserAccount, updateUserRole, updateUserTier, listWithdrawals, transactionDetails, exportTransactions, listAuditLogs, listReferrals, referralTree, withdrawalAction, bulkWithdrawalAction, gameSettings, updateGameSettings, broadcast, listBroadcasts, processScheduledBroadcasts, sendAdminAuditBroadcast };
+module.exports = { saveVipLevel, deleteVipLevel, overview, analytics, financialSummary, investmentVaultSummary, getInvestmentVaultContracts, updateInvestmentVaultContracts, listInvestmentVaults, emergencyReleaseInvestmentVault, riskSummary, kycSummary, listUsers, userDetails, streamKycDocument, complianceReport, reviewUserKyc, resetDailyTasks, toggleBan, bulkToggleBan, revokeUserSessions, verifyUserEmail, disableUserTwoFactor, updateUser, updateUserAccount, updateUserRole, updateUserTier, listWithdrawals, transactionDetails, exportTransactions, listAuditLogs, listReferrals, referralTree, withdrawalAction, bulkWithdrawalAction, gameSettings, updateGameSettings, broadcast, listBroadcasts, processScheduledBroadcasts, sendAdminAuditBroadcast };

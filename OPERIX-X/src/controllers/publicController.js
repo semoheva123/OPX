@@ -2,6 +2,12 @@ const mongoose = require('mongoose');
 const User = require('../models/User');
 const Transaction = require('../models/Transaction');
 const VipLevel = require('../models/VipLevel');
+const { applyRewardToUser, rewardTransactionFields } = require('../services/hybridRewardLedger');
+const { OPX_INTERNAL_USD_PRICE, OPX_FUTURE_LISTING_USD_PRICE, OPX_MAX_UPGRADE_DISCOUNT_SHARE, OPX_MIN_USDT_UPGRADE_SHARE, calculateOpxForUsd, applyOpxUpgradePayment } = require('../services/opxPricing');
+
+function getOpxPricing(req, res) {
+  res.json({ symbol: 'OPX', internalUsdPrice: OPX_INTERNAL_USD_PRICE, futureListingUsdPrice: OPX_FUTURE_LISTING_USD_PRICE, upgradeRate: calculateOpxForUsd(1), maxUpgradeDiscountShare: OPX_MAX_UPGRADE_DISCOUNT_SHARE, minUsdtUpgradeShare: OPX_MIN_USDT_UPGRADE_SHARE });
+}
 
 async function getVipLevels(req, res) {
   try { res.json(await VipLevel.find().sort({ price: 1 })); }
@@ -52,6 +58,7 @@ async function upgrade(req, res) {
     let user;
     let targetLevel;
     let upgradeCost;
+    let payment;
     await session.withTransaction(async () => {
       user = await User.findById(req.user.id).session(session);
       if (!user) throw Object.assign(new Error('USER_NOT_FOUND'), { statusCode: 404 });
@@ -75,25 +82,23 @@ async function upgrade(req, res) {
       const activeReferrals = await User.countDocuments({ referredBy: user.referralCode?.trim().toUpperCase(), isBanned: false, 'wallet.totalDeposits': { $gt: 0 } }).session(session);
       if (activeReferrals < requiredReferrals) throw Object.assign(new Error(`REFERRALS_REQUIRED:${requiredReferrals}:${activeReferrals}`), { statusCode: 400 });
       upgradeCost = targetIndex === currentIndex ? targetLevel.price : Math.max(0, targetLevel.price - (currentLevel?.price || 0));
-      if (user.wallet.balance < upgradeCost) throw Object.assign(new Error(`INSUFFICIENT:${targetLevel.name}:${upgradeCost}:${user.wallet.balance}`), { statusCode: 400 });
-      let remaining = upgradeCost;
-      if (user.wallet.depositBalance >= remaining) user.wallet.depositBalance -= remaining;
-      else { remaining -= user.wallet.depositBalance; user.wallet.depositBalance = 0; user.wallet.profitBalance -= remaining; }
-      user.wallet.balance = user.wallet.depositBalance + user.wallet.profitBalance;
+      try { payment = applyOpxUpgradePayment(user, upgradeCost); }
+      catch (error) { throw Object.assign(new Error(`INSUFFICIENT:${targetLevel.name}:${error.message.replace('INSUFFICIENT:', '')}`), { statusCode: 400 }); }
       user.tierCode = targetLevel.code;
       await user.save({ session });
-      await new Transaction({ userId: user._id, type: 'upgrade_deduction', amount: upgradeCost, walletAddress: `Upgrade to ${targetLevel.name} (${targetLevel.code})`, status: 'approved' }).save({ session });
+      await new Transaction({ userId: user._id, type: 'upgrade_deduction', amount: payment.upgradeCost, grossAmount: payment.upgradeCost, usdtAmount: payment.usdtAmount, opxAmount: payment.opxAmount, walletAddress: `Upgrade to ${targetLevel.name} (${targetLevel.code})`, status: 'approved' }).save({ session });
+      if (payment.opxAmount > 0) await new Transaction({ userId: user._id, type: 'token_burn', amount: payment.opxValue, grossAmount: payment.opxValue, opxAmount: payment.opxAmount, walletAddress: `Burn OPX for ${targetLevel.name} (${targetLevel.code})`, status: 'approved' }).save({ session });
       if (user.referredBy) {
         const referrer = await User.findOne({ referralCode: user.referredBy }).session(session);
         if (referrer) {
-          const commission = parseFloat((upgradeCost * 0.1).toFixed(2));
-          referrer.wallet.profitBalance += commission; referrer.wallet.balance = referrer.wallet.depositBalance + referrer.wallet.profitBalance;
+          const commission = parseFloat((payment.upgradeCost * 0.1).toFixed(2));
+          const split = applyRewardToUser(referrer, commission);
           await referrer.save({ session });
-          await new Transaction({ userId: referrer._id, type: 'referral_commission', amount: commission, walletAddress: `Commission from ${user.email}`, status: 'approved' }).save({ session });
+          await new Transaction({ userId: referrer._id, type: 'referral_commission', walletAddress: `Commission from ${user.email}`, status: 'approved', ...rewardTransactionFields(split) }).save({ session });
         }
       }
     });
-    res.json({ success: true, message: `تمت الترقية بنجاح إلى ${targetLevel.name} وتم خصم فرق السعر ${upgradeCost}$ من رصيدك.`, tierCode: user.tierCode, wallet: user.wallet, upgradeCost });
+    res.json({ success: true, message: `تمت الترقية بنجاح إلى ${targetLevel.name}.`, tierCode: user.tierCode, wallet: user.wallet, OPX_balance: user.OPX_balance, upgradeCost, opxAmount: payment.opxAmount, usdtAmount: payment.usdtAmount });
   } catch (err) {
     if (session.inTransaction()) await session.abortTransaction();
     if (err.statusCode === 404) return res.status(404).json({ error: 'المستخدم غير موجود' });
@@ -102,10 +107,10 @@ async function upgrade(req, res) {
     if (err.message === 'INVALID_TIER_ORDER') return res.status(400).json({ error: 'يمكنك الترقية فقط إلى مستوى أعلى من مستواك الحالي' });
     if (err.message === 'TIER_SEQUENCE') return res.status(400).json({ error: 'يجب إكمال المستويات بالترتيب، لا يمكنك تجاوز المستوى التالي' });
     if (err.message?.startsWith('REFERRALS_REQUIRED:')) { const [, required, active] = err.message.split(':'); return res.status(400).json({ error: `تحتاج إلى ${required} إحالة نشطة مرتبطة بفريقك للترقية. لديك حاليًا ${active} إحالة نشطة.` }); }
-    if (err.message?.startsWith('INSUFFICIENT:')) { const [, name, price, balance] = err.message.split(':'); return res.status(400).json({ error: `رصيد المحفظة غير كافٍ للترقية إلى ${name}. المبلغ المطلوب: ${price}$، بينما رصيدك المتاح: ${balance}$` }); }
+    if (err.message?.startsWith('INSUFFICIENT:')) { const [, name, price, opxAmount, usdtAmount, balance] = err.message.split(':'); return res.status(400).json({ error: `رصيد الإيداع غير كافٍ للترقية إلى ${name}. المطلوب ${price}$، منها ${opxAmount} OPX محروقة و${usdtAmount}$ USDT نقدية، والمتاح ${balance}$ في رصيد الإيداع.` }); }
     console.error('Error during upgrade process:', err);
     res.status(500).json({ error: 'خطأ تقني أثناء معالجة الترقية' });
   } finally { await session.endSession(); }
 }
 
-module.exports = { getVipLevels, leaderboard, liveActivity, upgrade };
+module.exports = { getVipLevels, getOpxPricing, leaderboard, liveActivity, upgrade };
