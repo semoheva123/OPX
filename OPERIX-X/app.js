@@ -1137,6 +1137,18 @@ function updateKycProfileUI() {
     }
     if (submitButton) {
         const locked = status === 'pending' || status === 'verified';
+        [fullNameInput, documentNumberInput, countryInput, documentUrlInput].forEach(input => {
+            if (!input) return;
+            input.readOnly = locked;
+            input.classList.toggle('opacity-60', locked);
+            input.classList.toggle('cursor-not-allowed', locked);
+        });
+        [documentTypeInput, documentFileInput].forEach(input => {
+            if (!input) return;
+            input.disabled = locked;
+            input.classList.toggle('opacity-60', locked);
+            input.classList.toggle('cursor-not-allowed', locked);
+        });
         submitButton.disabled = locked;
         submitButton.classList.toggle('opacity-50', locked);
         submitButton.classList.toggle('cursor-not-allowed', locked);
