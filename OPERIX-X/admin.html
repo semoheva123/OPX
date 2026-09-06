@@ -456,11 +456,12 @@
         </div>
     </div>
 
-    <div id="userDetailsModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hide items-center justify-center p-4" role="dialog" aria-modal="true">
-        <div class="glass-card p-6 rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-y-auto space-y-4 border border-cyan-500/30">
-            <div class="flex justify-between items-center"><div><h3 class="text-base font-bold text-white">تفاصيل المستخدم</h3><p id="userDetailsEmail" class="text-[10px] text-slate-500 mt-1"></p></div><button onclick="closeUserDetails()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button></div>
-            <div id="userDetailsSummary" class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs"></div>
-            <div class="flex flex-wrap gap-2"><button onclick="verifyDetailsEmail()" class="px-3 py-2 bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 rounded-xl text-[10px] font-bold">توثيق البريد</button><button onclick="disableDetails2FA()" class="px-3 py-2 bg-amber-500/15 text-amber-300 border border-amber-500/20 rounded-xl text-[10px] font-bold">تعطيل 2FA</button><button onclick="revokeDetailsSessions()" class="px-3 py-2 bg-rose-500/15 text-rose-300 border border-rose-500/20 rounded-xl text-[10px] font-bold">إنهاء جلسات المستخدم</button><button onclick="loadUserDetails(currentDetailsUserId)" class="px-3 py-2 bg-slate-900 text-slate-300 rounded-xl text-[10px]">تحديث التفاصيل</button></div>
+    <div id="userDetailsModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hide items-start justify-center overflow-y-auto p-3 sm:p-6" role="dialog" aria-modal="true">
+        <div class="glass-card my-auto flex max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-cyan-500/30">
+            <div class="flex shrink-0 items-center justify-between gap-3 border-b border-slate-800 bg-slate-950/90 p-4 sm:p-6"><div><h3 class="text-base font-bold text-white">تفاصيل المستخدم</h3><p id="userDetailsEmail" class="text-[10px] text-slate-500 mt-1"></p></div><button onclick="closeUserDetails()" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white" aria-label="إغلاق تفاصيل المستخدم"><i class="fa-solid fa-xmark text-lg"></i></button></div>
+            <div class="shrink-0 border-b border-slate-800 bg-slate-950/75 p-4 sm:px-6"><div id="userDetailsSummary" class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs"></div>
+            <div class="mt-3 flex flex-wrap gap-2"><button onclick="verifyDetailsEmail()" class="px-3 py-2 bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 rounded-xl text-[10px] font-bold">توثيق البريد</button><button onclick="disableDetails2FA()" class="px-3 py-2 bg-amber-500/15 text-amber-300 border border-amber-500/20 rounded-xl text-[10px] font-bold">تعطيل 2FA</button><button onclick="revokeDetailsSessions()" class="px-3 py-2 bg-rose-500/15 text-rose-300 border border-rose-500/20 rounded-xl text-[10px] font-bold">إنهاء جلسات المستخدم</button><button onclick="loadUserDetails(currentDetailsUserId)" class="px-3 py-2 bg-slate-900 text-slate-300 rounded-xl text-[10px]">تحديث التفاصيل</button></div></div>
+            <div class="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div class="space-y-3">
                     <div><h4 class="text-sm font-bold text-white mb-2">KYC / التحقق</h4><div id="kycReviewPanel" class="space-y-2 text-[10px]"></div></div>
@@ -470,6 +471,7 @@
                     <div><h4 class="text-sm font-bold text-white mb-2">سجل تعديلات الإدارة</h4><div id="userDetailsAudit" class="space-y-2 text-[10px]"></div></div>
                     <div><h4 class="text-sm font-bold text-white mb-2">الجلسات النشطة</h4><div id="userDetailsSessions" class="space-y-2 text-[10px]"></div></div>
                 </div>
+            </div>
             </div>
         </div>
     </div>
@@ -1024,8 +1026,8 @@
         async function bulkUserAction(isBanned) { const userIds = selectedUserIds(); if (!userIds.length) return showToast('حدد مستخدمًا واحدًا على الأقل'); if (!await showAdminConfirm(`سيتم ${isBanned ? 'حظر' : 'إلغاء حظر'} ${userIds.length} مستخدم. هل تتابع؟`, 'إجراء جماعي')) return; const response = await fetch('/api/admin/users/bulk-ban', { method: 'POST', headers: adminJsonHeaders(), body: JSON.stringify({ userIds, isBanned }) }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر تنفيذ الإجراء'); showToast(`تم تعديل ${data.modifiedCount || 0} مستخدم`); clearUserSelection(); fetchUsersList(usersCurrentPage); }
 
         let currentDetailsUserId = null;
-        async function showUserDetails(userId) { currentDetailsUserId = userId; const modal = document.getElementById('userDetailsModal'); modal.classList.remove('hide'); modal.classList.add('flex'); await loadUserDetails(userId); }
-        function closeUserDetails() { const modal = document.getElementById('userDetailsModal'); modal.classList.add('hide'); modal.classList.remove('flex'); currentDetailsUserId = null; }
+        async function showUserDetails(userId) { currentDetailsUserId = userId; const modal = document.getElementById('userDetailsModal'); modal.classList.remove('hide'); modal.classList.add('flex'); document.body.classList.add('overflow-hidden'); await loadUserDetails(userId); }
+        function closeUserDetails() { const modal = document.getElementById('userDetailsModal'); modal.classList.add('hide'); modal.classList.remove('flex'); document.body.classList.remove('overflow-hidden'); currentDetailsUserId = null; }
         async function loadUserDetails(userId) {
             if (!userId) return;
             const summary = document.getElementById('userDetailsSummary');
