@@ -1100,6 +1100,7 @@ function updateKycProfileUI() {
     const documentNumberInput = document.getElementById('kycDocumentNumberInput');
     const countryInput = document.getElementById('kycCountryInput');
     const documentUrlInput = document.getElementById('kycDocumentUrlInput');
+    const documentFileInput = document.getElementById('kycDocumentFileInput');
     const submitButton = document.getElementById('btnSubmitUserKyc');
     if (!statusBadge && !infoText && !fullNameInput && !documentTypeInput && !documentNumberInput && !countryInput && !documentUrlInput && !submitButton) return;
 
@@ -1125,11 +1126,15 @@ function updateKycProfileUI() {
     };
     if (infoText) infoText.innerText = statusText[status] || statusText.not_started;
 
-    if (fullNameInput) fullNameInput.value = currentUserData?.kycFullName || '';
-    if (documentTypeInput) documentTypeInput.value = currentUserData?.kycDocumentType || '';
-    if (documentNumberInput) documentNumberInput.value = currentUserData?.kycDocumentNumber || '';
-    if (countryInput) countryInput.value = currentUserData?.kycCountry || '';
-    if (documentUrlInput) documentUrlInput.value = currentUserData?.kycDocumentUrl || '';
+    const hasKycDraft = [fullNameInput, documentTypeInput, documentNumberInput, countryInput, documentUrlInput, documentFileInput]
+        .some(input => input?.dataset.kycDirty === 'true');
+    if (!hasKycDraft || status === 'pending' || status === 'verified') {
+        if (fullNameInput) fullNameInput.value = currentUserData?.kycFullName || '';
+        if (documentTypeInput) documentTypeInput.value = currentUserData?.kycDocumentType || '';
+        if (documentNumberInput) documentNumberInput.value = currentUserData?.kycDocumentNumber || '';
+        if (countryInput) countryInput.value = currentUserData?.kycCountry || '';
+        if (documentUrlInput) documentUrlInput.value = currentUserData?.kycDocumentUrl || '';
+    }
     if (submitButton) {
         const locked = status === 'pending' || status === 'verified';
         submitButton.disabled = locked;
@@ -1199,6 +1204,14 @@ async function submitUserKyc() {
         if (!response.ok) throw new Error(data.error || 'فشل إرسال طلب KYC');
 
         currentUserData = { ...(currentUserData || {}), ...data.user, kycStatus: data.user?.kycStatus || 'pending' };
+        [
+            'kycFullNameInput',
+            'kycDocumentTypeInput',
+            'kycDocumentNumberInput',
+            'kycCountryInput',
+            'kycDocumentUrlInput',
+            'kycDocumentFileInput'
+        ].forEach(id => document.getElementById(id)?.removeAttribute('data-kyc-dirty'));
         updateProfileUI();
         showToast(data.message || 'تم إرسال طلب التوثيق بنجاح', 'win');
     } catch (error) {

@@ -845,8 +845,8 @@
                 </summary>
                 <div id="kycProfileInfo" class="text-[10px] text-slate-400">قم بإرسال البيانات لتوثيق حسابك ومراجعتها من الإدارة.</div>
                 <div class="space-y-2">
-                    <input id="kycFullNameInput" type="text" maxlength="80" placeholder="الاسم الكامل كما في الوثيقة" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-500">
-                    <select id="kycDocumentTypeInput" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-500">
+                    <input id="kycFullNameInput" type="text" maxlength="80" placeholder="الاسم الكامل كما في الوثيقة" oninput="this.dataset.kycDirty='true'" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-500">
+                    <select id="kycDocumentTypeInput" onchange="this.dataset.kycDirty='true'" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-500">
                         <option value="">اختر نوع الوثيقة</option>
                         <option value="national_id">بطاقة الهوية</option>
                         <option value="passport">جواز السفر</option>
@@ -854,12 +854,12 @@
                         <option value="residence_card">بطاقة الإقامة</option>
                     </select>
                     <div class="grid grid-cols-2 gap-2">
-                        <input id="kycDocumentNumberInput" type="text" maxlength="50" placeholder="رقم الوثيقة" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-500">
-                        <input id="kycCountryInput" type="text" maxlength="80" placeholder="الدولة" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-500">
+                        <input id="kycDocumentNumberInput" type="text" maxlength="50" placeholder="رقم الوثيقة" oninput="this.dataset.kycDirty='true'" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-500">
+                        <input id="kycCountryInput" type="text" maxlength="80" placeholder="الدولة" oninput="this.dataset.kycDirty='true'" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-500">
                     </div>
                     <label for="kycDocumentFileInput" class="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5 text-xs text-slate-300 hover:border-cyan-400/50"><span><i class="fa-solid fa-upload text-cyan-300 mr-2"></i>صورة الوثيقة</span><span id="kycDocumentFileName" class="text-[10px] text-slate-500">اختر ملفًا</span></label>
-                    <input id="kycDocumentFileInput" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" onchange="document.getElementById('kycDocumentFileName').innerText = this.files?.[0]?.name || 'اختر ملفًا'">
-                    <input id="kycDocumentUrlInput" type="url" placeholder="أو أدخل رابط صورة الوثيقة" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-500 dir-ltr">
+                    <input id="kycDocumentFileInput" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" onchange="this.dataset.kycDirty='true'; document.getElementById('kycDocumentFileName').innerText = this.files?.[0]?.name || 'اختر ملفًا'">
+                    <input id="kycDocumentUrlInput" type="url" placeholder="أو أدخل رابط صورة الوثيقة" oninput="this.dataset.kycDirty='true'" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-500 dir-ltr">
                     <button type="button" id="btnSubmitUserKyc" onclick="submitUserKyc()" class="w-full py-2.5 bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 hover:border-cyan-400/40 rounded-xl text-xs font-bold active:scale-95 transition-all">إرسال طلب التوثيق</button>
                 </div>
             </details>
