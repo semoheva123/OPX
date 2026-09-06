@@ -405,6 +405,18 @@
                         <b id="lblProfitBalance" class="text-emerald-400 font-black text-sm">$ 0.00</b>
                     </div>
                 </div>
+                <div class="rounded-2xl border border-cyan-500/25 bg-cyan-500/5 p-3">
+                    <div class="flex items-center justify-between gap-3">
+                        <span class="text-cyan-300 text-[10px] font-bold"><i class="fa-solid fa-coins mr-1"></i> رصيد OPX الداخلي</span>
+                        <b id="lblOPXBalance" class="text-cyan-300 font-black text-sm">0.0000 OPX</b>
+                    </div>
+                    <p class="text-slate-500 text-[10px] mt-1">السعر الداخلي الحالي: $0.10 لكل OPX. يمكن حرقه لتغطية حتى 70% من الترقية، مع دفع 30% USDT من رصيد الإيداع على الأقل. الحرق نهائي. سعر الإدراج المستقبلي المستهدف: $3.00، ولا يُطبق قبل الإطلاق.</p>
+                </div>
+                <div class="rounded-2xl border border-cyan-500/20 bg-slate-950/60 p-3 space-y-2">
+                    <div class="flex items-center justify-between gap-3"><div><span class="text-[10px] font-bold text-cyan-300">محاكاة OPX</span><p class="text-[10px] text-slate-500 mt-1">سيناريو افتراضي بزيادة 3% أسبوعيًا</p></div><span class="text-[10px] text-slate-500">ليس سعرًا سوقيًا</span></div>
+                    <div class="relative h-28"><canvas id="opxProjectionChart" class="h-full w-full" aria-label="رسم محاكاة افتراضية لسعر OPX"></canvas></div>
+                    <p class="text-[10px] leading-5 text-slate-500">هذه محاكاة تعليمية وليست توقعًا أو عائدًا مضمونًا. قد يصبح تحويل OPX إلى نقد متاحًا فقط بعد إدراج فعلي، وتوفر سيولة، واعتماد سياسة سحب رسمية.</p>
+                </div>
 
                 <div class="grid grid-cols-2 gap-2 text-xs border-t border-slate-800/80 pt-3">
                     <div>
@@ -501,6 +513,15 @@
             </div>
             <div class="glass-card p-5 rounded-3xl border border-amber-500/20 space-y-3"><div class="flex justify-between items-center"><div><span class="text-[10px] text-amber-400 font-bold">خطة التقدم</span><h3 id="nextTierTitle" class="text-sm font-black text-white mt-1">جاري تحديد المستوى التالي...</h3></div><i class="fa-solid fa-arrow-trend-up text-amber-400"></i></div><div id="nextTierRequirements" class="grid grid-cols-2 gap-2 text-[10px] text-slate-400"></div></div>
             <div class="glass-card p-5 rounded-3xl space-y-3"><div class="flex justify-between items-center"><h3 class="font-bold text-sm text-white">سجل الترقيات</h3><button onclick="loadUpgradeHistory()" title="تحديث السجل" class="text-slate-400 hover:text-amber-400"><i class="fa-solid fa-arrows-rotate"></i></button></div><div id="upgradeHistoryList" class="space-y-2 text-[11px] text-slate-400">جاري تحميل السجل...</div></div>
+        </div>
+
+        <div id="view-vault" class="space-y-4 hide pb-28">
+            <section class="glass-card rounded-3xl p-5 space-y-4 border border-cyan-500/20">
+                <div class="flex items-start justify-between gap-3"><div><span class="text-[10px] font-bold uppercase tracking-widest text-cyan-300">The Vault</span><h2 class="mt-1 text-lg font-black text-white">خزنة تجميد السيولة</h2><p class="mt-2 text-[11px] leading-5 text-slate-400">جمّد USDT القابل للسحب لمدة طويلة. لا يمكن الاسترداد قبل الاستحقاق، ولا يُعد أي حافز مستقبلي مضمونًا.</p></div><i class="fa-solid fa-lock text-2xl text-cyan-300"></i></div>
+                <div class="grid grid-cols-2 gap-2 text-xs"><div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-3"><span class="block text-[10px] text-slate-500">USDT المتاح للتجميد</span><b id="vaultAvailableBalance" class="mt-1 block text-cyan-300">0.0000 USDT</b></div><div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-3"><span class="block text-[10px] text-slate-500">الحافز</span><b class="mt-1 block text-amber-300">غير مضمون</b></div></div>
+                <form onsubmit="createInvestmentVault(event)" class="space-y-3"><label class="block text-[10px] font-bold text-slate-400">مبلغ التجميد USDT<input id="vaultAmountInput" type="number" min="10" step="0.0001" required placeholder="الحد الأدنى 10 USDT" class="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-sm text-white outline-none focus:border-cyan-400"></label><label class="block text-[10px] font-bold text-slate-400">عقد التجميد<select id="vaultDurationInput" class="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-sm text-white outline-none focus:border-cyan-400"><option>جاري تحميل العقود...</option></select></label><p id="vaultContractHint" class="text-[10px] text-slate-500">العائد المتوقع تقديري وغير مضمون.</p><button type="submit" class="w-full rounded-xl bg-cyan-400 py-3 text-xs font-black text-slate-950"><i class="fa-solid fa-lock mr-1"></i> تجميد السيولة</button></form>
+            </section>
+            <section class="glass-card rounded-3xl p-5 space-y-3"><div class="flex items-center justify-between"><h3 class="text-sm font-black text-white">خزائني</h3><button type="button" onclick="loadInvestmentVaults()" title="تحديث الخزائن" class="text-slate-400 hover:text-cyan-300"><i class="fa-solid fa-arrows-rotate"></i></button></div><div id="investmentVaultList" class="space-y-2 text-[11px] text-slate-400">افتح التبويب لتحميل الخزائن.</div></section>
         </div>
 
         <!-- 4.3 تبويب السفر والمكافآت (Travel View) -->
@@ -850,6 +871,10 @@
         <button id="nav-tiers" onclick="switchTab('tiers')" class="flex flex-col items-center flex-1 text-slate-400 transition-all">
             <i class="fa-solid fa-layer-group text-base"></i>
             <span class="text-[10px] font-bold mt-1">المستويات</span>
+        </button>
+        <button id="nav-vault" onclick="switchTab('vault')" class="flex flex-col items-center flex-1 text-slate-400 transition-all">
+            <i class="fa-solid fa-lock text-base"></i>
+            <span class="text-[10px] font-bold mt-1">الخزنة</span>
         </button>
         <button id="nav-travel" onclick="switchTab('travel')" class="flex flex-col items-center flex-1 text-slate-400 transition-all">
             <i class="fa-solid fa-list-check text-base"></i>

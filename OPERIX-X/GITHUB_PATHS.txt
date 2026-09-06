@@ -1,0 +1,37 @@
+OPERIX updated files - 2026-09-06
+
+Copy each file to the matching path in the GitHub repository root:
+
+.env.example -> .env.example
+OPERATIONS.md -> OPERATIONS.md
+package.json -> package.json
+package-lock.json -> package-lock.json
+app.js -> app.js
+admin.html -> admin.html
+index.html -> index.html
+server.js -> server.js
+src/app.js -> src/app.js
+src/controllers/activityController.js -> src/controllers/activityController.js
+src/controllers/adminController.js -> src/controllers/adminController.js
+src/controllers/authController.js -> src/controllers/authController.js
+src/controllers/couponController.js -> src/controllers/couponController.js
+src/controllers/investmentVaultController.js -> src/controllers/investmentVaultController.js
+src/controllers/publicController.js -> src/controllers/publicController.js
+src/controllers/userController.js -> src/controllers/userController.js
+src/controllers/walletController.js -> src/controllers/walletController.js
+src/models/InvestmentVault.js -> src/models/InvestmentVault.js
+src/models/InvestmentVaultContract.js -> src/models/InvestmentVaultContract.js
+src/models/Transaction.js -> src/models/Transaction.js
+src/models/User.js -> src/models/User.js
+src/routes/adminRoutes.js -> src/routes/adminRoutes.js
+src/routes/investmentVaultRoutes.js -> src/routes/investmentVaultRoutes.js
+src/routes/publicRoutes.js -> src/routes/publicRoutes.js
+src/services/emailTemplates.js -> src/services/emailTemplates.js
+src/services/hybridRewardLedger.js -> src/services/hybridRewardLedger.js
+src/services/opxPricing.js -> src/services/opxPricing.js
+src/services/realtimeService.js -> src/services/realtimeService.js
+
+Excluded intentionally:
+.env (contains secrets)
+node_modules/
+dist/

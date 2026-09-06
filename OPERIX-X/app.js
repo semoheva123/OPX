@@ -48,6 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     loadTiers();
+    loadOpxPricing();
     loadLiveTicker();
     loadGameConfig();
     loadPlatformStatus();
@@ -304,6 +305,9 @@ function updateTierDisplay() {
     updateNextTierPanel();
 }
 
+let opxInternalUsdPrice = 0.10;
+let opxMaxUpgradeDiscountShare = 0.70;
+async function loadOpxPricing() { try { const response = await fetch('/api/opx-price'); const data = await response.json(); if (response.ok && Number(data.internalUsdPrice) > 0) { opxInternalUsdPrice = Number(data.internalUsdPrice); opxMaxUpgradeDiscountShare = Number(data.maxUpgradeDiscountShare) || opxMaxUpgradeDiscountShare; } } catch (error) { /* Keep the documented local price as fallback. */ } }
 async function upgradeToSpecificTier(targetTier) {
     const token = localStorage.getItem('token');
     const target = tiersData.find(tier => tier.code === targetTier);
@@ -326,7 +330,9 @@ async function upgradeToSpecificTier(targetTier) {
         switchTab('team');
         return;
     }
-    const confirmed = await showPlatformConfirm(`تأكيد ${targetIndex === currentIndex ? 'تفعيل' : 'الترقية إلى'} ${target.name}؟\nالمبلغ المطلوب: $${upgradeCost.toFixed(2)}\nالإحالات النشطة: ${activeReferrals}/${requiredReferrals}`, 'تأكيد المستوى');
+    const opxRequired = (upgradeCost * opxMaxUpgradeDiscountShare / opxInternalUsdPrice).toFixed(4);
+    const minUsdtRequired = (upgradeCost * (1 - opxMaxUpgradeDiscountShare)).toFixed(2);
+    const confirmed = await showPlatformConfirm(`تأكيد ${targetIndex === currentIndex ? 'تفعيل' : 'الترقية إلى'} ${target.name}؟\nالتكلفة: $${upgradeCost.toFixed(2)}\nيمكن حرق حتى ${opxRequired} OPX (السعر الداخلي $${opxInternalUsdPrice.toFixed(2)})، مع دفع $${minUsdtRequired} USDT نقدية على الأقل.\nسيتم حرق OPX نهائيًا ولا يمكن عكس العملية.\nالإحالات النشطة: ${activeReferrals}/${requiredReferrals}`, 'تأكيد المستوى');
     if (!confirmed) return;
     try {
         const res = await fetch('/api/user/upgrade', {
@@ -467,7 +473,7 @@ function renderHomeSummary(summary) {
     const opportunitiesElement = document.getElementById('homeOpportunities');
     if (opportunitiesElement) opportunitiesElement.innerHTML = opportunities.slice(0, 4).map(opportunity => `<button onclick="${opportunity.action}" class="w-full flex items-center justify-between gap-2 text-right hover:text-amber-400 transition-colors"><span><i class="fa-solid fa-arrow-left text-amber-400 ml-1"></i>${opportunity.text}</span><i class="fa-solid fa-chevron-left text-slate-600"></i></button>`).join('') || '<span class="text-slate-500">لا توجد فرص معلقة حاليًا.</span>';
 
-    const typeLabels = { registered: 'إنشاء الحساب', deposit: 'إيداع', reward: 'مكافأة', staking_reward: 'عائد تخزين', referral_commission: 'عمولة إحالة', withdraw: 'سحب', upgrade_deduction: 'ترقية' };
+    const typeLabels = { registered: 'إنشاء الحساب', deposit: 'إيداع', reward: 'مكافأة', staking_reward: 'عائد تخزين', referral_commission: 'عمولة إحالة', withdraw: 'سحب', upgrade_deduction: 'ترقية', token_burn: 'حرق OPX' };
     const timelineElement = document.getElementById('homeTimeline');
     if (timelineElement) timelineElement.innerHTML = (summary.timeline || []).map(event => `<div class="flex justify-between border-b border-slate-800 pb-1"><span>${typeLabels[event.type] || event.title}</span><span class="text-slate-600">${new Date(event.date).toLocaleDateString('ar')}</span></div>`).join('') || '<span class="text-slate-500">سيظهر خط الحساب بعد تسجيل أول نشاط.</span>';
 }
@@ -537,6 +543,7 @@ function startRealtimeStream() {
     realtimeChannel.subscribe('user_data_changed', event => {
         const reason = event.data?.reason;
         loadUserProfile();
+        if (document.getElementById('view-vault') && !document.getElementById('view-vault').classList.contains('hide')) loadInvestmentVaults();
         if (reason === 'vip_level_updated' || reason === 'vip_level_deleted') loadTiers();
         if (reason === 'game_settings_updated') loadGameConfig();
         showToast('تم تحديث بيانات حسابك تلقائيًا');
@@ -841,6 +848,7 @@ function updateWalletData(wallet) {
     const profitBalanceVal = wallet.profitBalance !== undefined ? wallet.profitBalance : (currentUserData?.profitBalance || 0);
     const depositsVal = wallet.totalDeposits !== undefined ? wallet.totalDeposits : (currentUserData?.wallet?.totalDeposits || 0);
     const withdrawnVal = wallet.totalWithdrawn !== undefined ? wallet.totalWithdrawn : (currentUserData?.wallet?.totalWithdrawn || 0);
+    const opxBalanceVal = currentUserData?.OPX_balance !== undefined ? currentUserData.OPX_balance : 0;
 
     const balance = Number(balanceVal || 0).toFixed(2);
     const depositBal = Number(depositBalanceVal || 0).toFixed(2);
@@ -856,6 +864,7 @@ function updateWalletData(wallet) {
         currentUserData.wallet.profitBalance = parseFloat(profitBal);
         currentUserData.wallet.totalDeposits = parseFloat(deposits);
         currentUserData.wallet.totalWithdrawn = parseFloat(withdrawn);
+        currentUserData.OPX_balance = Number(opxBalanceVal || 0);
         currentUserData.totalEarned = parseFloat(balance);
         currentUserData.totalWithdrawn = parseFloat(withdrawn);
     }
@@ -864,12 +873,14 @@ function updateWalletData(wallet) {
     const lblBalance = document.getElementById('lblWalletBalance');
     const lblDepBalance = document.getElementById('lblDepositBalance');
     const lblProfBalance = document.getElementById('lblProfitBalance');
+    const lblOPXBalance = document.getElementById('lblOPXBalance');
     const lblDeposits = document.getElementById('lblTotalDeposits');
     const lblWithdrawn = document.getElementById('lblTotalWithdrawn');
 
     if (lblBalance) lblBalance.innerText = balance;
     if (lblDepBalance) lblDepBalance.innerText = `${depositBal} USDT`;
     if (lblProfBalance) lblProfBalance.innerText = `${profitBal} USDT`;
+    if (lblOPXBalance) lblOPXBalance.innerText = `${Number(opxBalanceVal || 0).toFixed(4)} OPX`;
     if (lblDeposits) lblDeposits.innerText = `${deposits} USDT`;
     if (lblWithdrawn) lblWithdrawn.innerText = `${withdrawn} USDT`;
 
@@ -879,6 +890,113 @@ function updateWalletData(wallet) {
 
     if (lblProfileEarned) lblProfileEarned.innerText = `$${balance}`;
     if (lblProfileWithdrawn) lblProfileWithdrawn.innerText = `$${withdrawn}`;
+}
+
+function drawOpxProjectionChart() {
+    const canvas = document.getElementById('opxProjectionChart');
+    if (!canvas) return;
+    const context = canvas.getContext('2d');
+    const width = canvas.clientWidth || 320;
+    const height = canvas.clientHeight || 112;
+    const scale = window.devicePixelRatio || 1;
+    canvas.width = width * scale;
+    canvas.height = height * scale;
+    context.setTransform(scale, 0, 0, scale, 0, 0);
+    context.clearRect(0, 0, width, height);
+    const values = Array.from({ length: 9 }, (_, index) => 0.10 * Math.pow(1.03, index));
+    const padding = { top: 10, right: 8, bottom: 16, left: 8 };
+    const maxValue = values[values.length - 1];
+    const chartWidth = width - padding.left - padding.right;
+    const chartHeight = height - padding.top - padding.bottom;
+    const points = values.map((value, index) => ({ x: padding.left + chartWidth * index / (values.length - 1), y: padding.top + chartHeight - value / maxValue * chartHeight }));
+    context.strokeStyle = 'rgba(34, 211, 238, 0.16)';
+    context.lineWidth = 1;
+    context.beginPath();
+    context.moveTo(padding.left, height - padding.bottom);
+    context.lineTo(width - padding.right, height - padding.bottom);
+    context.stroke();
+    context.beginPath();
+    points.forEach((point, index) => index ? context.lineTo(point.x, point.y) : context.moveTo(point.x, point.y));
+    context.strokeStyle = '#22d3ee';
+    context.lineWidth = 2;
+    context.stroke();
+    context.fillStyle = '#67e8f9';
+    points.forEach(point => { context.beginPath(); context.arc(point.x, point.y, 2.5, 0, Math.PI * 2); context.fill(); });
+    context.fillStyle = '#64748b';
+    context.font = '10px sans-serif';
+    context.fillText('$0.10', padding.left, height - 3);
+    context.fillText(`$${maxValue.toFixed(3)}`, Math.max(padding.left, width - 46), 10);
+}
+
+async function loadInvestmentVaults() {
+    const list = document.getElementById('investmentVaultList');
+    const token = localStorage.getItem('token');
+    if (!list || !token) return;
+    const available = Number(currentUserData?.USDT_balance || 0);
+    const availableElement = document.getElementById('vaultAvailableBalance');
+    if (availableElement) availableElement.innerText = `${available.toFixed(4)} USDT`;
+    try {
+        const response = await fetch('/api/investment-vault/my', { headers: { Authorization: `Bearer ${token}` } });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'تعذر تحميل الخزائن');
+        list.innerHTML = data.vaults?.length ? data.vaults.map(vault => {
+            const maturity = new Date(vault.maturityDate);
+            const matured = ['matured'].includes(vault.status);
+            const status = vault.status === 'active' ? `مجمّدة حتى ${maturity.toLocaleDateString('ar')}` : vault.status === 'matured' ? 'مستحقة للاسترداد' : vault.status === 'claimed' ? 'تم الاسترداد' : 'فتح اضطراري';
+            const action = matured ? `<button type="button" onclick="claimInvestmentVault('${vault._id}')" class="rounded-lg bg-emerald-500/15 px-3 py-2 text-[10px] font-bold text-emerald-300">استرداد</button>` : '';
+            return `<div class="flex items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-950/60 p-3"><div><b class="block text-sm text-white">${Number(vault.amount || 0).toFixed(4)} USDT</b><span class="text-[10px] text-slate-500">${vault.durationDays} يومًا · ${status}</span><small class="block text-[10px] text-amber-300">عائد متوقع: ${Number(vault.expectedReturnRate || 0).toFixed(2)}% (${Number(vault.expectedProfit || 0).toFixed(4)} USDT، غير مضمون)</small>${vault.penaltyAmount ? `<small class="block text-[10px] text-rose-300">غرامة: ${Number(vault.penaltyAmount).toFixed(4)} USDT</small>` : ''}</div>${action}</div>`;
+        }).join('') : '<p class="py-4 text-center text-[11px] text-slate-500">لا توجد خزائن نشطة بعد.</p>';
+    } catch (error) { list.innerHTML = `<p class="py-4 text-center text-[11px] text-rose-300">${escapeAiHtml(error.message)}</p>`; }
+}
+
+async function loadVaultContracts() {
+    const select = document.getElementById('vaultDurationInput');
+    const hint = document.getElementById('vaultContractHint');
+    const token = localStorage.getItem('token');
+    if (!select || !token) return;
+    try {
+        const response = await fetch('/api/investment-vault/contracts', { headers: { Authorization: `Bearer ${token}` } });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'تعذر تحميل عقود الخزنة');
+        select.innerHTML = data.contracts?.length ? data.contracts.map(contract => `<option value="${Number(contract.durationDays)}" data-rate="${Number(contract.expectedReturnRate || 0)}">${Number(contract.durationDays)} يومًا${contract.label ? ` - ${escapeAiHtml(contract.label)}` : ''} · عائد متوقع ${Number(contract.expectedReturnRate || 0).toFixed(2)}%</option>`).join('') : '<option value="">لا توجد عقود متاحة</option>';
+        const updateHint = () => { const option = select.options[select.selectedIndex]; if (hint && option) hint.innerText = `العائد المتوقع لهذا العقد: ${Number(option.dataset.rate || 0).toFixed(2)}%، وهو تقديري وغير مضمون.`; };
+        select.onchange = updateHint;
+        updateHint();
+    } catch (error) { select.innerHTML = '<option value="">تعذر تحميل العقود</option>'; if (hint) hint.innerText = error.message; }
+}
+
+async function createInvestmentVault(event) {
+    event.preventDefault();
+    const token = localStorage.getItem('token');
+    const amount = Number(document.getElementById('vaultAmountInput')?.value);
+    const durationDays = Number(document.getElementById('vaultDurationInput')?.value);
+    if (!token || !Number.isFinite(amount) || amount < 10) return showToast('أدخل مبلغًا لا يقل عن 10 USDT');
+    const confirmed = await showPlatformConfirm(`سيتم تجميد ${amount.toFixed(4)} USDT لمدة ${durationDays} يومًا. لا يمكن الاسترداد قبل الاستحقاق. هل تتابع؟`, 'تأكيد تجميد السيولة');
+    if (!confirmed) return;
+    try {
+        const response = await fetch('/api/investment-vault/create', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ amount, durationDays }) });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'تعذر إنشاء الخزنة');
+        currentUserData.USDT_balance = Number(data.USDT_balance || 0);
+        updateWalletData(data.wallet);
+        document.getElementById('vaultAmountInput').value = '';
+        await loadInvestmentVaults();
+        showToast(data.message || 'تم تجميد السيولة بنجاح');
+    } catch (error) { showToast(`❌ ${error.message}`); }
+}
+
+async function claimInvestmentVault(vaultId) {
+    const token = localStorage.getItem('token');
+    if (!token || !await showPlatformConfirm('سيتم إعادة رأس المال المستحق إلى رصيد USDT القابل للسحب. هل تتابع؟', 'تأكيد الاسترداد')) return;
+    try {
+        const response = await fetch('/api/investment-vault/claim', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ vaultId }) });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'تعذر استرداد الخزنة');
+        currentUserData.USDT_balance = Number(data.USDT_balance || 0);
+        updateWalletData(data.wallet);
+        await loadInvestmentVaults();
+        showToast(data.message || 'تم استرداد الخزنة');
+    } catch (error) { showToast(`❌ ${error.message}`); }
 }
 
 function updateProfileUI() {
@@ -1371,6 +1489,8 @@ function drawAccountGrowthChart(points) {
 }
 
 window.addEventListener('resize', () => drawAccountGrowthChart(growthChartPoints));
+window.addEventListener('resize', drawOpxProjectionChart);
+document.addEventListener('DOMContentLoaded', drawOpxProjectionChart);
 
 function updateTaskAvailability(completed, maximum) {
     const button = document.getElementById('btnCompleteTask');
@@ -1532,6 +1652,7 @@ async function completeTask() {
         });
         const data = await res.json();
         if(res.ok) {
+            if (currentUserData) { currentUserData.USDT_balance = data.USDT_balance; currentUserData.OPX_balance = data.OPX_balance; }
             showToast('تم إنجاز المهمة وإضافة الأرباح لمحفظتك!', 'win');
             if (data.wallet) updateWalletData(data.wallet);
             await loadUserProfile();
@@ -1564,6 +1685,7 @@ async function triggerLuckySpin() {
 
         if (res.ok && data.success) {
             setTimeout(async () => {
+                if (currentUserData) { currentUserData.USDT_balance = data.USDT_balance; currentUserData.OPX_balance = data.OPX_balance; }
                 showGameResult('تم تدوير العجلة بنجاح', data.reward, data.wallet);
                 if (data.wallet) updateWalletData(data.wallet);
                 if (currentUserData) currentUserData.wheelCredits = Math.max(0, (currentUserData.wheelCredits || 0) - 1);
@@ -1596,6 +1718,7 @@ async function openMysteryBox() {
         const data = await res.json();
 
         if (res.ok && data.success) {
+            if (currentUserData) { currentUserData.USDT_balance = data.USDT_balance; currentUserData.OPX_balance = data.OPX_balance; }
             showGameResult('تم فتح الصندوق بنجاح', data.reward, data.wallet);
             if (data.wallet) updateWalletData(data.wallet);
             if (currentUserData) currentUserData.mysteryBoxCredits = Math.max(0, (currentUserData.mysteryBoxCredits || 0) - 1);
@@ -1903,7 +2026,7 @@ async function revokeActiveSession(jti) {
 
 /* --- 8. التنقل والمودالات (Modals) --- */
 function switchTab(tabName) {
-    ['home', 'tiers', 'travel', 'ai', 'spin', 'team', 'profile'].forEach(t => {
+    ['home', 'tiers', 'vault', 'travel', 'ai', 'spin', 'team', 'profile'].forEach(t => {
         const el = document.getElementById(`view-${t}`);
         if(el) el.classList.add('hide');
         const nav = document.getElementById(`nav-${t}`);
@@ -1922,6 +2045,10 @@ function switchTab(tabName) {
     if (tabName === 'tiers') {
         loadUpgradeHistory();
         updateNextTierPanel();
+    }
+    if (tabName === 'vault') {
+        loadVaultContracts();
+        loadInvestmentVaults();
     }
     if (tabName === 'spin') {
         loadGameHistory();

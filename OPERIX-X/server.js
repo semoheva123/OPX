@@ -41,7 +41,11 @@ if (!JWT_SECRET) {
 // 📧 إعداد عميل Resend
 const resendKey = process.env.RESEND_API_KEY;
 const resend = resendKey ? new Resend(resendKey) : null;
-const emailFrom = process.env.EMAIL_FROM || 'OPERIX <onboarding@resend.dev>';
+const emailFrom = String(process.env.EMAIL_FROM || '').trim();
+if (process.env.NODE_ENV === 'production' && (!emailFrom || /resend\.dev/i.test(emailFrom))) {
+  console.error('Critical email configuration error: production EMAIL_FROM must use a verified custom domain.');
+  process.exit(1);
+}
 
 // 🔔 إعداد مفاتيح Web Push (VAPID Keys)
 const publicVapidKey = process.env.VAPID_PUBLIC_KEY;
