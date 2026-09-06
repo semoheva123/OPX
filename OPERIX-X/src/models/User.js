@@ -21,6 +21,8 @@ const userSchema = new mongoose.Schema({
     totalDeposits: { type: Number, default: 0, min: 0 },
     totalWithdrawn: { type: Number, default: 0, min: 0 }
   },
+  USDT_balance: { type: Number, default: 0, min: 0 },
+  OPX_balance: { type: Number, default: 0, min: 0 },
   resetOTP: { type: String, default: null, select: false },
   resetOTPExpire: { type: Date, default: null },
   resetOTPAttempts: { type: Number, default: 0, min: 0, max: 5 },

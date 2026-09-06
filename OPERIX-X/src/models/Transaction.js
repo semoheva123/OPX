@@ -2,8 +2,11 @@ const mongoose = require('mongoose');
 
 const transactionSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  type: { type: String, enum: ['deposit', 'withdraw', 'reward', 'staking_reward', 'referral_commission', 'upgrade_deduction', 'admin_adjustment'], required: true },
+  type: { type: String, enum: ['deposit', 'withdraw', 'reward', 'staking_reward', 'referral_commission', 'upgrade_deduction', 'token_burn', 'vault_lock', 'vault_release', 'vault_early_release', 'vault_penalty', 'admin_adjustment'], required: true },
   amount: { type: Number, required: true },
+  grossAmount: { type: Number, default: 0, min: 0 },
+  usdtAmount: { type: Number, default: 0, min: 0 },
+  opxAmount: { type: Number, default: 0, min: 0 },
   feeAmount: { type: Number, default: 0 },
   netAmount: { type: Number, default: 0 },
   walletAddress: { type: String, required: true, trim: true },
