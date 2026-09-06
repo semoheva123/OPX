@@ -172,14 +172,21 @@ async function login(req, res) {
 
 async function adminLogin(req, res) {
   try {
-    const { email, password, twoFactorCode } = req.body;
+    const { email, password, twoFactorCode } = req.body || {};
     if (!email || !password || typeof email !== 'string' || typeof password !== 'string') return res.status(400).json({ error: 'يرجى إدخال البريد وكلمة المرور' });
     const user = await User.findOne({ email: email.trim().toLowerCase() }).select('+adminTwoFactorSecret');
     const allowedRoles = ['admin', 'financial_admin', 'support_admin', 'monitor'];
     if (!user || !allowedRoles.includes(user.role) || !(await bcrypt.compare(password, user.password))) return res.status(401).json({ error: 'بيانات الدخول الإدارية غير صحيحة' });
     if (user.isBanned) return res.status(403).json({ error: 'حساب الإدارة موقوف' });
     if (!user.adminTwoFactorEnabled || !user.adminTwoFactorSecret) return res.status(403).json({ error: 'يجب تفعيل Google Authenticator الخاص بالإدارة أولًا' });
-    if (!/^[0-9]{6}$/.test(String(twoFactorCode || '').trim()) || !verifySync({ token: String(twoFactorCode).trim(), secret: user.adminTwoFactorSecret }).valid) return res.status(401).json({ error: 'رمز المصادقة الإدارية غير صحيح' });
+    const normalizedTwoFactorCode = String(twoFactorCode || '').trim();
+    if (!/^[0-9]{6}$/.test(normalizedTwoFactorCode)) return res.status(401).json({ error: 'رمز المصادقة الإدارية غير صحيح' });
+    try {
+      if (!verifySync({ token: normalizedTwoFactorCode, secret: user.adminTwoFactorSecret }).valid) return res.status(401).json({ error: 'رمز المصادقة الإدارية غير صحيح' });
+    } catch (twoFactorError) {
+      console.error('Admin 2FA verification error:', twoFactorError.message);
+      return res.status(401).json({ error: 'إعداد المصادقة الإدارية غير صالح. أعد إعداد Google Authenticator.' });
+    }
     const jti = crypto.randomUUID();
     const expiresInSeconds = 8 * 60 * 60;
     const userAgent = req.get('user-agent') || 'unknown';
@@ -188,7 +195,10 @@ async function adminLogin(req, res) {
     await SecurityEvent.create({ userId: user._id, email: user.email, event: 'login_success', ip: req.ip, userAgent, metadata: { scope: 'admin' } });
     setAdminCookie(res, token);
     res.json({ success: true, token, user: { _id: user._id, email: user.email, role: user.role } });
-  } catch (error) { res.status(500).json({ error: 'تعذر تسجيل الدخول إلى لوحة الإدارة' }); }
+  } catch (error) {
+    console.error('Admin login error:', error.message);
+    res.status(500).json({ error: 'تعذر تسجيل الدخول إلى لوحة الإدارة' });
+  }
 }
 
 function adminSession(req, res) {
