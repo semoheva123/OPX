@@ -13,7 +13,7 @@ const crypto = require('crypto');
 const Session = require('../models/Session');
 const { syncGameCredits } = require('../services/gameAccess');
 const emailFrom = String(process.env.EMAIL_FROM || '').trim();
-const kycStorage = require('../services/kycStorage');
+const imgbbStorage = require('../services/imgbbStorage');
 
 async function getProfile(req, res) {
   try {
@@ -94,10 +94,11 @@ async function submitKyc(req, res) {
       if (!/^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(rawDocumentReference) || rawDocumentReference.length > 900000) {
         return res.status(400).json({ error: 'صورة الوثيقة يجب أن تكون JPG أو PNG أو WebP وألا تتجاوز 650 كيلوبايت' });
       }
-      normalizedDocumentUrl = await kycStorage.store(rawDocumentReference);
+      normalizedDocumentUrl = await imgbbStorage.uploadDataUrl(rawDocumentReference);
       if (!normalizedDocumentUrl) return res.status(400).json({ error: 'تعذر حفظ صورة الوثيقة' });
     } else if (/^https?:\/\//i.test(rawDocumentReference)) {
-      normalizedDocumentUrl = rawDocumentReference;
+      normalizedDocumentUrl = imgbbStorage.validateUrl(rawDocumentReference);
+      if (!normalizedDocumentUrl) return res.status(400).json({ error: 'يجب أن يكون رابط الوثيقة من ImgBB' });
     } else {
       return res.status(400).json({ error: 'رابط أو صورة الوثيقة غير صالحة' });
     }
@@ -133,6 +134,8 @@ async function submitKyc(req, res) {
     });
   } catch (err) {
     console.error('Submit KYC error:', err);
+    if (err.statusCode === 503) return res.status(503).json({ error: 'رفع الصور إلى ImgBB غير مهيأ حالياً' });
+    if (err.statusCode === 502) return res.status(502).json({ error: 'تعذر رفع الصورة إلى ImgBB' });
     res.status(500).json({ error: 'حدث خطأ أثناء إرسال طلب التوثيق' });
   }
 }
@@ -146,10 +149,35 @@ async function updateProfileImage(req, res) {
     if (!/^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(profileImage) || profileImage.length > 350000) {
       return res.status(400).json({ error: 'الصورة يجب أن تكون JPG أو PNG أو WebP وبحجم صغير' });
     }
-    const user = await User.findByIdAndUpdate(req.user.id, { profileImage }, { new: true }).select('profileImage');
+    const imageUrl = await imgbbStorage.uploadDataUrl(profileImage);
+    const user = await User.findByIdAndUpdate(req.user.id, { profileImage: imageUrl }, { new: true }).select('profileImage');
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     res.json({ success: true, profileImage: user.profileImage, message: 'تم حفظ الصورة الشخصية بنجاح' });
-  } catch (err) { res.status(500).json({ error: 'حدث خطأ أثناء حفظ الصورة الشخصية' }); }
+  } catch (err) {
+    if (err.statusCode === 503) return res.status(503).json({ error: 'رفع الصور إلى ImgBB غير مهيأ حالياً' });
+    if (err.statusCode === 502) return res.status(502).json({ error: 'تعذر رفع الصورة إلى ImgBB' });
+    res.status(500).json({ error: 'حدث خطأ أثناء حفظ الصورة الشخصية' });
+  }
+}
+
+async function updateSocialProfile(req, res) {
+  try {
+    const socialBio = String(req.body?.socialBio || '').trim();
+    const coverImage = String(req.body?.coverImage || '').trim();
+    if (socialBio.length > 160) return res.status(400).json({ error: 'النبذة لا تتجاوز 160 حرفاً' });
+    if (coverImage && (!/^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/i.test(coverImage) || coverImage.length > 500000)) {
+      return res.status(400).json({ error: 'صورة الغلاف يجب أن تكون JPG أو PNG أو WebP وبحجم صغير' });
+    }
+    const coverUrl = !coverImage ? '' : coverImage.startsWith('data:image/') ? await imgbbStorage.uploadDataUrl(coverImage) : imgbbStorage.validateUrl(coverImage);
+    if (coverImage && !coverUrl) return res.status(400).json({ error: 'صورة الغلاف يجب أن تكون مرفوعة إلى ImgBB' });
+    const user = await User.findByIdAndUpdate(req.user.id, { socialBio, coverImage: coverUrl }, { new: true }).select('socialBio coverImage');
+    if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
+    res.json({ success: true, socialBio: user.socialBio, coverImage: user.coverImage, message: 'تم تحديث الملف الاجتماعي' });
+  } catch (error) {
+    if (error.statusCode === 503) return res.status(503).json({ error: 'رفع الصور إلى ImgBB غير مهيأ حالياً' });
+    if (error.statusCode === 502) return res.status(502).json({ error: 'تعذر رفع الصورة إلى ImgBB' });
+    res.status(500).json({ error: 'تعذر تحديث الملف الاجتماعي' });
+  }
 }
 
 async function getReferrals(req, res) {
@@ -341,4 +369,4 @@ async function subscribePush(req, res) {
   } catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
 }
 
-module.exports = { getProfile, setWalletAddress, submitKyc, updateProfileImage, getReferrals, getTeamNetwork, getGrowth, getUpgradeHistory, getHomeSummary, sendTwoFactorCode, toggleTwoFactor, setupTwoFactor, confirmTwoFactor, changePassword, subscribePush };
+module.exports = { getProfile, setWalletAddress, submitKyc, updateProfileImage, updateSocialProfile, getReferrals, getTeamNetwork, getGrowth, getUpgradeHistory, getHomeSummary, sendTwoFactorCode, toggleTwoFactor, setupTwoFactor, confirmTwoFactor, changePassword, subscribePush };

@@ -374,6 +374,7 @@ async function streamKycDocument(req, res) {
   try {
     const user = await User.findById(req.params.userId).select('kycDocumentUrl');
     const reference = String(user?.kycDocumentUrl || '');
+    if (/^https:\/\/(?:i\.)?ibb\.co\//i.test(reference) || /^https:\/\/(?:www\.)?imgbb\.com\//i.test(reference)) return res.redirect(reference);
     if (!/^private:\/\/|^gridfs:\/\//.test(reference)) return res.status(404).json({ error: 'وثيقة KYC غير موجودة أو قديمة' });
     await createAudit(req, 'view_kyc_document', user._id.toString(), { referenceType: reference.startsWith('gridfs://') ? 'gridfs' : 'private' });
     res.set({ 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' });
