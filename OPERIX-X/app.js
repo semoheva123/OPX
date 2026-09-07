@@ -22,6 +22,7 @@ let socialHashtag = '';
 let opxMarketCandles = [];
 let opxMarketRefreshTimer = null;
 let opxMarketDailyChangePercent = 0;
+let opxMarketTimeframe = '15m';
 
 function isStandaloneApp() {
     return window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true || new URLSearchParams(window.location.search).get('source') === 'pwa';
@@ -938,9 +939,11 @@ function drawOpxProjectionChart() {
     const maxValue = Math.max(...values) + Math.max((Math.max(...values) - Math.min(...values)) * 0.08, 0.00001);
     const chartWidth = width - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
+    const volumeHeight = Math.max(20, chartHeight * 0.2);
+    const priceHeight = chartHeight - volumeHeight - 8;
     const valueRange = Math.max(maxValue - minValue, 0.001);
     const candleWidth = chartWidth / candles.length;
-    const yFor = value => padding.top + chartHeight - ((value - minValue) / valueRange) * chartHeight;
+    const yFor = value => padding.top + priceHeight - ((value - minValue) / valueRange) * priceHeight;
     context.font = '9px IBM Plex Sans Arabic, sans-serif';
     for (let index = 0; index <= 4; index += 1) {
         const y = padding.top + chartHeight * index / 4;
@@ -954,8 +957,8 @@ function drawOpxProjectionChart() {
     context.strokeStyle = 'rgba(100, 116, 139, 0.28)';
     context.setLineDash([3, 4]);
     context.beginPath();
-    context.moveTo(padding.left, height - padding.bottom - 23);
-    context.lineTo(width - padding.right, height - padding.bottom - 23);
+    context.moveTo(padding.left, padding.top + priceHeight + 8);
+    context.lineTo(width - padding.right, padding.top + priceHeight + 8);
     context.stroke();
     context.setLineDash([]);
     context.textAlign = 'center';
@@ -979,9 +982,9 @@ function drawOpxProjectionChart() {
         context.stroke();
         context.fillStyle = color;
         context.fillRect(x - candleWidth * 0.28, Math.min(openY, closeY), Math.max(2, candleWidth * 0.56), Math.max(2, Math.abs(closeY - openY)));
-        const volumeHeight = candle.volume * 17;
+        const candleVolumeHeight = Math.min(volumeHeight - 4, Math.max(2, candle.volume * (volumeHeight - 4)));
         context.fillStyle = bullish ? 'rgba(34, 197, 94, .28)' : 'rgba(239, 68, 68, .28)';
-        context.fillRect(x - candleWidth * 0.28, height - padding.bottom - volumeHeight, Math.max(2, candleWidth * 0.56), volumeHeight);
+        context.fillRect(x - candleWidth * 0.28, height - padding.bottom - candleVolumeHeight, Math.max(2, candleWidth * 0.56), candleVolumeHeight);
     });
     const latest = candles[candles.length - 1];
     const livePrice = document.getElementById('opxMarketLivePrice');
@@ -998,7 +1001,7 @@ function drawOpxProjectionChart() {
 
 async function loadOpxMarketData() {
     try {
-        const response = await fetch('/api/opx-market', { cache: 'no-store' });
+        const response = await fetch(`/api/opx-market?timeframe=${encodeURIComponent(opxMarketTimeframe)}`, { cache: 'no-store' });
         const data = await response.json();
         if (!response.ok || !Array.isArray(data.candles) || data.candles.length < 2) throw new Error('market data unavailable');
         opxMarketCandles = data.candles;
@@ -1025,6 +1028,14 @@ async function loadOpxMarketData() {
     }
     if (opxMarketRefreshTimer) clearTimeout(opxMarketRefreshTimer);
     opxMarketRefreshTimer = setTimeout(loadOpxMarketData, 30000);
+}
+
+function setOpxMarketTimeframe(timeframe) {
+    const allowed = ['5m', '15m', '1h', '4h', '1D'];
+    if (!allowed.includes(timeframe) || timeframe === opxMarketTimeframe) return;
+    opxMarketTimeframe = timeframe;
+    document.querySelectorAll('[data-opx-timeframe]').forEach(button => button.classList.toggle('is-active', button.dataset.opxTimeframe === timeframe));
+    loadOpxMarketData();
 }
 
 function drawOpxLandingChart() {
