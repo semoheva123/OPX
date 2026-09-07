@@ -244,6 +244,23 @@
         .team-level-card:hover { border-color: rgba(69,214,176,.35); transform: translateY(-2px); }
         .team-member { background: rgba(3,10,19,.42); border: 1px solid rgba(148,163,184,.12); }
         .team-filter-active { background: rgba(247,185,85,.15); color: #f7c45e; border-color: rgba(247,185,85,.3); }
+        .social-post-card { position: relative; overflow: hidden; background: linear-gradient(180deg, rgba(15,23,42,.85), rgba(8,18,31,.9)); border: 1px solid rgba(148,163,184,.14); box-shadow: 0 18px 42px rgba(0,0,0,.15); }
+        .social-post-card:hover { border-color: rgba(34,211,238,.28); box-shadow: 0 24px 56px rgba(0,0,0,.18); }
+        .social-post-card > header { border-bottom: 1px solid rgba(148,163,184,.08); }
+        .social-post-card .social-post-media { border-top: 1px solid rgba(148,163,184,.08); border-bottom: 1px solid rgba(148,163,184,.08); }
+        .social-post-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 0 1rem 1rem; }
+        .social-post-actions button, .social-like-button, .social-comment-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: 12px; border: 1px solid rgba(148,163,184,.16); background: rgba(15,23,42,.62); color: #cbd5e1; padding: 0.55rem 0.8rem; font-size: 10px; font-weight: 700; }
+        .social-post-actions button:hover, .social-like-button:hover, .social-comment-button:hover { border-color: rgba(34,211,238,.38); color: #67e8f9; background: rgba(34,211,238,.08); }
+        .social-post-actions .social-like-button { min-width: 84px; }
+        .social-comments { margin-top: 0.5rem; border-top: 1px solid rgba(148,163,184,.08); padding-top: 0.75rem; }
+        .social-comments-list { display: flex; flex-direction: column; gap: 0.5rem; }
+        .social-comments-list p { margin: 0; padding: 0.65rem 0.75rem; border-radius: 12px; background: rgba(2,6,23,.75); border: 1px solid rgba(148,163,184,.12); color: #cbd5e1; line-height: 1.6; }
+        .social-comment-form { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.75rem; }
+        .social-comment-form input { flex: 1; min-width: 0; border: 1px solid rgba(148,163,184,.16); background: rgba(2,6,23,.78); color: #f8fafc; border-radius: 12px; padding: 0.7rem 0.8rem; font-size: 11px; }
+        .social-comment-form button { border: 0; background: linear-gradient(135deg, #22d3ee 0%, #0891b2 100%); color: #082f49; font-weight: 900; border-radius: 12px; padding: 0.7rem 0.9rem; font-size: 10px; }
+        .social-comment-form button:hover { transform: translateY(-1px); }
+        .social-post-card .social-post-media img { display: block; width: 100%; height: 100%; object-fit: cover; }
+        .social-post-card article { background: transparent; }
         .about-panel { background: linear-gradient(135deg, rgba(13,31,48,.86), rgba(6,16,28,.78)); border: 1px solid rgba(148,163,184,.14); box-shadow: 0 24px 70px rgba(0,0,0,.2); }
         .about-kicker { color: #45d6b0; font-size: 10px; letter-spacing: .08em; }
         .about-principle { border-top: 1px solid rgba(148,163,184,.14); padding-top: 12px; }
