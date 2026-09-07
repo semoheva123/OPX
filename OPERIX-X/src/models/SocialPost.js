@@ -11,7 +11,16 @@ const socialPostSchema = new mongoose.Schema({
   moderationReason: { type: String, trim: true, maxlength: 80, default: '' },
   reportCount: { type: Number, default: 0, min: 0 },
   reportedBy: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
-  likeCount: { type: Number, default: 0, min: 0 }
+  likedBy: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
+  likeCount: { type: Number, default: 0, min: 0 },
+  comments: [{
+    authorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    authorLabel: { type: String, required: true, trim: true, maxlength: 40 },
+    content: { type: String, required: true, trim: true, maxlength: 300 },
+    status: { type: String, enum: ['visible', 'banned', 'removed'], default: 'visible' },
+    moderationReason: { type: String, trim: true, maxlength: 80, default: '' },
+    createdAt: { type: Date, default: Date.now }
+  }]
 }, { timestamps: true });
 
 socialPostSchema.index({ status: 1, createdAt: -1 });
