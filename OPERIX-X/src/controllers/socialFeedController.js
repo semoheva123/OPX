@@ -7,6 +7,11 @@ const SocialFollow = require('../models/SocialFollow');
 const MAX_IMAGE_DATA_LENGTH = 2 * 1024 * 1024;
 const allowedImageHosts = new Set(['ibb.co', 'www.ibb.co', 'i.ibb.co', 'imgbb.com', 'www.imgbb.com']);
 
+function extractHashtags(content) {
+  const matches = String(content || '').matchAll(/(?:^|\s)#([\p{L}\p{N}_-]{2,40})/gu);
+  return [...new Set([...matches].map(match => match[1].toLocaleLowerCase('und')))].slice(0, 10);
+}
+
 function isAllowedImageUrl(value) {
   try {
     const url = new URL(value);
@@ -28,34 +33,51 @@ async function listPosts(req, res) {
     const page = Math.min(Math.max(Number.parseInt(req.query.page, 10) || 1, 1), 20);
     const limit = 15;
     const query = { status: 'visible' };
-    if (String(req.query.feed || '') === 'following') {
-      const following = await SocialFollow.find({ followerId: req.user.id }).select('followingId').lean();
-      query.authorId = { $in: following.map(item => item.followingId) };
-    }
+    const feedMode = String(req.query.feed || 'all');
+    const following = await SocialFollow.find({ followerId: req.user.id }).select('followingId').lean();
+    const followingIds = following.map(item => String(item.followingId));
+    if (feedMode === 'following') query.authorId = { $in: followingIds };
+    const hashtag = String(req.query.hashtag || '').trim().replace(/^#/, '').toLocaleLowerCase('und');
+    if (hashtag) query.hashtags = hashtag;
+    const candidateLimit = feedMode === 'following' || hashtag ? limit : Math.min(limit * 4, 60);
     const posts = await SocialPost.find(query)
       .sort({ isPinned: -1, createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
+      .limit(candidateLimit)
       .select('-reportedBy -likedBy -comments.authorId')
       .lean();
-    const authorIds = posts.map(post => post.authorId).filter(Boolean);
+    if (feedMode !== 'following' && !hashtag) {
+      const now = Date.now();
+      posts.sort((left, right) => smartPostScore(right, now, followingIds) - smartPostScore(left, now, followingIds));
+    }
+    const pagePosts = posts.slice((page - 1) * limit, page * limit);
+    const authorIds = pagePosts.map(post => post.authorId).filter(Boolean);
     const authors = await User.find({ _id: { $in: authorIds } }).select('_id profileImage coverImage socialBio').lean();
     const authorMap = new Map(authors.map(author => [String(author._id), author]));
-    posts.forEach(post => {
+    pagePosts.forEach(post => {
       const author = authorMap.get(String(post.authorId));
       post.authorProfileImage = author?.profileImage || '';
       post.authorCoverImage = author?.coverImage || '';
       post.authorBio = author?.socialBio || '';
     });
     const userId = String(req.user.id);
-    posts.forEach(post => {
+    pagePosts.forEach(post => {
       post.isSaved = Array.isArray(post.savedBy) && post.savedBy.some(id => String(id) === userId);
       delete post.savedBy;
     });
-    res.json({ success: true, posts, page, hasMore: posts.length === limit });
+    res.json({ success: true, posts: pagePosts, page, hasMore: posts.length === candidateLimit && pagePosts.length === limit });
   } catch (error) {
     res.status(500).json({ error: 'تعذر تحميل جدار التواصل حالياً' });
   }
+}
+
+function smartPostScore(post, now, followingIds) {
+  const ageHours = Math.max(0, (now - new Date(post.createdAt).getTime()) / 3600000);
+  const visibleComments = Array.isArray(post.comments) ? post.comments.filter(comment => comment.status === 'visible').length : 0;
+  const interactionScore = Number(post.likeCount || 0) * 3 + visibleComments * 2 + Number(post.shareCount || 0) * 4;
+  const freshnessScore = 24 / Math.pow(ageHours + 2, 0.7);
+  const authorBoost = followingIds.includes(String(post.authorId)) ? 5 : 0;
+  const mediaBoost = post.image_url ? 1 : 0;
+  return (post.isPinned ? 1000 : 0) + interactionScore + freshnessScore + authorBoost + mediaBoost;
 }
 
 async function createPost(req, res) {
@@ -63,13 +85,14 @@ async function createPost(req, res) {
     const content = String(req.body?.content || '').trim();
     if (content.length < 2 || content.length > 500) return res.status(400).json({ error: 'يجب أن يتراوح المنشور بين حرفين و500 حرف' });
     const moderation = moderateText(content);
+    const hashtags = extractHashtags(content);
     const image_url = normalizeImageUrl(req.body?.image_url);
     const recentPost = await SocialPost.exists({ authorId: req.user.id, createdAt: { $gte: new Date(Date.now() - 5 * 60 * 1000) } });
     if (recentPost) return res.status(429).json({ error: 'انتظر خمس دقائق قبل نشر منشور جديد' });
     const user = await User.findById(req.user.id).select('email referralCode');
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     const authorLabel = user.referralCode ? `عضو ${user.referralCode}` : `عضو ${String(user.email).slice(0, 2)}•••`;
-    const post = await SocialPost.create({ authorId: user._id, authorLabel, content, image_url, isOfficialAi: false, source: 'user', status: moderation.status, moderationReason: moderation.matchedWord ? 'banned_word' : '' });
+    const post = await SocialPost.create({ authorId: user._id, authorLabel, content, hashtags, image_url, isOfficialAi: false, source: 'user', status: moderation.status, moderationReason: moderation.matchedWord ? 'banned_word' : '' });
     await realtimeService.publish('social_post_created', { postId: post._id, status: post.status }, { scope: 'user' });
     res.status(201).json({ success: true, message: moderation.allowed ? 'تم نشر المنشور' : 'تم حجب المنشور تلقائياً لمخالفته قواعد الجدار', post: post.toObject() });
   } catch (error) {
