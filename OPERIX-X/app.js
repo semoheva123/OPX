@@ -921,20 +921,24 @@ function drawOpxProjectionChart() {
     canvas.height = height * scale;
     context.setTransform(scale, 0, 0, scale, 0, 0);
     context.clearRect(0, 0, width, height);
-    const values = Array.from({ length: 24 }, (_, index) => {
-        const progress = index / 23;
-        const wave = Math.sin(index * 1.55 + opxProjectionMotion) * 0.0032;
-        const secondaryWave = Math.sin(index * 0.62 + opxProjectionMotion * 0.7) * 0.0018;
-        const trend = 0.10 + progress * 0.036;
-        return trend + wave + secondaryWave;
+    const candles = Array.from({ length: 30 }, (_, index) => {
+        const progress = index / 29;
+        const base = 0.10 + progress * 0.034 + Math.sin(index * 0.7 + opxProjectionMotion * 0.8) * 0.003;
+        const open = base + Math.sin(index * 1.7 + opxProjectionMotion) * 0.0018;
+        const close = base + Math.sin(index * 1.7 + opxProjectionMotion + 0.9) * 0.0021;
+        const high = Math.max(open, close) + 0.0015 + Math.abs(Math.sin(index * 2.1)) * 0.0012;
+        const low = Math.min(open, close) - 0.0015 - Math.abs(Math.cos(index * 1.4)) * 0.001;
+        return { open, close, high, low, volume: 0.35 + Math.abs(Math.sin(index * 1.3 + opxProjectionMotion)) * 0.65 };
     });
     const padding = { top: 14, right: 14, bottom: 28, left: 8 };
-    const minValue = values[0];
-    const maxValue = values[values.length - 1];
+    const values = candles.flatMap(candle => [candle.high, candle.low]);
+    const minValue = Math.min(...values) - 0.001;
+    const maxValue = Math.max(...values) + 0.001;
     const chartWidth = width - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
     const valueRange = Math.max(maxValue - minValue, 0.001);
-    const points = values.map((value, index) => ({ x: padding.left + chartWidth * index / (values.length - 1), y: padding.top + chartHeight - (value - minValue) / valueRange * chartHeight }));
+    const candleWidth = chartWidth / candles.length;
+    const yFor = value => padding.top + chartHeight - ((value - minValue) / valueRange) * chartHeight;
     context.font = '9px IBM Plex Sans Arabic, sans-serif';
     for (let index = 0; index <= 4; index += 1) {
         const y = padding.top + chartHeight * index / 4;
@@ -946,44 +950,33 @@ function drawOpxProjectionChart() {
         context.stroke();
     }
     context.textAlign = 'center';
-    ['الآن', 'منذ 3د', 'منذ 6د', 'منذ 9د', 'منذ 12د'].forEach((label, index) => {
+    ['12د', '9د', '6د', '3د', 'الآن'].forEach((label, index) => {
         context.fillStyle = '#64748b';
         context.fillText(label, padding.left + chartWidth * index / 4, height - 8);
     });
-    const areaGradient = context.createLinearGradient(0, padding.top, 0, height - padding.bottom);
-    areaGradient.addColorStop(0, 'rgba(34, 211, 238, 0.24)');
-    areaGradient.addColorStop(1, 'rgba(34, 211, 238, 0)');
-    context.beginPath();
-    points.forEach((point, index) => index ? context.lineTo(point.x, point.y) : context.moveTo(point.x, point.y));
-    context.lineTo(points[points.length - 1].x, height - padding.bottom);
-    context.lineTo(points[0].x, height - padding.bottom);
-    context.closePath();
-    context.fillStyle = areaGradient;
-    context.fill();
-    context.beginPath();
-    points.forEach((point, index) => {
-        if (!index) return context.moveTo(point.x, point.y);
-        const previous = points[index - 1];
-        const middleX = (previous.x + point.x) / 2;
-        context.quadraticCurveTo(previous.x, previous.y, middleX, (previous.y + point.y) / 2);
-        context.quadraticCurveTo(point.x, point.y, point.x, point.y);
+    candles.forEach((candle, index) => {
+        const x = padding.left + index * candleWidth + candleWidth / 2;
+        const openY = yFor(candle.open);
+        const closeY = yFor(candle.close);
+        const highY = yFor(candle.high);
+        const lowY = yFor(candle.low);
+        const bullish = candle.close >= candle.open;
+        const color = bullish ? '#22c55e' : '#ef4444';
+        context.strokeStyle = color;
+        context.lineWidth = 1;
+        context.beginPath();
+        context.moveTo(x, highY);
+        context.lineTo(x, lowY);
+        context.stroke();
+        context.fillStyle = color;
+        context.fillRect(x - candleWidth * 0.28, Math.min(openY, closeY), Math.max(2, candleWidth * 0.56), Math.max(2, Math.abs(closeY - openY)));
+        const volumeHeight = candle.volume * 17;
+        context.fillStyle = bullish ? 'rgba(34, 197, 94, .28)' : 'rgba(239, 68, 68, .28)';
+        context.fillRect(x - candleWidth * 0.28, height - padding.bottom - volumeHeight, Math.max(2, candleWidth * 0.56), volumeHeight);
     });
-    context.strokeStyle = '#67e8f9';
-    context.lineWidth = 2.2;
-    context.shadowColor = 'rgba(34, 211, 238, 0.45)';
-    context.shadowBlur = 7;
-    context.stroke();
-    context.shadowBlur = 0;
-    const latest = points[points.length - 1];
-    context.fillStyle = '#07111f';
-    context.strokeStyle = '#a5f3fc';
-    context.lineWidth = 2;
-    context.beginPath();
-    context.arc(latest.x, latest.y, 5, 0, Math.PI * 2);
-    context.fill();
-    context.stroke();
+    const latest = candles[candles.length - 1];
     const livePrice = document.getElementById('opxMarketLivePrice');
-    if (livePrice) livePrice.innerText = `$${values[values.length - 1].toFixed(4)}`;
+    if (livePrice) livePrice.innerText = `$${latest.close.toFixed(4)}`;
 }
 
 function animateOpxProjectionChart(timestamp = 0) {
