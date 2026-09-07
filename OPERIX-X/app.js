@@ -19,6 +19,8 @@ let socialFeedPage = 1;
 let socialFeedHasMore = false;
 let socialFeedMode = 'all';
 let socialHashtag = '';
+let opxProjectionAnimationFrame = null;
+let opxProjectionMotion = 0;
 
 function isStandaloneApp() {
     return window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true || new URLSearchParams(window.location.search).get('source') === 'pwa';
@@ -919,7 +921,13 @@ function drawOpxProjectionChart() {
     canvas.height = height * scale;
     context.setTransform(scale, 0, 0, scale, 0, 0);
     context.clearRect(0, 0, width, height);
-    const values = Array.from({ length: 9 }, (_, index) => 0.10 * Math.pow(1.03, index));
+    const values = Array.from({ length: 24 }, (_, index) => {
+        const progress = index / 23;
+        const wave = Math.sin(index * 1.55 + opxProjectionMotion) * 0.0032;
+        const secondaryWave = Math.sin(index * 0.62 + opxProjectionMotion * 0.7) * 0.0018;
+        const trend = 0.10 + progress * 0.036;
+        return trend + wave + secondaryWave;
+    });
     const padding = { top: 14, right: 14, bottom: 28, left: 8 };
     const minValue = values[0];
     const maxValue = values[values.length - 1];
@@ -938,7 +946,7 @@ function drawOpxProjectionChart() {
         context.stroke();
     }
     context.textAlign = 'center';
-    ['الأسبوع 1', 'الأسبوع 3', 'الأسبوع 5', 'الأسبوع 7', 'الأسبوع 9'].forEach((label, index) => {
+    ['الآن', 'منذ 3د', 'منذ 6د', 'منذ 9د', 'منذ 12د'].forEach((label, index) => {
         context.fillStyle = '#64748b';
         context.fillText(label, padding.left + chartWidth * index / 4, height - 8);
     });
@@ -974,6 +982,14 @@ function drawOpxProjectionChart() {
     context.arc(latest.x, latest.y, 5, 0, Math.PI * 2);
     context.fill();
     context.stroke();
+    const livePrice = document.getElementById('opxMarketLivePrice');
+    if (livePrice) livePrice.innerText = `$${values[values.length - 1].toFixed(4)}`;
+}
+
+function animateOpxProjectionChart(timestamp = 0) {
+    opxProjectionMotion = timestamp / 1100;
+    drawOpxProjectionChart();
+    opxProjectionAnimationFrame = window.requestAnimationFrame(animateOpxProjectionChart);
 }
 
 function drawOpxLandingChart() {
@@ -1635,6 +1651,7 @@ window.addEventListener('resize', drawOpxLandingChart);
 document.addEventListener('DOMContentLoaded', () => {
     drawOpxProjectionChart();
     drawOpxLandingChart();
+    if (!opxProjectionAnimationFrame) animateOpxProjectionChart();
 });
 
 function updateTaskAvailability(completed, maximum) {
