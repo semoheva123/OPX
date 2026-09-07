@@ -1249,6 +1249,8 @@ function updateKycProfileUI() {
         submitButton.classList.toggle('cursor-not-allowed', locked);
         submitButton.innerText = status === 'verified' ? 'تم اعتماد التوثيق' : status === 'pending' ? 'طلب التوثيق قيد المراجعة' : 'إرسال طلب التوثيق';
     }
+    const kycSection = document.getElementById('kycProfileStatusBadge')?.closest('details');
+    if (kycSection && (status === 'verified' || status === 'pending')) kycSection.open = false;
 }
 
 function updateProfileSecuritySummary() {
@@ -1364,16 +1366,56 @@ function applySocialProfile(user) {
     const bio = document.getElementById('socialBioInput');
     const cover = document.getElementById('profileCoverPreview');
     if (bio && document.activeElement !== bio) bio.value = user?.socialBio || '';
-    if (cover) cover.style.backgroundImage = user?.coverImage ? `url("${user.coverImage}")` : '';
+    if (cover) {
+        cover.style.backgroundImage = user?.coverImage ? `url("${user.coverImage}")` : '';
+        cover.querySelector('.social-cover-hint')?.classList.toggle('hidden', Boolean(user?.coverImage));
+    }
+    const hasProfile = Boolean(user?.socialBio || user?.coverImage);
+    document.getElementById('socialProfileEditor')?.classList.toggle('hidden', hasProfile);
+    document.getElementById('socialProfileEditButton')?.classList.toggle('hidden', !hasProfile);
 }
 
 let pendingSocialCover = '';
+let socialCoverCropImage = null;
 function previewSocialCover(event) {
     const file = event.target.files?.[0];
     if (!file || !isSupportedImageFile(file)) return showToast('اختر صورة JPG أو PNG أو WebP أو أي صورة مدعومة أخرى');
     const reader = new FileReader();
-    reader.onload = () => { pendingSocialCover = String(reader.result || ''); document.getElementById('profileCoverPreview').style.backgroundImage = `url("${pendingSocialCover}")`; };
+    reader.onload = () => { socialCoverCropImage = new Image(); socialCoverCropImage.onload = () => { document.getElementById('socialCoverCropModal')?.classList.remove('hide'); renderSocialCoverCrop(); }; socialCoverCropImage.src = String(reader.result || ''); };
     reader.readAsDataURL(file);
+}
+
+function closeSocialCoverCrop() {
+    document.getElementById('socialCoverCropModal')?.classList.add('hide');
+    const input = document.getElementById('socialCoverInput');
+    if (input) input.value = '';
+}
+
+function renderSocialCoverCrop() {
+    const canvas = document.getElementById('socialCoverCropCanvas');
+    if (!canvas || !socialCoverCropImage) return;
+    const width = canvas.clientWidth || 640;
+    const height = canvas.clientHeight || 224;
+    const scale = window.devicePixelRatio || 1;
+    canvas.width = width * scale;
+    canvas.height = height * scale;
+    const context = canvas.getContext('2d');
+    context.setTransform(scale, 0, 0, scale, 0, 0);
+    context.fillStyle = '#020617';
+    context.fillRect(0, 0, width, height);
+    const zoom = Number(document.getElementById('socialCoverZoom')?.value || 1);
+    const coverScale = Math.max(width / socialCoverCropImage.width, height / socialCoverCropImage.height) * zoom;
+    const drawWidth = socialCoverCropImage.width * coverScale;
+    const drawHeight = socialCoverCropImage.height * coverScale;
+    context.drawImage(socialCoverCropImage, (width - drawWidth) / 2, (height - drawHeight) / 2, drawWidth, drawHeight);
+}
+
+function applySocialCoverCrop() {
+    const canvas = document.getElementById('socialCoverCropCanvas');
+    if (!canvas) return;
+    pendingSocialCover = canvas.toDataURL('image/jpeg', .86);
+    document.getElementById('profileCoverPreview').style.backgroundImage = `url("${pendingSocialCover}")`;
+    closeSocialCoverCrop();
 }
 
 async function saveSocialProfile() {
@@ -1386,6 +1428,13 @@ async function saveSocialProfile() {
     if (!response.ok) { status.innerText = data.error || 'تعذر الحفظ'; return; }
     currentUserData.socialBio = data.socialBio; currentUserData.coverImage = data.coverImage; pendingSocialCover = '';
     applySocialProfile(currentUserData); status.innerText = data.message || 'تم الحفظ';
+    document.getElementById('socialProfileEditor')?.classList.add('hidden');
+    document.getElementById('socialProfileEditButton')?.classList.remove('hidden');
+}
+
+function openSocialProfileEditor() {
+    document.getElementById('socialProfileEditor')?.classList.remove('hidden');
+    document.getElementById('socialProfileEditButton')?.classList.add('hidden');
 }
 
 function previewProfileImage(event) {
@@ -1786,6 +1835,7 @@ async function saveProfileWallet() {
         const data = await res.json();
         if (res.ok && (data.success || data.message)) {
             lockWalletUI(walletAddress);
+            document.getElementById('profileWalletAddress')?.closest('details')?.removeAttribute('open');
             showToast('✅ تم تثبيت المحفظة وتفعيل قفل الحماية (24 ساعة)', 'win');
         } else {
             showToast('❌ ' + (data.error || 'فشل حفظ العنوان'));

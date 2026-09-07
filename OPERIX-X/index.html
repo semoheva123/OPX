@@ -388,7 +388,9 @@
         }
         .social-follow-button { flex: 0 0 auto; min-height: 32px; padding: 0 10px; border: 1px solid rgba(34,211,238,.3); border-radius: 999px; color: #67e8f9; background: rgba(34,211,238,.08); font-size: 10px; font-weight: 800; }
         .social-follow-button.is-following { color: #cbd5e1; border-color: rgba(148,163,184,.2); background: rgba(148,163,184,.08); }
-        .social-profile-cover { height: 92px; margin: -20px -20px 6px; border-bottom: 1px solid rgba(34,211,238,.18); background: linear-gradient(135deg, rgba(34,211,238,.18), rgba(247,185,85,.16), rgba(7,17,31,.9)); background-position: center; background-size: cover; }
+        .social-profile-cover { position: relative; height: 172px; margin: -20px -20px 28px; border-bottom: 1px solid rgba(34,211,238,.18); background: linear-gradient(135deg, rgba(34,211,238,.18), rgba(247,185,85,.16), rgba(7,17,31,.9)); background-position: center; background-size: cover; }
+        .social-cover-hint { position: absolute; inset: 0; display: grid; place-items: center; color: rgba(148,163,184,.55); font-size: 10px; }
+        #profileCoverPreview + .relative { z-index: 2; margin-top: -68px; }
         .social-comments { margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(148,163,184,.08); }
         .social-comments-list { display: flex; flex-direction: column; gap: 8px; }
         .social-comments-list p { margin: 0; padding: 0.7rem 0.85rem; border-radius: 16px; background: rgba(15,23,42,.6); border: 1px solid rgba(148,163,184,.08); color: #dbeafe; font-size: 11px; line-height: 1.7; }
@@ -497,8 +499,8 @@
                     <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-cyan-300/25 bg-cyan-300/10 text-cyan-200 text-xl font-black">OPX</div>
                     <div>
                         <span class="about-kicker">OPX / عملة OPERIX الرقمية</span>
-                        <h2 id="opx-intro-title" class="text-2xl md:text-3xl font-black text-white mt-2 leading-relaxed">عملة رقمية جديدة برؤية واعدة</h2>
-                        <p class="text-xs md:text-sm leading-7 text-slate-300 mt-3">OPX هي العملة الرقمية الجديدة في منظومة OPERIX، صُممت لتدعم تجربة المستخدم والترقيات داخل المنصة، مع توجه مستقبلي لبناء قيمة واستخدامات أوسع وفق تطور المنظومة واعتماد السياسات المناسبة.</p>
+                    <div id="socialCoverCropModal" class="hide fixed inset-0 z-[95] flex items-center justify-center bg-slate-950/85 p-4" role="dialog" aria-modal="true" aria-label="قص صورة الغلاف"><div class="w-full max-w-lg rounded-3xl border border-cyan-400/20 bg-slate-900 p-4 shadow-2xl"><div class="mb-3 flex items-center justify-between"><h3 class="text-sm font-black text-white">تحديد صورة الغلاف</h3><button type="button" onclick="closeSocialCoverCrop()" class="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-800"><i class="fa-solid fa-xmark"></i></button></div><div class="overflow-hidden rounded-2xl border border-slate-700 bg-slate-950"><canvas id="socialCoverCropCanvas" class="block h-56 w-full"></canvas></div><label class="mt-3 block text-[10px] text-slate-400">تكبير الصورة<input id="socialCoverZoom" type="range" min="1" max="3" step="0.05" value="1" class="mt-2 w-full accent-cyan-400" oninput="renderSocialCoverCrop()"></label><div class="mt-4 flex justify-end gap-2"><button type="button" onclick="closeSocialCoverCrop()" class="rounded-xl border border-slate-700 px-4 py-2 text-[10px] font-bold text-slate-300">إلغاء</button><button type="button" onclick="applySocialCoverCrop()" class="rounded-xl bg-cyan-400 px-4 py-2 text-[10px] font-black text-slate-950">استخدام الصورة</button></div></div></div>
+                </body>
                         <div class="grid sm:grid-cols-3 gap-3 mt-5">
                             <div class="rounded-2xl border border-cyan-400/15 bg-cyan-400/5 p-3"><b class="block text-sm text-cyan-200">بداية واعدة</b><span class="text-[10px] leading-5 text-slate-400">السعر الداخلي الحالي $0.10 لكل OPX ضمن المنصة.</span></div>
                             <div class="rounded-2xl border border-amber-400/15 bg-amber-400/5 p-3"><b class="block text-sm text-amber-200">ترقيات فقط</b><span class="text-[10px] leading-5 text-slate-400">يمكن حرقه لتغطية حتى 30%، مع دفع 70% USDT على الأقل.</span></div>
@@ -953,7 +955,7 @@
             
             <!-- 1. كارت هوية المستخدم والحالة -->
             <div class="glass-card p-5 rounded-3xl space-y-3 text-center relative overflow-hidden">
-                <div id="profileCoverPreview" class="social-profile-cover"></div>
+                <div id="profileCoverPreview" class="social-profile-cover"><span class="social-cover-hint">صورة غلاف الحساب</span></div>
                 <div class="relative w-20 h-20 mx-auto">
                     <div id="profileAvatarFallback" class="w-20 h-20 gold-gradient rounded-full flex items-center justify-center font-black text-slate-950 text-xl shadow-lg shadow-amber-500/10">
                     <i class="fa-solid fa-user-shield"></i>
@@ -977,11 +979,16 @@
                     </span>
                 </div>
             </div>
-            <section class="glass-card rounded-3xl border border-cyan-500/20 p-4 space-y-3">
+            <div class="grid grid-cols-2 gap-2 text-xs">
+                <div class="bg-slate-900/90 p-3.5 rounded-2xl border border-slate-800 text-center"><span class="text-slate-400 block text-[10px] mb-0.5">إجمالي الأرباح المكتسبة</span><b id="lblProfileTotalEarnings" class="text-emerald-400 font-black text-sm">$0.00</b></div>
+                <div class="bg-slate-900/90 p-3.5 rounded-2xl border border-slate-800 text-center"><span class="text-slate-400 block text-[10px] mb-0.5">السحوبات الناجحة</span><b id="lblProfileTotalWithdrawn" class="text-amber-400 font-black text-sm">$0.00</b></div>
+            </div>
+
+            <section id="socialProfileSection" class="glass-card rounded-3xl border border-cyan-500/20 p-4 space-y-3">
                 <div class="flex items-center justify-between"><div><h3 class="text-sm font-black text-white">الملف الاجتماعي</h3><p class="mt-1 text-[10px] text-slate-500">عرّف أعضاء المجتمع بك.</p></div><i class="fa-solid fa-id-card text-cyan-300"></i></div>
-                <textarea id="socialBioInput" maxlength="160" rows="2" placeholder="اكتب نبذة قصيرة عنك..." class="w-full rounded-2xl border border-slate-800 bg-slate-950 px-3 py-3 text-xs text-white outline-none focus:border-cyan-400"></textarea>
-                <div class="flex items-center justify-between gap-2"><label for="socialCoverInput" class="cursor-pointer rounded-xl border border-slate-700 px-3 py-2 text-[10px] font-bold text-slate-300 hover:border-cyan-400/50"><i class="fa-regular fa-image text-cyan-300"></i> صورة الغلاف</label><input id="socialCoverInput" type="file" accept="image/*" class="hidden" onchange="previewSocialCover(event)"><button type="button" onclick="saveSocialProfile()" class="rounded-xl bg-cyan-400 px-4 py-2 text-[10px] font-black text-slate-950">حفظ الملف</button></div>
-                <p id="socialProfileStatus" class="text-[10px] text-slate-500"></p>
+                <div id="socialProfileEditor"><textarea id="socialBioInput" maxlength="160" rows="2" placeholder="اكتب نبذة قصيرة عنك..." class="w-full rounded-2xl border border-slate-800 bg-slate-950 px-3 py-3 text-xs text-white outline-none focus:border-cyan-400"></textarea>
+                <div class="flex items-center justify-between gap-2"><label for="socialCoverInput" class="cursor-pointer rounded-xl border border-slate-700 px-3 py-2 text-[10px] font-bold text-slate-300 hover:border-cyan-400/50"><i class="fa-regular fa-image text-cyan-300"></i> صورة الغلاف</label><input id="socialCoverInput" type="file" accept="image/*" class="hidden" onchange="previewSocialCover(event)"><button type="button" onclick="saveSocialProfile()" class="rounded-xl bg-cyan-400 px-4 py-2 text-[10px] font-black text-slate-950">حفظ الملف</button></div></div>
+                <p id="socialProfileStatus" class="text-[10px] text-slate-500"></p><button id="socialProfileEditButton" type="button" onclick="openSocialProfileEditor()" class="hidden text-[10px] font-bold text-cyan-300 hover:text-cyan-200">تعديل الملف الاجتماعي</button>
             </section>
 
             <div class="glass-card p-4 rounded-2xl space-y-3">
@@ -995,18 +1002,6 @@
                     <span id="profileTwoFactorStatus" class="rounded-xl border border-rose-500/20 bg-rose-500/5 px-2.5 py-2 text-rose-300">2FA: غير مفعلة</span>
                     <span id="profileWalletStatus" class="rounded-xl border border-rose-500/20 bg-rose-500/5 px-2.5 py-2 text-rose-300">المحفظة: غير مثبتة</span>
                     <span id="profileKycStatus" class="rounded-xl border border-rose-500/20 bg-rose-500/5 px-2.5 py-2 text-rose-300">KYC: لم يبدأ</span>
-                </div>
-            </div>
-
-            <!-- 2. ملخص الإحصائيات السريعة -->
-            <div class="grid grid-cols-2 gap-2 text-xs">
-                <div class="bg-slate-900/90 p-3.5 rounded-2xl border border-slate-800 text-center">
-                    <span id="profileEarningsLabel" class="text-slate-400 block text-[10px] mb-0.5">إجمالي الأرباح المكتسبة</span>
-                    <b id="lblProfileTotalEarnings" class="text-emerald-400 font-black text-sm">$0.00</b>
-                </div>
-                <div class="bg-slate-900/90 p-3.5 rounded-2xl border border-slate-800 text-center">
-                    <span id="profileWithdrawnLabel" class="text-slate-400 block text-[10px] mb-0.5">السحوبات الناجحة</span>
-                    <b id="lblProfileTotalWithdrawn" class="text-amber-400 font-black text-sm">$0.00</b>
                 </div>
             </div>
 
@@ -1065,7 +1060,7 @@
                         <input id="kycCountryInput" type="text" maxlength="80" placeholder="الدولة" oninput="this.dataset.kycDirty='true'" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-500">
                     </div>
                     <label for="kycDocumentFileInput" class="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5 text-xs text-slate-300 hover:border-cyan-400/50"><span><i class="fa-solid fa-upload text-cyan-300 mr-2"></i>صورة الوثيقة</span><span id="kycDocumentFileName" class="text-[10px] text-slate-500">اختر ملفًا</span></label>
-                    <input id="kycDocumentFileInput" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" onchange="this.dataset.kycDirty='true'; document.getElementById('kycDocumentFileName').innerText = this.files?.[0]?.name || 'اختر ملفًا'">
+                    <input id="kycDocumentFileInput" type="file" accept="image/*" class="hidden" onchange="this.dataset.kycDirty='true'; document.getElementById('kycDocumentFileName').innerText = this.files?.[0]?.name || 'اختر ملفًا'">
                     <input id="kycDocumentUrlInput" type="url" placeholder="أو أدخل رابط صورة الوثيقة" oninput="this.dataset.kycDirty='true'" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-500 dir-ltr">
                     <button type="button" id="btnSubmitUserKyc" onclick="submitUserKyc()" class="w-full py-2.5 bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 hover:border-cyan-400/40 rounded-xl text-xs font-bold active:scale-95 transition-all">إرسال طلب التوثيق</button>
                 </div>
