@@ -22,6 +22,7 @@ const VipLevel = require('./src/models/VipLevel');
 const GameSetting = require('./src/models/GameSetting');
 const { connectDatabase, closeDatabase } = require('./src/config/database');
 const { resetDailyTasks, scheduleDailyTaskReset } = require('./src/jobs/dailyTasksReset');
+const { generateOfficialAiPost } = require('./src/jobs/aiAnnouncer');
 const { processScheduledBroadcasts } = require('./src/controllers/adminController');
 const {
   passwordResetTemplate,
@@ -78,6 +79,7 @@ const app = createApp({
   gameSettings,
   cronHandlers: {
     'reset-daily-tasks': resetDailyTasks,
+    'ai-announcer': generateOfficialAiPost,
     'process-broadcasts': () => processScheduledBroadcasts(webpush)
   }
 });
