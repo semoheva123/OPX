@@ -10,6 +10,7 @@ const transactionSchema = new mongoose.Schema({
   feeAmount: { type: Number, default: 0 },
   netAmount: { type: Number, default: 0 },
   walletAddress: { type: String, required: true, trim: true },
+  image_url: { type: String, trim: true, maxlength: 500, default: '' },
   txHash: { type: String, trim: true },
   idempotencyKey: { type: String, trim: true, index: true },
   network: { type: String, enum: ['TRC20', 'BEP20'] },
