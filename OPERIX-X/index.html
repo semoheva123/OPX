@@ -322,10 +322,10 @@
         #socialCommunityList { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; max-height: 190px; overflow-y: auto; }
         .twitter-author-button { border: 0; padding: 0; color: #f8fafc; background: transparent; font-size: inherit; font-weight: 900; cursor: pointer; }
         .twitter-author-button:hover { color: #67e8f9; text-decoration: underline; text-underline-offset: 3px; }
-        .social-user-card-cover { height: 115px; background: linear-gradient(135deg, rgba(34,211,238,.2), rgba(247,185,85,.16), rgba(7,17,31,.9)); background-position: center; background-size: cover; }
+        .social-user-card-cover { height: 115px; background: linear-gradient(135deg, rgba(34,211,238,.2), rgba(247,185,85,.16), rgba(7,17,31,.9)); background-position: center; background-size: cover; border-bottom: 1px solid rgba(148,163,184,.08); }
         .social-user-card-main { position: relative; padding: 0 18px 18px; }
-        .social-user-card-avatar-wrap { display: grid; place-items: center; width: 68px; height: 68px; margin-top: -34px; border: 3px solid #020617; border-radius: 50%; color: #67e8f9; background: #0f172a; font-size: 22px; font-weight: 900; }
-        .social-user-card-avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+        .social-user-card-avatar-wrap { display: grid; place-items: center; width: 68px; height: 68px; margin-top: -34px; border: 3px solid #020617; border-radius: 50%; color: #67e8f9; background: #0f172a; font-size: 22px; font-weight: 900; overflow: hidden; box-shadow: 0 12px 28px rgba(2,6,23,.65); }
+        .social-user-card-avatar { display: block; width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
         .social-user-card-main > .social-follow-button { position: absolute; top: 14px; inset-inline-end: 18px; }
         .social-user-card-stats { display: flex; gap: 18px; margin-top: 14px; color: #94a3b8; font-size: 10px; }
         .social-user-card-stats b { color: #f8fafc; font-size: 13px; }
@@ -355,6 +355,7 @@
             z-index: 2;
             width: min(92vw, 430px);
             max-height: min(90dvh, 680px);
+            overflow-x: hidden;
             overflow-y: auto;
             border-radius: 28px;
             border: 1px solid rgba(34,211,238,.12);
@@ -943,7 +944,7 @@
                     <label for="profileImageInput" class="absolute -bottom-1 -right-1 w-8 h-8 bg-amber-500 text-slate-950 rounded-full flex items-center justify-center cursor-pointer shadow-lg" title="تغيير الصورة الشخصية">
                         <i class="fa-solid fa-camera text-xs"></i>
                     </label>
-                    <input id="profileImageInput" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" onchange="previewProfileImage(event)">
+                    <input id="profileImageInput" type="file" accept="image/*" class="hidden" onchange="previewProfileImage(event)">
                 </div>
                 <div>
                     <h3 id="lblProfileDisplayName" class="text-base font-black text-white">User</h3>
@@ -961,7 +962,7 @@
             <section class="glass-card rounded-3xl border border-cyan-500/20 p-4 space-y-3">
                 <div class="flex items-center justify-between"><div><h3 class="text-sm font-black text-white">الملف الاجتماعي</h3><p class="mt-1 text-[10px] text-slate-500">عرّف أعضاء المجتمع بك.</p></div><i class="fa-solid fa-id-card text-cyan-300"></i></div>
                 <textarea id="socialBioInput" maxlength="160" rows="2" placeholder="اكتب نبذة قصيرة عنك..." class="w-full rounded-2xl border border-slate-800 bg-slate-950 px-3 py-3 text-xs text-white outline-none focus:border-cyan-400"></textarea>
-                <div class="flex items-center justify-between gap-2"><label for="socialCoverInput" class="cursor-pointer rounded-xl border border-slate-700 px-3 py-2 text-[10px] font-bold text-slate-300 hover:border-cyan-400/50"><i class="fa-regular fa-image text-cyan-300"></i> صورة الغلاف</label><input id="socialCoverInput" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" onchange="previewSocialCover(event)"><button type="button" onclick="saveSocialProfile()" class="rounded-xl bg-cyan-400 px-4 py-2 text-[10px] font-black text-slate-950">حفظ الملف</button></div>
+                <div class="flex items-center justify-between gap-2"><label for="socialCoverInput" class="cursor-pointer rounded-xl border border-slate-700 px-3 py-2 text-[10px] font-bold text-slate-300 hover:border-cyan-400/50"><i class="fa-regular fa-image text-cyan-300"></i> صورة الغلاف</label><input id="socialCoverInput" type="file" accept="image/*" class="hidden" onchange="previewSocialCover(event)"><button type="button" onclick="saveSocialProfile()" class="rounded-xl bg-cyan-400 px-4 py-2 text-[10px] font-black text-slate-950">حفظ الملف</button></div>
                 <p id="socialProfileStatus" class="text-[10px] text-slate-500"></p>
             </section>
 

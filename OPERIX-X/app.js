@@ -1217,8 +1217,8 @@ async function submitUserKyc() {
     try {
         let documentImage = '';
         if (documentFile) {
-            if (!['image/jpeg', 'image/png', 'image/webp'].includes(documentFile.type)) return showToast('يرجى اختيار صورة JPG أو PNG أو WebP');
-            if (documentFile.size > 650 * 1024) return showToast('حجم صورة الوثيقة يجب ألا يتجاوز 650 كيلوبايت');
+            if (!isSupportedImageFile(documentFile)) return showToast('يرجى اختيار صورة JPG أو PNG أو WebP أو أي صورة مدعومة أخرى');
+            if (documentFile.size > MAX_ALLOWED_IMAGE_BYTES) return showToast('حجم صورة الوثيقة يجب ألا يتجاوز 2 ميجابايت');
             documentImage = await new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = () => resolve(reader.result);
@@ -1299,7 +1299,7 @@ function applySocialProfile(user) {
 let pendingSocialCover = '';
 function previewSocialCover(event) {
     const file = event.target.files?.[0];
-    if (!file || !['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) return showToast('اختر صورة JPG أو PNG أو WebP');
+    if (!file || !isSupportedImageFile(file)) return showToast('اختر صورة JPG أو PNG أو WebP أو أي صورة مدعومة أخرى');
     const reader = new FileReader();
     reader.onload = () => { pendingSocialCover = String(reader.result || ''); document.getElementById('profileCoverPreview').style.backgroundImage = `url("${pendingSocialCover}")`; };
     reader.readAsDataURL(file);
@@ -1319,12 +1319,12 @@ async function saveSocialProfile() {
 
 function previewProfileImage(event) {
     const file = event.target.files?.[0];
-    if (!file || !['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-        showToast('يرجى اختيار صورة JPG أو PNG أو WebP');
+    if (!file || !isSupportedImageFile(file)) {
+        showToast('يرجى اختيار صورة صالحة من الصور المدعومة');
         event.target.value = '';
         return;
     }
-    if (file.size > 2 * 1024 * 1024) {
+    if (file.size > MAX_ALLOWED_IMAGE_BYTES) {
         showToast('حجم الصورة يجب ألا يتجاوز 2 ميجابايت');
         event.target.value = '';
         return;
@@ -2229,8 +2229,16 @@ function readImageAsDataUrl(file) {
     });
 }
 
+const MAX_ALLOWED_IMAGE_BYTES = 2 * 1024 * 1024;
+document.getElementById('socialImageInput')?.setAttribute('accept', 'image/*');
+
+function isSupportedImageFile(file) {
+    if (!file || !file.type || !file.type.startsWith('image/')) return false;
+    return true;
+}
+
 async function compressSocialImage(file) {
-    if (file.size <= 650 * 1024) return file;
+    if (file.size <= MAX_ALLOWED_IMAGE_BYTES) return file;
     const dataUrl = await readImageAsDataUrl(file);
     const image = await new Promise((resolve, reject) => { const element = new Image(); element.onload = () => resolve(element); element.onerror = () => reject(new Error('تعذر معالجة الصورة')); element.src = dataUrl; });
     const scale = Math.min(1, 1600 / Math.max(image.width, image.height));
@@ -2245,9 +2253,11 @@ async function compressSocialImage(file) {
 
 async function uploadSocialImage(file) {
     if (!file) return '';
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) throw new Error('اختر صورة JPG أو PNG أو WebP');
-    file = await compressSocialImage(file);
-    if (file.size > 650 * 1024) throw new Error('تعذر ضغط الصورة إلى الحجم المسموح');
+    if (!isSupportedImageFile(file)) throw new Error('اختر صورة صالحة من الصور المدعومة');
+    if (file.size > MAX_ALLOWED_IMAGE_BYTES) {
+        file = await compressSocialImage(file);
+    }
+    if (file.size > MAX_ALLOWED_IMAGE_BYTES) throw new Error('تعذر ضغط الصورة إلى الحجم المسموح');
     const token = localStorage.getItem('token');
     const response = await fetch('/api/social-feed/upload-image', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ image: await readImageAsDataUrl(file) }) });
     const data = await response.json();
@@ -2261,9 +2271,9 @@ function previewSocialImage(event) {
     const image = document.getElementById('socialImagePreviewImage');
     const meta = document.getElementById('socialImageMeta');
     if (!file) return;
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    if (!isSupportedImageFile(file)) {
         clearSocialImage();
-        if (typeof showToast === 'function') showToast('اختر صورة JPG أو PNG أو WebP بحجم لا يتجاوز 650 كيلوبايت');
+        if (typeof showToast === 'function') showToast('اختر صورة صالحة من الصور المدعومة، مع حجم أقصاه 2 ميجابايت');
         return;
     }
     const reader = new FileReader();
@@ -2283,7 +2293,7 @@ function clearSocialImage() {
     if (input) input.value = '';
     if (image) image.removeAttribute('src');
     if (preview) preview.classList.add('hidden');
-    if (meta) meta.innerText = 'JPG أو PNG أو WebP • حتى 650KB';
+    if (meta) meta.innerText = 'JPG / PNG / WebP / GIF / AVIF • حتى 2MB';
 }
 
 function escapeSocialHtml(value) {
