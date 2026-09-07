@@ -329,6 +329,8 @@
         .social-user-card-main > .social-follow-button { position: absolute; top: 14px; inset-inline-end: 18px; }
         .social-user-card-stats { display: flex; gap: 18px; margin-top: 14px; color: #94a3b8; font-size: 10px; }
         .social-user-card-stats b { color: #f8fafc; font-size: 13px; }
+        body.social-modal-open { overflow: hidden; }
+        #socialUserCardModal > div { max-height: min(90dvh, 680px); overflow-y: auto; }
         .social-follow-button { flex: 0 0 auto; min-height: 32px; padding: 0 10px; border: 1px solid rgba(34,211,238,.3); border-radius: 999px; color: #67e8f9; background: rgba(34,211,238,.08); font-size: 10px; font-weight: 800; }
         .social-follow-button.is-following { color: #cbd5e1; border-color: rgba(148,163,184,.2); background: rgba(148,163,184,.08); }
         .social-profile-cover { height: 92px; margin: -20px -20px 6px; border-bottom: 1px solid rgba(34,211,238,.18); background: linear-gradient(135deg, rgba(34,211,238,.18), rgba(247,185,85,.16), rgba(7,17,31,.9)); background-position: center; background-size: cover; }
