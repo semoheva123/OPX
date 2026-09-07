@@ -2327,7 +2327,7 @@ async function loadSocialCommunity() {
     const response = await fetch('/api/social/community', { headers: { Authorization: `Bearer ${token}` } });
     const data = await response.json();
     if (!response.ok) { list.innerHTML = '<p class="text-xs text-rose-300">تعذر تحميل أعضاء المجتمع.</p>'; return; }
-    list.innerHTML = data.users.length ? data.users.map(user => `<div class="social-community-user"><div class="social-community-avatar">${escapeSocialHtml(String(user.label).slice(-1))}</div><div class="min-w-0 flex-1"><b class="block truncate text-xs text-white">${escapeSocialHtml(user.label)}</b><span class="text-[10px] text-slate-500">${user.posts} منشور · ${user.followers} متابع</span></div><button type="button" class="social-follow-button ${user.following ? 'is-following' : ''}" onclick="toggleSocialFollow('${escapeSocialHtml(user.id)}', this)">${user.following ? 'تتابعه' : 'متابعة'}</button></div>`).join('') : '<p class="text-xs text-slate-500">لا يوجد أعضاء آخرون بعد.</p>';
+    list.innerHTML = data.users.length ? data.users.map(user => `<div class="social-community-card"><div class="social-community-cover" style="${user.coverImage ? `background-image:url('${escapeSocialHtml(user.coverImage)}')` : ''}"></div><div class="social-community-user"><div class="social-community-avatar">${user.profileImage ? `<img src="${escapeSocialHtml(user.profileImage)}" alt="" class="twitter-avatar-image">` : escapeSocialHtml(String(user.label).slice(-1))}</div><div class="min-w-0 flex-1"><b class="block truncate text-xs text-white">${escapeSocialHtml(user.label)}</b><span class="text-[10px] text-slate-500">${user.posts} منشور · ${user.followers} متابع</span>${user.socialBio ? `<span class="social-community-bio">${escapeSocialHtml(user.socialBio)}</span>` : ''}</div><button type="button" class="social-follow-button ${user.following ? 'is-following' : ''}" onclick="toggleSocialFollow('${escapeSocialHtml(user.id)}', this)">${user.following ? 'تتابعه' : 'متابعة'}</button></div></div>`).join('') : '<p class="text-xs text-slate-500">لا يوجد أعضاء آخرون بعد.</p>';
 }
 
 async function toggleSocialFollow(userId, button) {
@@ -2338,22 +2338,39 @@ async function toggleSocialFollow(userId, button) {
     button.classList.toggle('is-following', data.following);
 }
 
+async function openSocialUserCard(userId) {
+    const modal = document.getElementById('socialUserCardModal');
+    const content = document.getElementById('socialUserCardContent');
+    if (!modal || !content || !userId) return;
+    modal.classList.remove('hide');
+    content.innerHTML = '<p class="py-10 text-center text-xs text-slate-500">جارٍ تحميل البطاقة...</p>';
+    const response = await fetch(`/api/social/profile/${encodeURIComponent(userId)}`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+    const data = await response.json();
+    if (!response.ok) { content.innerHTML = `<p class="py-10 text-center text-xs text-rose-300">${escapeSocialHtml(data.error || 'تعذر تحميل البطاقة')}</p>`; return; }
+    const profile = data.profile;
+    const avatar = profile.profileImage ? `<img src="${escapeSocialHtml(profile.profileImage)}" alt="" class="social-user-card-avatar">` : escapeSocialHtml(profile.label.slice(-1));
+    content.innerHTML = `<div class="social-user-card-cover" style="${profile.coverImage ? `background-image:url('${escapeSocialHtml(profile.coverImage)}')` : ''}"></div><div class="social-user-card-main"><div class="social-user-card-avatar-wrap">${avatar}</div><button type="button" class="social-follow-button ${profile.isFollowing ? 'is-following' : ''}" onclick="toggleSocialFollow('${escapeSocialHtml(profile.id)}', this)">${profile.isFollowing ? 'تتابعه' : 'متابعة'}</button><h3 class="mt-3 text-base font-black text-white">${escapeSocialHtml(profile.label)}</h3><p class="mt-2 text-xs leading-6 text-slate-400">${escapeSocialHtml(profile.socialBio || 'لا توجد نبذة بعد.')}</p><div class="social-user-card-stats"><span><b>${profile.posts.length}</b> منشور</span><span><b>${profile.followers}</b> متابع</span><span><b>${profile.following}</b> يتابع</span></div><div class="mt-4 space-y-2">${profile.posts.map(post => `<div class="rounded-xl border border-slate-800 bg-slate-950/50 p-3 text-xs text-slate-300">${escapeSocialHtml(post.content)}</div>`).join('') || '<p class="text-xs text-slate-500">لا توجد منشورات بعد.</p>'}</div></div>`;
+}
+
+function closeSocialUserCard() { document.getElementById('socialUserCardModal')?.classList.add('hide'); }
+
 function renderSocialPostCard(post) {
     const isOfficialAi = Boolean(post.isOfficialAi || post.is_official_ai);
     const authorLabel = String(post.authorLabel || post.username_display || post.author?.email || 'OPERIX').trim() || 'OPERIX';
     const content = String(post.content || post.post_text || '').trim() || 'محتوى منشور';
     const postId = String(post._id || post.id || '');
     const initials = escapeSocialHtml(authorLabel.slice(0, 1).toUpperCase());
+    const avatar = post.authorProfileImage ? `<img src="${escapeSocialHtml(post.authorProfileImage)}" alt="" class="twitter-avatar-image">` : initials;
     const image = post.image_url ? `<div class="twitter-post-media"><img src="${escapeSocialHtml(post.image_url)}" alt="صورة مرفقة من ${escapeSocialHtml(authorLabel)}" loading="lazy"></div>` : '';
     const createdAt = post.createdAt ? new Date(post.createdAt).toLocaleString('ar') : 'إعلان رسمي';
     const handle = isOfficialAi ? '@operix_ai' : '@' + escapeSocialHtml(authorLabel.toLowerCase().replace(/\s+/g, ''));
     return `<article data-social-post-id="${escapeSocialHtml(postId)}" class="twitter-post ${isOfficialAi ? 'border-amber-400/20' : ''}">
         <div class="twitter-post-inner">
-            <div class="twitter-avatar"><div class="twitter-avatar-badge ${isOfficialAi ? 'bg-amber-400/15 text-amber-300' : ''}">${isOfficialAi ? '<i class="fa-solid fa-robot"></i>' : initials}</div></div>
+            <div class="twitter-avatar"><div class="twitter-avatar-badge ${isOfficialAi ? 'bg-amber-400/15 text-amber-300' : ''}">${isOfficialAi ? '<i class="fa-solid fa-robot"></i>' : avatar}</div></div>
             <div class="twitter-post-content">
                 <div class="twitter-post-header">
                     <div class="twitter-user-meta">
-                        <strong>${escapeSocialHtml(authorLabel)}</strong>
+                        ${post.authorId && !isOfficialAi ? `<button type="button" class="twitter-author-button" onclick="openSocialUserCard('${escapeSocialHtml(post.authorId)}')">${escapeSocialHtml(authorLabel)}</button>` : `<strong>${escapeSocialHtml(authorLabel)}</strong>`}
                         <span>${handle}</span>
                         <span class="twitter-post-time">• ${createdAt}</span>
                     </div>

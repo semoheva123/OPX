@@ -315,6 +315,20 @@
         .social-community-user { display: flex; align-items: center; gap: 9px; padding: 10px 0; border-bottom: 1px solid rgba(148,163,184,.08); }
         .social-community-user:last-child { border-bottom: 0; }
         .social-community-avatar { display: grid; place-items: center; width: 32px; height: 32px; flex: 0 0 auto; border: 1px solid rgba(34,211,238,.25); border-radius: 50%; color: #67e8f9; background: rgba(34,211,238,.1); font-size: 12px; font-weight: 900; }
+        .social-community-card { position: relative; overflow: hidden; padding: 10px; border: 1px solid rgba(148,163,184,.1); border-radius: 16px; background: rgba(2,6,23,.45); }
+        .social-community-cover { height: 42px; margin: -10px -10px 9px; background: linear-gradient(135deg, rgba(34,211,238,.18), rgba(247,185,85,.14), rgba(7,17,31,.8)); background-size: cover; background-position: center; }
+        .social-community-bio { display: -webkit-box; overflow: hidden; margin-top: 4px; color: #94a3b8; font-size: 10px; line-height: 1.6; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+        .twitter-avatar-image { display: block; width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+        #socialCommunityList { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; max-height: 190px; overflow-y: auto; }
+        .twitter-author-button { border: 0; padding: 0; color: #f8fafc; background: transparent; font-size: inherit; font-weight: 900; cursor: pointer; }
+        .twitter-author-button:hover { color: #67e8f9; text-decoration: underline; text-underline-offset: 3px; }
+        .social-user-card-cover { height: 115px; background: linear-gradient(135deg, rgba(34,211,238,.2), rgba(247,185,85,.16), rgba(7,17,31,.9)); background-position: center; background-size: cover; }
+        .social-user-card-main { position: relative; padding: 0 18px 18px; }
+        .social-user-card-avatar-wrap { display: grid; place-items: center; width: 68px; height: 68px; margin-top: -34px; border: 3px solid #020617; border-radius: 50%; color: #67e8f9; background: #0f172a; font-size: 22px; font-weight: 900; }
+        .social-user-card-avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+        .social-user-card-main > .social-follow-button { position: absolute; top: 14px; inset-inline-end: 18px; }
+        .social-user-card-stats { display: flex; gap: 18px; margin-top: 14px; color: #94a3b8; font-size: 10px; }
+        .social-user-card-stats b { color: #f8fafc; font-size: 13px; }
         .social-follow-button { flex: 0 0 auto; min-height: 32px; padding: 0 10px; border: 1px solid rgba(34,211,238,.3); border-radius: 999px; color: #67e8f9; background: rgba(34,211,238,.08); font-size: 10px; font-weight: 800; }
         .social-follow-button.is-following { color: #cbd5e1; border-color: rgba(148,163,184,.2); background: rgba(148,163,184,.08); }
         .social-profile-cover { height: 92px; margin: -20px -20px 6px; border-bottom: 1px solid rgba(34,211,238,.18); background: linear-gradient(135deg, rgba(34,211,238,.18), rgba(247,185,85,.16), rgba(7,17,31,.9)); background-position: center; background-size: cover; }
@@ -685,6 +699,7 @@
 
         </div>
 
+        <div id="socialUserCardModal" class="hide fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/80 p-4" role="dialog" aria-modal="true" aria-label="بطاقة المستخدم"><div class="w-full max-w-md overflow-hidden rounded-3xl border border-cyan-400/20 bg-slate-900 shadow-2xl"><div class="flex justify-end p-3"><button type="button" onclick="closeSocialUserCard()" class="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-800 hover:text-white" aria-label="إغلاق"><i class="fa-solid fa-xmark"></i></button></div><div id="socialUserCardContent"></div></div></div>
         <div id="view-feed" class="twitter-shell space-y-4 hide pb-28">
             <button type="button" onclick="document.getElementById('socialPostContent')?.focus()" class="social-floating-compose" aria-label="إنشاء منشور"><i class="fa-solid fa-feather-pointed"></i></button>
             <div class="social-feed-tabs" role="tablist" aria-label="مصدر منشورات الجدار"><button type="button" data-social-feed-mode="all" onclick="setSocialFeedMode('all')" class="social-feed-tab social-feed-mode-active">كل المنشورات</button><button type="button" data-social-feed-mode="following" onclick="setSocialFeedMode('following')" class="social-feed-tab">أتابعهم</button></div>
