@@ -115,6 +115,15 @@ async function toggleLike(req, res) {
   } catch (error) { res.status(500).json({ error: 'تعذر تحديث الإعجاب' }); }
 }
 
+async function listLikes(req, res) {
+  try {
+    const post = await SocialPost.findOne({ _id: req.params.postId, status: 'visible' }).select('likedBy').lean();
+    if (!post) return res.status(404).json({ error: 'المنشور غير موجود' });
+    const users = await User.find({ _id: { $in: post.likedBy || [] }, isBanned: false }).select('email referralCode').limit(100).lean();
+    res.json({ success: true, users: users.map(user => ({ id: user._id, label: user.referralCode ? `عضو ${user.referralCode}` : `عضو ${String(user.email || '').slice(0, 2)}•••` })) });
+  } catch (error) { res.status(500).json({ error: 'تعذر تحميل قائمة الإعجابات' }); }
+}
+
 async function toggleSave(req, res) {
   try {
     const post = await SocialPost.findOne({ _id: req.params.postId, status: 'visible' }).select('savedBy');
@@ -234,4 +243,4 @@ async function moderatePost(req, res) {
   res.json({ success: true, post });
 }
 
-module.exports = { listPosts, createPost, reportPost, uploadImage, listReportedPosts, moderatePost, toggleLike, toggleSave, sharePost, togglePin, addComment, updatePost, deletePost };
+module.exports = { listPosts, createPost, reportPost, uploadImage, listReportedPosts, moderatePost, toggleLike, listLikes, toggleSave, sharePost, togglePin, addComment, updatePost, deletePost };
