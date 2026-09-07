@@ -18,6 +18,7 @@ let realtimeEventSource = null;
 let socialFeedPage = 1;
 let socialFeedHasMore = false;
 let socialFeedMode = 'all';
+let socialHashtag = '';
 
 function isStandaloneApp() {
     return window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true || new URLSearchParams(window.location.search).get('source') === 'pwa';
@@ -2230,7 +2231,16 @@ function readImageAsDataUrl(file) {
 }
 
 const MAX_ALLOWED_IMAGE_BYTES = 2 * 1024 * 1024;
-document.getElementById('socialImageInput')?.setAttribute('accept', 'image/*');
+
+function configureSocialImageInput() {
+    const input = document.getElementById('socialImageInput');
+    const meta = document.getElementById('socialImageMeta');
+    if (input) input.setAttribute('accept', 'image/*');
+    if (meta) meta.innerText = 'JPG / PNG / WebP / GIF / AVIF • حتى 2MB';
+}
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', configureSocialImageInput, { once: true });
+else configureSocialImageInput();
 
 function isSupportedImageFile(file) {
     if (!file || !file.type || !file.type.startsWith('image/')) return false;
@@ -2310,7 +2320,8 @@ async function loadSocialFeed(reset = true) {
     }
     if (reset) socialFeedPage = 1;
     try {
-        const response = await fetch(`/api/social-feed?page=${socialFeedPage}&feed=${encodeURIComponent(socialFeedMode)}`, { headers: { Authorization: `Bearer ${token}` } });
+        const hashtagQuery = socialHashtag ? `&hashtag=${encodeURIComponent(socialHashtag)}` : '';
+        const response = await fetch(`/api/social-feed?page=${socialFeedPage}&feed=${encodeURIComponent(socialFeedMode)}${hashtagQuery}`, { headers: { Authorization: `Bearer ${token}` } });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'تعذر تحميل المجتمع');
         const posts = Array.isArray(data.posts) ? data.posts : [];
@@ -2328,6 +2339,13 @@ function setSocialFeedMode(mode) {
     socialFeedMode = mode === 'following' ? 'following' : 'all';
     document.querySelectorAll('[data-social-feed-mode]').forEach(button => button.classList.toggle('social-feed-mode-active', button.dataset.socialFeedMode === socialFeedMode));
     loadSocialFeed(true);
+}
+
+function searchSocialHashtag(hashtag) {
+    socialHashtag = String(hashtag || '').replace(/^#/, '').trim().toLocaleLowerCase('und');
+    socialFeedPage = 1;
+    loadSocialFeed(true);
+    if (typeof showToast === 'function') showToast(socialHashtag ? `منشورات #${socialHashtag}` : 'كل منشورات المجتمع');
 }
 
 async function loadSocialCommunity() {
@@ -2389,6 +2407,7 @@ function renderSocialPostCard(post) {
     const isOfficialAi = Boolean(post.isOfficialAi || post.is_official_ai);
     const authorLabel = String(post.authorLabel || post.username_display || post.author?.email || 'OPERIX').trim() || 'OPERIX';
     const content = String(post.content || post.post_text || '').trim() || 'محتوى منشور';
+    const formattedContent = escapeSocialHtml(content).replace(/(^|\s)#([\p{L}\p{N}_-]{2,40})/gu, '$1<button type="button" class="social-hashtag" onclick="searchSocialHashtag(\'$2\')">#$2</button>');
     const postId = String(post._id || post.id || '');
     const initials = escapeSocialHtml(authorLabel.slice(0, 1).toUpperCase());
     const avatar = post.authorProfileImage ? `<img src="${escapeSocialHtml(post.authorProfileImage)}" alt="" class="twitter-avatar-image">` : initials;
@@ -2407,7 +2426,7 @@ function renderSocialPostCard(post) {
                     </div>
                     ${isOfficialAi ? '<i class="fa-solid fa-shield-halved text-amber-300" title="محتوى رسمي من OPERIX AI"></i>' : '<button type="button" onclick="reportSocialPost(\'${escapeSocialHtml(postId)}\')" class="twitter-more" title="إبلاغ"><i class="fa-solid fa-ellipsis"></i></button>'}
                 </div>
-                <div class="twitter-post-body"><p>${escapeSocialHtml(content)}</p></div>
+                <div class="twitter-post-body"><p>${formattedContent}</p></div>
                 ${image}
                     ${isOfficialAi ? '<p class="mt-3 text-[10px] leading-5 text-amber-200/70">محتوى رسمي مولد بمساعدة الذكاء الاصطناعي، وليس منشوراً من مستخدم مستقل.</p>' : ''}
                     ${post.isPinned ? '<span class="mt-3 inline-flex items-center gap-1 text-[10px] text-amber-300"><i class="fa-solid fa-thumbtack"></i> مثبت</span>' : ''}
