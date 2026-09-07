@@ -59,6 +59,10 @@
     {
       "path": "/api/internal/cron/reset-daily-tasks",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/internal/cron/ai-announcer",
+      "schedule": "0 9 * * *"
     }
   ]
 }

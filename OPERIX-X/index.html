@@ -569,6 +569,14 @@
 
         </div>
 
+        <div id="view-feed" class="space-y-4 hide pb-28">
+            <section class="glass-card rounded-3xl p-5 space-y-3 border border-cyan-500/20">
+                <div class="flex items-start justify-between gap-3"><div><span class="text-[10px] font-bold uppercase tracking-widest text-cyan-300">OPERIX / SOCIAL-FI</span><h2 class="mt-1 text-lg font-black text-white">جدار المجتمع</h2><p class="mt-2 text-[11px] leading-5 text-slate-400">شارك تحديثاً قصيراً مع المجتمع. الصور تُحفظ خارج المنصة عبر ImgBB.</p></div><i class="fa-solid fa-comments text-2xl text-cyan-300"></i></div>
+                <form onsubmit="createSocialPost(event)" class="space-y-2"><textarea id="socialPostContent" maxlength="500" minlength="2" required rows="3" placeholder="اكتب تحديثاً مفيداً للمجتمع..." class="w-full rounded-2xl border border-slate-800 bg-slate-950 px-3 py-3 text-xs text-white outline-none focus:border-cyan-400"></textarea><div class="flex items-center justify-between gap-2"><span id="socialPostStatus" class="text-[10px] text-slate-500"></span><button type="submit" class="rounded-xl bg-cyan-400 px-4 py-2.5 text-xs font-black text-slate-950"><i class="fa-solid fa-paper-plane mr-1"></i>نشر</button></div></form>
+            </section>
+            <section class="space-y-3"><div class="flex items-center justify-between"><h3 class="text-sm font-black text-white">آخر التحديثات</h3><button type="button" onclick="loadSocialFeed()" title="تحديث الجدار" class="text-slate-400 hover:text-cyan-300"><i class="fa-solid fa-arrows-rotate"></i></button></div><div id="socialFeedList" class="space-y-3"><p class="glass-card rounded-2xl p-4 text-center text-xs text-slate-500">جارٍ تحميل الجدار...</p></div></section>
+        </div>
+
         <!-- 4.2 تبويب المستويات (Tiers View - إرسال targetTier) -->
         <div id="view-tiers" class="space-y-4 hide">
             <div class="text-center space-y-1">
@@ -937,6 +945,10 @@
             <i class="fa-solid fa-house text-base"></i>
             <span class="text-[10px] font-bold mt-1">الرئيسية</span>
         </button>
+        <button id="nav-feed" onclick="switchTab('feed')" class="flex flex-col items-center flex-1 text-slate-400 transition-all">
+            <i class="fa-solid fa-comments text-base"></i>
+            <span class="text-[10px] font-bold mt-1">الجدار</span>
+        </button>
         <button id="nav-tiers" onclick="switchTab('tiers')" class="flex flex-col items-center flex-1 text-slate-400 transition-all">
             <i class="fa-solid fa-layer-group text-base"></i>
             <span class="text-[10px] font-bold mt-1">المستويات</span>
@@ -1047,6 +1059,11 @@
                     <label class="block text-xs text-slate-400 mb-1 font-bold">عنوان محفظة الاستلام</label>
                     <input type="text" id="withdrawWallet" placeholder="ثبت عنوانك من الملف الشخصي" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-amber-500 dir-ltr">
                     <div id="walletStatusContainerWithdraw"></div>
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1 font-bold">إثبات السحب <span class="font-normal text-slate-500">(اختياري)</span></label>
+                    <input type="file" id="withdrawProofImage" accept="image/jpeg,image/png,image/webp" class="w-full text-[10px] text-slate-400 file:mr-2 file:rounded-lg file:border-0 file:bg-slate-800 file:px-2 file:py-1.5 file:text-[10px] file:text-slate-200">
+                    <span id="withdrawProofStatus" class="mt-1 block text-[10px] text-slate-500">سيتم رفع الصورة إلى ImgBB وحفظ الرابط فقط.</span>
                 </div>
 
                 <!-- إضافة واجهة 2FA بالكامل -->
@@ -1343,6 +1360,7 @@
             const amount = parseFloat(amountInput.value);
             const wallet = walletInput.value.trim();
             const twoFactorCode = codeInput.value.trim();
+            const proofFile = document.getElementById('withdrawProofImage')?.files?.[0];
 
             if (!amount || amount <= 0) {
                 statusMsg.style.color = '#f87171';
@@ -1366,6 +1384,11 @@
             statusMsg.innerText = 'جاري معالجة طلب السحب...';
 
             try {
+                let image_url = '';
+                if (proofFile) {
+                    document.getElementById('withdrawProofStatus').innerText = 'جاري رفع إثبات السحب إلى ImgBB...';
+                    image_url = await uploadSocialImage(proofFile);
+                }
                 const res = await fetch('/api/wallet/withdraw', {
                     method: 'POST',
                     headers: {
@@ -1375,7 +1398,8 @@
                     body: JSON.stringify({
                         amount: amount,
                         walletAddress: wallet,
-                        twoFactorCode: twoFactorCode
+                        twoFactorCode: twoFactorCode,
+                        image_url
                     })
                 });
                 const data = await res.json();

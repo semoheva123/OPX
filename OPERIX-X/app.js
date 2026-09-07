@@ -2124,7 +2124,7 @@ async function revokeActiveSession(jti) {
 
 /* --- 8. التنقل والمودالات (Modals) --- */
 function switchTab(tabName) {
-    ['home', 'tiers', 'vault', 'travel', 'ai', 'spin', 'team', 'profile'].forEach(t => {
+    ['home', 'feed', 'tiers', 'vault', 'travel', 'ai', 'spin', 'team', 'profile'].forEach(t => {
         const el = document.getElementById(`view-${t}`);
         if(el) el.classList.add('hide');
         const nav = document.getElementById(`nav-${t}`);
@@ -2139,6 +2139,9 @@ function switchTab(tabName) {
 
     if (tabName === 'profile') {
         updateProfileUI();
+    }
+    if (tabName === 'feed') {
+        loadSocialFeed();
     }
     if (tabName === 'tiers') {
         loadUpgradeHistory();
@@ -2160,6 +2163,66 @@ function switchTab(tabName) {
     if (tabName === 'team') {
         loadTeamNetwork();
     }
+}
+
+function readImageAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(new Error('تعذر قراءة الصورة'));
+        reader.readAsDataURL(file);
+    });
+}
+
+async function uploadSocialImage(file) {
+    if (!file) return '';
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 650 * 1024) throw new Error('اختر صورة JPG أو PNG أو WebP بحجم لا يتجاوز 650 كيلوبايت');
+    const token = localStorage.getItem('token');
+    const response = await fetch('/api/social-feed/upload-image', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ image: await readImageAsDataUrl(file) }) });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'تعذر رفع الصورة');
+    return data.image_url;
+}
+
+function escapeSocialHtml(value) {
+    return String(value || '').replace(/[&<>'"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character]));
+}
+
+async function loadSocialFeed() {
+    const list = document.getElementById('socialFeedList');
+    const token = localStorage.getItem('token');
+    if (!list || !token) return;
+    try {
+        const response = await fetch('/api/social-feed', { headers: { Authorization: `Bearer ${token}` } });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'تعذر تحميل الجدار');
+        list.innerHTML = data.posts?.length ? data.posts.map(post => { const isOfficialAi = Boolean(post.isOfficialAi || post.is_official_ai); const authorLabel = post.authorLabel || post.username_display || 'OPERIX'; const content = post.content || post.post_text || ''; const postId = post._id || post.id || ''; return `<article class="glass-card rounded-2xl p-4 space-y-3 ${isOfficialAi ? 'border border-amber-400/50 bg-amber-400/5 shadow-lg shadow-amber-500/10' : ''}"><div class="flex items-center justify-between gap-2"><div class="flex items-center gap-2"><b class="text-xs ${isOfficialAi ? 'text-amber-200' : 'text-white'}">${escapeSocialHtml(authorLabel)}</b>${isOfficialAi ? '<span class="rounded-full border border-amber-400/40 bg-amber-400/15 px-2 py-1 text-[9px] font-black text-amber-300"><i class="fa-solid fa-circle-check mr-1"></i>إعلان رسمي من OPERIX AI</span>' : ''}</div>${isOfficialAi ? '<i class="fa-solid fa-robot text-amber-300" title="محتوى مولد بالذكاء الاصطناعي ومراجع للنشر الرسمي"></i>' : `<button type="button" onclick="reportSocialPost('${escapeSocialHtml(postId)}')" class="text-[10px] text-slate-500 hover:text-rose-300" title="إبلاغ"><i class="fa-solid fa-flag"></i></button>`}</div><time class="block text-[10px] text-slate-500">${post.createdAt ? new Date(post.createdAt).toLocaleString('ar') : 'إعلان رسمي'}</time><p class="text-xs leading-6 text-slate-300 whitespace-pre-wrap">${escapeSocialHtml(content)}</p>${post.image_url ? `<img src="${escapeSocialHtml(post.image_url)}" alt="صورة رسمية من OPERIX AI" loading="lazy" class="max-h-72 w-full rounded-xl object-contain bg-slate-950">` : ''}${isOfficialAi ? '<p class="border-t border-amber-400/15 pt-2 text-[10px] leading-5 text-amber-200/70">هذا محتوى رسمي مولد بمساعدة الذكاء الاصطناعي، وليس منشوراً من مستخدم مستقل.</p>' : ''}</article>`; }).join('') : '<p class="glass-card rounded-2xl p-4 text-center text-xs text-slate-500">لا توجد منشورات بعد.</p>';
+    } catch (error) { list.innerHTML = `<p class="text-center text-xs text-rose-300">${escapeSocialHtml(error.message)}</p>`; }
+}
+
+async function createSocialPost(event) {
+    event.preventDefault();
+    const input = document.getElementById('socialPostContent');
+    const status = document.getElementById('socialPostStatus');
+    const token = localStorage.getItem('token');
+    if (!token || !input?.value.trim()) return;
+    status.innerText = 'جاري النشر...';
+    try {
+        const response = await fetch('/api/social-feed', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ content: input.value.trim() }) });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'تعذر نشر المنشور');
+        input.value = '';
+        status.innerText = 'تم النشر';
+        await loadSocialFeed();
+    } catch (error) { status.innerText = error.message; }
+}
+
+async function reportSocialPost(postId) {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`/api/social-feed/${encodeURIComponent(postId)}/report`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+    const data = await response.json();
+    if (typeof showToast === 'function') showToast(data.message || data.error || 'تمت معالجة البلاغ');
+    if (response.ok) loadSocialFeed();
 }
 
 async function loadTeamReferrals() {
