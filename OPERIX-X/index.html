@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OPERIX - المنصة الذكية المتكاملة</title>
+    <title>OPERIX Community</title>
 
     <!-- تحسينات السيو وتجربة التطبيق -->
     <meta name="theme-color" content="#030712">
@@ -329,8 +329,45 @@
         .social-user-card-main > .social-follow-button { position: absolute; top: 14px; inset-inline-end: 18px; }
         .social-user-card-stats { display: flex; gap: 18px; margin-top: 14px; color: #94a3b8; font-size: 10px; }
         .social-user-card-stats b { color: #f8fafc; font-size: 13px; }
-        body.social-modal-open { overflow: hidden; }
-        #socialUserCardModal > div { max-height: min(90dvh, 680px); overflow-y: auto; }
+        body.social-modal-open { overflow: hidden !important; overscroll-behavior: contain; }
+        #socialUserCardModal {
+            position: fixed;
+            inset: 0;
+            z-index: 130;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(2, 6, 23, 0.82);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+            transition: opacity .2s ease, visibility .2s ease;
+        }
+        #socialUserCardModal.hide {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+        #socialUserCardModal > div {
+            position: relative;
+            z-index: 2;
+            width: min(92vw, 430px);
+            max-height: min(90dvh, 680px);
+            overflow-y: auto;
+            border-radius: 28px;
+            border: 1px solid rgba(34,211,238,.12);
+            background: rgba(15, 23, 42, 0.96);
+            box-shadow: 0 28px 80px rgba(0, 0, 0, 0.45);
+            transform: translateY(0) scale(1);
+            opacity: 1;
+            transition: transform .2s ease, opacity .2s ease;
+        }
+        #socialUserCardModal.hide > div {
+            transform: translateY(12px) scale(.98);
+            opacity: 0;
+        }
         .social-follow-button { flex: 0 0 auto; min-height: 32px; padding: 0 10px; border: 1px solid rgba(34,211,238,.3); border-radius: 999px; color: #67e8f9; background: rgba(34,211,238,.08); font-size: 10px; font-weight: 800; }
         .social-follow-button.is-following { color: #cbd5e1; border-color: rgba(148,163,184,.2); background: rgba(148,163,184,.08); }
         .social-profile-cover { height: 92px; margin: -20px -20px 6px; border-bottom: 1px solid rgba(34,211,238,.18); background: linear-gradient(135deg, rgba(34,211,238,.18), rgba(247,185,85,.16), rgba(7,17,31,.9)); background-position: center; background-size: cover; }
@@ -704,10 +741,10 @@
         <div id="socialUserCardModal" class="hide fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/80 p-4" role="dialog" aria-modal="true" aria-label="بطاقة المستخدم"><div class="w-full max-w-md overflow-hidden rounded-3xl border border-cyan-400/20 bg-slate-900 shadow-2xl"><div class="flex justify-end p-3"><button type="button" onclick="closeSocialUserCard()" class="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-800 hover:text-white" aria-label="إغلاق"><i class="fa-solid fa-xmark"></i></button></div><div id="socialUserCardContent"></div></div></div>
         <div id="view-feed" class="twitter-shell space-y-4 hide pb-28">
             <button type="button" onclick="document.getElementById('socialPostContent')?.focus()" class="social-floating-compose" aria-label="إنشاء منشور"><i class="fa-solid fa-feather-pointed"></i></button>
-            <div class="social-feed-tabs" role="tablist" aria-label="مصدر منشورات الجدار"><button type="button" data-social-feed-mode="all" onclick="setSocialFeedMode('all')" class="social-feed-tab social-feed-mode-active">كل المنشورات</button><button type="button" data-social-feed-mode="following" onclick="setSocialFeedMode('following')" class="social-feed-tab">أتابعهم</button></div>
-            <section class="glass-card rounded-3xl border border-slate-800 p-4"><div class="mb-2 flex items-center justify-between"><div><h3 class="text-sm font-black text-white">أعضاء المجتمع</h3><p class="mt-1 text-[10px] text-slate-500">تابع الأعضاء لتخصيص جدارك.</p></div><i class="fa-solid fa-user-group text-cyan-300"></i></div><div id="socialCommunityList"><p class="text-xs text-slate-500">جارٍ تحميل الأعضاء...</p></div></section>
+            <div class="social-feed-tabs" role="tablist" aria-label="مصدر منشورات المجتمع"><button type="button" data-social-feed-mode="all" onclick="setSocialFeedMode('all')" class="social-feed-tab social-feed-mode-active">كل المنشورات</button><button type="button" data-social-feed-mode="following" onclick="setSocialFeedMode('following')" class="social-feed-tab">أتابعهم</button></div>
+            <section class="glass-card rounded-3xl border border-slate-800 p-4"><div class="mb-2 flex items-center justify-between"><div><h3 class="text-sm font-black text-white">أعضاء المجتمع</h3><p class="mt-1 text-[10px] text-slate-500">تابع الأعضاء لتخصيص تجربتك داخل المجتمع.</p></div><i class="fa-solid fa-user-group text-cyan-300"></i></div><div id="socialCommunityList"><p class="text-xs text-slate-500">جارٍ تحميل الأعضاء...</p></div></section>
             <section class="glass-card rounded-3xl p-5 space-y-3 border border-cyan-500/20">
-                <div class="flex items-start justify-between gap-3"><div><span class="text-[10px] font-bold uppercase tracking-widest text-cyan-300">OPERIX / SOCIAL-FI</span><h2 class="mt-1 text-lg font-black text-white">جدار المجتمع</h2><p class="mt-2 text-[11px] leading-5 text-slate-400">شارك تحديثاً قصيراً مع المجتمع. الصور تُحفظ خارج المنصة عبر ImgBB.</p></div><i class="fa-solid fa-comments text-2xl text-cyan-300"></i></div>
+                <div class="flex items-start justify-between gap-3"><div><span class="text-[10px] font-bold uppercase tracking-widest text-cyan-300">OPERIX / SOCIAL-FI</span><h2 class="mt-1 text-lg font-black text-white">مجتمع OPERIX</h2><p class="mt-2 text-[11px] leading-5 text-slate-400">شارك تحديثاً قصيراً مع المجتمع. الصور تُحفظ خارج المنصة عبر ImgBB.</p></div><i class="fa-solid fa-comments text-2xl text-cyan-300"></i></div>
                 <form onsubmit="createSocialPost(event)" class="space-y-3"><textarea id="socialPostContent" maxlength="500" minlength="2" required rows="3" placeholder="اكتب تحديثاً مفيداً للمجتمع..." class="w-full rounded-2xl border border-slate-800 bg-slate-950 px-3 py-3 text-xs text-white outline-none focus:border-cyan-400"></textarea><div class="flex items-center justify-between"><span class="text-[10px] text-slate-500">حد المنشور 500 حرف</span><span id="socialPostCounter" class="text-[10px] text-cyan-300">0/500</span></div><div id="socialImagePreview" class="hidden relative mx-auto aspect-[4/5] w-full max-w-sm overflow-hidden rounded-2xl border border-cyan-400/20 bg-slate-950"><img id="socialImagePreviewImage" src="" alt="معاينة الصورة المرفقة" class="h-full w-full object-cover"><button type="button" onclick="clearSocialImage()" title="إزالة الصورة" aria-label="إزالة الصورة" class="absolute left-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-slate-950/85 text-slate-300 hover:text-rose-300"><i class="fa-solid fa-xmark"></i></button></div><div class="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-800 bg-slate-950/60 p-2"><label for="socialImageInput" title="إرفاق صورة" class="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-700 px-3 py-2 text-[10px] font-bold text-slate-300 hover:border-cyan-400/50 hover:text-cyan-300"><i class="fa-regular fa-image text-cyan-300"></i><span>إرفاق صورة</span></label><input id="socialImageInput" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" onchange="previewSocialImage(event)"><span id="socialImageMeta" class="text-[10px] text-slate-500">JPG أو PNG أو WebP • حتى 650KB</span></div><div class="flex items-center justify-between gap-2"><span id="socialPostStatus" class="text-[10px] text-slate-500"></span><button id="socialPostSubmit" type="submit" class="rounded-xl bg-cyan-400 px-4 py-2.5 text-xs font-black text-slate-950"><i class="fa-solid fa-paper-plane mr-1"></i>نشر</button></div></form>
             </section>
             <section class="grid gap-3 lg:grid-cols-[.8fr_1.2fr]"><div class="glass-card rounded-3xl border border-slate-800 p-4"><div class="mb-3 flex items-center justify-between"><div><h3 class="text-sm font-black text-white">رسائلك الخاصة</h3><p class="mt-1 text-[10px] text-slate-500">تواصل مباشرة مع أعضاء المجتمع.</p></div><i class="fa-regular fa-paper-plane text-cyan-300"></i></div><div id="privateConversationList" class="space-y-2"><p class="py-5 text-center text-[10px] text-slate-500">جارٍ تحميل المحادثات...</p></div></div><div id="privateMessagesPanel" class="glass-card hidden rounded-3xl border border-cyan-500/20 p-4"><div class="mb-3 flex items-center justify-between"><div><span class="text-[10px] font-bold uppercase tracking-widest text-cyan-300">PRIVATE CHAT</span><h3 id="privateThreadTitle" class="mt-1 text-sm font-black text-white">المحادثة</h3></div><button type="button" onclick="closePrivateThread()" title="إغلاق المحادثة" class="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 hover:bg-slate-800 hover:text-white"><i class="fa-solid fa-xmark"></i></button></div><div id="privateMessages" class="max-h-72 min-h-24 space-y-2 overflow-y-auto rounded-2xl bg-slate-950/60 p-3"></div><form onsubmit="sendPrivateMessage(event)" class="mt-3 flex gap-2"><input id="privateMessageInput" maxlength="500" required placeholder="اكتب رسالة محترمة..." class="min-w-0 flex-1 rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5 text-[11px] text-white outline-none focus:border-cyan-400"><button type="submit" class="rounded-xl bg-cyan-400 px-3 py-2 text-[10px] font-black text-slate-950"><i class="fa-solid fa-paper-plane"></i></button></form><p id="privateMessageStatus" class="mt-2 text-[10px] text-slate-500"></p></div></section><section class="space-y-3"><div class="flex items-center justify-between"><h3 class="text-sm font-black text-white">آخر التحديثات</h3><button type="button" onclick="loadSocialFeed(true)" title="تحديث الجدار" class="text-slate-400 hover:text-cyan-300"><i class="fa-solid fa-arrows-rotate"></i></button></div><div id="socialFeedList" class="space-y-3"><p class="glass-card rounded-2xl p-4 text-center text-xs text-slate-500">جارٍ تحميل الجدار...</p></div><button id="socialFeedMore" type="button" onclick="loadSocialFeedMore()" class="hidden w-full rounded-xl border border-slate-800 py-2.5 text-xs font-bold text-slate-300 hover:border-cyan-400/50">تحميل المزيد</button></section>
@@ -1090,7 +1127,7 @@
         </button>
         <button id="nav-feed" onclick="switchTab('feed')" class="flex flex-col items-center flex-1 text-slate-400 transition-all">
             <i class="fa-solid fa-comments text-base"></i>
-            <span class="text-[10px] font-bold mt-1">الجدار</span>
+            <span class="text-[10px] font-bold mt-1">المجتمع</span>
         </button>
         <button id="nav-tiers" onclick="switchTab('tiers')" class="flex flex-col items-center flex-1 text-slate-400 transition-all">
             <i class="fa-solid fa-layer-group text-base"></i>

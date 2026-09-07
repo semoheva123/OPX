@@ -2192,7 +2192,7 @@ function switchTab(tabName) {
                 loadSocialFeed(true);
             } else {
                 const list = document.getElementById('socialFeedList');
-                if (list) list.innerHTML = '<p class="glass-card rounded-2xl p-4 text-center text-xs text-slate-500">سجّل الدخول لعرض الجدار والمشاركة.</p>';
+                if (list) list.innerHTML = '<p class="glass-card rounded-2xl p-4 text-center text-xs text-slate-500">سجّل الدخول لعرض المجتمع والمشاركة.</p>';
             }
             loadPrivateConversations();
         }, 120);
@@ -2295,14 +2295,14 @@ async function loadSocialFeed(reset = true) {
     const token = localStorage.getItem('token');
     if (!list) return;
     if (!token) {
-        list.innerHTML = '<p class="glass-card rounded-2xl p-4 text-center text-xs text-slate-500">سجّل الدخول لعرض الجدار والمشاركة.</p>';
+        list.innerHTML = '<p class="glass-card rounded-2xl p-4 text-center text-xs text-slate-500">سجّل الدخول لعرض المجتمع والمشاركة.</p>';
         return;
     }
     if (reset) socialFeedPage = 1;
     try {
         const response = await fetch(`/api/social-feed?page=${socialFeedPage}&feed=${encodeURIComponent(socialFeedMode)}`, { headers: { Authorization: `Bearer ${token}` } });
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'تعذر تحميل الجدار');
+        if (!response.ok) throw new Error(data.error || 'تعذر تحميل المجتمع');
         const posts = Array.isArray(data.posts) ? data.posts : [];
         const markup = posts.map(renderSocialPostCard).join('');
         if (reset) list.innerHTML = markup || '<p class="glass-card rounded-2xl p-4 text-center text-xs text-slate-500">لا توجد منشورات بعد.</p>'; else list.insertAdjacentHTML('beforeend', markup);
@@ -2310,7 +2310,7 @@ async function loadSocialFeed(reset = true) {
         document.getElementById('socialFeedMore')?.classList.toggle('hidden', !socialFeedHasMore);
         enhanceSocialPostCards(posts);
     } catch (error) {
-        list.innerHTML = `<p class="text-center text-xs text-rose-300">${escapeSocialHtml(error.message || 'تعذر تحميل الجدار')}</p>`;
+        list.innerHTML = `<p class="text-center text-xs text-rose-300">${escapeSocialHtml(error.message || 'تعذر تحميل المجتمع')}</p>`;
     }
 }
 
@@ -2343,6 +2343,7 @@ async function openSocialUserCard(userId) {
     const content = document.getElementById('socialUserCardContent');
     if (!modal || !content || !userId) return;
     modal.classList.remove('hide');
+    modal.setAttribute('aria-hidden', 'false');
     document.body.classList.add('social-modal-open');
     content.innerHTML = '<p class="py-10 text-center text-xs text-slate-500">جارٍ تحميل البطاقة...</p>';
     const response = await fetch(`/api/social/profile/${encodeURIComponent(userId)}`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
@@ -2353,7 +2354,26 @@ async function openSocialUserCard(userId) {
     content.innerHTML = `<div class="social-user-card-cover" style="${profile.coverImage ? `background-image:url('${escapeSocialHtml(profile.coverImage)}')` : ''}"></div><div class="social-user-card-main"><div class="social-user-card-avatar-wrap">${avatar}</div><button type="button" class="social-follow-button ${profile.isFollowing ? 'is-following' : ''}" onclick="toggleSocialFollow('${escapeSocialHtml(profile.id)}', this)">${profile.isFollowing ? 'تتابعه' : 'متابعة'}</button><h3 class="mt-3 text-base font-black text-white">${escapeSocialHtml(profile.label)}</h3><p class="mt-2 text-xs leading-6 text-slate-400">${escapeSocialHtml(profile.socialBio || 'لا توجد نبذة بعد.')}</p><div class="social-user-card-stats"><span><b>${profile.posts.length}</b> منشور</span><span><b>${profile.followers}</b> متابع</span><span><b>${profile.following}</b> يتابع</span></div><div class="mt-4 space-y-2">${profile.posts.map(post => `<div class="rounded-xl border border-slate-800 bg-slate-950/50 p-3 text-xs text-slate-300">${escapeSocialHtml(post.content)}</div>`).join('') || '<p class="text-xs text-slate-500">لا توجد منشورات بعد.</p>'}</div></div>`;
 }
 
-function closeSocialUserCard() { document.getElementById('socialUserCardModal')?.classList.add('hide'); document.body.classList.remove('social-modal-open'); }
+function closeSocialUserCard() {
+    const modal = document.getElementById('socialUserCardModal');
+    if (!modal) return;
+    modal.classList.add('hide');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('social-modal-open');
+}
+
+document.addEventListener('click', (event) => {
+    const modal = document.getElementById('socialUserCardModal');
+    if (modal && !modal.classList.contains('hide') && event.target === modal) {
+        closeSocialUserCard();
+    }
+});
+
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+        closeSocialUserCard();
+    }
+});
 
 function renderSocialPostCard(post) {
     const isOfficialAi = Boolean(post.isOfficialAi || post.is_official_ai);
