@@ -10,6 +10,10 @@ router.use(verifyToken);
 router.get('/', controller.listPosts);
 router.post('/', feedWriteLimit, controller.createPost);
 router.post('/upload-image', feedWriteLimit, controller.uploadImage);
+router.post('/:postId/like', feedWriteLimit, controller.toggleLike);
+router.post('/:postId/comments', feedWriteLimit, controller.addComment);
+router.put('/:postId', feedWriteLimit, controller.updatePost);
+router.delete('/:postId', feedWriteLimit, controller.deletePost);
 router.post('/:postId/report', feedWriteLimit, controller.reportPost);
 
 module.exports = router;
