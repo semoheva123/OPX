@@ -2520,7 +2520,7 @@ function enhanceSocialPostCards(posts) {
                 <button type="button" class="social-like-button"><i class="fa-regular fa-heart"></i><span>${Number(post.likeCount || 0)}</span></button>
                 <button type="button" class="social-comment-button"><i class="fa-regular fa-comment"></i><span>تعليق</span></button>
                 <button type="button" class="social-mini-button social-save-button"><i class="fa-regular fa-bookmark"></i><span>${post.isSaved ? 'محفوظ' : 'حفظ'}</span></button>
-                <button type="button" class="social-mini-button social-share-button"><i class="fa-solid fa-arrow-up-from-bracket"></i><span>مشاركة</span></button>
+                <div class="relative"><button type="button" class="social-mini-button social-share-button"><i class="fa-solid fa-arrow-up-from-bracket"></i><span>مشاركة</span></button><div class="social-share-menu hidden"><button type="button" data-share-target="native"><i class="fa-solid fa-share-nodes"></i> مشاركة الهاتف</button><button type="button" data-share-target="whatsapp"><i class="fa-brands fa-whatsapp"></i> WhatsApp</button><button type="button" data-share-target="facebook"><i class="fa-brands fa-facebook"></i> Facebook</button><button type="button" data-share-target="telegram"><i class="fa-brands fa-telegram"></i> Telegram</button><button type="button" data-share-target="x"><i class="fa-brands fa-x-twitter"></i> X</button><button type="button" data-share-target="instagram"><i class="fa-brands fa-instagram"></i> Instagram / نسخ الرابط</button></div></div>
             </div>
             <div class="social-post-menu-group"></div>
             <div class="social-comments hidden">
@@ -2553,6 +2553,7 @@ function enhanceSocialPostCards(posts) {
             const data = await response.json();
             if (response.ok) actions.querySelector('.social-like-button span').innerText = data.likeCount;
         };
+        actions.querySelector('.social-like-button span').onclick = event => { event.stopPropagation(); listSocialPostLikes(card.dataset.socialPostId); };
 
         actions.querySelector('.social-comment-button').onclick = () => actions.querySelector('.social-comments').classList.toggle('hidden');
         actions.querySelector('.social-save-button').onclick = async () => {
@@ -2560,12 +2561,9 @@ function enhanceSocialPostCards(posts) {
             const data = await response.json();
             if (response.ok) actions.querySelector('.social-save-button span').innerText = data.saved ? 'محفوظ' : 'حفظ';
         };
-        actions.querySelector('.social-share-button').onclick = async () => {
-            const response = await fetch(`/api/social-feed/${encodeURIComponent(card.dataset.socialPostId)}/share`, { method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
-            const data = await response.json();
-            if (response.ok && navigator.clipboard) await navigator.clipboard.writeText(`${location.origin}/#feed-${card.dataset.socialPostId}`);
-            if (typeof showToast === 'function') showToast(response.ok ? 'تم نسخ رابط المنشور' : (data.error || 'تعذر المشاركة'));
-        };
+        const shareMenu = actions.querySelector('.social-share-menu');
+        actions.querySelector('.social-share-button').onclick = event => { event.stopPropagation(); shareMenu.classList.toggle('hidden'); };
+        shareMenu.querySelectorAll('[data-share-target]').forEach(button => { button.onclick = () => shareSocialPost(card.dataset.socialPostId, button.dataset.shareTarget, shareMenu); });
 
         actions.querySelector('.social-comment-form').onsubmit = async event => {
             event.preventDefault();
@@ -2577,6 +2575,41 @@ function enhanceSocialPostCards(posts) {
             loadSocialFeed();
         };
     });
+}
+
+async function listSocialPostLikes(postId) {
+    const response = await fetch(`/api/social-feed/${encodeURIComponent(postId)}/likes`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+    const data = await response.json();
+    if (!response.ok) return showToast(data.error || 'تعذر تحميل قائمة الإعجابات');
+    const people = data.users?.length ? data.users.map(user => `<p class="border-b border-slate-800 py-2 text-xs text-slate-200"><i class="fa-solid fa-heart mr-2 text-rose-300"></i>${escapeSocialHtml(user.label)}</p>`).join('') : '<p class="py-5 text-center text-xs text-slate-500">لا توجد إعجابات بعد.</p>';
+    showSocialPeopleModal('من أعجب بهذا المنشور؟', people);
+}
+
+function showSocialPeopleModal(title, content) {
+    document.getElementById('socialPeopleModal')?.remove();
+    const modal = document.createElement('div');
+    modal.id = 'socialPeopleModal';
+    modal.className = 'fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/80 p-4';
+    modal.innerHTML = `<div class="w-full max-w-sm rounded-2xl border border-slate-700 bg-slate-900 p-4 shadow-2xl"><div class="mb-2 flex items-center justify-between"><h3 class="text-sm font-black text-white">${escapeSocialHtml(title)}</h3><button type="button" class="social-people-close flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-800"><i class="fa-solid fa-xmark"></i></button></div><div class="max-h-72 overflow-y-auto">${content}</div></div>`;
+    document.body.appendChild(modal);
+    modal.querySelector('.social-people-close').onclick = () => modal.remove();
+    modal.onclick = event => { if (event.target === modal) modal.remove(); };
+}
+
+async function shareSocialPost(postId, target, menu) {
+    const url = `${location.origin}/#feed-${encodeURIComponent(postId)}`;
+    const text = 'شاهد هذا المنشور في مجتمع OPERIX';
+    menu?.classList.add('hidden');
+    const response = await fetch(`/api/social-feed/${encodeURIComponent(postId)}/share`, { method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+    if (!response.ok) return showToast('تعذر تسجيل المشاركة');
+    if (target === 'native' && navigator.share) { try { await navigator.share({ title: 'OPERIX Community', text, url }); return; } catch (error) {} }
+    const targets = { whatsapp: `https://wa.me/?text=${encodeURIComponent(`${text} ${url}`)}`, facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, telegram: `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`, x: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}` };
+    if (target === 'instagram') {
+        if (navigator.clipboard) await navigator.clipboard.writeText(url);
+        return showToast('تم نسخ الرابط؛ افتح Instagram والصقه في المنشور أو الرسالة');
+    }
+    if (targets[target]) window.open(targets[target], '_blank', 'noopener,noreferrer,width=720,height=620');
+    else if (navigator.clipboard) { await navigator.clipboard.writeText(url); showToast('تم نسخ رابط المنشور'); }
 }
 
 window.activePrivateThreadId = null;
