@@ -1289,6 +1289,34 @@ function updateProfileAvatar(profileImage) {
     }
 }
 
+function applySocialProfile(user) {
+    const bio = document.getElementById('socialBioInput');
+    const cover = document.getElementById('profileCoverPreview');
+    if (bio && document.activeElement !== bio) bio.value = user?.socialBio || '';
+    if (cover) cover.style.backgroundImage = user?.coverImage ? `url("${user.coverImage}")` : '';
+}
+
+let pendingSocialCover = '';
+function previewSocialCover(event) {
+    const file = event.target.files?.[0];
+    if (!file || !['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) return showToast('اختر صورة JPG أو PNG أو WebP');
+    const reader = new FileReader();
+    reader.onload = () => { pendingSocialCover = String(reader.result || ''); document.getElementById('profileCoverPreview').style.backgroundImage = `url("${pendingSocialCover}")`; };
+    reader.readAsDataURL(file);
+}
+
+async function saveSocialProfile() {
+    const status = document.getElementById('socialProfileStatus');
+    const socialBio = document.getElementById('socialBioInput')?.value.trim() || '';
+    if (pendingSocialCover.length > 500000) return showToast('صورة الغلاف كبيرة جداً');
+    status.innerText = 'جاري الحفظ...';
+    const response = await fetch('/api/user/social-profile', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` }, body: JSON.stringify({ socialBio, coverImage: pendingSocialCover || currentUserData?.coverImage || '' }) });
+    const data = await response.json();
+    if (!response.ok) { status.innerText = data.error || 'تعذر الحفظ'; return; }
+    currentUserData.socialBio = data.socialBio; currentUserData.coverImage = data.coverImage; pendingSocialCover = '';
+    applySocialProfile(currentUserData); status.innerText = data.message || 'تم الحفظ';
+}
+
 function previewProfileImage(event) {
     const file = event.target.files?.[0];
     if (!file || !['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
@@ -1407,6 +1435,7 @@ async function loadUserProfile() {
             updateGameCredits(data.user);
             loadGameHistory();
             updateProfileAvatar(data.user.profileImage);
+            applySocialProfile(data.user);
             document.getElementById('loadingView').classList.add('hide');
             document.getElementById('authView').classList.add('hide');
             document.getElementById('appView').classList.remove('hide');
