@@ -122,6 +122,7 @@
                     <span>سجل التدقيق</span>
                 </button>
                 <button data-permission="manage_users" onclick="switchAdminTab('support')" id="btn-tab-support" class="w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-900 hover:text-white transition-all"><i class="fa-solid fa-ticket text-base"></i><span>تذاكر الدعم</span></button>
+                <button data-permission="manage_users" onclick="switchAdminTab('social-feed')" id="btn-tab-social-feed" class="w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-900 hover:text-white transition-all"><i class="fa-solid fa-comments text-base"></i><span>مراجعة جدار التواصل</span></button>
                 <button data-full-admin="true" onclick="switchAdminTab('security')" id="btn-tab-security" class="w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-900 hover:text-white transition-all"><i class="fa-solid fa-shield-halved text-base"></i><span>أمان الإدارة</span></button>
                 <button data-permission="read_referrals" onclick="switchAdminTab('referrals')" id="btn-tab-referrals" class="w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-900 hover:text-white transition-all">
                     <i class="fa-solid fa-share-nodes text-base"></i>
@@ -236,6 +237,11 @@
                     <button onclick="changeUsersPage(1)" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 rounded-lg">التالي</button>
                 </div>
             </div>
+        </div>
+
+        <div id="admin-social-feed" class="space-y-6 hide">
+            <div class="flex items-center justify-between gap-3"><div><h2 class="text-xl font-black text-white">مراجعة جدار التواصل</h2><p class="text-[10px] text-slate-500 mt-1">راجع البلاغات والمنشورات المحجوبة واتخذ قرار النشر.</p></div><button onclick="fetchSocialFeedReports()" title="تحديث البلاغات" class="rounded-xl bg-slate-900 px-3 py-2 text-slate-300"><i class="fa-solid fa-arrows-rotate"></i></button></div>
+            <div id="socialFeedReportsList" class="space-y-3"><p class="glass-card rounded-2xl p-4 text-center text-xs text-slate-500">جارٍ تحميل البلاغات...</p></div>
         </div>
 
         <!-- تبويب: طلبات السحب والشحن -->
@@ -588,7 +594,7 @@
         function closeAuditDetails() { document.getElementById('auditDetailsModal')?.classList.add('hide'); }
 
         function switchAdminTab(tab) {
-            ['overview', 'analytics', 'users', 'withdrawals', 'plans', 'games', 'broadcast', 'audit', 'support', 'security', 'referrals'].forEach(t => {
+            ['overview', 'analytics', 'users', 'withdrawals', 'plans', 'games', 'broadcast', 'audit', 'support', 'social-feed', 'security', 'referrals'].forEach(t => {
                 const el = document.getElementById(`admin-${t}`);
                 if (el) el.classList.add('hide');
                 const btn = document.getElementById(`btn-tab-${t}`);
@@ -609,6 +615,7 @@
             if(tab === 'audit') fetchAuditLogs();
             if(tab === 'broadcast') fetchBroadcasts();
             if(tab === 'support') fetchAdminSupport();
+            if(tab === 'social-feed') fetchSocialFeedReports();
             if(tab === 'security') loadAdminSecurityStatus();
             if(tab === 'referrals') fetchReferrals();
             refreshAdminAlerts();
@@ -1532,6 +1539,25 @@
                     <div class="text-[10px] text-slate-300">${escapeAdminHtml(body || 'نص الإشعار سيظهر هنا')}</div>
                 </div>
             `;
+        }
+
+        async function fetchSocialFeedReports() {
+            const list = document.getElementById('socialFeedReportsList');
+            if (!list) return;
+            try {
+                const response = await fetch('/api/admin/social-feed/reports', { headers: adminHeaders() });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'تعذر تحميل البلاغات');
+                list.innerHTML = data.posts?.length ? data.posts.map(post => `<article class="glass-card rounded-2xl p-4 space-y-3"><div class="flex items-center justify-between gap-3"><div><b class="text-xs text-white">${escapeAdminHtml(post.authorLabel || 'عضو')}</b><span class="block text-[10px] text-slate-500 mt-1">${new Date(post.createdAt).toLocaleString('ar')} · ${post.reportCount || 0} بلاغ</span></div><span class="rounded-full border border-rose-500/20 bg-rose-500/10 px-2 py-1 text-[10px] text-rose-300">${escapeAdminHtml(post.status)}</span></div><p class="whitespace-pre-wrap text-xs leading-6 text-slate-300">${escapeAdminHtml(post.content)}</p><div class="flex flex-wrap gap-2"><button type="button" onclick="moderateSocialFeedPost('${post._id}', 'visible')" class="rounded-xl bg-emerald-500/15 px-3 py-2 text-[10px] font-bold text-emerald-300">إظهار</button><button type="button" onclick="moderateSocialFeedPost('${post._id}', 'hidden')" class="rounded-xl bg-amber-500/15 px-3 py-2 text-[10px] font-bold text-amber-300">إخفاء</button><button type="button" onclick="moderateSocialFeedPost('${post._id}', 'removed')" class="rounded-xl bg-rose-500/15 px-3 py-2 text-[10px] font-bold text-rose-300">حذف نهائي</button></div></article>`).join('') : '<p class="glass-card rounded-2xl p-4 text-center text-xs text-slate-500">لا توجد منشورات تحتاج مراجعة.</p>';
+            } catch (error) { list.innerHTML = `<p class="text-xs text-rose-300">${escapeAdminHtml(error.message)}</p>`; }
+        }
+
+        async function moderateSocialFeedPost(postId, status) {
+            const response = await fetch(`/api/admin/social-feed/${encodeURIComponent(postId)}/moderate`, { method: 'POST', headers: adminJsonHeaders(), body: JSON.stringify({ status }) });
+            const data = await response.json();
+            if (!response.ok) return showToast(data.error || 'تعذر تحديث المنشور');
+            showToast(data.message || 'تم تحديث المنشور');
+            fetchSocialFeedReports();
         }
 
         async function adminLogout() {

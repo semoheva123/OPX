@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "build:css": "tailwindcss -i ./styles/tailwind.input.css -o ./dist/tailwind.css --minify",
-    "test": "node --check app.js && node --check server.js && node --check src/controllers/authController.js && node --check src/controllers/adminController.js && node --check src/controllers/notificationController.js && node --check src/controllers/supportController.js && node --check src/controllers/couponController.js"
+    "test": "node --check app.js && node --check server.js && node --check src/app.js && node --check src/controllers/authController.js && node --check src/controllers/adminController.js && node --check src/controllers/notificationController.js && node --check src/controllers/supportController.js && node --check src/controllers/couponController.js && node --check src/controllers/socialFeedController.js && node --check src/jobs/aiAnnouncer.js && node --check src/models/SocialPost.js && node --check src/routes/socialFeedRoutes.js && node --check src/routes/adminRoutes.js && node tests/social-feed-unit.test.js"
   },
   "dependencies": {
     "ably": "^2.28.0",
