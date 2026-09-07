@@ -27,11 +27,16 @@ async function listPosts(req, res) {
     const page = Math.min(Math.max(Number.parseInt(req.query.page, 10) || 1, 1), 20);
     const limit = 15;
     const posts = await SocialPost.find({ status: 'visible' })
-      .sort({ createdAt: -1 })
+      .sort({ isPinned: -1, createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
       .select('-reportedBy -likedBy -comments.authorId')
       .lean();
+    const userId = String(req.user.id);
+    posts.forEach(post => {
+      post.isSaved = Array.isArray(post.savedBy) && post.savedBy.some(id => String(id) === userId);
+      delete post.savedBy;
+    });
     res.json({ success: true, posts, page, hasMore: posts.length === limit });
   } catch (error) {
     res.status(500).json({ error: 'تعذر تحميل جدار التواصل حالياً' });
@@ -70,6 +75,38 @@ async function toggleLike(req, res) {
     await post.save();
     res.json({ success: true, liked: index < 0, likeCount: post.likeCount });
   } catch (error) { res.status(500).json({ error: 'تعذر تحديث الإعجاب' }); }
+}
+
+async function toggleSave(req, res) {
+  try {
+    const post = await SocialPost.findOne({ _id: req.params.postId, status: 'visible' }).select('savedBy');
+    if (!post) return res.status(404).json({ error: 'المنشور غير موجود' });
+    const userId = String(req.user.id);
+    const index = post.savedBy.findIndex(id => String(id) === userId);
+    if (index >= 0) post.savedBy.splice(index, 1);
+    else post.savedBy.push(req.user.id);
+    await post.save();
+    res.json({ success: true, saved: index < 0 });
+  } catch (error) { res.status(500).json({ error: 'تعذر تحديث المحفوظات' }); }
+}
+
+async function sharePost(req, res) {
+  try {
+    const post = await SocialPost.findOneAndUpdate({ _id: req.params.postId, status: 'visible' }, { $inc: { shareCount: 1 } }, { new: true }).select('shareCount');
+    if (!post) return res.status(404).json({ error: 'المنشور غير موجود' });
+    res.json({ success: true, shareCount: post.shareCount });
+  } catch (error) { res.status(500).json({ error: 'تعذر تسجيل المشاركة' }); }
+}
+
+async function togglePin(req, res) {
+  try {
+    const post = await SocialPost.findOne({ _id: req.params.postId, authorId: req.user.id, status: 'visible' }).select('isPinned');
+    if (!post) return res.status(404).json({ error: 'لا يمكنك تثبيت هذا المنشور' });
+    if (!post.isPinned) await SocialPost.updateMany({ authorId: req.user.id, isPinned: true }, { $set: { isPinned: false } });
+    post.isPinned = !post.isPinned;
+    await post.save();
+    res.json({ success: true, isPinned: post.isPinned });
+  } catch (error) { res.status(500).json({ error: 'تعذر تحديث المنشور المثبت' }); }
 }
 
 async function addComment(req, res) {
@@ -159,4 +196,4 @@ async function moderatePost(req, res) {
   res.json({ success: true, post });
 }
 
-module.exports = { listPosts, createPost, reportPost, uploadImage, listReportedPosts, moderatePost, toggleLike, addComment, updatePost, deletePost };
+module.exports = { listPosts, createPost, reportPost, uploadImage, listReportedPosts, moderatePost, toggleLike, toggleSave, sharePost, togglePin, addComment, updatePost, deletePost };
