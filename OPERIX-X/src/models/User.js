@@ -40,6 +40,8 @@ const userSchema = new mongoose.Schema({
   wheelCredits: { type: Number, default: 0, min: 0 },
   mysteryBoxCredits: { type: Number, default: 0, min: 0 },
   profileImage: { type: String, default: '' },
+  coverImage: { type: String, default: '' },
+  socialBio: { type: String, default: '', trim: true, maxlength: 160 },
   pushSubscription: { type: Object, default: null },
   lastLoginAt: { type: Date, default: null },
   kycStatus: { type: String, enum: ['not_started', 'pending', 'verified', 'rejected'], default: 'not_started' },
