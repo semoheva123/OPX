@@ -3,6 +3,7 @@ const adminController = require('../controllers/adminController');
 const { verifyAdmin, requirePermission, requireFullAdmin } = require('../middlewares/auth');
 const supportController = require('../controllers/supportController');
 const authController = require('../controllers/authController');
+const socialFeedController = require('../controllers/socialFeedController');
 
 const router = express.Router();
 router.use(verifyAdmin);
@@ -46,6 +47,8 @@ router.get('/settings/games', requirePermission('manage_games'), adminController
 router.post('/settings/games', requirePermission('manage_games'), adminController.updateGameSettings);
 router.post('/broadcast', requirePermission('broadcast'), adminController.broadcast);
 router.get('/broadcasts', requirePermission('broadcast'), adminController.listBroadcasts);
+router.get('/social-feed/reports', requirePermission('manage_users'), socialFeedController.listReportedPosts);
+router.post('/social-feed/:postId/moderate', requirePermission('manage_users'), socialFeedController.moderatePost);
 router.get('/support/tickets', requirePermission('manage_users'), supportController.listAdmin);
 router.get('/security/2fa', requireFullAdmin, authController.adminSecurityStatus);
 router.post('/security/2fa/setup', requireFullAdmin, authController.adminSecuritySetup);
