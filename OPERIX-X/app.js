@@ -19,10 +19,9 @@ let socialFeedPage = 1;
 let socialFeedHasMore = false;
 let socialFeedMode = 'all';
 let socialHashtag = '';
-let opxProjectionAnimationFrame = null;
-let opxProjectionMotion = 0;
 let opxMarketCandles = [];
 let opxMarketRefreshTimer = null;
+let opxMarketDailyChangePercent = 0;
 
 function isStandaloneApp() {
     return window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true || new URLSearchParams(window.location.search).get('source') === 'pwa';
@@ -923,20 +922,20 @@ function drawOpxProjectionChart() {
     canvas.height = height * scale;
     context.setTransform(scale, 0, 0, scale, 0, 0);
     context.clearRect(0, 0, width, height);
-    const simulatedCandles = Array.from({ length: 30 }, (_, index) => {
-        const progress = index / 29;
-        const base = 0.10 + progress * 0.034 + Math.sin(index * 0.7 + opxProjectionMotion * 0.8) * 0.003;
-        const open = base + Math.sin(index * 1.7 + opxProjectionMotion) * 0.0018;
-        const close = base + Math.sin(index * 1.7 + opxProjectionMotion + 0.9) * 0.0021;
-        const high = Math.max(open, close) + 0.0015 + Math.abs(Math.sin(index * 2.1)) * 0.0012;
-        const low = Math.min(open, close) - 0.0015 - Math.abs(Math.cos(index * 1.4)) * 0.001;
-        return { open, close, high, low, volume: 0.35 + Math.abs(Math.sin(index * 1.3 + opxProjectionMotion)) * 0.65 };
-    });
-    const candles = opxMarketCandles.length >= 2 ? opxMarketCandles.slice(-30) : simulatedCandles;
+    const candles = opxMarketCandles.slice(-30);
+    if (candles.length < 2) {
+        context.fillStyle = '#64748b';
+        context.font = '11px IBM Plex Sans Arabic, sans-serif';
+        context.textAlign = 'center';
+        context.fillText('بيانات السوق غير متاحة مؤقتًا', width / 2, height / 2);
+        const marketSource = document.getElementById('opxMarketSource');
+        if (marketSource) marketSource.innerText = 'في انتظار Bitfinex';
+        return;
+    }
     const padding = { top: 14, right: 14, bottom: 28, left: 8 };
     const values = candles.flatMap(candle => [candle.high, candle.low]);
-    const minValue = Math.min(...values) - 0.001;
-    const maxValue = Math.max(...values) + 0.001;
+    const minValue = Math.min(...values) - Math.max((Math.max(...values) - Math.min(...values)) * 0.08, 0.00001);
+    const maxValue = Math.max(...values) + Math.max((Math.max(...values) - Math.min(...values)) * 0.08, 0.00001);
     const chartWidth = width - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
     const valueRange = Math.max(maxValue - minValue, 0.001);
@@ -945,15 +944,22 @@ function drawOpxProjectionChart() {
     context.font = '9px IBM Plex Sans Arabic, sans-serif';
     for (let index = 0; index <= 4; index += 1) {
         const y = padding.top + chartHeight * index / 4;
-        context.strokeStyle = 'rgba(148, 163, 184, 0.13)';
+        context.strokeStyle = 'rgba(100, 116, 139, 0.18)';
         context.lineWidth = 1;
         context.beginPath();
         context.moveTo(padding.left, y);
         context.lineTo(width - padding.right, y);
         context.stroke();
     }
+    context.strokeStyle = 'rgba(100, 116, 139, 0.28)';
+    context.setLineDash([3, 4]);
+    context.beginPath();
+    context.moveTo(padding.left, height - padding.bottom - 23);
+    context.lineTo(width - padding.right, height - padding.bottom - 23);
+    context.stroke();
+    context.setLineDash([]);
     context.textAlign = 'center';
-    ['12د', '9د', '6د', '3د', 'الآن'].forEach((label, index) => {
+    ['24س', '18س', '12س', '6س', 'الآن'].forEach((label, index) => {
         context.fillStyle = '#64748b';
         context.fillText(label, padding.left + chartWidth * index / 4, height - 8);
     });
@@ -981,13 +987,13 @@ function drawOpxProjectionChart() {
     const livePrice = document.getElementById('opxMarketLivePrice');
     if (livePrice) livePrice.innerText = `$${latest.close.toFixed(4)}`;
     const marketSource = document.getElementById('opxMarketSource');
-    if (marketSource) marketSource.innerText = opxMarketCandles.length >= 2 ? 'Bitfinex · OPXUSD · Optimism' : 'محاكاة داخلية';
-}
-
-function animateOpxProjectionChart(timestamp = 0) {
-    opxProjectionMotion = timestamp / 1100;
-    drawOpxProjectionChart();
-    opxProjectionAnimationFrame = window.requestAnimationFrame(animateOpxProjectionChart);
+    if (marketSource) marketSource.innerText = 'Bitfinex · OPXUSD · Optimism';
+    const high = document.getElementById('opxChartHigh');
+    const mid = document.getElementById('opxChartMid');
+    const low = document.getElementById('opxChartLow');
+    if (high) high.innerText = `$${Math.max(...values).toFixed(4)}`;
+    if (mid) mid.innerText = `$${((Math.max(...values) + Math.min(...values)) / 2).toFixed(4)}`;
+    if (low) low.innerText = `$${Math.min(...values).toFixed(4)}`;
 }
 
 async function loadOpxMarketData() {
@@ -996,12 +1002,26 @@ async function loadOpxMarketData() {
         const data = await response.json();
         if (!response.ok || !Array.isArray(data.candles) || data.candles.length < 2) throw new Error('market data unavailable');
         opxMarketCandles = data.candles;
+        opxMarketDailyChangePercent = Number(data.dailyChangePercent || 0);
         const livePrice = document.getElementById('opxMarketLivePrice');
         if (livePrice) livePrice.innerText = `$${Number(data.price).toFixed(5)}`;
+        const change = document.getElementById('opxMarketChange');
+        if (change) {
+            change.innerText = `${opxMarketDailyChangePercent >= 0 ? '+' : ''}${opxMarketDailyChangePercent.toFixed(2)}% 24س`;
+            change.className = `opx-market-change ${opxMarketDailyChangePercent >= 0 ? 'is-positive' : 'is-negative'}`;
+        }
         drawOpxProjectionChart();
+        drawOpxLandingChart();
+        const landingPrice = document.getElementById('opxLandingPrice');
+        if (landingPrice) landingPrice.innerText = `$${Number(data.price).toFixed(5)}`;
+        const landingStatus = document.getElementById('opxLandingStatus');
+        if (landingStatus) landingStatus.innerText = 'السوق نشط · Bitfinex';
     } catch (error) {
         opxMarketCandles = [];
         drawOpxProjectionChart();
+        drawOpxLandingChart();
+        const landingStatus = document.getElementById('opxLandingStatus');
+        if (landingStatus) landingStatus.innerText = 'بيانات السوق غير متاحة';
     }
     if (opxMarketRefreshTimer) clearTimeout(opxMarketRefreshTimer);
     opxMarketRefreshTimer = setTimeout(loadOpxMarketData, 30000);
@@ -1018,7 +1038,15 @@ function drawOpxLandingChart() {
     canvas.height = height * scale;
     context.setTransform(scale, 0, 0, scale, 0, 0);
     context.clearRect(0, 0, width, height);
-    const values = [0.10, 0.104, 0.108, 0.113, 0.117, 0.122, 0.127, 0.133, 0.137];
+    const values = opxMarketCandles.slice(-24).map(candle => Number(candle.close)).filter(Number.isFinite);
+    context.clearRect(0, 0, width, height);
+    if (values.length < 2) {
+        context.fillStyle = '#64748b';
+        context.font = '9px IBM Plex Sans Arabic, sans-serif';
+        context.textAlign = 'center';
+        context.fillText('بيانات السوق غير متاحة', width / 2, height / 2 + 3);
+        return;
+    }
     const padding = { top: 5, right: 2, bottom: 5, left: 2 };
     const chartWidth = width - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
@@ -1666,7 +1694,6 @@ window.addEventListener('resize', drawOpxLandingChart);
 document.addEventListener('DOMContentLoaded', () => {
     drawOpxProjectionChart();
     drawOpxLandingChart();
-    if (!opxProjectionAnimationFrame) animateOpxProjectionChart();
     loadOpxMarketData();
 });
 
