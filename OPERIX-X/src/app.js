@@ -51,8 +51,8 @@ function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
       }
     }
   }));
-  app.use(express.json({ limit: '1mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+  app.use(express.json({ limit: '10mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
   app.get('/api/health', (req, res) => {
     const databaseReady = mongoose.connection.readyState === 1;
     res.status(databaseReady ? 200 : 503).json({ success: databaseReady, status: databaseReady ? 'ok' : 'degraded', database: databaseReady ? 'connected' : 'disconnected', deploymentVersion: req.app.locals.deploymentVersion, uptime: Math.floor(process.uptime()), timestamp: new Date().toISOString() });
