@@ -17,6 +17,7 @@ let realtimeChannel = null;
 let realtimeEventSource = null;
 let socialFeedPage = 1;
 let socialFeedHasMore = false;
+let socialFeedMode = 'all';
 
 function isStandaloneApp() {
     return window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true || new URLSearchParams(window.location.search).get('source') === 'pwa';
@@ -2187,6 +2188,7 @@ function switchTab(tabName) {
     if (tabName === 'team') {
         loadTeamNetwork();
     }
+    if (tabName === 'feed') loadSocialCommunity();
 }
 
 function readImageAsDataUrl(file) {
@@ -2269,7 +2271,7 @@ async function loadSocialFeed(reset = true) {
     }
     if (reset) socialFeedPage = 1;
     try {
-        const response = await fetch(`/api/social-feed?page=${socialFeedPage}`, { headers: { Authorization: `Bearer ${token}` } });
+        const response = await fetch(`/api/social-feed?page=${socialFeedPage}&feed=${encodeURIComponent(socialFeedMode)}`, { headers: { Authorization: `Bearer ${token}` } });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'تعذر تحميل الجدار');
         const posts = Array.isArray(data.posts) ? data.posts : [];
@@ -2281,6 +2283,30 @@ async function loadSocialFeed(reset = true) {
     } catch (error) {
         list.innerHTML = `<p class="text-center text-xs text-rose-300">${escapeSocialHtml(error.message || 'تعذر تحميل الجدار')}</p>`;
     }
+}
+
+function setSocialFeedMode(mode) {
+    socialFeedMode = mode === 'following' ? 'following' : 'all';
+    document.querySelectorAll('[data-social-feed-mode]').forEach(button => button.classList.toggle('social-feed-mode-active', button.dataset.socialFeedMode === socialFeedMode));
+    loadSocialFeed(true);
+}
+
+async function loadSocialCommunity() {
+    const list = document.getElementById('socialCommunityList');
+    const token = localStorage.getItem('token');
+    if (!list || !token) return;
+    const response = await fetch('/api/social/community', { headers: { Authorization: `Bearer ${token}` } });
+    const data = await response.json();
+    if (!response.ok) { list.innerHTML = '<p class="text-xs text-rose-300">تعذر تحميل أعضاء المجتمع.</p>'; return; }
+    list.innerHTML = data.users.length ? data.users.map(user => `<div class="social-community-user"><div class="social-community-avatar">${escapeSocialHtml(String(user.label).slice(-1))}</div><div class="min-w-0 flex-1"><b class="block truncate text-xs text-white">${escapeSocialHtml(user.label)}</b><span class="text-[10px] text-slate-500">${user.posts} منشور · ${user.followers} متابع</span></div><button type="button" class="social-follow-button ${user.following ? 'is-following' : ''}" onclick="toggleSocialFollow('${escapeSocialHtml(user.id)}', this)">${user.following ? 'تتابعه' : 'متابعة'}</button></div>`).join('') : '<p class="text-xs text-slate-500">لا يوجد أعضاء آخرون بعد.</p>';
+}
+
+async function toggleSocialFollow(userId, button) {
+    const response = await fetch(`/api/social/${encodeURIComponent(userId)}/follow`, { method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+    const data = await response.json();
+    if (!response.ok) return showToast(data.error || 'تعذر تحديث المتابعة');
+    button.innerText = data.following ? 'تتابعه' : 'متابعة';
+    button.classList.toggle('is-following', data.following);
 }
 
 function renderSocialPostCard(post) {
