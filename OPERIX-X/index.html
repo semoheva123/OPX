@@ -244,14 +244,18 @@
         .team-level-card:hover { border-color: rgba(69,214,176,.35); transform: translateY(-2px); }
         .team-member { background: rgba(3,10,19,.42); border: 1px solid rgba(148,163,184,.12); }
         .team-filter-active { background: rgba(247,185,85,.15); color: #f7c45e; border-color: rgba(247,185,85,.3); }
-        .social-post-card { position: relative; overflow: hidden; background: linear-gradient(180deg, rgba(15,23,42,.85), rgba(8,18,31,.9)); border: 1px solid rgba(148,163,184,.14); box-shadow: 0 18px 42px rgba(0,0,0,.15); }
-        .social-post-card:hover { border-color: rgba(34,211,238,.28); box-shadow: 0 24px 56px rgba(0,0,0,.18); }
+        .social-post-card { position: relative; overflow: hidden; background: rgba(9, 14, 24, 0.92); border: 1px solid rgba(148,163,184,.12); box-shadow: 0 10px 28px rgba(0,0,0,.12); border-radius: 20px; }
+        .social-post-card:hover { border-color: rgba(34,211,238,.22); box-shadow: 0 16px 36px rgba(0,0,0,.18); }
         .social-post-card > header { border-bottom: 1px solid rgba(148,163,184,.08); }
         .social-post-card .social-post-media { border-top: 1px solid rgba(148,163,184,.08); border-bottom: 1px solid rgba(148,163,184,.08); }
-        .social-post-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 0 1rem 1rem; }
-        .social-post-actions button, .social-like-button, .social-comment-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: 12px; border: 1px solid rgba(148,163,184,.16); background: rgba(15,23,42,.62); color: #cbd5e1; padding: 0.55rem 0.8rem; font-size: 10px; font-weight: 700; }
-        .social-post-actions button:hover, .social-like-button:hover, .social-comment-button:hover { border-color: rgba(34,211,238,.38); color: #67e8f9; background: rgba(34,211,238,.08); }
-        .social-post-actions .social-like-button { min-width: 84px; }
+        .social-post-actions { display: flex; flex-direction: column; gap: 10px; padding: 0 1rem 1rem; }
+        .social-post-button-group, .social-post-menu-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .social-post-button-group { justify-content: flex-start; }
+        .social-post-menu-group { justify-content: flex-end; }
+        .social-like-button, .social-comment-button, .social-mini-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: 999px; border: 1px solid rgba(148,163,184,.12); background: rgba(15,23,42,.5); color: #cbd5e1; padding: 0.55rem 0.8rem; font-size: 10px; font-weight: 700; }
+        .social-like-button:hover, .social-comment-button:hover, .social-mini-button:hover { border-color: rgba(34,211,238,.38); color: #67e8f9; background: rgba(34,211,238,.08); }
+        .social-like-button { min-width: 84px; }
+        .social-mini-button.danger:hover { color: #fda4af; border-color: rgba(251,113,133,.35); background: rgba(190,24,93,.08); }
         .social-comments { margin-top: 0.5rem; border-top: 1px solid rgba(148,163,184,.08); padding-top: 0.75rem; }
         .social-comments-list { display: flex; flex-direction: column; gap: 0.5rem; }
         .social-comments-list p { margin: 0; padding: 0.65rem 0.75rem; border-radius: 12px; background: rgba(2,6,23,.75); border: 1px solid rgba(148,163,184,.12); color: #cbd5e1; line-height: 1.6; }
@@ -261,12 +265,83 @@
         .social-comment-form button:hover { transform: translateY(-1px); }
         .social-post-card .social-post-media img { display: block; width: 100%; height: 100%; object-fit: cover; }
         .social-post-card article { background: transparent; }
+        .twitter-shell { width: min(100%, 760px); margin: 0 auto; }
+        .twitter-feed { background: rgba(2, 6, 23, 0.96); border: 1px solid rgba(148,163,184,.12); border-radius: 28px; overflow: hidden; box-shadow: 0 28px 80px rgba(0,0,0,.22); }
+        .twitter-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 18px 14px; border-bottom: 1px solid rgba(148,163,184,.12); }
+        .twitter-header h3 { color: #f8fafc; font-size: 16px; font-weight: 900; }
+        .twitter-header .icon-pill { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; background: rgba(34, 211, 238, 0.08); border: 1px solid rgba(34,211,238,.18); color: #67e8f9; }
+        .twitter-compose { padding: 16px 16px 12px; border-bottom: 1px solid rgba(148,163,184,.12); background: rgba(2, 6, 23, 0.78); }
+        .twitter-compose-inner { display: grid; grid-template-columns: 48px minmax(0,1fr); gap: 12px; }
+        .twitter-avatar { display: flex; align-items: flex-start; justify-content: center; }
+        .twitter-avatar-badge { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, rgba(34,211,238,.18), rgba(247,185,85,.18)); color: #f8fafc; font-weight: 900; border: 1px solid rgba(148,163,184,.18); }
+        .twitter-composer-box { display: flex; flex-direction: column; gap: 10px; }
+        .twitter-composer-box textarea { width: 100%; min-height: 90px; resize: vertical; background: rgba(15,23,42,.7); color: #f8fafc; border: 1px solid rgba(148,163,184,.12); border-radius: 18px; padding: 14px 16px; font-size: 13px; line-height: 1.7; }
+        .twitter-composer-box textarea:focus { border-color: rgba(34,211,238,.45); box-shadow: 0 0 0 3px rgba(34,211,238,.08); }
+        .twitter-composer-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+        .twitter-attach { display: inline-flex; align-items: center; gap: 8px; padding: 0.65rem 0.9rem; border-radius: 999px; border: 1px solid rgba(148,163,184,.12); background: rgba(15,23,42,.32); color: #cbd5e1; font-size: 10px; font-weight: 700; cursor: pointer; }
+        .twitter-status { font-size: 10px; color: #94a3b8; }
+        .twitter-submit { border: 0; background: linear-gradient(135deg, #1d9bf0, #7dd3fc); color: #08131d; border-radius: 999px; padding: 0.72rem 1.1rem; font-size: 11px; font-weight: 900; }
+        .twitter-feed-list { background: rgba(2, 6, 23, 0.9); }
+        .twitter-post { background: rgba(5, 10, 18, 0.94); border-bottom: 1px solid rgba(148,163,184,.08); transition: background .2s ease; }
+        .twitter-post:hover { background: rgba(15, 23, 42, 1); }
+        .twitter-post-inner { display: grid; grid-template-columns: 48px minmax(0,1fr); gap: 12px; padding: 16px 16px 14px; }
+        .twitter-post-content { min-width: 0; }
+        .twitter-post-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+        .twitter-user-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; }
+        .twitter-user-meta strong { color: #f8fafc; font-size: 13px; }
+        .twitter-user-meta span { color: #94a3b8; font-size: 11px; }
+        .twitter-post-time { color: #64748b; font-size: 11px; }
+        .twitter-more { display: flex; width: 28px; height: 28px; align-items: center; justify-content: center; border-radius: 50%; color: #94a3b8; }
+        .twitter-more:hover { background: rgba(34,211,238,.08); color: #67e8f9; }
+        .twitter-post-body { margin-top: 8px; }
+        .twitter-post-body p { margin: 0; color: #e2e8f0; font-size: 13px; line-height: 1.8; white-space: pre-wrap; word-break: break-word; }
+        .twitter-post-media { margin-top: 12px; overflow: hidden; border-radius: 20px; border: 1px solid rgba(148,163,184,.12); background: rgba(15,23,42,.8); }
+        .twitter-post-media img { display: block; width: 100%; height: auto; max-height: 440px; object-fit: cover; }
+        .twitter-post-actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding-top: 10px; margin-top: 12px; border-top: 1px solid rgba(148,163,184,.08); }
+        .twitter-post-actions button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; color: #94a3b8; font-size: 11px; font-weight: 700; padding: 0.4rem 0.25rem; }
+        .twitter-post-actions button:hover { color: #67e8f9; }
+        .twitter-post-actions i { font-size: 13px; }
+        .social-comments { margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(148,163,184,.08); }
+        .social-comments-list { display: flex; flex-direction: column; gap: 8px; }
+        .social-comments-list p { margin: 0; padding: 0.7rem 0.85rem; border-radius: 16px; background: rgba(15,23,42,.6); border: 1px solid rgba(148,163,184,.08); color: #dbeafe; font-size: 11px; line-height: 1.7; }
+        .social-comment-form { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+        .social-comment-form input { flex: 1; min-width: 0; background: rgba(15,23,42,.7); border: 1px solid rgba(148,163,184,.12); border-radius: 999px; color: #f8fafc; padding: 0.72rem 0.9rem; font-size: 11px; }
+        .social-comment-form button { border: 0; background: linear-gradient(135deg, #38bdf8, #0ea5e9); color: #082f49; font-size: 10px; font-weight: 900; border-radius: 999px; padding: 0.75rem 0.9rem; }
+        .twitter-compact { padding: 0; }
         .about-panel { background: linear-gradient(135deg, rgba(13,31,48,.86), rgba(6,16,28,.78)); border: 1px solid rgba(148,163,184,.14); box-shadow: 0 24px 70px rgba(0,0,0,.2); }
         .about-kicker { color: #45d6b0; font-size: 10px; letter-spacing: .08em; }
         .about-principle { border-top: 1px solid rgba(148,163,184,.14); padding-top: 12px; }
     </style>
     <style>
         #view-feed > section.grid { display: none; }
+        /* Keep the social wall native to the app while adapting its density by viewport. */
+        #view-feed { width: 100%; max-width: 860px; margin-inline: auto; }
+        #view-feed > section:first-child { background: rgba(2, 6, 23, .78); }
+        #socialFeedList { overflow: hidden; border: 1px solid rgba(148,163,184,.12); border-radius: 24px; background: rgba(2,6,23,.82); }
+        #socialFeedList > .twitter-post:last-child { border-bottom: 0; }
+        #socialFeedMore { min-height: 44px; }
+        @media (max-width: 640px) {
+            #view-feed { padding-inline: 0; }
+            #view-feed > section:first-child { padding: 1rem; border-radius: 20px; }
+            #view-feed > section:first-child form > div:last-child { align-items: stretch; }
+            #view-feed > section:first-child form > div:last-child button { min-height: 42px; }
+            #socialFeedList { border-radius: 20px; }
+            .twitter-post-inner { grid-template-columns: 38px minmax(0,1fr); gap: 9px; padding: 13px 12px 12px; }
+            .twitter-avatar-badge { width: 36px; height: 36px; font-size: 11px; }
+            .twitter-user-meta strong { font-size: 12px; }
+            .twitter-user-meta span, .twitter-post-time { font-size: 10px; }
+            .twitter-post-body p { font-size: 12px; line-height: 1.75; }
+            .twitter-post-media { margin-top: 10px; border-radius: 15px; }
+            .twitter-post-actions { gap: 4px; }
+            .twitter-post-actions button { font-size: 10px; padding-inline: 0; }
+            .social-comment-form { align-items: stretch; }
+            .social-comment-form input { min-height: 42px; }
+            .social-comment-form button { min-width: 64px; }
+        }
+        @media (min-width: 768px) {
+            #view-feed > section:first-child { padding: 1.25rem; }
+            #socialFeedList { box-shadow: 0 24px 70px rgba(0,0,0,.2); }
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between pb-28">
@@ -589,7 +664,7 @@
 
         </div>
 
-        <div id="view-feed" class="space-y-4 hide pb-28">
+        <div id="view-feed" class="twitter-shell space-y-4 hide pb-28">
             <section class="glass-card rounded-3xl p-5 space-y-3 border border-cyan-500/20">
                 <div class="flex items-start justify-between gap-3"><div><span class="text-[10px] font-bold uppercase tracking-widest text-cyan-300">OPERIX / SOCIAL-FI</span><h2 class="mt-1 text-lg font-black text-white">جدار المجتمع</h2><p class="mt-2 text-[11px] leading-5 text-slate-400">شارك تحديثاً قصيراً مع المجتمع. الصور تُحفظ خارج المنصة عبر ImgBB.</p></div><i class="fa-solid fa-comments text-2xl text-cyan-300"></i></div>
                 <form onsubmit="createSocialPost(event)" class="space-y-3"><textarea id="socialPostContent" maxlength="500" minlength="2" required rows="3" placeholder="اكتب تحديثاً مفيداً للمجتمع..." class="w-full rounded-2xl border border-slate-800 bg-slate-950 px-3 py-3 text-xs text-white outline-none focus:border-cyan-400"></textarea><div id="socialImagePreview" class="hidden relative mx-auto aspect-[4/5] w-full max-w-sm overflow-hidden rounded-2xl border border-cyan-400/20 bg-slate-950"><img id="socialImagePreviewImage" src="" alt="معاينة الصورة المرفقة" class="h-full w-full object-cover"><button type="button" onclick="clearSocialImage()" title="إزالة الصورة" aria-label="إزالة الصورة" class="absolute left-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-slate-950/85 text-slate-300 hover:text-rose-300"><i class="fa-solid fa-xmark"></i></button></div><div class="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-800 bg-slate-950/60 p-2"><label for="socialImageInput" title="إرفاق صورة" class="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-700 px-3 py-2 text-[10px] font-bold text-slate-300 hover:border-cyan-400/50 hover:text-cyan-300"><i class="fa-regular fa-image text-cyan-300"></i><span>إرفاق صورة</span></label><input id="socialImageInput" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" onchange="previewSocialImage(event)"><span id="socialImageMeta" class="text-[10px] text-slate-500">JPG أو PNG أو WebP • حتى 650KB</span></div><div class="flex items-center justify-between gap-2"><span id="socialPostStatus" class="text-[10px] text-slate-500"></span><button id="socialPostSubmit" type="submit" class="rounded-xl bg-cyan-400 px-4 py-2.5 text-xs font-black text-slate-950"><i class="fa-solid fa-paper-plane mr-1"></i>نشر</button></div></form>
