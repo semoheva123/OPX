@@ -11,8 +11,11 @@ const socialPostSchema = new mongoose.Schema({
   moderationReason: { type: String, trim: true, maxlength: 80, default: '' },
   reportCount: { type: Number, default: 0, min: 0 },
   reportedBy: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
+  savedBy: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
   likedBy: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
   likeCount: { type: Number, default: 0, min: 0 },
+  shareCount: { type: Number, default: 0, min: 0 },
+  isPinned: { type: Boolean, default: false, index: true },
   comments: [{
     authorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     authorLabel: { type: String, required: true, trim: true, maxlength: 40 },
