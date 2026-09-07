@@ -1,6 +1,7 @@
 const SocialPost = require('../models/SocialPost');
 const User = require('../models/User');
 const { moderateText } = require('../services/socialSafetyBot');
+const realtimeService = require('../services/realtimeService');
 
 const MAX_IMAGE_DATA_LENGTH = 900000;
 const allowedImageHosts = new Set(['ibb.co', 'www.ibb.co', 'i.ibb.co', 'imgbb.com', 'www.imgbb.com']);
@@ -29,7 +30,7 @@ async function listPosts(req, res) {
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
-      .select('-reportedBy')
+      .select('-reportedBy -likedBy -comments.authorId')
       .lean();
     res.json({ success: true, posts, page, hasMore: posts.length === limit });
   } catch (error) {
@@ -49,11 +50,59 @@ async function createPost(req, res) {
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     const authorLabel = user.referralCode ? `عضو ${user.referralCode}` : `عضو ${String(user.email).slice(0, 2)}•••`;
     const post = await SocialPost.create({ authorId: user._id, authorLabel, content, image_url, isOfficialAi: false, source: 'user', status: moderation.status, moderationReason: moderation.matchedWord ? 'banned_word' : '' });
+    await realtimeService.publish('social_post_created', { postId: post._id, status: post.status }, { scope: 'user' });
     res.status(201).json({ success: true, message: moderation.allowed ? 'تم نشر المنشور' : 'تم حجب المنشور تلقائياً لمخالفته قواعد الجدار', post: post.toObject() });
   } catch (error) {
     if (error.statusCode === 400) return res.status(400).json({ error: 'رابط الصورة يجب أن يكون HTTPS من ImgBB فقط' });
     res.status(500).json({ error: 'تعذر نشر المحتوى حالياً' });
   }
+}
+
+async function toggleLike(req, res) {
+  try {
+    const post = await SocialPost.findOne({ _id: req.params.postId, status: 'visible' }).select('likedBy likeCount');
+    if (!post) return res.status(404).json({ error: 'المنشور غير موجود' });
+    const userId = String(req.user.id);
+    const index = post.likedBy.findIndex(id => String(id) === userId);
+    if (index >= 0) post.likedBy.splice(index, 1);
+    else post.likedBy.push(req.user.id);
+    post.likeCount = post.likedBy.length;
+    await post.save();
+    res.json({ success: true, liked: index < 0, likeCount: post.likeCount });
+  } catch (error) { res.status(500).json({ error: 'تعذر تحديث الإعجاب' }); }
+}
+
+async function addComment(req, res) {
+  try {
+    const content = String(req.body?.content || '').trim();
+    if (content.length < 2 || content.length > 300) return res.status(400).json({ error: 'يجب أن يتراوح التعليق بين حرفين و300 حرف' });
+    const moderation = moderateText(content);
+    const user = await User.findById(req.user.id).select('email referralCode');
+    if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
+    const comment = { authorId: user._id, authorLabel: user.referralCode ? `عضو ${user.referralCode}` : `عضو ${String(user.email).slice(0, 2)}•••`, content, status: moderation.status, moderationReason: moderation.matchedWord ? 'banned_word' : '' };
+    const post = await SocialPost.findOneAndUpdate({ _id: req.params.postId, status: 'visible' }, { $push: { comments: comment } }, { new: true }).select('comments');
+    if (!post) return res.status(404).json({ error: 'المنشور غير موجود' });
+    const saved = post.comments[post.comments.length - 1].toObject();
+    delete saved.authorId;
+    res.status(201).json({ success: true, message: moderation.allowed ? 'تمت إضافة التعليق' : 'تم حجب التعليق تلقائياً', comment: saved });
+  } catch (error) { res.status(500).json({ error: 'تعذر إضافة التعليق' }); }
+}
+
+async function updatePost(req, res) {
+  try {
+    const content = String(req.body?.content || '').trim();
+    if (content.length < 2 || content.length > 500) return res.status(400).json({ error: 'نص المنشور غير صالح' });
+    const moderation = moderateText(content);
+    const post = await SocialPost.findOneAndUpdate({ _id: req.params.postId, authorId: req.user.id, status: { $in: ['visible', 'banned'] } }, { content, status: moderation.status, moderationReason: moderation.matchedWord ? 'banned_word' : '' }, { new: true }).select('-reportedBy -likedBy');
+    if (!post) return res.status(404).json({ error: 'لا يمكنك تعديل هذا المنشور' });
+    res.json({ success: true, post });
+  } catch (error) { res.status(500).json({ error: 'تعذر تعديل المنشور' }); }
+}
+
+async function deletePost(req, res) {
+  const post = await SocialPost.findOneAndUpdate({ _id: req.params.postId, authorId: req.user.id, status: { $ne: 'removed' } }, { status: 'removed' }, { new: true }).select('_id status');
+  if (!post) return res.status(404).json({ error: 'لا يمكنك حذف هذا المنشور' });
+  res.json({ success: true, message: 'تم حذف المنشور' });
 }
 
 async function reportPost(req, res) {
@@ -105,4 +154,4 @@ async function moderatePost(req, res) {
   res.json({ success: true, post });
 }
 
-module.exports = { listPosts, createPost, reportPost, uploadImage, listReportedPosts, moderatePost };
+module.exports = { listPosts, createPost, reportPost, uploadImage, listReportedPosts, moderatePost, toggleLike, addComment, updatePost, deletePost };
