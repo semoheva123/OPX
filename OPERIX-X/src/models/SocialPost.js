@@ -4,6 +4,7 @@ const socialPostSchema = new mongoose.Schema({
   authorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
   authorLabel: { type: String, required: true, trim: true, maxlength: 40, default: 'OPERIX AI' },
   content: { type: String, required: true, trim: true, maxlength: 500 },
+  hashtags: { type: [String], default: [], index: true },
   image_url: { type: String, trim: true, maxlength: 500, default: '' },
   isOfficialAi: { type: Boolean, default: false, index: true },
   source: { type: String, enum: ['user', 'ai_generated'], default: 'user', index: true },
@@ -27,5 +28,6 @@ const socialPostSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 socialPostSchema.index({ status: 1, createdAt: -1 });
+socialPostSchema.index({ status: 1, hashtags: 1, createdAt: -1 });
 
 module.exports = mongoose.model('SocialPost', socialPostSchema);
