@@ -540,6 +540,10 @@ function startRealtimeStream() {
     realtimeClient.connection.on('suspended', state => console.warn('Ably user connection suspended:', state.reason));
     realtimeChannel = realtimeClient.channels.get(`operix:user:${currentUserData._id}`);
     realtimeChannel.subscribe('notification_created', () => fetchUnreadNotifications(true));
+    realtimeChannel.subscribe('private_message_created', event => {
+        fetchUnreadNotifications(true);
+        if (event.data?.message && window.activePrivateThreadId && String(event.data.message.senderId) === String(window.activePrivateThreadId)) loadPrivateThread(window.activePrivateThreadId, false);
+    });
     realtimeChannel.subscribe('user_data_changed', event => {
         const reason = event.data?.reason;
         loadUserProfile();
@@ -565,6 +569,10 @@ function startRealtimeSse(token = localStorage.getItem('token')) {
     realtimeEventSource.addEventListener('user_data_changed', event => { refresh(); if (event.data) showToast('تم تحديث بيانات حسابك تلقائيًا'); });
     realtimeEventSource.addEventListener('account_status_changed', event => { try { showToast(JSON.parse(event.data).message || 'تم تحديث حالة الحساب'); } catch (error) {} refresh(); });
     realtimeEventSource.addEventListener('notification_created', () => fetchUnreadNotifications(true));
+    realtimeEventSource.addEventListener('private_message_created', event => {
+        fetchUnreadNotifications(true);
+        try { const message = JSON.parse(event.data).message; if (message && window.activePrivateThreadId && String(message.senderId) === String(window.activePrivateThreadId)) loadPrivateThread(window.activePrivateThreadId, false); } catch (error) {}
+    });
     realtimeEventSource.onerror = () => { if (realtimeEventSource?.readyState === EventSource.CLOSED) { realtimeEventSource.close(); realtimeEventSource = null; setTimeout(() => startRealtimeSse(token), 5000); } };
 }
 
@@ -2147,6 +2155,7 @@ function switchTab(tabName) {
     }
     if (tabName === 'feed') {
         loadSocialFeed(true);
+        loadPrivateConversations();
     }
     if (tabName === 'tiers') {
         loadUpgradeHistory();
@@ -2262,12 +2271,64 @@ function enhanceSocialPostCards(posts) {
         actions.innerHTML = `<button type="button" class="social-like-button rounded-xl border border-slate-800 px-3 py-2 text-[10px] text-slate-400 hover:text-rose-300"><i class="fa-regular fa-heart mr-1"></i><span>${Number(post.likeCount || 0)}</span></button><button type="button" class="social-comment-button rounded-xl border border-slate-800 px-3 py-2 text-[10px] text-slate-400 hover:text-cyan-300"><i class="fa-regular fa-comment mr-1"></i>تعليق</button></div><div class="social-comments hidden space-y-2"><div class="social-comments-list space-y-1"></div><form class="social-comment-form flex gap-2"><input maxlength="300" minlength="2" required placeholder="اكتب تعليقاً..." class="min-w-0 flex-1 rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] text-white"><button class="rounded-xl bg-cyan-400 px-3 py-2 text-[10px] font-bold text-slate-950">إرسال</button></form></div>`;
         card.appendChild(actions);
         if (String(post.authorId || '') === String(currentUserData?._id || '')) actions.insertAdjacentHTML('afterbegin', `<button type="button" onclick="editSocialPost('${escapeSocialHtml(card.dataset.socialPostId)}')" class="rounded-xl border border-slate-800 px-3 py-2 text-[10px] text-slate-400 hover:text-amber-300"><i class="fa-solid fa-pen mr-1"></i>تعديل</button><button type="button" onclick="deleteSocialPost('${escapeSocialHtml(card.dataset.socialPostId)}')" class="rounded-xl border border-slate-800 px-3 py-2 text-[10px] text-slate-400 hover:text-rose-300"><i class="fa-solid fa-trash mr-1"></i>حذف</button>`);
+        else if (post.authorId) actions.insertAdjacentHTML('afterbegin', `<button type="button" onclick="openPrivateThread('${escapeSocialHtml(post.authorId)}')" class="rounded-xl border border-cyan-400/20 bg-cyan-400/5 px-3 py-2 text-[10px] text-cyan-300 hover:border-cyan-300/50"><i class="fa-regular fa-paper-plane mr-1"></i>رسالة</button>`);
         const comments = actions.querySelector('.social-comments-list');
         comments.innerHTML = (post.comments || []).filter(comment => comment.status === 'visible').map(comment => `<p class="rounded-xl bg-slate-950/70 px-3 py-2 text-[10px] text-slate-400"><b class="text-slate-300">${escapeSocialHtml(comment.authorLabel)}</b> ${escapeSocialHtml(comment.content)}</p>`).join('');
         actions.querySelector('.social-like-button').onclick = async () => { const response = await fetch(`/api/social-feed/${encodeURIComponent(card.dataset.socialPostId)}/like`, { method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }); const data = await response.json(); if (response.ok) actions.querySelector('.social-like-button span').innerText = data.likeCount; };
         actions.querySelector('.social-comment-button').onclick = () => actions.querySelector('.social-comments').classList.toggle('hidden');
         actions.querySelector('.social-comment-form').onsubmit = async event => { event.preventDefault(); const input = event.currentTarget.querySelector('input'); const response = await fetch(`/api/social-feed/${encodeURIComponent(card.dataset.socialPostId)}/comments`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` }, body: JSON.stringify({ content: input.value.trim() }) }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر إضافة التعليق'); input.value = ''; loadSocialFeed(); };
     });
+}
+
+window.activePrivateThreadId = null;
+
+async function loadPrivateThread(userId, keepComposer = true) {
+    const token = localStorage.getItem('token');
+    const messages = document.getElementById('privateMessages');
+    const title = document.getElementById('privateThreadTitle');
+    if (!token || !messages) return;
+    window.activePrivateThreadId = userId;
+    try {
+        const response = await fetch(`/api/messages/${encodeURIComponent(userId)}`, { headers: { Authorization: `Bearer ${token}` } });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'تعذر تحميل المحادثة');
+        if (title) title.innerText = data.user.label;
+        messages.innerHTML = data.messages.length ? data.messages.map(message => `<div class="flex ${String(message.senderId) === String(currentUserData?._id || '') ? 'justify-start' : 'justify-end'}"><p class="max-w-[85%] rounded-2xl ${String(message.senderId) === String(currentUserData?._id || '') ? 'bg-cyan-400 text-slate-950' : 'bg-slate-800 text-slate-200'} px-3 py-2 text-[11px] leading-5">${escapeSocialHtml(message.body)}<time class="mt-1 block text-[9px] opacity-60">${new Date(message.createdAt).toLocaleString('ar')}</time></p></div>`).join('') : '<p class="py-8 text-center text-[11px] text-slate-500">ابدأ محادثة محترمة مع هذا العضو.</p>';
+        messages.scrollTop = messages.scrollHeight;
+        if (!keepComposer) return;
+    } catch (error) { messages.innerHTML = `<p class="text-center text-xs text-rose-300">${escapeSocialHtml(error.message)}</p>`; }
+}
+
+async function openPrivateThread(userId) {
+    document.getElementById('privateMessagesPanel')?.classList.remove('hidden');
+    const title = document.getElementById('privateThreadTitle');
+    await loadPrivateThread(userId);
+}
+
+function closePrivateThread() { window.activePrivateThreadId = null; document.getElementById('privateMessagesPanel')?.classList.add('hidden'); }
+
+async function sendPrivateMessage(event) {
+    event.preventDefault();
+    const input = document.getElementById('privateMessageInput');
+    const status = document.getElementById('privateMessageStatus');
+    const token = localStorage.getItem('token');
+    if (!window.activePrivateThreadId || !input?.value.trim() || !token) return;
+    try {
+        const response = await fetch(`/api/messages/${encodeURIComponent(window.activePrivateThreadId)}`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ body: input.value.trim() }) });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'تعذر إرسال الرسالة');
+        input.value = ''; if (status) status.innerText = data.message.status === 'banned' ? 'أرسلت للمراجعة' : 'تم الإرسال'; await loadPrivateThread(window.activePrivateThreadId);
+    } catch (error) { if (status) status.innerText = error.message; }
+}
+
+async function loadPrivateConversations() {
+    const list = document.getElementById('privateConversationList');
+    const token = localStorage.getItem('token');
+    if (!list || !token) return;
+    const response = await fetch('/api/messages', { headers: { Authorization: `Bearer ${token}` } });
+    const data = await response.json();
+    if (!response.ok) return;
+    list.innerHTML = data.conversations.length ? data.conversations.map(item => `<button type="button" onclick="openPrivateThread('${escapeSocialHtml(item.user._id)}')" class="flex w-full items-center justify-between gap-2 rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-right hover:border-cyan-400/40"><span class="min-w-0"><b class="block truncate text-[11px] text-white">${escapeSocialHtml(item.user.label)}</b><small class="mt-1 block truncate text-[10px] text-slate-500">${escapeSocialHtml(item.lastMessage.body)}</small></span>${item.unread ? `<em class="rounded-full bg-cyan-400 px-2 py-1 text-[9px] font-black text-slate-950">${item.unread}</em>` : ''}</button>`).join('') : '<p class="py-5 text-center text-[10px] text-slate-500">لا توجد محادثات بعد.</p>';
 }
 
 async function editSocialPost(postId) {

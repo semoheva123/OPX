@@ -3,23 +3,26 @@ OPERIX Social-Fi + AI Announcer Production Bundle
 
 Copy each file to the matching path in the OPERIX GitHub repository:
 
-index.html -> index.html
+.env.example -> .env.example
 app.js -> app.js
 admin.html -> admin.html
+index.html -> index.html
 package.json -> package.json
-tests/social-feed-unit.test.js -> tests/social-feed-unit.test.js
 vercel.json -> vercel.json
 server.js -> server.js
-.env.example -> .env.example
+tests/social-feed-unit.test.js -> tests/social-feed-unit.test.js
 src/app.js -> src/app.js
 src/controllers/socialFeedController.js -> src/controllers/socialFeedController.js
+src/controllers/messageController.js -> src/controllers/messageController.js
 src/controllers/walletController.js -> src/controllers/walletController.js
 src/jobs/aiAnnouncer.js -> src/jobs/aiAnnouncer.js
 src/models/AuditLog.js -> src/models/AuditLog.js
 src/models/SocialPost.js -> src/models/SocialPost.js
+src/models/Message.js -> src/models/Message.js
 src/models/Transaction.js -> src/models/Transaction.js
 src/routes/adminRoutes.js -> src/routes/adminRoutes.js
 src/routes/socialFeedRoutes.js -> src/routes/socialFeedRoutes.js
+src/routes/messageRoutes.js -> src/routes/messageRoutes.js
 src/services/socialSafetyBot.js -> src/services/socialSafetyBot.js
 
 Required Vercel Environment Variables:
@@ -34,9 +37,11 @@ Cron endpoint:
 Schedule:
 Daily at 09:00 UTC (0 9 * * *)
 
+Deployment fingerprint:
+socialfi-20260907-2
+
 Important:
 - Copy files without changing their repository paths.
 - Add secrets only in Vercel Environment Variables; never commit secret values.
 - The project uses MONGO_URI, not MONGODB_URI.
 - Run npm test after copying, then deploy to Vercel.
-
