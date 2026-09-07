@@ -91,8 +91,8 @@ async function submitKyc(req, res) {
 
     let normalizedDocumentUrl = '';
     if (rawDocumentReference.startsWith('data:image/')) {
-      if (!/^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(rawDocumentReference) || rawDocumentReference.length > 900000) {
-        return res.status(400).json({ error: 'صورة الوثيقة يجب أن تكون JPG أو PNG أو WebP وألا تتجاوز 650 كيلوبايت' });
+      if (!/^data:image\/(jpeg|jpg|png|webp|gif|bmp|heic|heif|avif);base64,[A-Za-z0-9+/=]+$/i.test(rawDocumentReference) || rawDocumentReference.length > 2 * 1024 * 1024) {
+        return res.status(400).json({ error: 'صورة الوثيقة يجب أن تكون JPG أو PNG أو WebP أو أي صورة مدعومة وألا تتجاوز 2 ميجابايت' });
       }
       normalizedDocumentUrl = await imgbbStorage.uploadDataUrl(rawDocumentReference);
       if (!normalizedDocumentUrl) return res.status(400).json({ error: 'تعذر حفظ صورة الوثيقة' });
@@ -146,8 +146,8 @@ async function updateProfileImage(req, res) {
     if (typeof profileImage !== 'string' || !profileImage.startsWith('data:image/')) {
       return res.status(400).json({ error: 'صيغة الصورة غير صالحة' });
     }
-    if (!/^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(profileImage) || profileImage.length > 350000) {
-      return res.status(400).json({ error: 'الصورة يجب أن تكون JPG أو PNG أو WebP وبحجم صغير' });
+    if (!/^data:image\/(jpeg|jpg|png|webp|gif|bmp|heic|heif|avif);base64,[A-Za-z0-9+/=]+$/i.test(profileImage) || profileImage.length > 2 * 1024 * 1024) {
+      return res.status(400).json({ error: 'الصورة يجب أن تكون JPG أو PNG أو WebP أو أي صورة مدعومة وبحجم لا يتجاوز 2 ميجابايت' });
     }
     const imageUrl = await imgbbStorage.uploadDataUrl(profileImage);
     const user = await User.findByIdAndUpdate(req.user.id, { profileImage: imageUrl }, { new: true }).select('profileImage');
@@ -165,8 +165,8 @@ async function updateSocialProfile(req, res) {
     const socialBio = String(req.body?.socialBio || '').trim();
     const coverImage = String(req.body?.coverImage || '').trim();
     if (socialBio.length > 160) return res.status(400).json({ error: 'النبذة لا تتجاوز 160 حرفاً' });
-    if (coverImage && (!/^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/i.test(coverImage) || coverImage.length > 500000)) {
-      return res.status(400).json({ error: 'صورة الغلاف يجب أن تكون JPG أو PNG أو WebP وبحجم صغير' });
+    if (coverImage && (!/^data:image\/(jpeg|jpg|png|webp|gif|bmp|heic|heif|avif);base64,[A-Za-z0-9+/=]+$/i.test(coverImage) || coverImage.length > 2 * 1024 * 1024)) {
+      return res.status(400).json({ error: 'صورة الغلاف يجب أن تكون JPG أو PNG أو WebP أو أي صورة مدعومة وبحجم لا يتجاوز 2 ميجابايت' });
     }
     const coverUrl = !coverImage ? '' : coverImage.startsWith('data:image/') ? await imgbbStorage.uploadDataUrl(coverImage) : imgbbStorage.validateUrl(coverImage);
     if (coverImage && !coverUrl) return res.status(400).json({ error: 'صورة الغلاف يجب أن تكون مرفوعة إلى ImgBB' });

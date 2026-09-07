@@ -4,7 +4,7 @@ const { moderateText } = require('../services/socialSafetyBot');
 const realtimeService = require('../services/realtimeService');
 const SocialFollow = require('../models/SocialFollow');
 
-const MAX_IMAGE_DATA_LENGTH = 900000;
+const MAX_IMAGE_DATA_LENGTH = 2 * 1024 * 1024;
 const allowedImageHosts = new Set(['ibb.co', 'www.ibb.co', 'i.ibb.co', 'imgbb.com', 'www.imgbb.com']);
 
 function isAllowedImageUrl(value) {
@@ -179,8 +179,8 @@ async function uploadImage(req, res) {
   try {
     const image = String(req.body?.image || '').trim();
     if (!process.env.IMGBB_API_KEY) return res.status(503).json({ error: 'رفع الصور غير مهيأ حالياً' });
-    if (!/^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/i.test(image) || image.length > MAX_IMAGE_DATA_LENGTH) {
-      return res.status(400).json({ error: 'الصورة يجب أن تكون JPG أو PNG أو WebP وألا تتجاوز 650 كيلوبايت' });
+    if (!/^data:image\/(jpeg|jpg|png|webp|gif|bmp|heic|heif|avif);base64,[A-Za-z0-9+/=]+$/i.test(image) || image.length > MAX_IMAGE_DATA_LENGTH) {
+      return res.status(400).json({ error: 'الصورة يجب أن تكون JPG أو PNG أو WebP أو أي صورة مدعومة وألا تتجاوز 2 ميجابايت' });
     }
     const form = new FormData();
     form.append('image', image.split(',')[1]);
