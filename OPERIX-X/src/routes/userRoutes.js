@@ -8,6 +8,7 @@ router.get('/profile', verifyToken, userController.getProfile);
 router.post('/wallet-address', verifyToken, userController.setWalletAddress);
 router.post('/kyc/submit', verifyToken, userController.submitKyc);
 router.post('/profile-image', verifyToken, userController.updateProfileImage);
+router.post('/social-profile', verifyToken, userController.updateSocialProfile);
 router.get('/referrals', verifyToken, userController.getReferrals);
 router.get('/team-network', verifyToken, userController.getTeamNetwork);
 router.get('/growth', verifyToken, userController.getGrowth);
