@@ -2,6 +2,7 @@ const SocialPost = require('../models/SocialPost');
 const User = require('../models/User');
 const { moderateText } = require('../services/socialSafetyBot');
 const realtimeService = require('../services/realtimeService');
+const SocialFollow = require('../models/SocialFollow');
 
 const MAX_IMAGE_DATA_LENGTH = 900000;
 const allowedImageHosts = new Set(['ibb.co', 'www.ibb.co', 'i.ibb.co', 'imgbb.com', 'www.imgbb.com']);
@@ -26,7 +27,12 @@ async function listPosts(req, res) {
   try {
     const page = Math.min(Math.max(Number.parseInt(req.query.page, 10) || 1, 1), 20);
     const limit = 15;
-    const posts = await SocialPost.find({ status: 'visible' })
+    const query = { status: 'visible' };
+    if (String(req.query.feed || '') === 'following') {
+      const following = await SocialFollow.find({ followerId: req.user.id }).select('followingId').lean();
+      query.authorId = { $in: following.map(item => item.followingId) };
+    }
+    const posts = await SocialPost.find(query)
       .sort({ isPinned: -1, createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
