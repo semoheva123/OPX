@@ -98,12 +98,13 @@ async function getMyHistory(req, res) {
 async function withdraw(req, res) {
   let session;
   try {
-    const { amount, walletAddress, twoFactorCode } = req.body;
+    const { amount, walletAddress, twoFactorCode, image_url } = req.body;
     const idempotencyKey = String(req.get('Idempotency-Key') || '').trim().slice(0, 120);
     const withdrawNum = Number(amount);
     const feeSummary = calculateHybridWithdrawalFee(withdrawNum);
     if (!Number.isFinite(withdrawNum) || withdrawNum < MIN_WITHDRAWAL_AMOUNT) return res.status(400).json({ error: `الحد الأدنى للسحب هو ${MIN_WITHDRAWAL_AMOUNT}$ USDT` });
     if (!walletAddress || typeof walletAddress !== 'string' || walletAddress.trim() === '') return res.status(400).json({ error: 'يرجى إدخال عنوان المحفظة' });
+    if (image_url && !/^https:\/\/(?:i\.ibb\.co|ibb\.co|www\.ibb\.co|imgbb\.com|www\.imgbb\.com)\//i.test(String(image_url).trim())) return res.status(400).json({ error: 'رابط إثبات السحب يجب أن يكون من ImgBB' });
     if (feeSummary.netAmount <= 0) return res.status(400).json({ error: 'مبلغ السحب غير صالح بعد احتساب الرسوم' });
     if (idempotencyKey) {
       const existing = await Transaction.findOne({ userId: req.user.id, type: 'withdraw', idempotencyKey });
@@ -152,6 +153,7 @@ async function withdraw(req, res) {
         feeAmount: feeSummary.feeAmount,
         netAmount: feeSummary.netAmount,
         walletAddress: walletAddress.trim(),
+        image_url: String(image_url || '').trim(),
         idempotencyKey: idempotencyKey || undefined,
         status: 'pending',
         riskScore: risk.riskScore,
