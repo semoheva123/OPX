@@ -12,6 +12,8 @@
           "dist/**",
           "styles/**",
           "sw.js",
+          "src/**",
+          "tests/**",
           "manifest.json",
           "admin-manifest.json",
           "robots.txt",
