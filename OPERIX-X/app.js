@@ -2281,11 +2281,22 @@ function enhanceSocialPostCards(posts) {
 }
 
 window.activePrivateThreadId = null;
+function privateElement(id) { const elements = document.querySelectorAll(`#${id}`); return elements[elements.length - 1]; }
+
+async function openPrivateMessagesModal() {
+    document.getElementById('privateMessagesModal')?.classList.remove('hide');
+    await loadPrivateConversations();
+}
+
+function closePrivateMessagesModal() {
+    document.getElementById('privateMessagesModal')?.classList.add('hide');
+    window.activePrivateThreadId = null;
+}
 
 async function loadPrivateThread(userId, keepComposer = true) {
     const token = localStorage.getItem('token');
-    const messages = document.getElementById('privateMessages');
-    const title = document.getElementById('privateThreadTitle');
+    const messages = privateElement('privateMessages');
+    const title = privateElement('privateThreadTitle');
     if (!token || !messages) return;
     window.activePrivateThreadId = userId;
     try {
@@ -2300,17 +2311,18 @@ async function loadPrivateThread(userId, keepComposer = true) {
 }
 
 async function openPrivateThread(userId) {
-    document.getElementById('privateMessagesPanel')?.classList.remove('hidden');
-    const title = document.getElementById('privateThreadTitle');
+    const panel = privateElement('privateMessagesPanel');
+    panel?.classList.remove('hidden');
+    panel?.classList.add('flex');
     await loadPrivateThread(userId);
 }
 
-function closePrivateThread() { window.activePrivateThreadId = null; document.getElementById('privateMessagesPanel')?.classList.add('hidden'); }
+function closePrivateThread() { window.activePrivateThreadId = null; privateElement('privateMessagesPanel')?.classList.add('hidden'); }
 
 async function sendPrivateMessage(event) {
     event.preventDefault();
-    const input = document.getElementById('privateMessageInput');
-    const status = document.getElementById('privateMessageStatus');
+    const input = privateElement('privateMessageInput');
+    const status = privateElement('privateMessageStatus');
     const token = localStorage.getItem('token');
     if (!window.activePrivateThreadId || !input?.value.trim() || !token) return;
     try {
@@ -2322,12 +2334,15 @@ async function sendPrivateMessage(event) {
 }
 
 async function loadPrivateConversations() {
-    const list = document.getElementById('privateConversationList');
+    const list = privateElement('privateConversationList');
     const token = localStorage.getItem('token');
     if (!list || !token) return;
     const response = await fetch('/api/messages', { headers: { Authorization: `Bearer ${token}` } });
     const data = await response.json();
     if (!response.ok) return;
+    const unread = data.conversations.reduce((total, item) => total + Number(item.unread || 0), 0);
+    const badge = document.getElementById('privateMessageBadge');
+    if (badge) { badge.innerText = unread > 99 ? '99+' : unread; badge.classList.toggle('hidden', unread === 0); }
     list.innerHTML = data.conversations.length ? data.conversations.map(item => `<button type="button" onclick="openPrivateThread('${escapeSocialHtml(item.user._id)}')" class="flex w-full items-center justify-between gap-2 rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-right hover:border-cyan-400/40"><span class="min-w-0"><b class="block truncate text-[11px] text-white">${escapeSocialHtml(item.user.label)}</b><small class="mt-1 block truncate text-[10px] text-slate-500">${escapeSocialHtml(item.lastMessage.body)}</small></span>${item.unread ? `<em class="rounded-full bg-cyan-400 px-2 py-1 text-[9px] font-black text-slate-950">${item.unread}</em>` : ''}</button>`).join('') : '<p class="py-5 text-center text-[10px] text-slate-500">لا توجد محادثات بعد.</p>';
 }
 
