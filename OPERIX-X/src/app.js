@@ -25,6 +25,7 @@ const realtimeService = require('./services/realtimeService');
 
 function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
   const app = express();
+  app.locals.deploymentVersion = process.env.DEPLOYMENT_VERSION || 'socialfi-20260907-2';
   const trustProxy = process.env.TRUST_PROXY;
   app.set('trust proxy', trustProxy === 'true' ? 1 : trustProxy === 'false' || trustProxy === undefined ? false : Number(trustProxy));
   app.locals.resend = resend;
@@ -52,7 +53,7 @@ function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
   app.use(express.urlencoded({ extended: true, limit: '1mb' }));
   app.get('/api/health', (req, res) => {
     const databaseReady = mongoose.connection.readyState === 1;
-    res.status(databaseReady ? 200 : 503).json({ success: databaseReady, status: databaseReady ? 'ok' : 'degraded', database: databaseReady ? 'connected' : 'disconnected', uptime: Math.floor(process.uptime()), timestamp: new Date().toISOString() });
+    res.status(databaseReady ? 200 : 503).json({ success: databaseReady, status: databaseReady ? 'ok' : 'degraded', database: databaseReady ? 'connected' : 'disconnected', deploymentVersion: req.app.locals.deploymentVersion, uptime: Math.floor(process.uptime()), timestamp: new Date().toISOString() });
   });
 
   const runCronJob = async (req, res) => {
