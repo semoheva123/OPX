@@ -17,6 +17,7 @@ const couponRoutes = require('./routes/couponRoutes');
 const settingsRoutes = require('./routes/settingsRoutes');
 const investmentVaultRoutes = require('./routes/investmentVaultRoutes');
 const socialFeedRoutes = require('./routes/socialFeedRoutes');
+const socialGraphRoutes = require('./routes/socialGraphRoutes');
 const messageRoutes = require('./routes/messageRoutes');
 const { verifyAdmin } = require('./middlewares/auth');
 const jwt = require('jsonwebtoken');
@@ -155,6 +156,7 @@ function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
   app.use('/api/settings', settingsRoutes);
   app.use('/api', investmentVaultRoutes);
   app.use('/api/social-feed', socialFeedRoutes);
+  app.use('/api/social', socialGraphRoutes);
   app.use('/api/messages', messageRoutes);
 
   app.use((req, res, next) => {
