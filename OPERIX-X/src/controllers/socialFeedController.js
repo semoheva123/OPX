@@ -38,6 +38,15 @@ async function listPosts(req, res) {
       .limit(limit)
       .select('-reportedBy -likedBy -comments.authorId')
       .lean();
+    const authorIds = posts.map(post => post.authorId).filter(Boolean);
+    const authors = await User.find({ _id: { $in: authorIds } }).select('_id profileImage coverImage socialBio').lean();
+    const authorMap = new Map(authors.map(author => [String(author._id), author]));
+    posts.forEach(post => {
+      const author = authorMap.get(String(post.authorId));
+      post.authorProfileImage = author?.profileImage || '';
+      post.authorCoverImage = author?.coverImage || '';
+      post.authorBio = author?.socialBio || '';
+    });
     const userId = String(req.user.id);
     posts.forEach(post => {
       post.isSaved = Array.isArray(post.savedBy) && post.savedBy.some(id => String(id) === userId);

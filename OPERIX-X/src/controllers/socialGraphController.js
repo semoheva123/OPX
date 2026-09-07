@@ -24,7 +24,7 @@ async function toggleFollow(req, res) {
 async function listCommunity(req, res) {
   try {
     const users = await User.find({ _id: { $ne: req.user.id }, isBanned: false })
-      .select('email referralCode profileImage')
+      .select('email referralCode profileImage coverImage socialBio')
       .sort({ createdAt: -1 }).limit(30).lean();
     const following = await SocialFollow.find({ followerId: req.user.id, followingId: { $in: users.map(user => user._id) } }).select('followingId').lean();
     const followingIds = new Set(following.map(item => String(item.followingId)));
@@ -32,6 +32,8 @@ async function listCommunity(req, res) {
       id: user._id,
       label: user.referralCode ? `عضو ${user.referralCode}` : `عضو ${String(user.email).slice(0, 2)}•••`,
       profileImage: user.profileImage || '',
+      coverImage: user.coverImage || '',
+      socialBio: user.socialBio || '',
       following: followingIds.has(String(user._id)),
       posts: await SocialPost.countDocuments({ authorId: user._id, status: 'visible' }),
       followers: await SocialFollow.countDocuments({ followingId: user._id })
@@ -40,4 +42,18 @@ async function listCommunity(req, res) {
   } catch (error) { res.status(500).json({ error: 'تعذر تحميل أعضاء المجتمع' }); }
 }
 
-module.exports = { toggleFollow, listCommunity };
+async function getSocialProfile(req, res) {
+  try {
+    const user = await User.findOne({ _id: req.params.userId, isBanned: false }).select('email referralCode profileImage coverImage socialBio').lean();
+    if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
+    const [posts, followers, following, relation] = await Promise.all([
+      SocialPost.find({ authorId: user._id, status: 'visible' }).sort({ createdAt: -1 }).limit(6).select('content image_url createdAt likeCount').lean(),
+      SocialFollow.countDocuments({ followingId: user._id }),
+      SocialFollow.countDocuments({ followerId: user._id }),
+      SocialFollow.exists({ followerId: req.user.id, followingId: user._id })
+    ]);
+    res.json({ success: true, profile: { id: user._id, label: user.referralCode ? `عضو ${user.referralCode}` : `عضو ${String(user.email).slice(0, 2)}•••`, profileImage: user.profileImage || '', coverImage: user.coverImage || '', socialBio: user.socialBio || '', posts, followers, following, isFollowing: Boolean(relation) } });
+  } catch (error) { res.status(500).json({ error: 'تعذر تحميل بطاقة المستخدم' }); }
+}
+
+module.exports = { toggleFollow, listCommunity, getSocialProfile };
