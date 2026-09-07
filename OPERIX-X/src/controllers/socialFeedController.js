@@ -134,9 +134,14 @@ async function uploadImage(req, res) {
     form.append('image', image.split(',')[1]);
     const response = await fetch(`https://api.imgbb.com/1/upload?key=${encodeURIComponent(process.env.IMGBB_API_KEY)}`, { method: 'POST', body: form });
     const data = await response.json();
-    if (!response.ok || !data.success || !isAllowedImageUrl(data.data?.url)) return res.status(502).json({ error: 'تعذر رفع الصورة إلى ImgBB' });
+    if (!response.ok || !data.success || !isAllowedImageUrl(data.data?.url)) {
+      const providerMessage = String(data.error?.message || data.error?.error || '').trim();
+      console.error('ImgBB upload rejected:', { status: response.status, providerMessage: providerMessage || 'unknown_response' });
+      return res.status(502).json({ error: providerMessage ? `رفض ImgBB الطلب: ${providerMessage}` : 'تعذر رفع الصورة إلى ImgBB. تحقق من IMGBB_API_KEY وحالة خدمة ImgBB.' });
+    }
     res.json({ success: true, image_url: data.data.url });
   } catch (error) {
+    console.error('ImgBB upload error:', error.message);
     res.status(502).json({ error: 'تعذر الاتصال بخدمة الصور' });
   }
 }
