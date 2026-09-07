@@ -11,9 +11,11 @@ function getOpxPricing(req, res) {
 
 async function getOpxMarketData(req, res) {
   try {
+    const timeframeMap = { '5m': '5m', '15m': '15m', '1h': '1h', '4h': '4h', '1D': '1D' };
+    const timeframe = timeframeMap[String(req.query.timeframe || '15m')] || '15m';
     const [tickerResponse, candlesResponse] = await Promise.all([
       fetch('https://api-pub.bitfinex.com/v2/ticker/tOPXUSD'),
-      fetch('https://api-pub.bitfinex.com/v2/candles/trade:15m:tOPXUSD/hist?limit=96&sort=-1')
+      fetch(`https://api-pub.bitfinex.com/v2/candles/trade:${timeframe}:tOPXUSD/hist?limit=96&sort=-1`)
     ]);
     if (!tickerResponse.ok || !candlesResponse.ok) throw new Error('BITFINEX_UNAVAILABLE');
     const ticker = await tickerResponse.json();
@@ -24,7 +26,7 @@ async function getOpxMarketData(req, res) {
       .map(candle => ({ timestamp: candle[0], open: Number(candle[1]), close: Number(candle[2]), high: Number(candle[3]), low: Number(candle[4]), volume: Number(candle[5]) }))
       .filter(candle => [candle.timestamp, candle.open, candle.close, candle.high, candle.low, candle.volume].every(Number.isFinite))
       .reverse();
-    res.json({ source: 'Bitfinex', symbol: 'OPXUSD', network: 'Optimism', price: Number(ticker[6]), dailyChange: Number(ticker[4]), volume24h: Number(ticker[7]), candles: normalizedCandles });
+    res.json({ source: 'Bitfinex', symbol: 'OPXUSD', network: 'Optimism', timeframe, price: Number(ticker[6]), dailyChange: Number(ticker[4]), dailyChangePercent: Number(ticker[5]) * 100, volume24h: Number(ticker[7]), candles: normalizedCandles });
   } catch (error) {
     res.status(502).json({ error: 'تعذر تحميل بيانات OPX الحقيقية من Bitfinex' });
   }
