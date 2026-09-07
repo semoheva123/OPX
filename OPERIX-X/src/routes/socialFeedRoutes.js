@@ -11,6 +11,7 @@ router.get('/', controller.listPosts);
 router.post('/', feedWriteLimit, controller.createPost);
 router.post('/upload-image', feedWriteLimit, controller.uploadImage);
 router.post('/:postId/like', feedWriteLimit, controller.toggleLike);
+router.get('/:postId/likes', controller.listLikes);
 router.post('/:postId/save', feedWriteLimit, controller.toggleSave);
 router.post('/:postId/share', feedWriteLimit, controller.sharePost);
 router.post('/:postId/pin', feedWriteLimit, controller.togglePin);
