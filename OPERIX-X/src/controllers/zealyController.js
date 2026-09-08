@@ -1,8 +1,11 @@
 const crypto = require('crypto');
+const mongoose = require('mongoose');
 const ExternalTask = require('../models/ExternalTask');
 const TaskCompletion = require('../models/TaskCompletion');
 const User = require('../models/User');
 const Transaction = require('../models/Transaction');
+const Notification = require('../models/Notification');
+const realtimeService = require('../services/realtimeService');
 const { applyRewardToUser, rewardTransactionFields } = require('../services/hybridRewardLedger');
 
 const ZEALY_API_BASE = 'https://api-v2.zealy.io';
@@ -48,7 +51,15 @@ async function listTasks(req, res) {
   try {
     const { subdomain, payload } = await fetchZealyQuests();
     const community = payload.community || payload.data?.community || payload;
-    const quests = Array.isArray(payload) ? payload : payload.quests || payload.data?.quests || payload.data || [];
+    const quests = Array.isArray(payload)
+      ? payload
+      : payload.quests
+        || payload.items
+        || payload.results
+        || payload.data?.quests
+        || payload.data?.items
+        || payload.data?.results
+        || (Array.isArray(payload.data) ? payload.data : []);
     const configuredRewards = configuredTaskRewards();
     const tasks = [];
       const defaultReward = Math.max(0, Number(process.env.ZEALY_DEFAULT_REWARD_USDT || 0) || 0);
@@ -108,14 +119,30 @@ async function receiveWebhook(req, res) {
     const reward = Number(task.rewardUsdt || 0);
     let usdtAmount = 0;
     let opxAmount = 0;
-    if (reward > 0) {
-      const split = applyRewardToUser(user, reward);
-      usdtAmount = split.usdtAmount;
-      opxAmount = split.opxAmount;
-      await user.save();
-      await new Transaction({ userId: user._id, type: 'reward', ...rewardTransactionFields(split), walletAddress: `Zealy: ${task.title}`, status: 'approved', idempotencyKey: `zealy:${task._id}:${user._id}` }).save();
+    let walletSnapshot;
+    const session = await mongoose.startSession();
+    try {
+      await session.withTransaction(async () => {
+        const userInTransaction = await User.findById(user._id).session(session);
+        const completionExists = await TaskCompletion.exists({ userId: user._id, taskId: task._id }).session(session);
+        if (completionExists) return;
+        let split = { grossAmount: 0, usdtAmount: 0, opxAmount: 0 };
+        if (reward > 0) {
+          split = applyRewardToUser(userInTransaction, reward);
+          userInTransaction.assetWallet = Number((Number(userInTransaction.assetWallet || 0) + split.grossAmount).toFixed(4));
+          await userInTransaction.save({ session });
+          await new Transaction({ userId: userInTransaction._id, type: 'reward', ...rewardTransactionFields(split), walletAddress: `Zealy: ${task.title}`, status: 'approved', idempotencyKey: `zealy:${task._id}:${userInTransaction._id}` }).save({ session });
+        }
+        await new Notification({ userId: userInTransaction._id, title: 'تمت إضافة مكافأة المهمة', body: `تمت إضافة ${split.usdtAmount.toFixed(4)} USDT و${split.opxAmount.toFixed(4)} OPX إلى محفظتك بعد إكمال مهمة Zealy.`, type: 'transaction' }).save({ session });
+        await new TaskCompletion({ userId: userInTransaction._id, taskId: task._id, platform: 'zealy', externalEventId: safeText(payload.id), externalUserId: safeText(userData.id), status: 'approved', rewardUsdt: split.usdtAmount, rewardOpx: split.opxAmount, verifiedAt: new Date() }).save({ session });
+        usdtAmount = split.usdtAmount;
+        opxAmount = split.opxAmount;
+        walletSnapshot = { assetWallet: userInTransaction.assetWallet, USDT_balance: userInTransaction.USDT_balance, OPX_balance: userInTransaction.OPX_balance, wallet: userInTransaction.wallet };
+      });
+    } finally {
+      await session.endSession();
     }
-    await TaskCompletion.create({ userId: user._id, taskId: task._id, platform: 'zealy', externalEventId: safeText(payload.id), externalUserId: safeText(userData.id), status: 'approved', rewardUsdt: usdtAmount, rewardOpx: opxAmount, verifiedAt: new Date() });
+    if (walletSnapshot) realtimeService.emit('wallet_updated', { reason: 'zealy_task_reward', ...walletSnapshot }, { userId: user._id });
     res.status(200).json({ success: true, processed: true });
   } catch (error) {
     if (error?.code === 11000) return res.status(200).json({ success: true, duplicate: true });
