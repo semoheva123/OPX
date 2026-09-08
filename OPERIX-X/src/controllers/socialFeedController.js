@@ -51,13 +51,14 @@ async function listPosts(req, res) {
     }
     const pagePosts = posts.slice((page - 1) * limit, page * limit);
     const authorIds = pagePosts.map(post => post.authorId).filter(Boolean);
-    const authors = await User.find({ _id: { $in: authorIds } }).select('_id profileImage coverImage socialBio').lean();
+    const authors = await User.find({ _id: { $in: authorIds } }).select('_id profileImage coverImage socialBio isOfficialPlatform').lean();
     const authorMap = new Map(authors.map(author => [String(author._id), author]));
     pagePosts.forEach(post => {
       const author = authorMap.get(String(post.authorId));
       post.authorProfileImage = author?.profileImage || '';
       post.authorCoverImage = author?.coverImage || '';
       post.authorBio = author?.socialBio || '';
+      post.authorIsOfficial = Boolean(author?.isOfficialPlatform);
     });
     const userId = String(req.user.id);
     pagePosts.forEach(post => {
@@ -89,9 +90,9 @@ async function createPost(req, res) {
     const image_url = normalizeImageUrl(req.body?.image_url);
     const recentPost = await SocialPost.exists({ authorId: req.user.id, createdAt: { $gte: new Date(Date.now() - 5 * 60 * 1000) } });
     if (recentPost) return res.status(429).json({ error: 'انتظر خمس دقائق قبل نشر منشور جديد' });
-    const user = await User.findById(req.user.id).select('email referralCode');
+    const user = await User.findById(req.user.id).select('email referralCode isOfficialPlatform');
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
-    const authorLabel = user.referralCode ? `عضو ${user.referralCode}` : `عضو ${String(user.email).slice(0, 2)}•••`;
+    const authorLabel = user.isOfficialPlatform ? 'OPERIX Official' : user.referralCode ? `عضو ${user.referralCode}` : `عضو ${String(user.email).slice(0, 2)}•••`;
     const post = await SocialPost.create({ authorId: user._id, authorLabel, content, hashtags, image_url, isOfficialAi: false, source: 'user', status: moderation.status, moderationReason: moderation.matchedWord ? 'banned_word' : '' });
     await realtimeService.publish('social_post_created', { postId: post._id, status: post.status }, { scope: 'user' });
     res.status(201).json({ success: true, message: moderation.allowed ? 'تم نشر المنشور' : 'تم حجب المنشور تلقائياً لمخالفته قواعد الجدار', post: post.toObject() });

@@ -6,9 +6,10 @@ async function toggleFollow(req, res) {
   try {
     const followingId = String(req.params.userId);
     if (followingId === String(req.user.id)) return res.status(400).json({ error: 'لا يمكنك متابعة حسابك' });
-    const user = await User.findById(followingId).select('_id isBanned');
+    const user = await User.findById(followingId).select('_id isBanned isOfficialPlatform');
     if (!user || user.isBanned) return res.status(404).json({ error: 'المستخدم غير موجود' });
     const existing = await SocialFollow.findOne({ followerId: req.user.id, followingId });
+    if (user.isOfficialPlatform && existing) return res.json({ success: true, following: true, locked: true });
     if (existing) {
       await existing.deleteOne();
       return res.json({ success: true, following: false });
@@ -24,13 +25,14 @@ async function toggleFollow(req, res) {
 async function listCommunity(req, res) {
   try {
     const users = await User.find({ _id: { $ne: req.user.id }, isBanned: false })
-      .select('email referralCode profileImage coverImage socialBio')
+      .select('email referralCode profileImage coverImage socialBio isOfficialPlatform')
       .sort({ createdAt: -1 }).limit(30).lean();
     const following = await SocialFollow.find({ followerId: req.user.id, followingId: { $in: users.map(user => user._id) } }).select('followingId').lean();
     const followingIds = new Set(following.map(item => String(item.followingId)));
     const result = await Promise.all(users.map(async user => ({
       id: user._id,
-      label: user.referralCode ? `عضو ${user.referralCode}` : `عضو ${String(user.email).slice(0, 2)}•••`,
+      label: user.isOfficialPlatform ? 'OPERIX Official' : user.referralCode ? `عضو ${user.referralCode}` : `عضو ${String(user.email).slice(0, 2)}•••`,
+      isOfficialPlatform: Boolean(user.isOfficialPlatform),
       profileImage: user.profileImage || '',
       coverImage: user.coverImage || '',
       socialBio: user.socialBio || '',
@@ -44,7 +46,7 @@ async function listCommunity(req, res) {
 
 async function getSocialProfile(req, res) {
   try {
-    const user = await User.findOne({ _id: req.params.userId, isBanned: false }).select('email referralCode profileImage coverImage socialBio').lean();
+    const user = await User.findOne({ _id: req.params.userId, isBanned: false }).select('email referralCode profileImage coverImage socialBio isOfficialPlatform').lean();
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     const [posts, followers, following, relation] = await Promise.all([
       SocialPost.find({ authorId: user._id, status: 'visible' }).sort({ createdAt: -1 }).limit(6).select('content image_url createdAt likeCount').lean(),
@@ -52,7 +54,7 @@ async function getSocialProfile(req, res) {
       SocialFollow.countDocuments({ followerId: user._id }),
       SocialFollow.exists({ followerId: req.user.id, followingId: user._id })
     ]);
-    res.json({ success: true, profile: { id: user._id, label: user.referralCode ? `عضو ${user.referralCode}` : `عضو ${String(user.email).slice(0, 2)}•••`, profileImage: user.profileImage || '', coverImage: user.coverImage || '', socialBio: user.socialBio || '', posts, followers, following, isFollowing: Boolean(relation) } });
+    res.json({ success: true, profile: { id: user._id, label: user.isOfficialPlatform ? 'OPERIX Official' : user.referralCode ? `عضو ${user.referralCode}` : `عضو ${String(user.email).slice(0, 2)}•••`, isOfficialPlatform: Boolean(user.isOfficialPlatform), profileImage: user.profileImage || '', coverImage: user.coverImage || '', socialBio: user.socialBio || '', posts, followers, following, isFollowing: Boolean(relation) } });
   } catch (error) { res.status(500).json({ error: 'تعذر تحميل بطاقة المستخدم' }); }
 }
 

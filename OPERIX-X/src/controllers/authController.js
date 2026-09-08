@@ -9,6 +9,7 @@ const realtimeService = require('../services/realtimeService');
 const { authenticator } = require('otplib');
 const QRCode = require('qrcode');
 const { emailVerificationTemplate, passwordResetTemplate, adminInviteTemplate } = require('../services/emailTemplates');
+const { followOfficialCommunityAccount } = require('../services/officialCommunity');
 
 const verifySync = ({ token, secret }) => ({ valid: authenticator.check(token, secret) });
 const generateSecret = () => authenticator.generateSecret();
@@ -68,6 +69,7 @@ async function register(req, res) {
       wallet: { balance: 0, depositBalance: 0, profitBalance: 0, totalDeposits: 0, totalWithdrawn: 0 }
     });
     await newUser.save();
+    await followOfficialCommunityAccount(newUser._id);
     if (req.app.locals.resend) {
       const verifyUrl = `${process.env.APP_URL || 'http://localhost:5000'}/api/auth/verify-email?token=${newUser.emailVerificationToken}`;
       await req.app.locals.resend.emails.send({
