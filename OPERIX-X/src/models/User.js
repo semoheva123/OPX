@@ -7,6 +7,7 @@ const userSchema = new mongoose.Schema({
   emailVerificationExpire: { type: Date, default: null, select: false },
   password: { type: String, required: true },
   role: { type: String, enum: ['user', 'admin', 'financial_admin', 'support_admin', 'monitor'], default: 'user' },
+  isOfficialPlatform: { type: Boolean, default: false, index: true },
   tierCode: { type: String, default: 'A1', uppercase: true, trim: true },
   assetWallet: { type: Number, default: 0 },
   todayCompletedTasks: { type: Number, default: 0 },
