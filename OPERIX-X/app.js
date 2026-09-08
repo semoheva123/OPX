@@ -1793,12 +1793,17 @@ function updateTaskAvailability(completed, maximum) {
 async function loadZealyTasks() {
     const token = localStorage.getItem('token');
     if (!token) return;
+    const status = document.getElementById('zealyTaskStatus');
+    if (status) status.innerText = 'جارٍ المزامنة...';
     try {
         const response = await fetch('/api/integrations/zealy/tasks', { headers: { Authorization: `Bearer ${token}` } });
         const data = await response.json();
-        zealyTasks = response.ok && Array.isArray(data.tasks) ? data.tasks : [];
+        if (!response.ok) throw new Error(data.error || 'تعذر تحميل المهام');
+        zealyTasks = Array.isArray(data.tasks) ? data.tasks : [];
+        if (status) status.innerText = zealyTasks.length ? `${zealyTasks.length} مهمة متاحة` : 'لا توجد مهام منشورة';
     } catch (error) {
         zealyTasks = [];
+        if (status) status.innerText = 'تعذر تحميل مهام المجتمع';
     }
     renderTaskBoard(Number(currentUserData?.todayCompletedTasks || 0), tierLimits[currentUserTier] || 33);
 }
