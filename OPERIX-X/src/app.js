@@ -19,6 +19,7 @@ const investmentVaultRoutes = require('./routes/investmentVaultRoutes');
 const socialFeedRoutes = require('./routes/socialFeedRoutes');
 const socialGraphRoutes = require('./routes/socialGraphRoutes');
 const messageRoutes = require('./routes/messageRoutes');
+const zealyRoutes = require('./routes/zealyRoutes');
 const { verifyAdmin } = require('./middlewares/auth');
 const jwt = require('jsonwebtoken');
 const Session = require('./models/Session');
@@ -158,6 +159,7 @@ function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
   app.use('/api/social-feed', socialFeedRoutes);
   app.use('/api/social', socialGraphRoutes);
   app.use('/api/messages', messageRoutes);
+  app.use('/api/integrations/zealy', zealyRoutes);
 
   app.use((req, res, next) => {
     if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'المسار غير موجود' });
