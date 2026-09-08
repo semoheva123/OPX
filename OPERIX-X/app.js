@@ -8,6 +8,7 @@ let currentUserData = null; // الاحتفاظ ببيانات المستخدم 
 let hasPendingDeposit = false; // متغير لتتبع وجود طلب إيداع معلق
 let taskCountdownTimer = null;
 let taskBoardFilter = 'all';
+let zealyTasks = [];
 let growthChartPoints = [];
 let unreadNotificationCount = null;
 let notificationPollTimer = null;
@@ -1617,6 +1618,7 @@ async function loadUserProfile() {
             document.getElementById('taskProgressBar').style.width = `${percent > 100 ? 100 : percent}%`;
             document.getElementById('lblProgressPercent').innerText = `${Math.round(percent > 100 ? 100 : percent)}%`;
             updateTaskAvailability(data.user.todayCompletedTasks || 0, maxTasks);
+            await loadZealyTasks();
             startTaskResetCountdown();
             loadAccountGrowth();
             
@@ -1788,6 +1790,23 @@ function updateTaskAvailability(completed, maximum) {
     renderTaskBoard(completed, maximum);
 }
 
+async function loadZealyTasks() {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    try {
+        const response = await fetch('/api/integrations/zealy/tasks', { headers: { Authorization: `Bearer ${token}` } });
+        const data = await response.json();
+        zealyTasks = response.ok && Array.isArray(data.tasks) ? data.tasks : [];
+    } catch (error) {
+        zealyTasks = [];
+    }
+    renderTaskBoard(Number(currentUserData?.todayCompletedTasks || 0), tierLimits[currentUserTier] || 33);
+}
+
+function openZealyTask(url) {
+    if (/^https:\/\/zealy\.io\//i.test(String(url || ''))) window.open(url, '_blank', 'noopener,noreferrer');
+}
+
 function setTaskFilter(filter) {
     taskBoardFilter = filter;
     ['all', 'priority', 'operations'].forEach(item => {
@@ -1806,7 +1825,16 @@ function renderTaskBoard(completed, maximum) {
         { id: 'twoFactor', category: 'priority', icon: 'fa-shield-halved', title: 'فعّل المصادقة الثنائية', description: 'أضف طبقة حماية قبل السحب والعمليات الحساسة.', done: Boolean(currentUserData?.twoFactorEnabled), action: "switchTab('profile'); document.getElementById('toggle2FA')?.focus()" },
         { id: 'wallet', category: 'priority', icon: 'fa-wallet', title: 'ثبّت محفظة السحب', description: 'أدخل عنوانًا صحيحًا لتجهيز مسار السحب الآمن.', done: Boolean((currentUserData?.walletAddress || currentUserData?.withdrawWallet || '').trim()), action: "switchTab('profile'); document.getElementById('profileWalletAddress')?.focus()" },
         { id: 'kyc', category: 'priority', icon: 'fa-id-card', title: 'أكمل توثيق الهوية', description: 'أرسل بيانات KYC لرفع جاهزية الحساب للعمليات الحساسة.', done: currentUserData?.kycStatus === 'verified', action: "switchTab('profile'); document.getElementById('kycFullNameInput')?.focus()" },
-        { id: 'daily', category: 'operations', icon: 'fa-bolt', title: 'نفّذ المهمة اليومية التالية', description: 'أنجز خطوة تشغيلية واحدة وسجّل تقدمك في خطة اليوم.', done: completed >= maximum, action: 'completeTask()' }
+        { id: 'daily', category: 'operations', icon: 'fa-bolt', title: 'نفّذ المهمة اليومية التالية', description: 'أنجز خطوة تشغيلية واحدة وسجّل تقدمك في خطة اليوم.', done: completed >= maximum, action: 'completeTask()' },
+        ...zealyTasks.map(task => ({
+            id: `zealy-${task._id}`,
+            category: 'operations',
+            icon: 'fa-globe',
+            title: task.title || 'مهمة Zealy',
+            description: `${task.description || 'مهمة مجتمعية من Zealy'}${Number(task.rewardUsdt || 0) > 0 ? ` • إجمالي المكافأة $${Number(task.rewardUsdt).toFixed(2)}، منها 70% USDT` : ' • المكافأة قيد الإعداد'}`,
+            done: Boolean(task.completed),
+            action: `openZealyTask(${JSON.stringify(task.url || '').replace(/"/g, '&quot;')})`
+        }))
     ];
     const visibleTasks = tasks.filter(task => taskBoardFilter === 'all' || task.category === taskBoardFilter);
     board.innerHTML = visibleTasks.map(task => `<article class="task-card rounded-2xl p-3 transition-all"><div class="flex items-start gap-3"><span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${task.done ? 'bg-emerald-400/15 text-emerald-300' : 'bg-amber-400/12 text-amber-300'}"><i class="fa-solid ${task.icon} text-sm"></i></span><div class="min-w-0 flex-1"><div class="flex items-start justify-between gap-2"><div><h4 class="text-xs font-bold text-white">${task.title}</h4><p class="mt-1 text-[10px] leading-5 text-slate-500">${task.description}</p></div><span class="shrink-0 text-[10px] font-bold ${task.done ? 'text-emerald-300' : 'text-amber-300'}">${task.done ? 'مكتملة' : task.category === 'priority' ? 'أولوية' : 'اليوم'}</span></div><button ${task.id === 'daily' ? 'id="btnCompleteTask"' : ''} ${task.done ? 'disabled' : `onclick="${task.action}"`} class="mt-3 rounded-xl border px-3 py-2 text-[10px] font-bold ${task.done ? 'cursor-not-allowed border-emerald-500/15 bg-emerald-500/5 text-emerald-300' : 'border-amber-500/25 bg-amber-500/10 text-amber-300 hover:border-amber-400/50'}">${task.done ? 'تم التحقق من الخطوة' : task.id === 'daily' ? 'بدء المهمة' : 'فتح الإجراء'} <i class="fa-solid ${task.done ? 'fa-check' : 'fa-arrow-left'} mr-1"></i></button></div></div></article>`).join('');
