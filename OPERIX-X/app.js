@@ -12,6 +12,7 @@ let growthChartPoints = [];
 let unreadNotificationCount = null;
 let notificationPollTimer = null;
 let profileSyncTimer = null;
+let platformSupportUrl = '';
 let realtimeClient = null;
 let realtimeChannel = null;
 let realtimeEventSource = null;
@@ -28,6 +29,21 @@ function isStandaloneApp() {
     return window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true || new URLSearchParams(window.location.search).get('source') === 'pwa';
 }
 
+async function loadPlatformSupportSettings() {
+    try {
+        const response = await fetch('/api/settings/public', { cache: 'no-store' });
+        const data = await response.json();
+        const url = String(data.settings?.supportUrl || '').trim();
+        const link = document.getElementById('platformSupportLink');
+        if (!response.ok || !/^https:\/\//i.test(url)) {
+            link?.classList.add('hidden');
+            return;
+        }
+        platformSupportUrl = url;
+        if (link) { link.href = url; link.classList.remove('hidden'); }
+    } catch (error) { }
+}
+
 let tiersData = [
     { code: 'A1', name: 'المستوى A1 المعتمد', price: 50, tasks: 33, dailyProfit: 2.50, monthlyProfit: 75.00, yearlyProfit: 912.50, badgeColor: 'from-amber-500/20 to-amber-700/20 border-amber-500/40 text-amber-400' },
     { code: 'A2', name: 'المستوى A2 المتقدم', price: 150, tasks: 35, dailyProfit: 8.00, monthlyProfit: 240.00, yearlyProfit: 2920.00, badgeColor: 'from-blue-500/20 to-cyan-700/20 border-blue-500/40 text-blue-400' },
@@ -40,6 +56,7 @@ const tierLimits = { 'A1': 33, 'A2': 35, 'A3': 40, 'A4': 45, 'A5': 50 };
 
 // تهيئة التطبيق عند اكتمال تحميل عناصر الصفحة
 document.addEventListener('DOMContentLoaded', () => {
+    loadPlatformSupportSettings();
     const urlParams = new URLSearchParams(window.location.search);
     const refCode = urlParams.get('ref');
     
@@ -2476,7 +2493,7 @@ async function loadSocialCommunity() {
     const response = await fetch('/api/social/community', { headers: { Authorization: `Bearer ${token}` } });
     const data = await response.json();
     if (!response.ok) { list.innerHTML = '<p class="text-xs text-rose-300">تعذر تحميل أعضاء المجتمع.</p>'; return; }
-    list.innerHTML = data.users.length ? data.users.map(user => `<div class="social-community-card" role="button" tabindex="0" onclick="openSocialUserCard('${escapeSocialHtml(user.id)}')" onkeydown="if(event.key==='Enter'||event.key===' ') openSocialUserCard('${escapeSocialHtml(user.id)}')"><div class="social-community-cover" style="${user.coverImage ? `background-image:url('${escapeSocialHtml(user.coverImage)}')` : ''}"></div><div class="social-community-user"><div class="social-community-avatar">${user.profileImage ? `<img src="${escapeSocialHtml(user.profileImage)}" alt="" class="twitter-avatar-image">` : escapeSocialHtml(String(user.label).slice(-1))}</div><div class="min-w-0 flex-1"><b class="block truncate text-xs text-white">${escapeSocialHtml(user.label)}</b><span class="text-[10px] text-slate-500">${user.posts} منشور · ${user.followers} متابع</span>${user.socialBio ? `<span class="social-community-bio">${escapeSocialHtml(user.socialBio)}</span>` : ''}</div><button type="button" class="social-follow-button ${user.following ? 'is-following' : ''}" onclick="event.stopPropagation(); toggleSocialFollow('${escapeSocialHtml(user.id)}', this)">${user.following ? 'تتابعه' : 'متابعة'}</button></div></div>`).join('') : '<p class="text-xs text-slate-500">لا يوجد أعضاء آخرون بعد.</p>';
+    list.innerHTML = data.users.length ? data.users.map(user => `<div class="social-community-card" role="button" tabindex="0" onclick="openSocialUserCard('${escapeSocialHtml(user.id)}')" onkeydown="if(event.key==='Enter'||event.key===' ') openSocialUserCard('${escapeSocialHtml(user.id)}')"><div class="social-community-cover" style="${user.coverImage ? `background-image:url('${escapeSocialHtml(user.coverImage)}')` : ''}"></div><div class="social-community-user"><div class="social-community-avatar">${user.profileImage ? `<img src="${escapeSocialHtml(user.profileImage)}" alt="" class="twitter-avatar-image">` : escapeSocialHtml(String(user.label).slice(-1))}</div><div class="min-w-0 flex-1"><b class="block truncate text-xs text-white">${escapeSocialHtml(user.label)} ${user.isOfficialPlatform ? '<i class="fa-solid fa-circle-check text-cyan-300" title="الحساب الرسمي"></i>' : ''}</b><span class="text-[10px] text-slate-500">${user.posts} منشور · ${user.followers} متابع</span>${user.socialBio ? `<span class="social-community-bio">${escapeSocialHtml(user.socialBio)}</span>` : ''}</div><button type="button" class="social-follow-button ${user.following ? 'is-following' : ''}" onclick="event.stopPropagation(); toggleSocialFollow('${escapeSocialHtml(user.id)}', this)">${user.following ? 'تتابعه' : 'متابعة'}</button></div></div>`).join('') : '<p class="text-xs text-slate-500">لا يوجد أعضاء آخرون بعد.</p>';
 }
 
 async function toggleSocialFollow(userId, button) {
@@ -2526,6 +2543,7 @@ document.addEventListener('keydown', (event) => {
 
 function renderSocialPostCard(post) {
     const isOfficialAi = Boolean(post.isOfficialAi || post.is_official_ai);
+    const isOfficialPlatform = Boolean(post.authorIsOfficial);
     const authorLabel = String(post.authorLabel || post.username_display || post.author?.email || 'OPERIX').trim() || 'OPERIX';
     const content = String(post.content || post.post_text || '').trim() || 'محتوى منشور';
     const formattedContent = escapeSocialHtml(content).replace(/(^|\s)#([\p{L}\p{N}_-]{2,40})/gu, '$1<button type="button" class="social-hashtag" onclick="searchSocialHashtag(\'$2\')">#$2</button>');
@@ -2541,7 +2559,7 @@ function renderSocialPostCard(post) {
             <div class="twitter-post-content">
                 <div class="twitter-post-header">
                     <div class="twitter-user-meta">
-                        ${post.authorId && !isOfficialAi ? `<button type="button" class="twitter-author-button" onclick="openSocialUserCard('${escapeSocialHtml(post.authorId)}')">${escapeSocialHtml(authorLabel)}</button>` : `<strong>${escapeSocialHtml(authorLabel)}</strong>`}
+                        ${post.authorId && !isOfficialAi ? `<button type="button" class="twitter-author-button" onclick="openSocialUserCard('${escapeSocialHtml(post.authorId)}')">${escapeSocialHtml(authorLabel)}${isOfficialPlatform ? ' <i class="fa-solid fa-circle-check text-cyan-300" title="الحساب الرسمي"></i>' : ''}</button>` : `<strong>${escapeSocialHtml(authorLabel)}</strong>`}
                         <span>${handle}</span>
                         <span class="twitter-post-time">• ${createdAt}</span>
                     </div>

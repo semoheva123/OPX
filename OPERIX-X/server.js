@@ -23,6 +23,7 @@ const GameSetting = require('./src/models/GameSetting');
 const { connectDatabase, closeDatabase } = require('./src/config/database');
 const { resetDailyTasks, scheduleDailyTaskReset } = require('./src/jobs/dailyTasksReset');
 const { generateOfficialAiPost } = require('./src/jobs/aiAnnouncer');
+const { ensureOfficialCommunityAccount, followOfficialForExistingUsers } = require('./src/services/officialCommunity');
 const { processScheduledBroadcasts } = require('./src/controllers/adminController');
 const {
   passwordResetTemplate,
@@ -1327,6 +1328,8 @@ connectDatabase()
     await seedVipLevels();
     await loadGameSettings();
     await migrateLegacyReferralCodes();
+    await ensureOfficialCommunityAccount();
+    await followOfficialForExistingUsers();
     await Transaction.init();
     scheduleDailyTaskReset();
     setInterval(() => processScheduledBroadcasts(webpush).catch(error => console.error('Broadcast scheduler error:', error.message)), 60 * 1000);

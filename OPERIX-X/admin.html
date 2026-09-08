@@ -146,6 +146,7 @@
         <div id="admin-overview" class="space-y-6">
             <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3"><div><span class="text-[10px] text-emerald-300 font-bold tracking-widest">OPERIX OPERATIONS CENTER</span><h2 class="text-xl font-black text-white mt-1">نظرة عامة والسرعة</h2><p class="text-[10px] text-slate-500 mt-1">قراءة تشغيلية سريعة لأهم مؤشرات المنصة</p></div><div class="flex items-center gap-2"><span class="ops-status text-[10px] text-emerald-300"><i class="ops-dot"></i>الخدمات الأساسية متصلة</span><button onclick="refreshOverviewDashboard()" title="تحديث البيانات" class="px-3 py-2 bg-slate-900 text-slate-300 rounded-xl"><i id="overviewRefreshIcon" class="fa-solid fa-arrows-rotate"></i></button></div></div>
             <div class="flex items-center justify-between"><span id="overviewLastSync" class="text-[10px] text-slate-500">آخر مزامنة: --</span><select id="overviewPeriod" onchange="refreshOverviewDashboard()" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-slate-300"><option value="7">آخر 7 أيام</option><option value="30" selected>آخر 30 يومًا</option></select></div>
+            <section class="glass-card rounded-3xl border border-cyan-500/20 p-4"><div class="flex items-center justify-between gap-3"><div><h3 class="text-sm font-black text-white">رابط الدعم الفني</h3><p class="mt-1 text-[10px] text-slate-500">يظهر هذا الرابط للمستخدمين داخل قسم حسابي.</p></div><i class="fa-solid fa-headset text-cyan-300"></i></div><div class="mt-3 flex gap-2"><input id="platformSupportUrlInput" type="url" placeholder="https://t.me/your-support" class="min-w-0 flex-1 rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-400 dir-ltr"><button type="button" onclick="savePlatformSupportUrl()" class="rounded-xl bg-cyan-400 px-4 py-2.5 text-xs font-black text-slate-950">حفظ الرابط</button></div><p id="platformSupportUrlStatus" class="mt-2 text-[10px] text-slate-500"></p></section>
             
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="glass-card p-5 rounded-3xl border border-slate-800 space-y-2">
@@ -537,6 +538,25 @@
 
         function adminJsonHeaders(extra = {}) {
             return { 'Content-Type': 'application/json', ...adminHeaders(), ...extra };
+        }
+
+        async function loadPlatformSupportUrl() {
+            try {
+                const response = await fetch('/api/settings/admin', { headers: adminHeaders() });
+                const data = await response.json();
+                if (response.ok && data.settings) document.getElementById('platformSupportUrlInput').value = data.settings.supportUrl || '';
+            } catch (error) { }
+        }
+
+        async function savePlatformSupportUrl() {
+            const input = document.getElementById('platformSupportUrlInput');
+            const status = document.getElementById('platformSupportUrlStatus');
+            const supportUrl = input.value.trim();
+            if (!/^https?:\/\//i.test(supportUrl)) { status.innerText = 'أدخل رابطًا صالحًا يبدأ بـ https:// أو http://'; return; }
+            status.innerText = 'جاري الحفظ...';
+            const response = await fetch('/api/settings/admin', { method: 'POST', headers: adminJsonHeaders(), body: JSON.stringify({ supportUrl }) });
+            const data = await response.json();
+            status.innerText = response.ok ? 'تم تحديث رابط الدعم للمستخدمين.' : (data.error || 'تعذر حفظ الرابط');
         }
 
         function showAdminConfirm(message, title = 'تأكيد الإجراء') {
@@ -1622,6 +1642,7 @@
                     currentAdminRole = data.user?.role || getTokenRole(token || '');
                     if (!adminPermissions[currentAdminRole]) throw new Error('هذا الحساب ليس حساب مدير.');
                     applyRoleVisibility();
+                    loadPlatformSupportUrl();
                     refreshOverviewDashboard();
                     fetchUsersList();
                     if (canAdmin('finance')) fetchTransactionsList();
