@@ -1636,6 +1636,8 @@ async function loadUserProfile() {
         }
     } catch(err) {
         document.getElementById('loadingView').classList.add('hide');
+        const taskStatus = document.getElementById('zealyTaskStatus');
+        if (taskStatus) taskStatus.innerText = 'سجّل الدخول مجددًا لعرض المهام';
         if (!currentUserData) {
             showToast('تعذر الاتصال بالخادم. ستتم إعادة المحاولة تلقائيًا.');
             setTimeout(() => { if (!currentUserData && localStorage.getItem('token')) loadUserProfile(); }, 1500);
