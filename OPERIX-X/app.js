@@ -1792,18 +1792,25 @@ function updateTaskAvailability(completed, maximum) {
 
 async function loadZealyTasks() {
     const token = localStorage.getItem('token');
-    if (!token) return;
     const status = document.getElementById('zealyTaskStatus');
+    if (!token) {
+        if (status) status.innerText = 'سجّل الدخول لعرض المهام';
+        return;
+    }
     if (status) status.innerText = 'جارٍ المزامنة...';
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
     try {
-        const response = await fetch('/api/integrations/zealy/tasks', { headers: { Authorization: `Bearer ${token}` } });
+        const response = await fetch('/api/integrations/zealy/tasks', { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'تعذر تحميل المهام');
         zealyTasks = Array.isArray(data.tasks) ? data.tasks : [];
         if (status) status.innerText = zealyTasks.length ? `${zealyTasks.length} مهمة متاحة` : 'لا توجد مهام منشورة';
     } catch (error) {
         zealyTasks = [];
-        if (status) status.innerText = 'تعذر تحميل مهام المجتمع';
+        if (status) status.innerText = error.name === 'AbortError' ? 'انتهت مهلة تحميل المهام' : 'تعذر تحميل مهام المجتمع';
+    } finally {
+        clearTimeout(timeout);
     }
     renderTaskBoard(Number(currentUserData?.todayCompletedTasks || 0), tierLimits[currentUserTier] || 33);
 }
