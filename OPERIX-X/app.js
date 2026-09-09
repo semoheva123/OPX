@@ -1619,6 +1619,7 @@ async function loadUserProfile() {
             document.getElementById('lblProgressPercent').innerText = `${Math.round(percent > 100 ? 100 : percent)}%`;
             updateTaskAvailability(data.user.todayCompletedTasks || 0, maxTasks);
             await loadZealyTasks();
+            await loadCpaLeadOfferwall();
             startTaskResetCountdown();
             loadAccountGrowth();
             
@@ -1815,6 +1816,30 @@ async function loadZealyTasks() {
         clearTimeout(timeout);
     }
     renderTaskBoard(Number(currentUserData?.todayCompletedTasks || 0), tierLimits[currentUserTier] || 33);
+}
+
+async function loadCpaLeadOfferwall() {
+    const section = document.getElementById('cpaleadOfferwallSection');
+    const frame = document.getElementById('cpaleadOfferwallFrame');
+    const status = document.getElementById('cpaleadOfferwallStatus');
+    const token = localStorage.getItem('token');
+    if (!section || !frame || !status || !token) return;
+    try {
+        const response = await fetch('/api/integrations/cpalead/offerwall', { headers: { Authorization: `Bearer ${token}` } });
+        const data = await response.json();
+        if (!response.ok || !/^https:\/\/www\.cpalead\.com\/wall\//i.test(String(data.url || ''))) {
+            if (response.status !== 503) section.classList.remove('hidden');
+            status.innerText = response.status === 503 ? 'جدار العروض غير مفعّل حاليًا.' : 'تعذر تجهيز جدار العروض.';
+            return;
+        }
+        section.classList.remove('hidden');
+        frame.src = data.url;
+        frame.classList.remove('hidden');
+        status.innerText = 'العروض المتاحة حسب بلدك وجهازك.';
+    } catch (error) {
+        section.classList.remove('hidden');
+        status.innerText = 'تعذر الاتصال بجدار العروض.';
+    }
 }
 
 function openZealyTask(url) {
@@ -2947,10 +2972,11 @@ async function loadDepositAddress() {
     }
 }
 
-async function confirmDeposit() {
+async function confirmDeposit(event) {
+    event?.preventDefault();
     if (hasPendingDeposit) {
         showToast('❌ لا يمكنك تقديم طلب إيداع جديد حتى يتم قبول أو رفض الطلب المعلق الحالي');
-        return;
+        return false;
     }
 
     const token = localStorage.getItem('token');
@@ -2970,20 +2996,23 @@ async function confirmDeposit() {
         });
         const data = await res.json();
         if(res.ok) {
-            hasPendingDeposit = true; // قفل الإيداع فور إرسال الطلب
+            hasPendingDeposit = data.deposit?.status === 'pending';
             showToast(`تم شحن ${amount}$ بنجاح`, 'win');
             closeDepositModal();
             if (data.wallet) updateWalletData(data.wallet);
             await loadUserProfile();
+            return false;
         } else {
             showToast('❌ ' + (data.error || 'خطأ في عملية الإيداع'));
             btn.disabled = false;
             btn.innerText = 'تأكيد طلب الإيداع';
+            return false;
         }
     } catch(err) {
         showToast('❌ خطأ في الاتصال بالخادم');
         btn.disabled = false;
         btn.innerText = 'تأكيد طلب الإيداع';
+        return false;
     }
 }
 
