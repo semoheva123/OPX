@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 const User = require('../models/User');
 const Session = require('../models/Session');
 const SecurityEvent = require('../models/SecurityEvent');
@@ -440,7 +441,7 @@ const dataAccess = {
     async create(data) {
       if (isSupabaseRuntime() && supabaseAdmin) {
         return supabaseInsert('sessions', normalizeSupabaseDoc({
-          id: data._id || new mongoose.Types.ObjectId().toString(),
+          id: data._id || crypto.randomUUID(),
           user_id: data.userId ? String(data.userId) : null,
           jti: data.jti,
           scope: data.scope || 'user',
