@@ -152,20 +152,21 @@ function applySupabaseFilters(request, query = {}) {
     }
     if (typeof rawValue === 'object' && !Array.isArray(rawValue)) {
       for (const [operator, value] of Object.entries(rawValue)) {
-        if (operator === '$eq') result = value === null ? result.is(key, null) : result.eq(key, value);
-        else if (operator === '$ne') result = value === null ? result.not(key, 'is', null) : result.neq(key, value);
-        else if (operator === '$gt') result = result.gt(key, value);
-        else if (operator === '$gte') result = result.gte(key, value);
-        else if (operator === '$lt') result = result.lt(key, value);
-        else if (operator === '$lte') result = result.lte(key, value);
-        else if (operator === '$in') result = result.in(key, value);
+        const normalizedValue = value instanceof Date ? value.toISOString() : value;
+        if (operator === '$eq') result = normalizedValue === null ? result.is(key, null) : result.eq(key, normalizedValue);
+        else if (operator === '$ne') result = normalizedValue === null ? result.not(key, 'is', null) : result.neq(key, normalizedValue);
+        else if (operator === '$gt') result = result.gt(key, normalizedValue);
+        else if (operator === '$gte') result = result.gte(key, normalizedValue);
+        else if (operator === '$lt') result = result.lt(key, normalizedValue);
+        else if (operator === '$lte') result = result.lte(key, normalizedValue);
+        else if (operator === '$in') result = result.in(key, Array.isArray(value) ? value.map(item => item instanceof Date ? item.toISOString() : item) : value);
         else if (operator === '$nin') result = result.not(key, 'in', `(${value.join(',')})`);
         else if (operator === '$exists') result = value ? result.not(key, 'is', null) : result.is(key, null);
       }
       continue;
     }
     if (Array.isArray(rawValue)) result = result.in(key, rawValue);
-    else result = result.eq(key, rawKey === 'email' ? String(rawValue).toLowerCase() : rawValue);
+    else result = result.eq(key, rawKey === 'email' ? String(rawValue).toLowerCase() : rawValue instanceof Date ? rawValue.toISOString() : rawValue);
   }
   return result;
 }
