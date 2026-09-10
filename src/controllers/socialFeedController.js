@@ -3,6 +3,7 @@ const User = require('../models/User');
 const { moderateText } = require('../services/socialSafetyBot');
 const realtimeService = require('../services/realtimeService');
 const SocialFollow = require('../models/SocialFollow');
+const dataAccess = require('../services/dataAccess');
 
 const MAX_IMAGE_DATA_LENGTH = 2 * 1024 * 1024;
 const allowedImageHosts = new Set(['ibb.co', 'www.ibb.co', 'i.ibb.co', 'imgbb.com', 'www.imgbb.com']);
@@ -30,6 +31,7 @@ function normalizeImageUrl(value) {
 
 async function listPosts(req, res) {
   try {
+    if (dataAccess.isSupabaseRuntime()) return res.json({ success: true, posts: [], page: 1, hasMore: false, storageUnavailable: true });
     const page = Math.min(Math.max(Number.parseInt(req.query.page, 10) || 1, 1), 20);
     const limit = 15;
     const query = { status: 'visible' };
@@ -67,6 +69,7 @@ async function listPosts(req, res) {
     });
     res.json({ success: true, posts: pagePosts, page, hasMore: posts.length === candidateLimit && pagePosts.length === limit });
   } catch (error) {
+    if (String(error?.code || '') === 'PGRST205') return res.json({ success: true, posts: [], page: 1, hasMore: false, storageUnavailable: true });
     res.status(500).json({ error: 'تعذر تحميل جدار التواصل حالياً' });
   }
 }

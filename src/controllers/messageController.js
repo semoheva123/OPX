@@ -39,7 +39,10 @@ async function listConversations(req, res) {
     const users = await User.find({ _id: { $in: ids }, isBanned: false }).select('email referralCode profileImage').lean();
     const byId = new Map(users.map(user => [String(user._id), user]));
     res.json({ success: true, conversations: ids.map(id => ({ ...conversations.get(id), user: byId.get(id) ? { _id: byId.get(id)._id, label: labelFor(byId.get(id)), profileImage: byId.get(id).profileImage || '' } : null })).filter(item => item.user) });
-  } catch (error) { res.status(500).json({ error: 'تعذر تحميل المحادثات الخاصة' }); }
+  } catch (error) {
+    if (dataAccess.isSupabaseRuntime() && String(error?.code || '') === 'PGRST205') return res.json({ success: true, conversations: [], storageUnavailable: true });
+    res.status(500).json({ error: 'تعذر تحميل المحادثات الخاصة' });
+  }
 }
 
 async function getThread(req, res) {

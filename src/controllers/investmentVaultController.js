@@ -16,7 +16,10 @@ async function getVaultContracts(req, res) {
       : await InvestmentVaultContract.find({ enabled: true }).sort({ durationDays: 1 }).lean();
     const contracts = storedContracts.length ? storedContracts : DEFAULT_CONTRACTS;
     res.json({ success: true, contracts });
-  } catch (error) { res.status(500).json({ error: 'تعذر تحميل عقود الخزنة' }); }
+  } catch (error) {
+    if (dataAccess.isSupabaseRuntime()) return res.json({ success: true, contracts: DEFAULT_CONTRACTS, storageUnavailable: true });
+    res.status(500).json({ error: 'تعذر تحميل عقود الخزنة' });
+  }
 }
 
 async function createVault(req, res) {
@@ -89,7 +92,10 @@ async function getVaults(req, res) {
       : await InvestmentVault.find({ userId: req.user.id }).sort({ createdAt: -1 }).lean();
     const now = Date.now();
     res.json({ success: true, vaults: vaults.map(vault => ({ ...vault, status: vault.status === 'active' && new Date(vault.maturityDate).getTime() <= now ? 'matured' : vault.status })) });
-  } catch (error) { res.status(500).json({ error: 'تعذر تحميل خزائن الاستثمار' }); }
+  } catch (error) {
+    if (dataAccess.isSupabaseRuntime()) return res.json({ success: true, vaults: [], storageUnavailable: true });
+    res.status(500).json({ error: 'تعذر تحميل خزائن الاستثمار' });
+  }
 }
 
 async function claimVault(req, res) {
