@@ -1,12 +1,14 @@
 function getDatabaseMode() {
   const explicitMode = (process.env.DATABASE_MODE || '').trim().toLowerCase();
-  if (explicitMode === 'supabase') return 'supabase';
-  if (explicitMode === 'mongo') return 'mongo';
+  if (explicitMode === 'mongo') {
+    console.warn('⚠️ MongoDB mode is disabled in production. The platform now requires Supabase only.');
+    return 'supabase';
+  }
+  if (explicitMode === 'supabase' || explicitMode === '') {
+    return 'supabase';
+  }
 
-  const hasSupabaseConfig = Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY);
-  if (hasSupabaseConfig) return 'supabase';
-
-  return 'mongo';
+  return 'supabase';
 }
 
 function getRuntimeDatabaseInfo() {
@@ -18,10 +20,10 @@ function getRuntimeDatabaseInfo() {
     mode,
     mongoConfigured,
     supabaseConfigured,
-    shouldUseSupabase: mode === 'supabase',
+    shouldUseSupabase: true,
     shouldUseMongo: false,
     canFallbackToMongo: false,
-    safeCutoverReady: mode === 'supabase'
+    safeCutoverReady: mode === 'supabase' && supabaseConfigured
   };
 }
 
@@ -30,20 +32,19 @@ function hasLegacyMongo() {
 }
 
 function isSupabaseEnabled() {
-  return Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY);
+  return Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY);
 }
 
 async function connectDatabase() {
   const mode = getDatabaseMode();
   const runtimeInfo = getRuntimeDatabaseInfo();
 
-  if (mode === 'supabase') {
-    console.log('✅ DATABASE_MODE=supabase: Supabase is the only active database configuration.');
-    return { mode, connected: false, legacyMongo: false, ...runtimeInfo };
+  if (!isSupabaseEnabled()) {
+    throw new Error('Production database is configured for Supabase only. Set SUPABASE_URL, SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY before startup.');
   }
 
-  console.warn('⚠️ Legacy MongoDB mode is disabled. The project is configured for Supabase only.');
-  return { mode, connected: false, legacyMongo: false, ...runtimeInfo };
+  console.log('✅ Production runtime is locked to Supabase. MongoDB is fully disabled.');
+  return { mode, connected: true, legacyMongo: false, ...runtimeInfo };
 }
 
 async function closeDatabase() {
