@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" type="image/svg+xml" href="/operix-icon.svg">
+<link rel="stylesheet" href="/dist/tailwind.css">
+<title>دخول الإدارة | OPERIX</title>
+<style>
+body{font-family:"IBM Plex Sans Arabic",Arial,sans-serif;background:#07111f;background-image:linear-gradient(rgba(69,214,176,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(69,214,176,.035) 1px,transparent 1px);background-size:42px 42px}.panel{background:rgba(11,24,39,.9);border:1px solid rgba(247,185,85,.2);box-shadow:0 25px 80px rgba(0,0,0,.3)}input:focus{border-color:#f7b955;outline:none;box-shadow:0 0 0 3px rgba(247,185,85,.1)}
+</style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-5 text-slate-100">
+<main class="panel w-full max-w-md rounded-3xl p-7">
+<div class="text-center mb-7"><img src="/operix-logo.svg" alt="OPERIX" class="h-12 w-auto mx-auto mb-5"><span class="text-[10px] text-emerald-300 tracking-widest">SECURE OPERATIONS ACCESS</span><h1 class="text-2xl font-black text-white mt-2">دخول لوحة الإدارة</h1><p class="text-xs text-slate-400 mt-2">مساحة منفصلة ومحمية لفريق OPERIX</p></div>
+<form id="adminLoginForm" class="space-y-4">
+<div><label class="block text-xs text-slate-400 mb-1">البريد الإداري</label><input id="adminEmail" type="email" required autocomplete="username" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white"></div>
+<div><label class="block text-xs text-slate-400 mb-1">كلمة المرور</label><input id="adminPassword" type="password" required autocomplete="current-password" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white"></div>
+<div><label class="block text-xs text-slate-400 mb-1">رمز المصادقة الثنائية</label><input id="adminTwoFactorCode" type="text" required inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" placeholder="000000" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-center tracking-[0.45em] text-lg text-white"><p class="text-[10px] text-slate-500 mt-1">أدخل الرمز الحالي من تطبيق Google Authenticator</p></div>
+<p id="adminLoginError" class="hidden text-xs text-rose-300"></p><button id="adminLoginButton" class="w-full py-3.5 bg-amber-400 text-slate-950 rounded-xl text-sm font-black hover:bg-amber-300">الدخول الآمن</button>
+</form>
+<div class="mt-6 pt-5 border-t border-slate-800 text-center"><a href="/" class="text-xs text-slate-400 hover:text-amber-400">العودة إلى منصة OPERIX</a></div>
+</main>
+<script>
+document.getElementById('adminLoginForm').addEventListener('submit',async event=>{event.preventDefault();const button=document.getElementById('adminLoginButton');const error=document.getElementById('adminLoginError');button.disabled=true;button.innerText='جارٍ التحقق...';error.classList.add('hidden');try{const response=await fetch('/api/auth/admin-login',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:document.getElementById('adminEmail').value,password:document.getElementById('adminPassword').value,twoFactorCode:document.getElementById('adminTwoFactorCode').value})});const data=await response.json();if(!response.ok)throw new Error(data.error||'بيانات الدخول غير صحيحة');localStorage.setItem('adminToken',data.token);window.location.href='/admin.html';}catch(e){error.innerText=e.message;error.classList.remove('hidden');}finally{button.disabled=false;button.innerText='الدخول الآمن';}});
+</script>
+</body>
+</html>

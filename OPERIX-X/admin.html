@@ -1,0 +1,1662 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#030712">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="OPERIX Admin">
+    <link rel="icon" type="image/svg+xml" href="/operix-icon.svg">
+    <link rel="manifest" href="/admin-manifest.json">
+    <link rel="apple-touch-icon" href="/operix-icon.svg">
+    <title>OPERIX - لوحة تحكم الإدارة الشاملة</title>
+    <link rel="stylesheet" href="/dist/tailwind.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.ably.com/lib/ably.min-2.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap');
+        :root { --operix-ink: #07111f; --operix-panel: rgba(11, 24, 39, 0.88); --operix-line: rgba(148, 163, 184, 0.16); --operix-gold: #f7b955; }
+        body { font-family: 'IBM Plex Sans Arabic', sans-serif; background-color: var(--operix-ink); background-image: linear-gradient(rgba(69, 214, 176, 0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(69, 214, 176, 0.035) 1px, transparent 1px), radial-gradient(circle at 90% 0%, rgba(247, 185, 85, 0.12), transparent 30rem); background-size: 42px 42px, 42px 42px, auto; color: #f3f4f6; }
+        .glass-card { background: var(--operix-panel); backdrop-filter: blur(16px); border: 1px solid var(--operix-line); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.16); }
+        .gold-gradient { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+        .purple-gradient { background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); }
+        .emerald-gradient { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+        .rose-gradient { background: linear-gradient(135deg, #f43f5e 0%, #be123c 100%); }
+        .hide { display: none !important; }
+        *, button, input, select, textarea { letter-spacing: 0; }
+        button, input, select, textarea { transition: border-color .2s ease, background-color .2s ease, box-shadow .2s ease, transform .2s ease; }
+        button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--operix-gold); outline-offset: 2px; }
+        button:not(:disabled):hover { transform: translateY(-1px); }
+        main { animation: operixReveal .55s ease both; }
+        @keyframes operixReveal { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+        .operix-mark { position: relative; overflow: hidden; background: linear-gradient(145deg, #ffe1a1 0%, #f7b955 38%, #bb7620 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 12px 28px rgba(247,185,85,.2); }
+        .operix-mark::after { content: ''; position: absolute; width: 120%; height: 45%; top: -18%; left: -10%; background: rgba(255,255,255,.28); transform: rotate(-28deg); }
+        .operix-wordmark { letter-spacing: .08em; font-family: Georgia, serif; }
+        #sidebar { box-shadow: -18px 0 50px rgba(0,0,0,.16); }
+        .glass-card { border-radius: 20px; transition: border-color .25s ease, box-shadow .25s ease, transform .25s ease; }
+        .glass-card:hover { border-color: rgba(247,185,85,.24); box-shadow: 0 22px 60px rgba(0,0,0,.22); }
+        .ops-chart { display:flex; align-items:end; gap:5px; height:150px; padding:12px 4px 0; border-bottom:1px solid var(--operix-line); }
+        .ops-bar { min-width:8px; flex:1; max-width:24px; border-radius:5px 5px 0 0; background:linear-gradient(#45d6b0,#137d70); opacity:.9; }
+        .ops-bar:hover { opacity:1; background:linear-gradient(#f7c45e,#b56d1b); }
+        .ops-status { display:flex; align-items:center; gap:8px; padding:10px 12px; border:1px solid var(--operix-line); border-radius:12px; background:rgba(3,10,19,.38); }
+        .ops-dot { width:8px; height:8px; border-radius:50%; background:#45d6b0; box-shadow:0 0 0 5px rgba(69,214,176,.08); }
+        table thead { letter-spacing: .02em; }
+        table tbody tr { transition: background-color .2s ease; }
+        table tbody tr:hover { background: rgba(247,185,85,.045); }
+        input, select, textarea { box-shadow: inset 0 1px 2px rgba(0,0,0,.18); }
+        #adminConfirmModal .glass-card { animation: operixModalReveal .2s ease both; }
+        #adminConfirmModal { position: fixed !important; inset: 0 !important; z-index: 2147483647 !important; background: rgba(2, 8, 18, .9); }
+        #adminConfirmModal[aria-hidden="false"] { display: flex !important; }
+        #adminConfirmModal .glass-card { animation: operixModalReveal .2s ease both; box-shadow: 0 24px 80px rgba(0,0,0,.55), 0 0 0 1px rgba(247,185,85,.08); }
+        @keyframes operixModalReveal { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        @media (min-width: 768px) { main { padding: 2.5rem 3rem; } }
+    </style>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100 flex flex-col md:flex-row">
+
+    <div id="toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 z-50 hide bg-slate-900 border border-amber-500 text-white px-6 py-3 rounded-2xl shadow-2xl text-sm font-medium transition-all duration-300"></div>
+
+    <div id="adminConfirmModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] hide items-center justify-center p-4 pointer-events-auto" role="dialog" aria-modal="true" aria-labelledby="adminConfirmTitle" aria-hidden="true">
+        <div class="glass-card relative z-10 w-full max-w-sm p-6 rounded-3xl border border-amber-500/30 space-y-4">
+            <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-300 flex items-center justify-center shrink-0"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                <div><h3 id="adminConfirmTitle" class="text-base font-black text-white">تأكيد الإجراء</h3><p id="adminConfirmMessage" class="text-xs text-slate-400 mt-1 leading-6"></p></div>
+            </div>
+            <div class="relative z-10 flex gap-2"><button id="adminConfirmCancel" type="button" class="flex-1 py-2.5 bg-slate-800 text-slate-300 rounded-xl text-xs font-bold">إلغاء</button><button id="adminConfirmAccept" type="button" class="flex-1 py-2.5 bg-amber-400 text-slate-950 rounded-xl text-xs font-black">تأكيد</button></div>
+        </div>
+    </div>
+
+    <!-- شريط العرض العلوي للموبايل -->
+    <div class="md:hidden flex items-center justify-between p-4 glass-card border-b border-slate-800 shrink-0">
+        <div class="flex items-center space-x-2 space-x-reverse">
+            <img src="/operix-logo.svg" alt="OPERIX" class="h-8 w-auto">
+            <span class="font-black text-white text-sm">OPERIX Admin</span>
+        </div>
+        <button onclick="toggleMobileSidebar()" class="text-white text-xl p-2 hover:bg-slate-900 rounded-lg">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+    </div>
+
+    <!-- القائمة الجانبية -->
+    <aside id="sidebar" class="w-full md:w-64 glass-card border-b md:border-b-0 md:border-l border-slate-800 p-4 flex flex-col justify-between shrink-0 hidden md:flex">
+        <div class="space-y-6">
+            <div class="flex items-center space-x-3 space-x-reverse px-2">
+                <img src="/operix-logo.svg" alt="OPERIX" class="h-9 w-auto">
+                <div>
+                    <h1 class="font-black text-white text-base">OPERIX Admin</h1>
+                    <span class="text-[10px] text-amber-400 font-bold">لوحة التحكم العليا v3.5</span>
+                </div>
+            </div>
+
+            <nav class="space-y-1">
+                <button data-permission="read_overview" onclick="switchAdminTab('overview')" id="btn-tab-overview" class="w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-xl text-xs font-bold bg-amber-500 text-slate-950 transition-all">
+                    <i class="fa-solid fa-chart-pie text-base"></i>
+                    <span>نظرة عامة والسرعة</span>
+                </button>
+                <button data-permission="read_overview" onclick="switchAdminTab('analytics')" id="btn-tab-analytics" class="w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-900 hover:text-white transition-all"><i class="fa-solid fa-chart-line text-base"></i><span>التحليلات</span></button>
+                <button data-permission="read_users" onclick="switchAdminTab('users')" id="btn-tab-users" class="w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-900 hover:text-white transition-all">
+                    <i class="fa-solid fa-users text-base"></i>
+                    <span>إدارة المستخدمين</span>
+                </button>
+                <button data-permission="finance" onclick="switchAdminTab('withdrawals')" id="btn-tab-withdrawals" class="w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-900 hover:text-white transition-all">
+                    <i class="fa-solid fa-money-bill-transfer text-base"></i>
+                    <span>السحب والإيداع <b id="pendingAlertBadge" class="hidden bg-rose-500 text-white rounded-full px-1.5 py-0.5 text-[9px]">0</b></span>
+                </button>
+                <button data-permission="manage_vip" onclick="switchAdminTab('plans')" id="btn-tab-plans" class="w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-900 hover:text-white transition-all">
+                    <i class="fa-solid fa-layer-group text-base"></i>
+                    <span>إدارة المستويات (VIP)</span>
+                </button>
+                <button data-permission="manage_games" onclick="switchAdminTab('games')" id="btn-tab-games" class="w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-900 hover:text-white transition-all">
+                    <i class="fa-solid fa-dharmachakra text-base"></i>
+                    <span>إعدادات العجلة والصناديق</span>
+                </button>
+                <button data-permission="broadcast" onclick="switchAdminTab('broadcast')" id="btn-tab-broadcast" class="w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-900 hover:text-white transition-all">
+                    <i class="fa-solid fa-bullhorn text-base"></i>
+                    <span>الإشعارات والبث</span>
+                </button>
+                <button data-permission="read_audit" onclick="switchAdminTab('audit')" id="btn-tab-audit" class="w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-900 hover:text-white transition-all">
+                    <i class="fa-solid fa-list-check text-base"></i>
+                    <span>سجل التدقيق</span>
+                </button>
+                <button data-permission="manage_users" onclick="switchAdminTab('support')" id="btn-tab-support" class="w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-900 hover:text-white transition-all"><i class="fa-solid fa-ticket text-base"></i><span>تذاكر الدعم</span></button>
+                <button data-permission="manage_users" onclick="switchAdminTab('social-feed')" id="btn-tab-social-feed" class="w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-900 hover:text-white transition-all"><i class="fa-solid fa-comments text-base"></i><span>مراجعة جدار التواصل</span></button>
+                <button data-full-admin="true" onclick="switchAdminTab('security')" id="btn-tab-security" class="w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-900 hover:text-white transition-all"><i class="fa-solid fa-shield-halved text-base"></i><span>أمان الإدارة</span></button>
+                <button data-permission="read_referrals" onclick="switchAdminTab('referrals')" id="btn-tab-referrals" class="w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-900 hover:text-white transition-all">
+                    <i class="fa-solid fa-share-nodes text-base"></i>
+                    <span>إدارة الإحالات</span>
+                </button>
+            </nav>
+        </div>
+
+        <div class="pt-4 border-t border-slate-800">
+            <button onclick="adminLogout()" class="w-full py-2.5 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 font-bold rounded-xl text-xs flex items-center justify-center space-x-2 space-x-reverse border border-rose-500/20">
+                <i class="fa-solid fa-power-off"></i>
+                <span>تسجيل الخروج</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- المحتوى الرئيسي -->
+    <main class="flex-1 p-4 md:p-8 overflow-y-auto space-y-6">
+
+        <!-- تبويب: نظرة عامة -->
+        <div id="admin-overview" class="space-y-6">
+            <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3"><div><span class="text-[10px] text-emerald-300 font-bold tracking-widest">OPERIX OPERATIONS CENTER</span><h2 class="text-xl font-black text-white mt-1">نظرة عامة والسرعة</h2><p class="text-[10px] text-slate-500 mt-1">قراءة تشغيلية سريعة لأهم مؤشرات المنصة</p></div><div class="flex items-center gap-2"><span class="ops-status text-[10px] text-emerald-300"><i class="ops-dot"></i>الخدمات الأساسية متصلة</span><button onclick="refreshOverviewDashboard()" title="تحديث البيانات" class="px-3 py-2 bg-slate-900 text-slate-300 rounded-xl"><i id="overviewRefreshIcon" class="fa-solid fa-arrows-rotate"></i></button></div></div>
+            <div class="flex items-center justify-between"><span id="overviewLastSync" class="text-[10px] text-slate-500">آخر مزامنة: --</span><select id="overviewPeriod" onchange="refreshOverviewDashboard()" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-slate-300"><option value="7">آخر 7 أيام</option><option value="30" selected>آخر 30 يومًا</option></select></div>
+            <section class="glass-card rounded-3xl border border-cyan-500/20 p-4"><div class="flex items-center justify-between gap-3"><div><h3 class="text-sm font-black text-white">رابط الدعم الفني</h3><p class="mt-1 text-[10px] text-slate-500">يظهر هذا الرابط للمستخدمين داخل قسم حسابي.</p></div><i class="fa-solid fa-headset text-cyan-300"></i></div><div class="mt-3 flex gap-2"><input id="platformSupportUrlInput" type="url" placeholder="https://t.me/your-support" class="min-w-0 flex-1 rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-400 dir-ltr"><button type="button" onclick="savePlatformSupportUrl()" class="rounded-xl bg-cyan-400 px-4 py-2.5 text-xs font-black text-slate-950">حفظ الرابط</button></div><p id="platformSupportUrlStatus" class="mt-2 text-[10px] text-slate-500"></p></section>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="glass-card p-5 rounded-3xl border border-slate-800 space-y-2">
+                    <span class="text-xs text-slate-400 font-bold">إجمالي المستخدمين</span>
+                    <div class="flex justify-between items-baseline">
+                        <h3 id="statTotalUsers" class="text-2xl font-black text-white">0</h3>
+                        <span class="text-xs text-emerald-400 font-bold">+12%</span>
+                    </div>
+                </div>
+
+                <div class="glass-card p-5 rounded-3xl border border-slate-800 space-y-2">
+                    <span class="text-xs text-slate-400 font-bold">إجمالي الإيداعات</span>
+                    <div class="flex justify-between items-baseline">
+                        <h3 id="statTotalDeposits" class="text-2xl font-black text-emerald-400">0.00 $</h3>
+                        <i class="fa-solid fa-wallet text-emerald-400"></i>
+                    </div>
+                </div>
+
+                <div class="glass-card p-5 rounded-3xl border border-slate-800 space-y-2">
+                    <span class="text-xs text-slate-400 font-bold">إجمالي المسحوبات</span>
+                    <div class="flex justify-between items-baseline">
+                        <h3 id="statTotalWithdrawals" class="text-2xl font-black text-amber-400">0.00 $</h3>
+                        <i class="fa-solid fa-arrow-up-right-from-square text-amber-400"></i>
+                    </div>
+                </div>
+
+                <div class="glass-card p-5 rounded-3xl border border-slate-800 space-y-2">
+                    <span class="text-xs text-slate-400 font-bold">طلبات سحب معلقة</span>
+                    <div class="flex justify-between items-baseline">
+                        <h3 id="statPendingRequests" class="text-2xl font-black text-rose-400">0</h3>
+                        <span class="text-xs text-rose-400 font-bold animate-pulse">تطلب الإجراء</span>
+                    </div>
+                </div>
+                <div class="glass-card p-5 rounded-3xl border border-slate-800 space-y-2"><span class="text-xs text-slate-400 font-bold">النشطون خلال 24 ساعة</span><h3 id="statActiveUsers" class="text-2xl font-black text-cyan-400">0</h3></div>
+                <div class="glass-card p-5 rounded-3xl border border-slate-800 space-y-2"><span class="text-xs text-slate-400 font-bold">إجمالي المكافآت</span><h3 id="statTotalRewards" class="text-2xl font-black text-purple-400">0.00 $</h3></div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-[1.35fr_.65fr] gap-4"><div class="glass-card p-5 rounded-3xl border border-slate-800"><div class="flex justify-between items-center"><div><h3 class="font-bold text-white text-sm">حركة المعاملات</h3><p class="text-[10px] text-slate-500 mt-1">المجموع اليومي للمعاملات المسجلة</p></div><i class="fa-solid fa-chart-column text-emerald-400"></i></div><div id="overviewChart" class="ops-chart mt-4"></div><div id="overviewChartLabels" class="flex justify-between text-[9px] text-slate-600 mt-2"></div></div><div class="glass-card p-5 rounded-3xl border border-slate-800"><h3 class="font-bold text-white text-sm mb-4">الإجراءات العاجلة</h3><div id="overviewUrgentActions" class="space-y-2"></div></div></div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="glass-card p-5 rounded-3xl border border-slate-800"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-white text-sm">ملخص مالي</h3><i class="fa-solid fa-sack-dollar text-emerald-300"></i></div><div id="overviewFinancialSummary" class="space-y-2"></div></div>
+                <div class="glass-card p-5 rounded-3xl border border-slate-800"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-white text-sm">تنبيهات المخاطر</h3><i class="fa-solid fa-shield-heart text-amber-300"></i></div><div id="overviewRiskAlerts" class="space-y-2"></div></div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="glass-card p-5 rounded-3xl border border-slate-800"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-white text-sm">مؤشر المخاطر</h3><button onclick="loadOverviewRiskSummary()" class="text-[10px] text-amber-400 hover:underline">تحديث</button></div><div id="overviewRiskSummary" class="space-y-2"></div></div>
+                <div class="glass-card p-5 rounded-3xl border border-slate-800"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-white text-sm">KYC & التحقق</h3><button onclick="loadOverviewKycSummary()" class="text-[10px] text-cyan-400 hover:underline">تحديث</button></div><div id="overviewKycSummary" class="space-y-2"></div></div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="glass-card p-5 rounded-3xl border border-slate-800"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-white text-sm">آخر نشاط مالي</h3><button onclick="switchAdminTab('withdrawals')" class="text-[10px] text-amber-400 hover:underline">فتح السجل الكامل</button></div><div id="overviewRecentActivity" class="space-y-2"></div></div>
+                <div class="glass-card p-5 rounded-3xl border border-slate-800"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-white text-sm">حالة التوثيق</h3><button onclick="switchAdminTab('users')" class="text-[10px] text-cyan-400 hover:underline">فتح المستخدمين</button></div><div id="overviewKycQuickStatus" class="space-y-2"></div></div>
+            </div>
+        </div>
+
+        <div id="admin-analytics" class="space-y-6 hide"><div class="flex justify-between items-center"><div><h2 class="text-xl font-black text-white">مركز التحليلات</h2><p class="text-[10px] text-slate-500 mt-1">آخر 30 يومًا من نشاط المنصة والسجل الأمني</p></div><div class="flex gap-2"><button onclick="exportAnalyticsCsv()" title="تصدير التحليلات" class="px-3 py-2 bg-slate-900 text-emerald-400 rounded-xl"><i class="fa-solid fa-file-csv"></i></button><button onclick="fetchAdminAnalytics()" title="تحديث التحليلات" class="px-3 py-2 bg-slate-900 text-slate-300 rounded-xl"><i class="fa-solid fa-arrows-rotate"></i></button></div></div><div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div class="glass-card p-5 rounded-2xl"><span class="text-xs text-slate-400">دخول ناجح</span><strong id="analyticsLoginSuccess" class="block text-3xl text-emerald-400 mt-2">--</strong></div><div class="glass-card p-5 rounded-2xl"><span class="text-xs text-slate-400">محاولات فاشلة</span><strong id="analyticsLoginFailed" class="block text-3xl text-rose-400 mt-2">--</strong></div><div class="glass-card p-5 rounded-2xl"><span class="text-xs text-slate-400">بريد موثق</span><strong id="analyticsEmailVerified" class="block text-3xl text-cyan-400 mt-2">--</strong></div></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-4"><div class="glass-card p-5 rounded-2xl"><h3 class="font-bold text-white text-sm mb-4">توزيع الأدوار</h3><div id="analyticsRoles" class="space-y-3"></div></div><div class="glass-card p-5 rounded-2xl"><h3 class="font-bold text-white text-sm mb-4">نشاط المعاملات اليومية</h3><div id="analyticsDaily" class="space-y-2 max-h-72 overflow-y-auto"></div></div></div></div>
+
+        <!-- تبويب: إدارة المستخدمين -->
+        <div id="admin-users" class="space-y-6 hide">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div class="flex items-center gap-2"><h2 class="text-xl font-black text-white">إدارة حسابات الأعضاء</h2><button onclick="exportUsersCsv()" title="تصدير CSV" class="px-3 py-2 bg-slate-900 text-emerald-400 rounded-xl"><i class="fa-solid fa-file-csv"></i></button></div>
+                <input type="text" id="txtSearchUser" onkeydown="if(event.key === 'Enter') fetchUsersList(1)" placeholder="ابحث بالبريد أو كود الإحالة..." class="bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500 w-full sm:w-64">
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-6 gap-2">
+                <select id="userFilterRole" onchange="fetchUsersList(1)" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white"><option value="">كل الأدوار</option><option value="user">مستخدم</option><option value="admin">مدير كامل</option><option value="financial_admin">مدير مالي</option><option value="support_admin">مدير دعم</option><option value="monitor">مراقب</option></select>
+                <input id="userFilterTier" onkeydown="if(event.key === 'Enter') fetchUsersList(1)" placeholder="المستوى A1" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white">
+                <select id="userFilterStatus" onchange="fetchUsersList(1)" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white"><option value="">كل الحالات</option><option value="active">نشط</option><option value="banned">محظور</option></select>
+                <select id="userFilterVerified" onchange="fetchUsersList(1)" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white"><option value="">توثيق البريد</option><option value="yes">موثق</option><option value="no">غير موثق</option></select>
+                <select id="userFilterKyc" onchange="fetchUsersList(1)" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white"><option value="">كل حالات KYC</option><option value="not_started">لم يبدأ</option><option value="pending">قيد المراجعة</option><option value="verified">معتمد</option><option value="rejected">مرفوض</option></select>
+                <button onclick="fetchUsersList(1)" class="bg-amber-500/15 text-amber-300 border border-amber-500/20 rounded-xl text-[10px] font-bold"><i class="fa-solid fa-magnifying-glass ml-1"></i> بحث</button>
+            </div>
+            <div class="flex flex-wrap items-center gap-2"><button onclick="bulkUserAction(true)" class="px-3 py-2 bg-rose-500/15 text-rose-300 border border-rose-500/20 rounded-xl text-[10px] font-bold">حظر المحدد</button><button onclick="bulkUserAction(false)" class="px-3 py-2 bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 rounded-xl text-[10px] font-bold">إلغاء حظر المحدد</button><button onclick="clearUserSelection()" class="px-3 py-2 bg-slate-900 text-slate-300 rounded-xl text-[10px]">إلغاء التحديد</button><span id="userSelectionCount" class="text-[10px] text-slate-500">لم يتم تحديد مستخدمين</span></div>
+
+            <div class="glass-card rounded-3xl overflow-hidden border border-slate-800">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right text-xs">
+                        <thead class="bg-slate-900/80 text-slate-400 border-b border-slate-800">
+                            <tr>
+                                <th class="p-4"><input type="checkbox" onchange="toggleAllUsers(this.checked)" aria-label="تحديد الكل"></th><th class="p-4">المستخدم</th>
+                                <th class="p-4">المستوى</th>
+                                <th class="p-4">الرصيد</th>
+                                <th class="p-4">الحالة</th>
+                                <th class="p-4">المهام</th>
+                                <th class="p-4">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tblUsersBody" class="divide-y divide-slate-800/50"></tbody>
+                    </table>
+                </div>
+                <div class="flex justify-between items-center p-4 border-t border-slate-800 text-xs text-slate-400">
+                    <button onclick="changeUsersPage(-1)" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 rounded-lg">السابق</button>
+                    <span>صفحة <span id="usersCurrentPage">1</span> من <span id="usersTotalPages">1</span></span>
+                    <button onclick="changeUsersPage(1)" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 rounded-lg">التالي</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="admin-social-feed" class="space-y-6 hide">
+            <div class="flex items-center justify-between gap-3"><div><h2 class="text-xl font-black text-white">مراجعة جدار التواصل</h2><p class="text-[10px] text-slate-500 mt-1">راجع البلاغات والمنشورات المحجوبة واتخذ قرار النشر.</p></div><button onclick="fetchSocialFeedReports()" title="تحديث البلاغات" class="rounded-xl bg-slate-900 px-3 py-2 text-slate-300"><i class="fa-solid fa-arrows-rotate"></i></button></div>
+            <div id="socialFeedReportsList" class="space-y-3"><p class="glass-card rounded-2xl p-4 text-center text-xs text-slate-500">جارٍ تحميل البلاغات...</p></div>
+        </div>
+
+        <!-- تبويب: طلبات السحب والشحن -->
+        <div id="admin-withdrawals" class="space-y-6 hide">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div class="flex items-center gap-2"><div><h2 class="text-xl font-black text-white">إدارة المعاملات المالية</h2><p class="text-[10px] text-slate-500 mt-1">الإيداعات المتحققة من blockchain تعتمد تلقائيًا؛ المعلّق فقط يحتاج قرارًا إداريًا.</p></div><button onclick="exportTransactionsCsv()" title="تصدير CSV" class="px-3 py-2 bg-slate-900 text-emerald-400 rounded-xl"><i class="fa-solid fa-file-csv"></i></button><button onclick="exportComplianceReport()" title="تصدير تقرير الامتثال" class="px-3 py-2 bg-cyan-500/15 text-cyan-300 rounded-xl"><i class="fa-solid fa-shield-halved"></i></button></div>
+                <div class="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto">
+                    <input id="txSearch" onkeydown="if(event.key === 'Enter') fetchTransactionsList(1)" placeholder="بريد / هاش / محفظة" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white">
+                    <input id="txFrom" type="date" onchange="fetchTransactionsList(1)" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white">
+                    <input id="txTo" type="date" onchange="fetchTransactionsList(1)" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white">
+                    <select id="filterTxNetwork" onchange="fetchTransactionsList(1)" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white"><option value="">كل الشبكات</option><option value="TRC20">TRC20</option><option value="BEP20">BEP20</option></select>
+                    <select id="filterTxType" onchange="fetchTransactionsList()" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                        <option value="all">جميع أنواع المعاملات</option>
+                        <option value="withdraw">سحب</option>
+                        <option value="deposit">شحن/إيداع</option>
+                        <option value="vault_lock">قفل خزنة</option>
+                        <option value="vault_release">فك خزنة</option>
+                        <option value="vault_early_release">فتح اضطراري</option>
+                        <option value="vault_penalty">غرامة فتح مبكر</option>
+                        <option value="token_burn">حرق OPX</option>
+                    </select>
+                    <select id="filterTxStatus" onchange="fetchTransactionsList()" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                        <option value="pending">المعلقة فقط</option>
+                        <option value="approved">المقبولة</option>
+                        <option value="rejected">المرفوضة</option>
+                        <option value="all">جميع الحالات</option>
+                    </select>
+                </div>
+            </div>
+            <div id="investmentVaultSummary" class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div class="glass-card p-4 rounded-2xl border border-cyan-500/20"><span class="text-[10px] text-slate-400">السيولة المجمدة</span><b id="vaultActiveAmount" class="block text-lg text-cyan-300 mt-1">$0.00</b><small id="vaultActiveMeta" class="text-[10px] text-slate-500">0 خزائن</small></div>
+                <div class="glass-card p-4 rounded-2xl border border-amber-500/20"><span class="text-[10px] text-slate-400">خزائن مستحقة</span><b id="vaultMaturedAmount" class="block text-lg text-amber-300 mt-1">$0.00</b><small id="vaultMaturedMeta" class="text-[10px] text-slate-500">0 خزائن</small></div>
+                <div class="glass-card p-4 rounded-2xl border border-emerald-500/20"><span class="text-[10px] text-slate-400">المسترد من الخزائن</span><b id="vaultClaimedAmount" class="block text-lg text-emerald-300 mt-1">$0.00</b><small id="vaultClaimedMeta" class="text-[10px] text-slate-500">0 عملية</small></div>
+                <div class="glass-card p-4 rounded-2xl border border-slate-700"><span class="text-[10px] text-slate-400">تنبيه</span><b class="block text-sm text-white mt-2">قراءة ومراقبة فقط</b><small class="text-[10px] text-slate-500">الحوافز تحتاج سياسة واعتمادًا منفصلًا</small></div>
+            </div>
+            <div class="glass-card rounded-3xl overflow-hidden border border-slate-800">
+                <div class="flex items-center justify-between border-b border-slate-800 p-4"><div><h3 class="text-sm font-black text-white">خزائن المستخدمين</h3><p class="mt-1 text-[10px] text-slate-500">الفتح الاضطراري يعيد 70% ويحوّل غرامة 30% إلى حساب المالك.</p></div><button onclick="fetchInvestmentVaultList()" title="تحديث الخزائن" class="text-slate-400 hover:text-cyan-300"><i class="fa-solid fa-arrows-rotate"></i></button></div>
+                <div class="overflow-x-auto"><table class="w-full text-right text-xs"><thead class="bg-slate-900/80 text-slate-400"><tr><th class="p-4">المستخدم</th><th class="p-4">الأصل</th><th class="p-4">الاستحقاق</th><th class="p-4">الحالة</th><th class="p-4">الإجراء</th></tr></thead><tbody id="tblInvestmentVaultsBody" class="divide-y divide-slate-800/50"></tbody></table></div>
+            </div>
+            <div class="flex flex-wrap items-center gap-2"><button onclick="bulkWithdrawalAction('approve')" class="px-3 py-2 bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 rounded-xl text-[10px] font-bold">قبول المحدد</button><button onclick="bulkWithdrawalAction('reject')" class="px-3 py-2 bg-rose-500/15 text-rose-300 border border-rose-500/20 rounded-xl text-[10px] font-bold">رفض المحدد</button><button onclick="clearTransactionSelection()" class="px-3 py-2 bg-slate-900 text-slate-300 rounded-xl text-[10px]">إلغاء التحديد</button><span id="transactionSelectionCount" class="text-[10px] text-slate-500">لم يتم تحديد معاملات</span></div>
+
+            <div class="glass-card rounded-3xl overflow-hidden border border-slate-800">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right text-xs">
+                        <thead class="bg-slate-900/80 text-slate-400 border-b border-slate-800">
+                            <tr>
+                                <th class="p-4"><input type="checkbox" onchange="toggleAllTransactions(this.checked)" aria-label="تحديد كل المعاملات"></th><th class="p-4">المستخدم</th>
+                                <th class="p-4">النوع</th>
+                                <th class="p-4">المبلغ</th>
+                                <th class="p-4">تفاصيل المحفظة / الهاش</th>
+                                <th class="p-4">الحالة</th>
+                                <th class="p-4">القرار</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tblTransactionsBody" class="divide-y divide-slate-800/50"></tbody>
+                    </table>
+                </div>
+                <div class="flex justify-between items-center p-4 border-t border-slate-800 text-xs text-slate-400">
+                    <button onclick="changeTxPage(-1)" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 rounded-lg">السابق</button>
+                    <span>صفحة <span id="txCurrentPage">1</span> من <span id="txTotalPages">1</span></span>
+                    <button onclick="changeTxPage(1)" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 rounded-lg">التالي</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- تبويب: إدارة المستويات VIP -->
+        <div id="admin-plans" class="space-y-6 hide">
+            <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3"><div><h2 class="text-xl font-black text-white">إدارة مستويات VIP</h2><p class="text-[10px] text-slate-500 mt-1">أنشئ مستوى جديدًا أو عدّل المستويات الحالية</p></div><button onclick="toggleAddVipLevel()" class="px-4 py-2 bg-amber-500/15 text-amber-300 border border-amber-500/20 rounded-xl text-xs font-bold"><i class="fa-solid fa-plus ml-1"></i> إضافة مستوى</button></div>
+            <div id="addVipLevelPanel" class="hidden glass-card p-5 rounded-3xl border border-emerald-500/20 space-y-4"><h3 class="font-bold text-white text-sm">إضافة مستوى جديد</h3><div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"><input id="newVipCode" maxlength="16" placeholder="كود المستوى: A6" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white"><input id="newVipName" maxlength="100" placeholder="اسم المستوى" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white"><input id="newVipPrice" type="number" min="0" step="0.01" placeholder="السعر بالدولار" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white"><input id="newVipTasks" type="number" min="1" step="1" placeholder="المهام اليومية" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white"><input id="newVipDaily" type="number" min="0" step="0.01" placeholder="الربح اليومي" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white"><input id="newVipMonthly" type="number" min="0" step="0.01" placeholder="الربح الشهري اختياري" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white"><input id="newVipYearly" type="number" min="0" step="0.01" placeholder="الربح السنوي اختياري" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white"></div><div class="flex gap-2"><button onclick="createVipLevel()" class="flex-1 py-2.5 bg-emerald-500 text-slate-950 rounded-xl text-xs font-black">حفظ المستوى</button><button onclick="toggleAddVipLevel(false)" class="px-5 py-2.5 bg-slate-800 text-slate-300 rounded-xl text-xs font-bold">إلغاء</button></div></div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="plansContainer">
+                <div class="col-span-full text-center text-slate-500 py-8">جاري تحميل بيانات المستويات...</div>
+            </div>
+            <div class="glass-card p-5 rounded-3xl border border-cyan-500/20 space-y-4">
+                <div class="flex items-center justify-between"><div><h3 class="font-bold text-cyan-300 text-sm">عقود The Vault</h3><p class="mt-1 text-[10px] text-slate-500">تحكم في المدة والعائد المتوقع. التعديل يطبق على العقود الجديدة فقط.</p></div><button onclick="fetchVaultContractsAdmin()" title="تحديث العقود" class="text-slate-400 hover:text-cyan-300"><i class="fa-solid fa-arrows-rotate"></i></button></div>
+                <div id="vaultContractsAdmin" class="grid grid-cols-1 md:grid-cols-3 gap-3"></div>
+                <button data-full-admin onclick="saveVaultContractsAdmin()" class="w-full rounded-xl bg-cyan-400 py-3 text-xs font-black text-slate-950">حفظ عقود الخزنة</button>
+                <p class="text-[10px] text-slate-500">العائد المتوقع تقديري وغير مضمون، ولا يُصرف تلقائيًا إلا بعد اعتماد سياسة الحوافز.</p>
+            </div>
+        </div>
+
+        <!-- تبويب: التحكم في العجلة وصندوق المفاجآت -->
+        <div id="admin-games" class="space-y-6 hide">
+            <h2 class="text-xl font-black text-white">إعدادات أرباح العجلة والصناديق</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="glass-card p-6 rounded-3xl border border-slate-800 space-y-4">
+                    <h3 class="font-bold text-amber-400 text-sm flex items-center">
+                        <i class="fa-solid fa-dharmachakra ml-2"></i> حدود مكافأة عجلة الحظ
+                    </h3>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">الحد الأدنى للربح ($)</label>
+                        <input type="number" id="cfgSpinMin" value="1" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">الحد الأقصى للربح ($)</label>
+                        <input type="number" id="cfgSpinMax" value="10" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white">
+                    </div>
+                    <button onclick="saveGameSettings()" class="w-full py-3 gold-gradient text-slate-950 font-bold rounded-xl text-xs">حفظ الإعدادات</button>
+                </div>
+
+                <div class="glass-card p-6 rounded-3xl border border-slate-800 space-y-4">
+                    <h3 class="font-bold text-purple-400 text-sm flex items-center">
+                        <i class="fa-solid fa-box-open ml-2"></i> حدود مكافأة الصندوق الغامض
+                    </h3>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">الحد الأدنى للربح ($)</label>
+                        <input type="number" id="cfgBoxMin" value="5" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">الحد الأقصى للربح ($)</label>
+                        <input type="number" id="cfgBoxMax" value="25" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white">
+                    </div>
+                    <div class="md:col-span-2 glass-card p-4 rounded-2xl border border-amber-500/20">
+                        <label class="block text-xs text-slate-400 mb-1">السقف اليومي لمكافآت الألعاب ($)</label>
+                        <input type="number" id="cfgDailyGameRewardCap" value="100" min="0" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white">
+                        <p class="text-[10px] text-slate-500 mt-2">يحمي المنصة من تجاوز إجمالي مكافآت الألعاب لهذا الحد خلال يوم UTC.</p>
+                    </div>
+                    <div class="md:col-span-2"><label class="block text-xs text-slate-400 mb-1">الإحالات النشطة المطلوبة لكل دورة</label><input type="number" id="cfgReferralsPerCycle" value="25" min="1" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white"><p class="text-[10px] text-slate-500 mt-1">يؤثر على دورات العجلة والصندوق لجميع المستخدمين.</p></div>
+                    <button onclick="saveGameSettings()" class="w-full py-3 purple-gradient text-white font-bold rounded-xl text-xs">حفظ الإعدادات</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- تبويب: الإشعارات العامة -->
+        <div id="admin-broadcast" class="space-y-6 hide">
+            <div class="flex justify-between items-center"><div><h2 class="text-xl font-black text-white">مركز حملات الإشعارات</h2><p class="text-[10px] text-slate-500 mt-1">إشعار داخلي دائم مع Push اختياري وقياس للقراءة</p></div><button onclick="fetchBroadcasts()" class="px-3 py-2 bg-slate-900 text-slate-300 rounded-xl"><i class="fa-solid fa-arrows-rotate"></i></button></div>
+
+            <div class="glass-card p-6 rounded-3xl border border-slate-800 space-y-4 max-w-xl">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">عنوان الإشعار</label>
+                    <input type="text" id="txtBroadcastTitle" placeholder="مثال: مكافآت جديدة بمناسبة العيد!" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">نص الرسالة</label>
+                    <textarea id="txtBroadcastBody" rows="4" placeholder="اكتب التفاصيل التي تظهر في شريط أو مركز إشعارات المستخدم..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white"></textarea>
+                </div>
+                        <button type="button" onclick="previewBroadcast()" class="w-full py-2 bg-slate-800 text-slate-300 border border-slate-700 rounded-xl text-xs font-bold">معاينة قبل الإرسال</button>
+                <div class="grid grid-cols-2 gap-2"><select id="broadcastAudienceType" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white"><option value="all">الجمهور: الجميع</option><option value="active">النشطون خلال 24 ساعة</option><option value="tier">مستوى VIP محدد</option><option value="role">دور مستخدم محدد</option></select><input id="broadcastAudienceValue" placeholder="القيمة عند الحاجة: A2" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white"></div>
+                <input type="datetime-local" id="broadcastScheduledAt" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white">
+                <div id="broadcastPreview" class="hidden p-3 rounded-xl border border-cyan-500/20 bg-cyan-500/5 text-xs text-slate-300"></div>
+                <button onclick="sendBroadcastNotification()" class="w-full py-3 emerald-gradient text-white font-bold rounded-xl text-xs">إرسال البث الآن</button>
+            </div>
+            <div class="glass-card rounded-3xl overflow-hidden border border-slate-800"><div class="p-4 border-b border-slate-800"><h3 class="text-sm font-bold text-white">سجل الحملات وقياس الوصول</h3></div><div class="overflow-x-auto"><table class="w-full text-right text-xs"><thead class="bg-slate-900/80 text-slate-400"><tr><th class="p-4">الحملة</th><th class="p-4">الجمهور</th><th class="p-4">الحالة</th><th class="p-4">داخلي</th><th class="p-4">Push</th><th class="p-4">مقروء</th></tr></thead><tbody id="tblBroadcastsBody"></tbody></table></div></div>
+        </div>
+
+        <div id="admin-audit" class="space-y-6 hide">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3"><h2 class="text-xl font-black text-white">سجل تدقيق الإدارة</h2><div class="flex flex-wrap gap-2 w-full sm:w-auto"><select id="auditAction" onchange="fetchAuditLogs(1)" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"><option value="all">كل الإجراءات</option><option value="transaction_approve">المعاملات المقبولة</option><option value="transaction_reject">المعاملات المرفوضة</option><option value="update_user_balance">تعديل الأرصدة</option><option value="update_user_role">تعديل الأدوار</option><option value="schedule_broadcast">جدولة بث</option></select><input id="auditSearch" placeholder="بحث بالمعرف أو الإجراء" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"><input id="auditDate" type="date" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"><button onclick="fetchAuditLogs(1)" title="تحديث السجل" class="px-3 bg-slate-900 text-slate-400 rounded-xl"><i class="fa-solid fa-arrows-rotate"></i></button></div></div>
+            <div class="glass-card rounded-3xl overflow-hidden border border-slate-800"><div class="overflow-x-auto"><table class="w-full text-right text-xs"><thead class="bg-slate-900/80 text-slate-400"><tr><th class="p-4">التاريخ</th><th class="p-4">المدير</th><th class="p-4">الإجراء</th><th class="p-4">المعرف</th><th class="p-4">IP / الجهاز</th><th class="p-4">التفاصيل</th></tr></thead><tbody id="tblAuditBody" class="divide-y divide-slate-800/50"></tbody></table></div><div class="flex justify-between items-center p-4 border-t border-slate-800 text-xs text-slate-400"><button onclick="changeAuditPage(-1)" class="px-3 py-1.5 bg-slate-900 rounded-lg">السابق</button><span>صفحة <span id="auditCurrentPage">1</span> من <span id="auditTotalPages">1</span></span><button onclick="changeAuditPage(1)" class="px-3 py-1.5 bg-slate-900 rounded-lg">التالي</button></div></div>
+        </div>
+
+        <div id="admin-support" class="space-y-6 hide"><div class="flex justify-between items-center"><h2 class="text-xl font-black text-white">تذاكر الدعم</h2><button onclick="fetchAdminSupport()" class="px-3 py-2 bg-slate-900 text-slate-300 rounded-xl"><i class="fa-solid fa-arrows-rotate"></i></button></div><div id="adminSupportList" class="grid gap-3"></div></div>
+
+        <div id="admin-security" class="space-y-6 hide"><div><span class="text-[10px] text-emerald-300 font-bold tracking-widest">ADMIN SECURITY</span><h2 class="text-xl font-black text-white mt-1">إعدادات أمان الإدارة</h2><p class="text-[10px] text-slate-500 mt-1">هذه المصادقة مستقلة تمامًا عن مصادقة المستخدمين.</p></div><div class="glass-card max-w-lg p-6 rounded-3xl border border-emerald-500/20 space-y-4"><div id="adminSecurityStatus" class="p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300">جاري فحص الحالة...</div><button id="adminSecuritySetupButton" onclick="setupAdminSecurity2FA()" class="w-full py-3 bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 rounded-xl text-xs font-bold">إنشاء رمز Google Authenticator</button><div id="adminSecuritySetupPanel" class="hidden space-y-3"><div class="bg-white rounded-2xl p-3 w-fit mx-auto"><img id="adminSecurityQr" class="w-48 h-48" alt="QR مصادقة الإدارة"></div><code id="adminSecuritySecret" class="block text-center text-[10px] text-amber-300 break-all"></code><input id="adminSecurityCode" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="أدخل الرمز المكون من 6 أرقام" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-center tracking-[.4em] text-white"><button onclick="confirmAdminSecurity2FA()" class="w-full py-3 bg-amber-400 text-slate-950 rounded-xl text-xs font-black">تأكيد وتفعيل مصادقة الإدارة</button></div></div></div>
+
+        <div id="admin-referrals" class="space-y-6 hide">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"><h2 class="text-xl font-black text-white">إدارة إحالات المنصة</h2><div class="flex gap-2 w-full sm:w-auto"><input id="txtSearchReferral" onkeyup="filterReferrals()" placeholder="ابحث بالبريد..." class="bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white w-full sm:w-64"><button onclick="exportReferralsCsv()" title="تصدير CSV" class="px-3 bg-slate-900 text-emerald-400 rounded-xl"><i class="fa-solid fa-file-csv"></i></button></div></div>
+            <div class="glass-card rounded-3xl overflow-hidden border border-slate-800"><div class="overflow-x-auto"><table class="w-full text-right text-xs"><thead class="bg-slate-900/80 text-slate-400"><tr><th class="p-4">المستخدم</th><th class="p-4">كود الإحالة</th><th class="p-4">أحاله</th><th class="p-4">المستوى</th><th class="p-4">نشطة</th><th class="p-4">تاريخ التسجيل</th><th class="p-4">الشجرة</th></tr></thead><tbody id="tblReferralsBody"></tbody></table></div></div>
+        </div>
+
+    </main>
+
+    <div id="auditDetailsModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hide flex items-center justify-center p-4">
+        <div class="glass-card w-full max-w-lg p-6 rounded-3xl space-y-4 border border-cyan-500/20">
+            <div class="flex justify-between items-center"><h3 class="text-base font-bold text-white">تفاصيل العملية</h3><button onclick="closeAuditDetails()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button></div>
+            <div id="auditDetailsContent" class="text-xs leading-6 text-slate-300"></div>
+            <button onclick="closeAuditDetails()" class="w-full py-2 bg-slate-800 text-slate-300 rounded-xl text-xs font-bold">إغلاق</button>
+        </div>
+    </div>
+
+    <!-- نافذة تعديل حساب المستخدم الموسعة -->
+    <div id="editUserModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hide flex items-center justify-center p-4">
+        <div class="glass-card p-6 rounded-3xl w-full max-w-md space-y-4 border border-amber-500/30">
+            <div class="flex justify-between items-center">
+                <h3 class="text-base font-bold text-white">إدارة الحساب الشاملة</h3>
+                <button onclick="closeEditUserModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <input type="hidden" id="editUserId">
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">المستوى الحالي</label>
+                    <select id="editUserTier" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white">
+                        <option value="A1">A1</option>
+                        <option value="A2">A2</option>
+                        <option value="A3">A3</option>
+                        <option value="A4">A4</option>
+                        <option value="A5">A5</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">رصيد المحفظة ($)</label>
+                    <input type="number" id="editUserBalance" step="0.01" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white">
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs text-slate-400 mb-1">دور الإدارة</label>
+                <select id="editUserRole" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white">
+                    <option value="user">مستخدم</option><option value="admin">مدير كامل</option><option value="financial_admin">مدير مالي</option><option value="support_admin">مدير دعم</option><option value="monitor">مراقب</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-slate-400 mb-1">كلمة المرور الجديدة (أتركها فارغة للتبقاء)</label>
+                <input type="password" id="editUserPass" placeholder="إعادة تعيين كلمة مرور الدخول" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white">
+            </div>
+            <div class="pt-2 border-t border-slate-800 flex justify-between items-center">
+                <button onclick="viewUserReferrals()" type="button" class="text-xs text-blue-400 hover:underline">عرض شجرة الإحالات</button>
+            </div>
+            <button onclick="submitEditUser()" class="w-full py-3 gold-gradient text-slate-950 font-bold rounded-xl text-xs">تحديث وحفظ</button>
+        </div>
+    </div>
+
+    <div id="referralTreeModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hide flex items-center justify-center p-4">
+        <div class="glass-card p-6 rounded-3xl w-full max-w-lg max-h-[85vh] overflow-y-auto space-y-4 border border-blue-500/30">
+            <div class="flex justify-between items-center">
+                <h3 class="text-base font-bold text-white">شجرة الإحالات</h3>
+                <button onclick="closeReferralTreeModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div id="referralTreeContent" class="text-xs text-slate-300">جاري تحميل الشجرة...</div>
+        </div>
+    </div>
+
+    <div id="userDetailsModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hide items-start justify-center overflow-y-auto p-3 sm:p-6" role="dialog" aria-modal="true">
+        <div class="glass-card my-auto flex max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-cyan-500/30">
+            <div class="flex shrink-0 items-center justify-between gap-3 border-b border-slate-800 bg-slate-950/90 p-4 sm:p-6"><div><h3 class="text-base font-bold text-white">تفاصيل المستخدم</h3><p id="userDetailsEmail" class="text-[10px] text-slate-500 mt-1"></p></div><button onclick="closeUserDetails()" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white" aria-label="إغلاق تفاصيل المستخدم"><i class="fa-solid fa-xmark text-lg"></i></button></div>
+            <div class="shrink-0 border-b border-slate-800 bg-slate-950/75 p-4 sm:px-6"><div id="userDetailsSummary" class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs"></div>
+            <div class="mt-3 flex flex-wrap gap-2"><button onclick="verifyDetailsEmail()" class="px-3 py-2 bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 rounded-xl text-[10px] font-bold">توثيق البريد</button><button onclick="disableDetails2FA()" class="px-3 py-2 bg-amber-500/15 text-amber-300 border border-amber-500/20 rounded-xl text-[10px] font-bold">تعطيل 2FA</button><button onclick="revokeDetailsSessions()" class="px-3 py-2 bg-rose-500/15 text-rose-300 border border-rose-500/20 rounded-xl text-[10px] font-bold">إنهاء جلسات المستخدم</button><button onclick="loadUserDetails(currentDetailsUserId)" class="px-3 py-2 bg-slate-900 text-slate-300 rounded-xl text-[10px]">تحديث التفاصيل</button></div></div>
+            <div class="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="space-y-3">
+                    <div><h4 class="text-sm font-bold text-white mb-2">KYC / التحقق</h4><div id="kycReviewPanel" class="space-y-2 text-[10px]"></div></div>
+                    <div><h4 class="text-sm font-bold text-white mb-2">آخر المعاملات</h4><div id="userDetailsTransactions" class="space-y-2 text-[10px]"></div></div>
+                </div>
+                <div class="space-y-3">
+                    <div><h4 class="text-sm font-bold text-white mb-2">سجل تعديلات الإدارة</h4><div id="userDetailsAudit" class="space-y-2 text-[10px]"></div></div>
+                    <div><h4 class="text-sm font-bold text-white mb-2">الجلسات النشطة</h4><div id="userDetailsSessions" class="space-y-2 text-[10px]"></div></div>
+                </div>
+            </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="transactionDetailsModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hide items-center justify-center p-4" role="dialog" aria-modal="true">
+        <div class="glass-card p-6 rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto space-y-4 border border-cyan-500/30">
+            <div class="flex justify-between items-center"><h3 class="text-base font-bold text-white">تفاصيل المعاملة</h3><button onclick="closeTransactionDetails()" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button></div>
+            <div id="transactionDetailsContent" class="text-xs leading-6 text-slate-300"></div>
+            <div id="transactionDetailsAudit" class="space-y-2 text-[10px]"></div>
+        </div>
+    </div>
+
+    <script>
+        const adminStorageGetItem = localStorage.getItem.bind(localStorage);
+        const adminStorageRemoveItem = localStorage.removeItem.bind(localStorage);
+        localStorage.getItem = key => key === 'token' ? adminStorageGetItem('adminToken') : adminStorageGetItem(key);
+        localStorage.removeItem = key => adminStorageRemoveItem(key === 'token' ? 'adminToken' : key);
+        const nativeAdminFetch = window.fetch.bind(window);
+        window.fetch = (input, init = {}) => {
+            const url = String(typeof input === 'string' ? input : input?.url || '');
+            if (!url.startsWith('/api/admin') && !url.startsWith('/api/auth/admin')) return nativeAdminFetch(input, init);
+            const headers = new Headers(init.headers || {});
+            headers.delete('Authorization');
+            const adminToken = adminStorageGetItem('adminToken');
+            if (adminToken) headers.set('Authorization', `Bearer ${adminToken}`);
+            return nativeAdminFetch(input, { ...init, credentials: 'same-origin', headers });
+        };
+        let allUsersData = [];
+        let usersCurrentPage = 1;
+        let usersTotalPages = 1;
+
+        let txCurrentPage = 1;
+        let txTotalPages = 1;
+        let auditCurrentPage = 1;
+        let auditTotalPages = 1;
+
+        function toggleMobileSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('hidden');
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.classList.remove('hide');
+            setTimeout(() => toast.classList.add('hide'), 3000);
+        }
+
+        function getAdminAuthToken() {
+            return localStorage.getItem('adminToken') || localStorage.getItem('token') || '';
+        }
+
+        function adminHeaders(extra = {}) {
+            const token = getAdminAuthToken();
+            return { ...extra, Authorization: token ? `Bearer ${token}` : '' };
+        }
+
+        function adminJsonHeaders(extra = {}) {
+            return { 'Content-Type': 'application/json', ...adminHeaders(), ...extra };
+        }
+
+        async function loadPlatformSupportUrl() {
+            try {
+                const response = await fetch('/api/settings/admin', { headers: adminHeaders() });
+                const data = await response.json();
+                if (response.ok && data.settings) document.getElementById('platformSupportUrlInput').value = data.settings.supportUrl || '';
+            } catch (error) { }
+        }
+
+        async function savePlatformSupportUrl() {
+            const input = document.getElementById('platformSupportUrlInput');
+            const status = document.getElementById('platformSupportUrlStatus');
+            const supportUrl = input.value.trim();
+            if (!/^https?:\/\//i.test(supportUrl)) { status.innerText = 'أدخل رابطًا صالحًا يبدأ بـ https:// أو http://'; return; }
+            status.innerText = 'جاري الحفظ...';
+            const response = await fetch('/api/settings/admin', { method: 'POST', headers: adminJsonHeaders(), body: JSON.stringify({ supportUrl }) });
+            const data = await response.json();
+            status.innerText = response.ok ? 'تم تحديث رابط الدعم للمستخدمين.' : (data.error || 'تعذر حفظ الرابط');
+        }
+
+        function showAdminConfirm(message, title = 'تأكيد الإجراء') {
+            return new Promise(resolve => {
+                const modal = document.getElementById('adminConfirmModal');
+                const titleElement = document.getElementById('adminConfirmTitle');
+                const messageElement = document.getElementById('adminConfirmMessage');
+                const accept = document.getElementById('adminConfirmAccept');
+                const cancel = document.getElementById('adminConfirmCancel');
+                titleElement.innerText = title;
+                messageElement.innerText = message;
+                modal.classList.remove('hide');
+                modal.classList.add('flex');
+                modal.style.display = 'flex';
+                modal.setAttribute('aria-hidden', 'false');
+                const close = result => {
+                    modal.classList.add('hide');
+                    modal.classList.remove('flex');
+                    modal.style.display = 'none';
+                    modal.setAttribute('aria-hidden', 'true');
+                    accept.onclick = null;
+                    cancel.onclick = null;
+                    resolve(result);
+                };
+                accept.onclick = event => { event.preventDefault(); close(true); };
+                cancel.onclick = event => { event.preventDefault(); close(false); };
+                accept.focus({ preventScroll: true });
+            });
+        }
+
+        function escapeAdminHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[character]));
+        }
+
+        function formatAuditValue(value) {
+            if (value === null || value === undefined || value === '') return '-';
+            if (typeof value === 'object') return Object.entries(value).map(([key, item]) => `${key}: ${formatAuditValue(item)}`).join('، ');
+            if (typeof value === 'boolean') return value ? 'نعم' : 'لا';
+            return String(value);
+        }
+
+        function formatAuditDetails(details = {}) {
+            const labels = { oldValue: 'قبل', newValue: 'بعد', amount: 'المبلغ', type: 'النوع', audienceType: 'الجمهور', audienceValue: 'قيمة الجمهور', scheduledAt: 'موعد الإرسال', passwordChanged: 'تغيير كلمة المرور', oldRole: 'الدور السابق', newRole: 'الدور الجديد', depositBalance: 'رصيد الإيداع', profitBalance: 'رصيد الأرباح' };
+            return Object.entries(details).map(([key, value]) => `<span class="inline-block ml-2 mb-1 rounded-md bg-slate-950/70 px-2 py-1"><b class="text-slate-500">${escapeAdminHtml(labels[key] || key)}:</b> ${escapeAdminHtml(formatAuditValue(value))}</span>`).join('') || '<span class="text-slate-600">بدون تفاصيل إضافية</span>';
+        }
+
+        function showAuditDetails(details) {
+            const modal = document.getElementById('auditDetailsModal');
+            const content = document.getElementById('auditDetailsContent');
+            if (!modal || !content) return;
+            content.innerHTML = formatAuditDetails(details);
+            modal.classList.remove('hide');
+        }
+
+        function closeAuditDetails() { document.getElementById('auditDetailsModal')?.classList.add('hide'); }
+
+        function switchAdminTab(tab) {
+            ['overview', 'analytics', 'users', 'withdrawals', 'plans', 'games', 'broadcast', 'audit', 'support', 'social-feed', 'security', 'referrals'].forEach(t => {
+                const el = document.getElementById(`admin-${t}`);
+                if (el) el.classList.add('hide');
+                const btn = document.getElementById(`btn-tab-${t}`);
+                if (btn) btn.className = "w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-900 hover:text-white transition-all";
+            });
+            document.getElementById(`admin-${tab}`).classList.remove('hide');
+            const activeBtn = document.getElementById(`btn-tab-${tab}`);
+            if (activeBtn) activeBtn.className = "w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-xl text-xs font-bold bg-amber-500 text-slate-950 transition-all";
+
+            if (window.innerWidth < 768) document.getElementById('sidebar').classList.add('hidden');
+
+            if(tab === 'overview') refreshOverviewDashboard();
+            if(tab === 'analytics') fetchAdminAnalytics();
+            if(tab === 'users') fetchUsersList();
+            if(tab === 'withdrawals') { fetchTransactionsList(); fetchInvestmentVaultSummary(); fetchInvestmentVaultList(); }
+            if(tab === 'plans') { fetchVipPlans(); fetchVaultContractsAdmin(); }
+            if(tab === 'games') fetchGameSettings();
+            if(tab === 'audit') fetchAuditLogs();
+            if(tab === 'broadcast') fetchBroadcasts();
+            if(tab === 'support') fetchAdminSupport();
+            if(tab === 'social-feed') fetchSocialFeedReports();
+            if(tab === 'security') loadAdminSecurityStatus();
+            if(tab === 'referrals') fetchReferrals();
+            refreshAdminAlerts();
+        }
+
+        const adminPermissions = {
+            admin: ['read_overview', 'read_users', 'manage_users', 'finance', 'manage_vip', 'manage_games', 'broadcast', 'read_audit', 'read_referrals'],
+            financial_admin: ['read_overview', 'read_users', 'finance', 'read_audit'],
+            support_admin: ['read_overview', 'read_users', 'manage_users', 'read_audit', 'read_referrals'],
+            monitor: ['read_overview', 'read_users', 'read_audit', 'read_referrals']
+        };
+        let currentAdminRole = 'monitor';
+        let adminRealtimeClient = null;
+        function canAdmin(permission) { return adminPermissions[currentAdminRole]?.includes(permission); }
+        function applyRoleVisibility() {
+            document.querySelectorAll('[data-permission]').forEach(element => { element.classList.toggle('hidden', !canAdmin(element.dataset.permission)); });
+            document.querySelectorAll('[data-full-admin]').forEach(element => { element.classList.toggle('hidden', currentAdminRole !== 'admin'); });
+            document.querySelectorAll('[data-action-permission]').forEach(element => { element.classList.toggle('hidden', !canAdmin(element.dataset.actionPermission)); });
+        }
+        async function refreshAdminAlerts() {
+            if (!canAdmin('finance')) return;
+            try {
+                const response = await fetch('/api/admin/overview', { headers: adminHeaders() });
+                const data = await response.json();
+                const badge = document.getElementById('pendingAlertBadge');
+                const count = Number(data.stats?.pendingRequests || 0);
+                if (badge) { badge.innerText = count; badge.classList.toggle('hidden', count === 0); }
+            } catch (error) { }
+        }
+
+        async function fetchInvestmentVaultSummary() {
+            if (!canAdmin('finance')) return;
+            try {
+                const response = await fetch('/api/admin/investment-vault/summary', { headers: adminHeaders() });
+                const data = await response.json();
+                if (!response.ok || !data.success) return;
+                const summary = data.summary || {};
+                document.getElementById('vaultActiveAmount').innerText = `$${Number(summary.activeAmount || 0).toFixed(2)}`;
+                document.getElementById('vaultActiveMeta').innerText = `${Number(summary.activeCount || 0)} خزائن · ${Number(summary.activeUsers || 0)} مستخدم`;
+                document.getElementById('vaultMaturedAmount').innerText = `$${Number(summary.maturedAmount || 0).toFixed(2)}`;
+                document.getElementById('vaultMaturedMeta').innerText = `${Number(summary.maturedCount || 0)} خزائن مستحقة`;
+                document.getElementById('vaultClaimedAmount').innerText = `$${Number(summary.claimedAmount || 0).toFixed(2)}`;
+                document.getElementById('vaultClaimedMeta').innerText = `${Number(summary.claimedCount || 0)} عملية استرداد`;
+            } catch (error) { console.error('خطأ ملخص الخزنة:', error); }
+        }
+
+        async function fetchInvestmentVaultList() {
+            if (!canAdmin('finance')) return;
+            try {
+                const response = await fetch('/api/admin/investment-vault/list?limit=50', { headers: adminHeaders() });
+                const data = await response.json();
+                if (!response.ok || !data.success) return;
+                const labels = { active: 'مجمّدة', matured: 'مستحقة', claimed: 'مستردة', emergency_released: 'فتح اضطراري' };
+                document.getElementById('tblInvestmentVaultsBody').innerHTML = data.vaults?.length ? data.vaults.map(vault => {
+                    const status = vault.displayStatus || vault.status;
+                    const emergencyButton = currentAdminRole === 'admin' && status === 'active' ? `<button onclick="emergencyReleaseInvestmentVault('${vault._id}')" class="rounded-lg bg-rose-500/15 px-2 py-1 text-[10px] font-bold text-rose-300">فتح اضطراري</button>` : '<span class="text-[10px] text-slate-600">مراقبة</span>';
+                    return `<tr><td class="p-4 font-bold text-white">${escapeAdminHtml(vault.userId?.email || 'غير معروف')}<span class="block text-[9px] text-slate-500">${escapeAdminHtml(vault.userId?.tierCode || '')}</span></td><td class="p-4 text-cyan-300">${Number(vault.amount || 0).toFixed(4)} USDT</td><td class="p-4 text-slate-400">${new Date(vault.maturityDate).toLocaleDateString('ar')}</td><td class="p-4 text-slate-300">${labels[status] || status}${vault.penaltyAmount ? `<span class="block text-[9px] text-rose-300">غرامة ${Number(vault.penaltyAmount).toFixed(4)}</span>` : ''}</td><td class="p-4">${emergencyButton}</td></tr>`;
+                }).join('') : '<tr><td colspan="5" class="p-4 text-center text-slate-500">لا توجد خزائن</td></tr>';
+            } catch (error) { console.error('خطأ قائمة الخزائن:', error); }
+        }
+
+        async function emergencyReleaseInvestmentVault(vaultId) {
+            if (currentAdminRole !== 'admin' || !await showAdminConfirm('سيتم إعادة 70% للمستخدم وتحويل 30% من أصل الخزنة إلى حساب المالك. العملية نهائية. هل تتابع؟', 'فتح اضطراري وغرامة 30%')) return;
+            const response = await fetch(`/api/admin/investment-vault/${encodeURIComponent(vaultId)}/emergency-release`, { method: 'POST', headers: adminHeaders() });
+            const data = await response.json();
+            if (!response.ok) return showToast(data.error || 'تعذر تنفيذ الفتح الاضطراري');
+            showToast(data.message || 'تم تنفيذ الفتح الاضطراري');
+            fetchInvestmentVaultSummary();
+            fetchInvestmentVaultList();
+        }
+
+        async function loadRiskSignals() {
+            const container = document.getElementById('overviewRiskAlerts');
+            if (!container) return;
+            try {
+                const [overviewRes, analyticsRes] = await Promise.all([
+                    fetch('/api/admin/overview', { headers: adminHeaders() }),
+                    fetch('/api/admin/analytics', { headers: adminHeaders() })
+                ]);
+                if (!overviewRes.ok || !analyticsRes.ok) throw new Error('تعذر تحميل تنبيهات المخاطر');
+                const overviewData = await overviewRes.json();
+                const analyticsData = await analyticsRes.json();
+                const stats = overviewData.stats || {};
+                const riskSummary = overviewData.riskSummary || {};
+                const security = Object.fromEntries((analyticsData.security || []).map(item => [item._id, item.count]));
+                const alerts = [];
+                if (Number(stats.pendingRequests || stats.pendingWithdrawals || 0) > 0) alerts.push({ tone: 'rose', title: 'طلبات معلقة', text: `${stats.pendingRequests || stats.pendingWithdrawals || 0} طلب تحتاج مراجعة حالياً` });
+                if (Number(security.login_failed || 0) > 0) alerts.push({ tone: 'amber', title: 'محاولات دخول فاشلة', text: `${security.login_failed || 0} محاولة فشل في آخر 30 يومًا` });
+                if (Number(security.new_device || 0) > 0) alerts.push({ tone: 'cyan', title: 'أجهزة جديدة', text: `${security.new_device || 0} جهاز جديد تم تسجيله` });
+                if (Number(riskSummary.largeWithdrawals || 0) > 0) alerts.push({ tone: 'rose', title: 'سحوبات كبيرة', text: `${riskSummary.largeWithdrawals || 0} سحوبة كبيرة تحتاج تدقيقًا` });
+                if (!alerts.length) alerts.push({ tone: 'emerald', title: 'المنصة مستقرة', text: 'لا توجد إشارات خطر نشطة في الوقت الحالي' });
+                container.innerHTML = alerts.slice(0, 4).map(alert => {
+                    const border = alert.tone === 'rose' ? 'border-rose-500/30 bg-rose-500/5' : alert.tone === 'amber' ? 'border-amber-500/30 bg-amber-500/5' : alert.tone === 'cyan' ? 'border-cyan-500/30 bg-cyan-500/5' : 'border-emerald-500/30 bg-emerald-500/5';
+                    return `<div class="border ${border} rounded-xl p-3"><div class="flex items-center justify-between gap-3"><span class="text-[11px] font-bold text-white">${escapeAdminHtml(alert.title)}</span><span class="w-2 h-2 rounded-full ${alert.tone === 'rose' ? 'bg-rose-400' : alert.tone === 'amber' ? 'bg-amber-400' : alert.tone === 'cyan' ? 'bg-cyan-400' : 'bg-emerald-400'}"></span></div><p class="text-[10px] text-slate-300 mt-1">${escapeAdminHtml(alert.text)}</p></div>`;
+                }).join('');
+            } catch (error) {
+                container.innerHTML = '<div class="border border-rose-500/30 bg-rose-500/5 rounded-xl p-3 text-[10px] text-rose-300">تعذر تحميل تنبيهات المخاطر</div>';
+            }
+        }
+
+        async function loadOverviewRiskSummary() {
+            const container = document.getElementById('overviewRiskSummary');
+            if (!container) return;
+            try {
+                const response = await fetch('/api/admin/risk-summary', { headers: adminHeaders() });
+                const data = await response.json();
+                if (!response.ok || !data.success) throw new Error(data.error || 'تعذر تحميل ملخص المخاطر');
+                const summary = data.summary || {};
+                const tone = Number(summary.riskScore || 0) >= 70 ? 'text-rose-300' : Number(summary.riskScore || 0) >= 40 ? 'text-amber-300' : 'text-emerald-300';
+                const riskLevelText = summary.riskLevel === 'high' ? 'مرتفع' : summary.riskLevel === 'medium' ? 'متوسط' : 'منخفض';
+                container.innerHTML = `
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <div class="text-[9px] text-slate-400">مؤشر المخاطر</div>
+                            <div class="text-3xl font-black ${tone}">${Number(summary.riskScore || 0)}</div>
+                        </div>
+                        <span class="px-2 py-1 rounded-full text-[9px] font-bold ${summary.riskLevel === 'high' ? 'bg-rose-500/10 text-rose-300' : summary.riskLevel === 'medium' ? 'bg-amber-500/10 text-amber-300' : 'bg-emerald-500/10 text-emerald-300'}">${riskLevelText}</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-[10px] text-slate-300 mt-3">
+                        <div class="rounded-xl bg-slate-950/60 p-2"><span class="text-slate-500 block">محاولات فاشلة</span><b class="text-white">${Number(summary.failedLogins || 0)}</b></div>
+                        <div class="rounded-xl bg-slate-950/60 p-2"><span class="text-slate-500 block">أجهزة جديدة</span><b class="text-white">${Number(summary.newDevices || 0)}</b></div>
+                        <div class="rounded-xl bg-slate-950/60 p-2"><span class="text-slate-500 block">طلبات معلقة</span><b class="text-white">${Number(summary.pendingTransactions || 0)}</b></div>
+                        <div class="rounded-xl bg-slate-950/60 p-2"><span class="text-slate-500 block">سحوبات كبيرة</span><b class="text-white">${Number(summary.largeWithdrawals || 0)}</b></div>
+                    </div>
+                    <div class="mt-3 text-[10px] text-slate-300">
+                        ${(summary.focus || []).map(item => `<div class="mt-1">• ${escapeAdminHtml(item)}</div>`).join('') || '<div>• لا توجد إشارات خطورة</div>'}
+                    </div>
+                `;
+            } catch (error) {
+                container.innerHTML = '<div class="text-[10px] text-rose-300">تعذر تحميل مؤشرات المخاطر</div>';
+            }
+        }
+
+        async function loadOverviewKycSummary() {
+            const container = document.getElementById('overviewKycSummary');
+            const quick = document.getElementById('overviewKycQuickStatus');
+            if (!container && !quick) return;
+            try {
+                const response = await fetch('/api/admin/kyc-summary', { headers: adminHeaders() });
+                const data = await response.json();
+                if (!response.ok || !data.success) throw new Error(data.error || 'تعذر تحميل KYC');
+                const summary = data.summary || {};
+                const rate = Number(summary.verificationRate || 0);
+                const tone = rate >= 80 ? 'text-emerald-300' : rate >= 50 ? 'text-amber-300' : 'text-rose-300';
+                if (container) {
+                    container.innerHTML = `
+                        <div class="flex items-center justify-between gap-3">
+                            <div>
+                                <div class="text-[9px] text-slate-400">معدل الاعتماد</div>
+                                <div class="text-3xl font-black ${tone}">${rate.toFixed(1)}%</div>
+                            </div>
+                            <span class="px-2 py-1 rounded-full text-[9px] font-bold bg-cyan-500/10 text-cyan-300">${Number(summary.reviewQueue || 0)} في fila</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-[10px] text-slate-300 mt-3">
+                            <div class="rounded-xl bg-slate-950/60 p-2"><span class="text-slate-500 block">معتمد</span><b class="text-emerald-300">${Number(summary.verified || 0)}</b></div>
+                            <div class="rounded-xl bg-slate-950/60 p-2"><span class="text-slate-500 block">قيد المراجعة</span><b class="text-amber-300">${Number(summary.pending || 0)}</b></div>
+                            <div class="rounded-xl bg-slate-950/60 p-2"><span class="text-slate-500 block">مرفوض</span><b class="text-rose-300">${Number(summary.rejected || 0)}</b></div>
+                            <div class="rounded-xl bg-slate-950/60 p-2"><span class="text-slate-500 block">لم يبدأ</span><b class="text-slate-300">${Number(summary.notStarted || 0)}</b></div>
+                        </div>
+                    `;
+                }
+                if (quick) {
+                    quick.innerHTML = `
+                        <div class="rounded-xl bg-slate-950/60 p-2 text-[10px] text-slate-300"><span class="text-slate-500 block">الإجمالي</span><b class="text-white">${Number(summary.total || 0)} مستخدم</b></div>
+                        <div class="rounded-xl bg-slate-950/60 p-2 text-[10px] text-slate-300"><span class="text-slate-500 block">قائمة الانتظار</span><b class="text-amber-300">${Number(summary.reviewQueue || 0)} يحتاج مراجعة</b></div>
+                    `;
+                }
+            } catch (error) {
+                if (container) container.innerHTML = '<div class="text-[10px] text-rose-300">تعذر تحميل KYC</div>';
+                if (quick) quick.innerHTML = '<div class="text-[10px] text-rose-300">تعذر تحميل حالة KYC</div>';
+            }
+        }
+
+        async function loadOverviewFinancialSummary() {
+            const container = document.getElementById('overviewFinancialSummary');
+            if (!container) return;
+            try {
+                const response = await fetch('/api/admin/financial-summary', { headers: adminHeaders() });
+                const data = await response.json();
+                if (!response.ok || !data.success) throw new Error(data.error || 'تعذر تحميل الملخص المالي');
+                const summary = data.summary || {};
+                container.innerHTML = `
+                    <div class="grid grid-cols-2 gap-2 text-[10px] text-slate-300">
+                        <div class="rounded-xl bg-slate-950/60 p-2"><span class="text-slate-500 block">إجمالي الإيداعات</span><b class="text-emerald-300">${Number(summary.totalDeposits || 0).toFixed(2)} $</b></div>
+                        <div class="rounded-xl bg-slate-950/60 p-2"><span class="text-slate-500 block">إجمالي المسحوبات</span><b class="text-amber-300">${Number(summary.totalWithdrawals || 0).toFixed(2)} $</b></div>
+                        <div class="rounded-xl bg-slate-950/60 p-2"><span class="text-slate-500 block">صافي الإيراد</span><b class="text-cyan-300">${Number(summary.netRevenue || 0).toFixed(2)} $</b></div>
+                        <div class="rounded-xl bg-slate-950/60 p-2"><span class="text-slate-500 block">طلبات معلقة</span><b class="text-rose-300">${Number(summary.pendingCount || 0)}</b></div>
+                    </div>
+                    <div class="mt-3 text-[10px] text-slate-300">
+                        <div>• المبلغ المعلق: ${Number(summary.pendingAmount || 0).toFixed(2)} $</div>
+                        <div>• عمليات مرفوضة: ${Number(summary.rejectedCount || 0)} / ${Number(summary.rejectedAmount || 0).toFixed(2)} $</div>
+                    </div>
+                `;
+            } catch (error) {
+                container.innerHTML = '<div class="text-[10px] text-rose-300">تعذر تحميل الملخص المالي</div>';
+            }
+        }
+
+        async function fetchAuditLogs(page = 1) {
+            const token = getAdminAuthToken();
+            try {
+                const search = encodeURIComponent(document.getElementById('auditSearch')?.value || '');
+                const date = encodeURIComponent(document.getElementById('auditDate')?.value || '');
+                const action = encodeURIComponent(document.getElementById('auditAction')?.value || 'all');
+                const res = await fetch(`/api/admin/audit-logs?limit=20&page=${page}&action=${action}&search=${search}&date=${date}`, { headers: adminHeaders() });
+                if (res.status === 401 || res.status === 403) return adminLogout();
+                const data = await res.json();
+                const tbody = document.getElementById('tblAuditBody');
+                if (!tbody) return;
+                if (!res.ok || !data.success || !data.logs?.length) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-500">لا توجد سجلات تدقيق بعد</td></tr>';
+                    return;
+                }
+                auditCurrentPage = data.page || 1; auditTotalPages = data.totalPages || 1;
+                document.getElementById('auditCurrentPage').innerText = auditCurrentPage; document.getElementById('auditTotalPages').innerText = auditTotalPages;
+                const labels = { update_game_settings: 'تعديل إعدادات الألعاب', update_user: 'تعديل مستخدم', update_user_balance: 'تعديل رصيد', update_user_role: 'تعديل دور', transaction_approve: 'الموافقة على معاملة', transaction_reject: 'رفض معاملة', schedule_broadcast: 'جدولة بث', broadcast_notification: 'إرسال بث', reset_daily_tasks: 'إعادة المهام' };
+                tbody.innerHTML = data.logs.map(log => `<tr><td class="p-4 text-slate-400 whitespace-nowrap">${escapeAdminHtml(new Date(log.createdAt).toLocaleString('ar'))}</td><td class="p-4 text-white">${escapeAdminHtml(log.adminId?.email || 'مدير')}</td><td class="p-4 text-amber-400">${escapeAdminHtml(labels[log.action] || log.action)}</td><td class="p-4 font-mono text-[10px] text-slate-500">${escapeAdminHtml(log.targetId || '-')}</td><td class="p-4 text-slate-400 text-[10px] max-w-40"><span class="block">${escapeAdminHtml(log.ip || '-')}</span><span class="block truncate" title="${escapeAdminHtml(log.userAgent || '')}">${escapeAdminHtml(log.userAgent || '-')}</span></td><td class="p-4 text-slate-400 max-w-xs"><div class="max-w-xs truncate">${formatAuditDetails(log.details || {})}</div><button onclick='showAuditDetails(${JSON.stringify(log.details || {}).replace(/'/g, '&#39;')})' class="mt-1 text-[10px] text-cyan-300 hover:underline">عرض التفاصيل</button></td></tr>`).join('');
+            } catch (error) { showToast('تعذر تحميل سجل التدقيق'); }
+        }
+
+        function changeAuditPage(delta) { const target = auditCurrentPage + delta; if (target >= 1 && target <= auditTotalPages) fetchAuditLogs(target); }
+
+        async function fetchAdminSupport() {
+            const list = document.getElementById('adminSupportList');
+            try {
+                const response = await fetch('/api/admin/support/tickets', { headers: adminHeaders() });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'تعذر تحميل التذاكر');
+                list.innerHTML = data.tickets?.length ? data.tickets.map(ticket => `<div class="glass-card p-4 rounded-2xl border border-slate-800 space-y-3"><div class="flex justify-between gap-3"><div><b class="text-white">${escapeAdminHtml(ticket.subject)}</b><p class="text-[10px] text-slate-400 mt-1">${escapeAdminHtml(ticket.userId?.email || '-')}</p></div><select id="support-status-${ticket._id}" class="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-[10px] text-cyan-300"><option value="open" ${ticket.status === 'open' ? 'selected' : ''}>مفتوحة</option><option value="in_progress" ${ticket.status === 'in_progress' ? 'selected' : ''}>قيد المعالجة</option><option value="resolved" ${ticket.status === 'resolved' ? 'selected' : ''}>محلولة</option><option value="closed" ${ticket.status === 'closed' ? 'selected' : ''}>مغلقة</option></select></div><p class="text-xs text-slate-300 whitespace-pre-line">${escapeAdminHtml(ticket.message)}</p><textarea id="support-reply-${ticket._id}" rows="2" placeholder="اكتب رد الإدارة..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">${escapeAdminHtml(ticket.adminReply || '')}</textarea><button onclick="updateAdminSupport('${ticket._id}')" class="w-full py-2 bg-cyan-500/15 text-cyan-300 border border-cyan-500/20 rounded-xl text-xs font-bold">حفظ والرد</button></div>`).join('') : '<div class="text-center text-slate-500 py-8">لا توجد تذاكر مفتوحة</div>';
+            } catch (error) { list.innerHTML = `<div class="text-rose-300">${escapeAdminHtml(error.message)}</div>`; }
+        }
+
+        async function loadAdminSecurityStatus() { const status = document.getElementById('adminSecurityStatus'); try { const response = await fetch('/api/admin/security/2fa', { headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` } }); const data = await response.json(); if (!response.ok) throw new Error(data.error); status.innerHTML = data.enabled ? '<span class="text-emerald-300">● مصادقة الإدارة مفعلة ومحمية</span>' : '<span class="text-amber-300">● مصادقة الإدارة غير مفعلة</span>'; document.getElementById('adminSecuritySetupButton').classList.toggle('hidden', data.enabled); ensureAdminInvitePanel(); } catch (error) { status.innerText = error.message || 'تعذر فحص أمان الإدارة'; } }
+        function ensureAdminInvitePanel() { if (document.getElementById('adminInvitePanel')) return; const parent = document.getElementById('admin-security'); const panel = document.createElement('div'); panel.id = 'adminInvitePanel'; panel.className = 'glass-card max-w-lg p-6 rounded-3xl border border-amber-500/20 space-y-3'; panel.innerHTML = '<h3 class="text-sm font-bold text-white">دعوة مدير جديد لمرة واحدة</h3><p class="text-[10px] text-slate-500">ينشئ رابطًا صالحًا 24 ساعة، ويكمل المدير الجديد كلمة المرور و2FA بنفسه.</p><div class="grid grid-cols-2 gap-2"><input id="inviteAdminEmail" type="email" placeholder="البريد الإداري" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"><select id="inviteAdminRole" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"><option value="monitor">مراقب</option><option value="support_admin">مدير دعم</option><option value="financial_admin">مدير مالي</option></select></div><button onclick="inviteNewAdmin()" class="w-full py-2.5 bg-amber-500/15 text-amber-300 border border-amber-500/20 rounded-xl text-xs font-bold">إنشاء دعوة الإدارة</button><div id="adminInviteResult" class="hidden text-[10px] break-all"></div>'; parent.appendChild(panel); }
+        async function inviteNewAdmin() { const email = document.getElementById('inviteAdminEmail').value.trim(); const role = document.getElementById('inviteAdminRole').value; const result = document.getElementById('adminInviteResult'); const response = await fetch('/api/admin/security/invite-admin', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('adminToken')}` }, body: JSON.stringify({ email, role }) }); const data = await response.json(); result.classList.remove('hidden'); result.className = `text-[10px] break-all ${response.ok ? 'text-emerald-300' : 'text-rose-300'}`; result.innerHTML = response.ok ? `${data.message}<br><a class="text-amber-300 underline" href="${data.inviteUrl}" target="_blank">${data.inviteUrl}</a>` : (data.error || 'تعذر إنشاء الدعوة'); }
+        async function setupAdminSecurity2FA() { const response = await fetch('/api/admin/security/2fa/setup', { method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` } }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر إنشاء الرمز'); document.getElementById('adminSecurityQr').src = data.qrCode; document.getElementById('adminSecuritySecret').innerText = `المفتاح اليدوي: ${data.secret}`; document.getElementById('adminSecuritySetupPanel').classList.remove('hidden'); }
+        async function confirmAdminSecurity2FA() { const code = document.getElementById('adminSecurityCode').value.trim(); const response = await fetch('/api/admin/security/2fa/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('adminToken')}` }, body: JSON.stringify({ code }) }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'رمز غير صحيح'); showToast(data.message || 'تم التفعيل'); document.getElementById('adminSecuritySetupPanel').classList.add('hidden'); loadAdminSecurityStatus(); }
+        async function updateAdminSupport(id) { const status = document.getElementById(`support-status-${id}`).value; const reply = document.getElementById(`support-reply-${id}`).value; const response = await fetch(`/api/admin/support/tickets/${id}`, { method: 'POST', headers: adminJsonHeaders(), body: JSON.stringify({ status, reply }) }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر تحديث التذكرة'); showToast('تم تحديث التذكرة وإرسال الإشعار'); fetchAdminSupport(); }
+
+        async function fetchAdminAnalytics() {
+            try {
+                const response = await fetch('/api/admin/analytics', { headers: adminHeaders() });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'تعذر تحميل التحليلات');
+                const security = Object.fromEntries((data.security || []).map(item => [item._id, item.count]));
+                document.getElementById('analyticsLoginSuccess').innerText = security.login_success || 0;
+                document.getElementById('analyticsLoginFailed').innerText = security.login_failed || 0;
+                document.getElementById('analyticsEmailVerified').innerText = security.email_verified || 0;
+                const roleLabels = { user: 'مستخدمون', admin: 'مديرون', financial_admin: 'مديرون ماليون', support_admin: 'دعم', monitor: 'مراقبون' };
+                const maxRole = Math.max(1, ...(data.usersByRole || []).map(item => item.count));
+                document.getElementById('analyticsRoles').innerHTML = (data.usersByRole || []).map(item => `<div><div class="flex justify-between text-[11px] text-slate-300"><span>${escapeAdminHtml(roleLabels[item._id] || item._id)}</span><b>${item.count}</b></div><div class="h-1.5 bg-slate-950 rounded-full mt-1 overflow-hidden"><div class="h-full bg-cyan-400 rounded-full" style="width:${Math.round(item.count / maxRole * 100)}%"></div></div></div>`).join('') || '<span class="text-xs text-slate-500">لا توجد بيانات</span>';
+                document.getElementById('analyticsDaily').innerHTML = (data.daily || []).slice(-30).map(item => `<div class="flex justify-between border-b border-slate-800 pb-2 text-[10px]"><span class="text-slate-400">${escapeAdminHtml(item._id.day)} · ${escapeAdminHtml(item._id.type)}</span><span class="text-amber-400 font-bold">${Number(item.total || 0).toFixed(2)} $ (${item.count})</span></div>`).join('') || '<span class="text-xs text-slate-500">لا توجد معاملات في الفترة</span>';
+            } catch (error) { showToast(error.message); }
+        }
+        function exportAnalyticsCsv() { const rows = [['المؤشر', 'القيمة'], ['دخول ناجح', document.getElementById('analyticsLoginSuccess')?.innerText || 0], ['محاولات فاشلة', document.getElementById('analyticsLoginFailed')?.innerText || 0], ['بريد موثق', document.getElementById('analyticsEmailVerified')?.innerText || 0]]; exportCsv(rows, 'operix-analytics.csv'); }
+
+        async function fetchAdminOverview() {
+            try {
+                const res = await fetch('/api/admin/overview', {
+                    headers: adminHeaders()
+                });
+
+                if (res.status === 401 || res.status === 403) return adminLogout();
+
+                const data = await res.json();
+                if(res.ok && data.success) {
+                    const stats = data.stats || {};
+                    document.getElementById('statTotalUsers').innerText = stats.totalUsers || 0;
+                    document.getElementById('statTotalDeposits').innerText = (Number(stats.totalDeposits) || 0).toFixed(2) + ' $';
+                    document.getElementById('statTotalWithdrawals').innerText = (Number(stats.totalWithdrawals) || 0).toFixed(2) + ' $';
+                    document.getElementById('statPendingRequests').innerText = stats.pendingRequests || stats.pendingWithdrawals || 0;
+                    document.getElementById('statActiveUsers').innerText = stats.activeUsers || 0;
+                    document.getElementById('statTotalRewards').innerText = (Number(stats.totalRewards) || 0).toFixed(2) + ' $';
+                    renderUrgentActions(stats);
+                }
+            } catch(e) { console.error('خطأ الإحصائيات:', e); }
+        }
+
+        function renderUrgentActions(stats = {}) {
+            const list = document.getElementById('overviewUrgentActions');
+            if (!list) return;
+            const actions = [];
+            if (canAdmin('finance') && Number(stats.pendingWithdrawals || 0) > 0) actions.push({ text: `${stats.pendingWithdrawals} طلب سحب بانتظار القرار`, tab: 'withdrawals', color: 'text-rose-300' });
+            if (canAdmin('finance') && Number(stats.pendingDeposits || 0) > 0) actions.push({ text: `${stats.pendingDeposits} إيداع بانتظار المراجعة`, tab: 'withdrawals', color: 'text-amber-300' });
+            if (canAdmin('manage_users')) actions.push({ text: 'مراجعة تذاكر الدعم المفتوحة', tab: 'support', color: 'text-cyan-300' });
+            if (!actions.length) actions.push({ text: 'لا توجد إجراءات عاجلة حاليًا', tab: 'overview', color: 'text-emerald-300' });
+            list.innerHTML = actions.slice(0, 4).map(action => `<button onclick="switchAdminTab('${action.tab}')" class="w-full flex items-center justify-between gap-2 p-3 rounded-xl bg-slate-950/60 border border-slate-800 text-right hover:border-amber-500/30"><span class="text-[11px] ${action.color}">${escapeAdminHtml(action.text)}</span><i class="fa-solid fa-arrow-left text-[10px] text-slate-600"></i></button>`).join('');
+        }
+
+        async function refreshOverviewDashboard() {
+            const icon = document.getElementById('overviewRefreshIcon');
+            if (icon) icon.classList.add('fa-spin');
+            try {
+                await fetchAdminOverview();
+                await loadOverviewFinancialSummary();
+                await loadOverviewRiskSummary();
+                await loadOverviewKycSummary();
+                await loadRiskSignals();
+                const response = await fetch('/api/admin/analytics', { headers: adminHeaders() });
+                const data = await response.json();
+                if (response.ok) {
+                    const period = Number(document.getElementById('overviewPeriod')?.value || 30);
+                    const daily = (data.daily || []).slice(-period);
+                    const max = Math.max(1, ...daily.map(item => Number(item.total || 0)));
+                    const chart = document.getElementById('overviewChart');
+                    const labels = document.getElementById('overviewChartLabels');
+                    if (chart) chart.innerHTML = daily.length ? daily.map(item => `<span class="ops-bar" title="${escapeAdminHtml(item._id.day)}: ${Number(item.total || 0).toFixed(2)} $" style="height:${Math.max(5, Math.round(Number(item.total || 0) / max * 100))}%"></span>`).join('') : '<span class="text-[10px] text-slate-500 self-center">لا توجد بيانات للفترة المحدعة</span>';
+                    if (labels) labels.innerHTML = daily.length ? `<span>${escapeAdminHtml(daily[0]._id.day)}</span><span>${escapeAdminHtml(daily[daily.length - 1]._id.day)}</span>` : '';
+                }
+                const activity = document.getElementById('overviewRecentActivity');
+                if (activity && canAdmin('finance')) {
+                    const txResponse = await fetch('/api/admin/withdrawals?status=all&type=all&page=1&limit=5', { headers: adminHeaders() });
+                    const txData = await txResponse.json();
+                    activity.innerHTML = txResponse.ok && txData.withdrawals?.length ? txData.withdrawals.map(item => `<div class="flex items-center justify-between gap-3 border-b border-slate-800 pb-2 text-[10px]"><span class="text-slate-300">${escapeAdminHtml(item.userId?.email || 'مستخدم')} · ${item.type === 'withdraw' ? 'سحب' : 'إيداع'}</span><span class="text-amber-400 font-bold">${Number(item.amount || 0).toFixed(2)} $ · ${escapeAdminHtml(item.status)}</span></div>`).join('') : '<span class="text-slate-500">لا توجد عمليات مالية حديثة</span>';
+                } else if (activity) activity.innerHTML = '<span class="text-slate-500">يتطلب عرض العمليات صلاحية الإدارة المالية</span>';
+                const sync = document.getElementById('overviewLastSync');
+                if (sync) sync.innerText = `آخر مزامنة: ${new Date().toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' })}`;
+            } catch (error) { showToast('تعذر تحديث مركز القيادة'); }
+            finally { if (icon) icon.classList.remove('fa-spin'); }
+        }
+
+        async function fetchUsersList(page = 1) {
+            try {
+                const params = new URLSearchParams({ page, limit: 10, search: document.getElementById('txtSearchUser')?.value.trim() || '', role: document.getElementById('userFilterRole')?.value || '', tier: document.getElementById('userFilterTier')?.value.trim() || '', status: document.getElementById('userFilterStatus')?.value || '', verified: document.getElementById('userFilterVerified')?.value || '', kycStatus: document.getElementById('userFilterKyc')?.value || '' });
+                const res = await fetch(`/api/admin/users?${params.toString()}`, {
+                    headers: adminHeaders()
+                });
+
+                if (res.status === 401 || res.status === 403) return adminLogout();
+
+                const data = await res.json();
+                if(res.ok) {
+                    const users = Array.isArray(data) ? data : data.users || [];
+                    allUsersData = users;
+                    usersCurrentPage = data.page || 1;
+                    usersTotalPages = data.totalPages || 1;
+                    document.getElementById('usersCurrentPage').innerText = usersCurrentPage;
+                    document.getElementById('usersTotalPages').innerText = usersTotalPages;
+                    renderUsersTable(users);
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        function changeUsersPage(delta) {
+            const target = usersCurrentPage + delta;
+            if(target >= 1 && target <= usersTotalPages) fetchUsersList(target);
+        }
+
+        let allReferralsData = [];
+        async function fetchReferrals() {
+            const token = localStorage.getItem('token');
+            try {
+                const response = await fetch('/api/admin/referrals?limit=100', { headers: adminHeaders() });
+                if (response.status === 401 || response.status === 403) return adminLogout();
+                const data = await response.json();
+                allReferralsData = data.referrals || [];
+                renderReferrals(allReferralsData);
+            } catch (error) { showToast('تعذر تحميل الإحالات'); }
+        }
+        function renderReferrals(referrals) {
+            const tbody = document.getElementById('tblReferralsBody');
+            if (!tbody) return;
+            tbody.innerHTML = referrals.length ? referrals.map(referral => `<tr><td class="p-4 text-white">${escapeAdminHtml(referral.email)}</td><td class="p-4 text-amber-400 font-mono">${escapeAdminHtml(referral.referralCode || '-')}</td><td class="p-4 text-slate-400 font-mono">${escapeAdminHtml(referral.referredBy || '-')}</td><td class="p-4 text-slate-300">${escapeAdminHtml(referral.tierCode || 'A1')}</td><td class="p-4">${Number(referral.wallet?.totalDeposits || 0) > 0 ? '<span class="text-emerald-400">نعم</span>' : '<span class="text-slate-500">لا</span>'}</td><td class="p-4 text-slate-500">${escapeAdminHtml(new Date(referral.createdAt).toLocaleDateString('ar'))}</td><td class="p-4"><button type="button" onclick="viewReferralTreeById('${escapeAdminHtml(referral._id)}')" class="text-blue-300 hover:text-blue-200" title="عرض شجرة الإحالات"><i class="fa-solid fa-sitemap"></i></button></td></tr>`).join('') : '<tr><td colspan="7" class="p-4 text-center text-slate-500">لا توجد إحالات</td></tr>';
+        }
+        function filterReferrals() { const term = document.getElementById('txtSearchReferral').value.toLowerCase(); renderReferrals(allReferralsData.filter(referral => referral.email?.toLowerCase().includes(term))); }
+        function exportCsv(rows, filename) { const csv = rows.map(row => row.map(value => `"${String(value ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n'); const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = filename; link.click(); URL.revokeObjectURL(link.href); }
+        function exportReferralsCsv() { exportCsv([['البريد', 'كود الإحالة', 'أحاله', 'المستوى', 'نشطة'], ...allReferralsData.map(item => [item.email, item.referralCode, item.referredBy, item.tierCode, Number(item.wallet?.totalDeposits || 0) > 0 ? 'نعم' : 'لا'])], 'referrals.csv'); }
+        function exportUsersCsv() { exportCsv([['البريد', 'المستوى', 'الرصيد', 'الحالة'], ...allUsersData.map(item => [item.email, item.tierCode, item.wallet?.balance || 0, item.isBanned ? 'محظور' : 'نشط'])], 'users.csv'); }
+        async function exportTransactionsCsv() { const params = new URLSearchParams({ status: document.getElementById('filterTxStatus')?.value || 'all', type: document.getElementById('filterTxType')?.value || 'all', network: document.getElementById('filterTxNetwork')?.value || '', search: document.getElementById('txSearch')?.value.trim() || '', from: document.getElementById('txFrom')?.value || '', to: document.getElementById('txTo')?.value || '' }); const response = await fetch(`/api/admin/withdrawals/export?${params}`, { headers: adminHeaders() }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر تصدير المعاملات'); exportCsv([['المستخدم', 'النوع', 'المبلغ', 'الشبكة', 'الهاش', 'المحفظة', 'الحالة', 'التاريخ'], ...(data.transactions || []).map(item => [item.userId?.email || '-', item.type, item.amount, item.network || '-', item.txHash || '-', item.walletAddress || '-', item.status, new Date(item.createdAt).toISOString()])], 'transactions.csv'); }
+        async function exportComplianceReport() { const params = new URLSearchParams({ kycStatus: document.getElementById('userFilterKyc')?.value || '', from: document.getElementById('txFrom')?.value || '', to: document.getElementById('txTo')?.value || '' }); const response = await fetch(`/api/admin/compliance-report?${params}`, { headers: adminHeaders() }); if (!response.ok) { const data = await response.json(); return showToast(data.error || 'تعذر تصدير تقرير الامتثال'); } const blob = await response.blob(); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `operix-compliance-${new Date().toISOString().slice(0, 10)}.csv`; link.click(); URL.revokeObjectURL(link.href); showToast('تم تصدير تقرير الامتثال بنجاح'); }
+
+        function kycStatusBadge(status) {
+            const labelMap = { not_started: 'لم يبدأ', pending: 'قيد المراجعة', verified: 'معتمد', rejected: 'مرفوض' };
+            const colorMap = { not_started: 'bg-slate-500/20 text-slate-300', pending: 'bg-amber-500/20 text-amber-300', verified: 'bg-emerald-500/20 text-emerald-300', rejected: 'bg-rose-500/20 text-rose-300' };
+            return `<span class="px-2 py-0.5 rounded ${colorMap[status] || 'bg-slate-500/20 text-slate-300'} text-[10px] font-bold">${labelMap[status] || 'غير معروف'}</span>`;
+        }
+
+        function renderUsersTable(users) {
+            const tbody = document.getElementById('tblUsersBody');
+            if(!users || users.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-slate-500">لا يوجد مستخدمين لعرضهم</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = users.map(u => {
+                const isBanned = u.isBanned || false;
+                const statusBadge = isBanned 
+                    ? `<span class="px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 text-[10px] font-bold">محظور</span>`
+                    : `<span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">نشط</span>`;
+
+                return `
+                    <tr>
+                        <td class="p-4"><input type="checkbox" class="user-select-checkbox" value="${u._id}" onchange="updateUserSelectionCount()" aria-label="تحديد المستخدم"></td>
+                        <td class="p-4 font-bold text-white">${escapeAdminHtml(u.email)}</td>
+                        <td class="p-4"><span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 text-[10px] font-bold">${escapeAdminHtml(u.tierCode || 'A1')}</span></td>
+                        <td class="p-4 text-emerald-400 font-mono font-bold">${Number(u.wallet?.balance || 0).toFixed(2)} $</td>
+                        <td class="p-4">${statusBadge}</td>
+                        <td class="p-4 text-slate-400">${u.todayCompletedTasks || 0}</td>
+                        <td class="p-4">${kycStatusBadge(u.kycStatus || 'not_started')}</td>
+                        <td class="p-4 space-x-2 space-x-reverse">
+                            <button onclick="showUserDetails('${u._id}')" class="px-3 py-1 bg-cyan-600/20 text-cyan-300 rounded-lg text-[10px] font-bold">التفاصيل</button>
+                            <button data-action-permission="finance" onclick="openEditUser('${u._id}', '${u.tierCode || 'A1'}', ${u.wallet?.balance || 0}, '${u.role || 'user'}')" class="px-3 py-1 bg-blue-600/20 text-blue-400 rounded-lg text-[10px] font-bold hover:bg-blue-600/40 transition-all">إدارة مالية</button>
+                            ${isBanned ? `<button data-action-permission="manage_users" onclick="toggleUserBan('${u._id}', false)" class="px-3 py-1 bg-emerald-600/20 text-emerald-400 rounded-lg text-[10px] font-bold">إلغاء الحظر</button>` : `<button data-action-permission="manage_users" onclick="toggleUserBan('${u._id}', true)" class="px-3 py-1 bg-rose-600/20 text-rose-400 rounded-lg text-[10px] font-bold">حظر</button>`}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            applyRoleVisibility();
+            updateUserSelectionCount();
+        }
+
+        function selectedUserIds() { return [...document.querySelectorAll('.user-select-checkbox:checked')].map(input => input.value); }
+        function updateUserSelectionCount() { const count = selectedUserIds().length; const label = document.getElementById('userSelectionCount'); if (label) label.innerText = count ? `تم تحديد ${count} مستخدم` : 'لم يتم تحديد مستخدمين'; }
+        function toggleAllUsers(checked) { document.querySelectorAll('.user-select-checkbox').forEach(input => { input.checked = checked; }); updateUserSelectionCount(); }
+        function clearUserSelection() { toggleAllUsers(false); }
+        async function bulkUserAction(isBanned) { const userIds = selectedUserIds(); if (!userIds.length) return showToast('حدد مستخدمًا واحدًا على الأقل'); if (!await showAdminConfirm(`سيتم ${isBanned ? 'حظر' : 'إلغاء حظر'} ${userIds.length} مستخدم. هل تتابع؟`, 'إجراء جماعي')) return; const response = await fetch('/api/admin/users/bulk-ban', { method: 'POST', headers: adminJsonHeaders(), body: JSON.stringify({ userIds, isBanned }) }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر تنفيذ الإجراء'); showToast(`تم تعديل ${data.modifiedCount || 0} مستخدم`); clearUserSelection(); fetchUsersList(usersCurrentPage); }
+
+        let currentDetailsUserId = null;
+        async function showUserDetails(userId) { currentDetailsUserId = userId; const modal = document.getElementById('userDetailsModal'); modal.classList.remove('hide'); modal.classList.add('flex'); document.body.classList.add('overflow-hidden'); await loadUserDetails(userId); }
+        function closeUserDetails() { const modal = document.getElementById('userDetailsModal'); modal.classList.add('hide'); modal.classList.remove('flex'); document.body.classList.remove('overflow-hidden'); currentDetailsUserId = null; }
+        async function loadUserDetails(userId) {
+            if (!userId) return;
+            const summary = document.getElementById('userDetailsSummary');
+            const transactions = document.getElementById('userDetailsTransactions');
+            const audit = document.getElementById('userDetailsAudit');
+            const sessions = document.getElementById('userDetailsSessions');
+            const kycPanel = document.getElementById('kycReviewPanel');
+            summary.innerHTML = '<span class="text-slate-400">جاري التحميل...</span>';
+            try {
+                const response = await fetch(`/api/admin/users/${encodeURIComponent(userId)}/details`);
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'تعذر تحميل التفاصيل');
+                const user = data.user;
+                document.getElementById('userDetailsEmail').innerText = user.email || '-';
+                summary.innerHTML = `<span class="bg-slate-950 rounded-xl p-3">المستوى<br><b class="text-amber-300">${escapeAdminHtml(user.tierCode || '-')}</b></span><span class="bg-slate-950 rounded-xl p-3">الرصيد<br><b class="text-emerald-300">$${Number(user.wallet?.balance || 0).toFixed(2)}</b></span><span class="bg-slate-950 rounded-xl p-3">الحالة<br><b class="${user.isBanned ? 'text-rose-300' : 'text-emerald-300'}">${user.isBanned ? 'محظور' : 'نشط'}</b></span><span class="bg-slate-950 rounded-xl p-3">البريد<br><b class="text-cyan-300">${user.emailVerified ? 'موثق' : 'غير موثق'}</b></span>`;
+                const kycStatus = user.kycStatus || 'not_started';
+                const kycInfo = `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+                        <div class="rounded-xl bg-slate-950/60 p-3"><div class="text-[10px] text-slate-400">حالة KYC</div><div class="mt-1">${kycStatusBadge(kycStatus)}</div></div>
+                        <div class="rounded-xl bg-slate-950/60 p-3"><div class="text-[10px] text-slate-400">الاسم الكامل</div><div class="text-xs text-white mt-1">${escapeAdminHtml(user.kycFullName || 'غير مُدخل')}</div></div>
+                        <div class="rounded-xl bg-slate-950/60 p-3"><div class="text-[10px] text-slate-400">نوع الوثيقة</div><div class="text-xs text-white mt-1">${escapeAdminHtml(user.kycDocumentType || 'غير محدد')}</div></div>
+                        <div class="rounded-xl bg-slate-950/60 p-3"><div class="text-[10px] text-slate-400">رقم الوثيقة</div><div class="text-xs text-white mt-1">${escapeAdminHtml(user.kycDocumentNumber || 'غير محدد')}</div></div>
+                        <div class="rounded-xl bg-slate-950/60 p-3"><div class="text-[10px] text-slate-400">الدولة</div><div class="text-xs text-white mt-1">${escapeAdminHtml(user.kycCountry || 'غير محددة')}</div></div>
+                        <div class="rounded-xl bg-slate-950/60 p-3 md:col-span-2"><div class="text-[10px] text-slate-400">الوثيقة</div><div class="text-xs text-cyan-300 mt-1 break-all">${user.kycDocumentUrl ? (/^(private|gridfs):\/\//i.test(String(user.kycDocumentUrl)) ? `<button type="button" onclick="viewKycDocument('${encodeURIComponent(user._id)}')" class="underline text-cyan-300 hover:text-cyan-200">عرض الملف المحمي</button>` : `<a href="${escapeAdminHtml(user.kycDocumentUrl)}" target="_blank" rel="noopener noreferrer" class="underline">عرض الرابط القديم</a>`) : 'لا توجد وثيقة'}</div></div>
+                        <div class="rounded-xl bg-slate-950/60 p-3"><div class="text-[10px] text-slate-400">تاريخ الإرسال</div><div class="text-xs text-white mt-1">${user.kycSubmittedAt ? escapeAdminHtml(new Date(user.kycSubmittedAt).toLocaleString('ar')) : 'غير متوفر'}</div></div>
+                        <div class="rounded-xl bg-slate-950/60 p-3"><div class="text-[10px] text-slate-400">آخر مراجعة</div><div class="text-xs text-white mt-1">${user.kycReviewedAt ? escapeAdminHtml(new Date(user.kycReviewedAt).toLocaleString('ar')) : 'لم تتم المراجعة'}</div></div>
+                        <div class="rounded-xl bg-slate-950/60 p-3 md:col-span-2"><div class="text-[10px] text-slate-400">ملاحظات المراجعة</div><div class="text-xs text-slate-300 mt-1 whitespace-pre-wrap">${escapeAdminHtml(user.kycNotes || user.kycReason || 'لا توجد ملاحظات بعد')}</div></div>
+                    </div>
+                `;
+                if (kycPanel) kycPanel.innerHTML = kycInfo + `
+                    <div class="mt-4 space-y-3">
+                        <div class="grid grid-cols-2 gap-2">
+                            <select id="kycReviewStatus" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white">
+                                <option value="pending" ${kycStatus === 'pending' ? 'selected' : ''}>قيد المراجعة</option>
+                                <option value="verified" ${kycStatus === 'verified' ? 'selected' : ''}>معتمد</option>
+                                <option value="rejected" ${kycStatus === 'rejected' ? 'selected' : ''}>مرفوض</option>
+                                <option value="not_started" ${kycStatus === 'not_started' ? 'selected' : ''}>لم يبدأ</option>
+                            </select>
+                            <button onclick="reviewCurrentUserKyc()" class="px-3 py-2 bg-cyan-500/15 text-cyan-300 border border-cyan-500/20 rounded-xl text-[10px] font-bold">تحديث حالة KYC</button>
+                        </div>
+                        <textarea id="kycReviewNotes" rows="3" placeholder="أدخل ملاحظات المراجعة أو سبب الرفض..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">${escapeAdminHtml(user.kycNotes || '')}</textarea>
+                    </div>
+                `;
+                transactions.innerHTML = data.transactions?.length ? data.transactions.map(item => `<div class="flex justify-between gap-3 border-b border-slate-800 pb-2"><span>${escapeAdminHtml(item.type)} · ${escapeAdminHtml(item.status)}</span><b class="text-amber-300">${Number(item.amount || 0).toFixed(2)} $</b></div>`).join('') : '<span class="text-slate-500">لا توجد معاملات</span>';
+                audit.innerHTML = data.auditLogs?.length ? data.auditLogs.map(item => `<div class="border-b border-slate-800 pb-2"><b class="text-cyan-300">${escapeAdminHtml(item.action)}</b><span class="text-slate-500 mr-2">${escapeAdminHtml(item.adminId?.email || 'مدير')} · ${escapeAdminHtml(new Date(item.createdAt).toLocaleString('ar'))}</span><div class="text-slate-400 mt-1">${formatAuditDetails(item.details || {})}</div></div>`).join('') : '<span class="text-slate-500">لا توجد تعديلات مسجلة</span>';
+                sessions.innerHTML = data.sessions?.length ? data.sessions.map(item => `<div class="border-b border-slate-800 pb-2"><span class="text-slate-300">${escapeAdminHtml(item.userAgent || 'جهاز غير معروف')}</span><span class="block text-slate-500">${escapeAdminHtml(item.ip || '-')} · آخر نشاط ${escapeAdminHtml(new Date(item.lastSeenAt).toLocaleString('ar'))}</span></div>`).join('') : '<span class="text-slate-500">لا توجد جلسات نشطة</span>';
+            } catch (error) { summary.innerHTML = `<span class="text-rose-300">${escapeAdminHtml(error.message)}</span>`; }
+        }
+        async function viewKycDocument(userId) {
+            const previewWindow = window.open('', '_blank');
+            if (!previewWindow) return showToast('يرجى السماح بالنوافذ المنبثقة لعرض الوثيقة');
+            previewWindow.document.write('<title>جاري تحميل وثيقة KYC</title><p style="font-family: sans-serif; padding: 24px;">جاري تحميل الوثيقة...</p>');
+            try {
+                const response = await fetch(`/api/admin/users/${userId}/kyc-document`, { headers: adminHeaders(), credentials: 'same-origin' });
+                if (!response.ok) throw new Error(response.status === 401 ? 'انتهت جلسة الإدارة، يرجى تسجيل الدخول مجددًا' : 'تعذر تحميل وثيقة KYC');
+                const blob = await response.blob();
+                const objectUrl = URL.createObjectURL(blob);
+                previewWindow.location.href = objectUrl;
+                setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+            } catch (error) {
+                previewWindow.close();
+                showToast(error.message);
+            }
+        }
+        async function reviewCurrentUserKyc() {
+            if (!currentDetailsUserId) return;
+            const status = document.getElementById('kycReviewStatus')?.value || 'pending';
+            const notes = document.getElementById('kycReviewNotes')?.value || '';
+            try {
+                const response = await fetch(`/api/admin/users/${encodeURIComponent(currentDetailsUserId)}/kyc-review`, {
+                    method: 'POST',
+                    headers: adminJsonHeaders(),
+                    body: JSON.stringify({ status, notes })
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'تعذر تحديث حالة KYC');
+                showToast(data.message || 'تم تحديث حالة KYC');
+                loadUserDetails(currentDetailsUserId);
+                fetchUsersList(usersCurrentPage);
+                loadOverviewKycSummary();
+            } catch (error) { showToast(error.message); }
+        }
+        async function revokeDetailsSessions() { if (!currentDetailsUserId || !await showAdminConfirm('سيتم إنهاء جلسات المستخدم الحالية. هل تتابع؟', 'إنهاء الجلسات')) return; const response = await fetch(`/api/admin/users/${encodeURIComponent(currentDetailsUserId)}/revoke-sessions`, { method: 'POST' }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر إنهاء الجلسات'); showToast(data.message || 'تم إنهاء الجلسات'); loadUserDetails(currentDetailsUserId); }
+        async function verifyDetailsEmail() { if (!currentDetailsUserId) return; const response = await fetch(`/api/admin/users/${encodeURIComponent(currentDetailsUserId)}/verify-email`, { method: 'POST' }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر توثيق البريد'); showToast(data.message || 'تم توثيق البريد'); loadUserDetails(currentDetailsUserId); }
+        async function disableDetails2FA() { if (!currentDetailsUserId || !await showAdminConfirm('سيتم تعطيل المصادقة الثنائية لهذا المستخدم. هل تتابع؟', 'تعطيل 2FA')) return; const response = await fetch(`/api/admin/users/${encodeURIComponent(currentDetailsUserId)}/disable-2fa`, { method: 'POST' }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر تعطيل 2FA'); showToast(data.message || 'تم تعطيل 2FA'); loadUserDetails(currentDetailsUserId); }
+
+        function filterUsersTable() {
+            const term = document.getElementById('txtSearchUser').value.toLowerCase();
+            const filtered = allUsersData.filter(u => u.email && u.email.toLowerCase().includes(term));
+            renderUsersTable(filtered);
+        }
+
+        async function toggleUserBan(userId, isBanned) {
+            const actionText = isBanned ? 'حظر' : 'إلغاء حظر';
+            if (!await showAdminConfirm(`هل أنت متأكد من رغبتك في ${actionText} هذا المستخدم؟`, `${actionText} مستخدم`)) return;
+
+            const token = getAdminAuthToken();
+            if (!token) return showToast('انتهت جلسة الإدارة، يرجى تسجيل الدخول مجددًا');
+            try {
+                const res = await fetch('/api/admin/users/toggle-ban', {
+                    method: 'POST',
+                    headers: adminJsonHeaders(),
+                    body: JSON.stringify({ userId, isBanned })
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    showToast(data.message);
+                    fetchUsersList(usersCurrentPage);
+                } else {
+                    showToast(data.error || 'حدث خطأ في تنفيذ العملية');
+                }
+            } catch (e) { showToast('خطأ في الاتصال بالخادم'); }
+        }
+
+        async function fetchTransactionsList(page = 1) {
+            const token = getAdminAuthToken();
+            const status = document.getElementById('filterTxStatus').value;
+            const type = document.getElementById('filterTxType').value;
+            const params = new URLSearchParams({ status, type, network: document.getElementById('filterTxNetwork')?.value || '', search: document.getElementById('txSearch')?.value.trim() || '', from: document.getElementById('txFrom')?.value || '', to: document.getElementById('txTo')?.value || '', page, limit: 10 });
+
+            try {
+                const res = await fetch(`/api/admin/withdrawals?${params.toString()}`, {
+                    headers: adminHeaders()
+                });
+
+                if (res.status === 401 || res.status === 403) return adminLogout();
+
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    txCurrentPage = data.page || 1;
+                    txTotalPages = data.totalPages || 1;
+                    document.getElementById('txCurrentPage').innerText = txCurrentPage;
+                    document.getElementById('txTotalPages').innerText = txTotalPages;
+
+                    const tbody = document.getElementById('tblTransactionsBody');
+                    if (!data.withdrawals || data.withdrawals.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500">لا توجد طلبات مطابقة</td></tr>`;
+                        return;
+                    }
+                    tbody.innerHTML = data.withdrawals.map(tx => {
+                        const statusBadge = tx.status === 'pending' 
+                            ? `<span class="px-2 py-1 rounded bg-amber-500/20 text-amber-400 font-bold text-[10px]">معلق</span>`
+                            : tx.status === 'approved'
+                            ? `<span class="px-2 py-1 rounded bg-emerald-500/20 text-emerald-400 font-bold text-[10px]">مقبول</span>`
+                            : `<span class="px-2 py-1 rounded bg-rose-500/20 text-rose-400 font-bold text-[10px]">مرفوض</span>`;
+
+                        const actionButtons = tx.status === 'pending' ? `
+                            <button onclick="handleWithdrawalAction('${tx._id}', 'approve')" class="px-3 py-1 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/40 rounded-lg font-bold ml-1 transition-all">موافقة</button>
+                            <button onclick="handleWithdrawalAction('${tx._id}', 'reject')" class="px-3 py-1 bg-rose-600/20 text-rose-400 hover:bg-rose-600/40 rounded-lg font-bold transition-all">رفض</button>
+                        ` : `<span class="text-slate-500 text-[10px]">تم اتخاذ الإجراء</span>`;
+
+                        return `
+                            <tr>
+                                <td class="p-4"><input type="checkbox" class="transaction-select-checkbox" value="${tx._id}" onchange="updateTransactionSelectionCount()" aria-label="تحديد المعاملة"></td>
+                                <td class="p-4 font-bold text-white">${escapeAdminHtml(tx.userId ? tx.userId.email : 'غير معروف')}</td>
+                                <td class="p-4 font-semibold text-slate-300">${({ withdraw: 'سحب رصيد', deposit: 'شحن/إيداع', vault_lock: 'قفل خزنة', vault_release: 'فك خزنة', vault_early_release: 'فتح اضطراري', vault_penalty: 'غرامة فتح مبكر', token_burn: 'حرق OPX' }[tx.type] || tx.type)}<span class="block text-[9px] text-slate-500">${escapeAdminHtml(tx.network || '-')}</span>${tx.type === 'withdraw' && tx.riskLevel !== 'low' ? `<span class="inline-block mt-1 px-2 py-0.5 rounded bg-rose-500/15 text-rose-300 text-[9px] font-bold">خطر ${escapeAdminHtml(tx.riskLevel === 'high' ? 'مرتفع' : 'متوسط')} (${Number(tx.riskScore || 0)})</span>` : ''}</td>
+                                <td class="p-4 text-amber-400 font-mono font-bold">${Number(tx.amount || 0).toFixed(2)} $</td>
+                                <td class="p-4 text-slate-300 font-mono text-[11px] select-all">${escapeAdminHtml(tx.walletAddress || tx.hash || 'غير محدد')}</td>
+                                <td class="p-4">${statusBadge}</td>
+                                <td class="p-4 space-x-1 space-x-reverse"><button onclick="showTransactionDetails('${tx._id}')" class="px-2 py-1 bg-cyan-500/15 text-cyan-300 rounded-lg text-[10px]">تفاصيل</button>${actionButtons}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                    updateTransactionSelectionCount();
+                }
+            } catch (e) { console.error('خطأ المعاملات:', e); }
+        }
+
+        function changeTxPage(delta) {
+            const target = txCurrentPage + delta;
+            if(target >= 1 && target <= txTotalPages) fetchTransactionsList(target);
+        }
+
+        function selectedTransactionIds() { return [...document.querySelectorAll('.transaction-select-checkbox:checked')].map(input => input.value); }
+        function updateTransactionSelectionCount() { const count = selectedTransactionIds().length; const label = document.getElementById('transactionSelectionCount'); if (label) label.innerText = count ? `تم تحديد ${count} معاملة` : 'لم يتم تحديد معاملات'; }
+        function toggleAllTransactions(checked) { document.querySelectorAll('.transaction-select-checkbox').forEach(input => { input.checked = checked; }); updateTransactionSelectionCount(); }
+        function clearTransactionSelection() { toggleAllTransactions(false); }
+        async function bulkWithdrawalAction(action) { const transactionIds = selectedTransactionIds(); if (!transactionIds.length) return showToast('حدد معاملة واحدة على الأقل'); if (!await showAdminConfirm(`سيتم ${action === 'approve' ? 'قبول' : 'رفض'} ${transactionIds.length} معاملات. هل تتابع؟`, 'إجراء مالي جماعي')) return; const response = await fetch('/api/admin/withdrawals/bulk-action', { method: 'POST', headers: adminJsonHeaders(), body: JSON.stringify({ transactionIds, action }) }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر تنفيذ الإجراء'); showToast(`تمت معالجة ${data.processed || 0} معاملة، وفشل ${data.failed || 0}`); clearTransactionSelection(); fetchTransactionsList(txCurrentPage); }
+        async function showTransactionDetails(transactionId) {
+            const modal = document.getElementById('transactionDetailsModal');
+            const content = document.getElementById('transactionDetailsContent');
+            const audit = document.getElementById('transactionDetailsAudit');
+            modal.classList.remove('hide');
+            modal.classList.add('flex');
+            content.innerHTML = 'جاري التحميل...';
+            try {
+                const response = await fetch(`/api/admin/withdrawals/${encodeURIComponent(transactionId)}`);
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'تعذر تحميل التفاصيل');
+                const tx = data.transaction;
+                content.innerHTML = `<div class="grid grid-cols-2 gap-2"><span>المستخدم<br><b>${escapeAdminHtml(tx.userId?.email || '-')}</b></span><span>المبلغ<br><b class="text-amber-300">${Number(tx.amount || 0).toFixed(2)} $</b></span><span>النوع<br><b>${escapeAdminHtml(tx.type)}</b></span><span>الحالة<br><b>${escapeAdminHtml(tx.status)}</b></span><span>الشبكة<br><b>${escapeAdminHtml(tx.network || '-')}</b></span><span>التاريخ<br><b>${escapeAdminHtml(new Date(tx.createdAt).toLocaleString('ar'))}</b></span></div><p class="mt-3 break-all">الهاش: ${escapeAdminHtml(tx.txHash || '-')}</p><p class="break-all">المحفظة: ${escapeAdminHtml(tx.walletAddress || '-')}</p>`;
+                audit.innerHTML = data.auditLogs?.length ? `<h4 class="font-bold text-white mt-4">سجل القرار</h4>${data.auditLogs.map(item => `<div class="border-b border-slate-800 pb-2">${escapeAdminHtml(item.action)} · ${escapeAdminHtml(item.adminId?.email || 'مدير')} · ${escapeAdminHtml(new Date(item.createdAt).toLocaleString('ar'))}</div>`).join('')}` : '';
+            } catch (error) { content.innerHTML = `<span class="text-rose-300">${escapeAdminHtml(error.message)}</span>`; }
+        }
+        function closeTransactionDetails() { const modal = document.getElementById('transactionDetailsModal'); modal.classList.add('hide'); modal.classList.remove('flex'); }
+
+        function toggleAddVipLevel(force) { const panel = document.getElementById('addVipLevelPanel'); panel.classList.toggle('hidden', force === undefined ? !panel.classList.contains('hidden') : !force); }
+        async function createVipLevel() { const payload = { code: document.getElementById('newVipCode').value.trim().toUpperCase(), name: document.getElementById('newVipName').value.trim(), price: Number(document.getElementById('newVipPrice').value), tasks: Number(document.getElementById('newVipTasks').value), dailyProfit: Number(document.getElementById('newVipDaily').value), monthlyProfit: document.getElementById('newVipMonthly').value ? Number(document.getElementById('newVipMonthly').value) : undefined, yearlyProfit: document.getElementById('newVipYearly').value ? Number(document.getElementById('newVipYearly').value) : undefined }; if (!payload.code || !payload.name || !Number.isFinite(payload.price) || !Number.isInteger(payload.tasks) || !Number.isFinite(payload.dailyProfit)) return showToast('أكمل بيانات المستوى بقيم صحيحة'); try { const response = await fetch('/api/admin/vip-levels', { method: 'POST', headers: adminJsonHeaders(), body: JSON.stringify(payload) }); const data = await response.json(); if (!response.ok) throw new Error(data.error || 'تعذر حفظ المستوى'); showToast('تم إنشاء المستوى بنجاح'); document.querySelectorAll('#addVipLevelPanel input').forEach(input => { input.value = ''; }); toggleAddVipLevel(false); fetchVipPlans(); } catch (error) { showToast(error.message); } }
+
+        async function handleWithdrawalAction(transactionId, action) {
+            const actionText = action === 'approve' ? 'الموافقة على' : 'رفض';
+            if (!await showAdminConfirm(`هل أنت متأكد من رغبتك في ${actionText} هذا الطلب؟`, `${actionText} طلب`)) return;
+
+            const token = getAdminAuthToken();
+            try {
+                const res = await fetch('/api/admin/withdrawals/action', {
+                    method: 'POST',
+                    headers: adminJsonHeaders(),
+                    body: JSON.stringify({ transactionId, action })
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    showToast(data.message || 'تم اتخاذ الإجراء بنجاح');
+                    fetchTransactionsList(txCurrentPage);
+                    fetchAdminOverview();
+                } else {
+                    showToast(data.error || 'حدث خطأ في معالجة الطلب');
+                }
+            } catch (e) { showToast('خطأ في الاتصال بالسيرفر'); }
+        }
+
+        function openEditUser(id, tier, balance, role = 'user') {
+            document.getElementById('editUserId').value = id;
+            document.getElementById('editUserTier').value = tier;
+            document.getElementById('editUserBalance').value = balance;
+            document.getElementById('editUserPass').value = '';
+            document.getElementById('editUserRole').value = role;
+            document.getElementById('editUserModal').classList.remove('hide');
+        }
+
+        function closeEditUserModal() {
+            document.getElementById('editUserModal').classList.add('hide');
+        }
+
+        async function submitEditUser() {
+            const token = getAdminAuthToken();
+            const userId = document.getElementById('editUserId').value;
+            const tierCode = document.getElementById('editUserTier').value;
+            const balance = parseFloat(document.getElementById('editUserBalance').value);
+            const password = document.getElementById('editUserPass').value;
+            const role = document.getElementById('editUserRole').value;
+
+            try {
+                const headers = adminJsonHeaders();
+                const operations = [];
+                if (canAdmin('finance')) operations.push(['الرصيد', fetch('/api/admin/users/update', { method: 'POST', headers, body: JSON.stringify({ userId, balance }) })]);
+                if (canAdmin('manage_users') && password) operations.push(['بيانات الحساب', fetch('/api/admin/users/update-account', { method: 'POST', headers, body: JSON.stringify({ userId, password }) })]);
+                if (canAdmin('manage_vip')) operations.push(['المستوى', fetch('/api/admin/users/tier', { method: 'POST', headers, body: JSON.stringify({ userId, tierCode }) })]);
+                if (currentAdminRole === 'admin') operations.push(['الدور', fetch('/api/admin/users/role', { method: 'POST', headers, body: JSON.stringify({ userId, role }) })]);
+                if (!operations.length) return showToast('لا تملك صلاحية لتعديل بيانات هذا المستخدم');
+                const results = await Promise.all(operations.map(async ([label, request]) => {
+                    const response = await request;
+                    const data = await response.json().catch(() => ({}));
+                    return { label, ok: response.ok, error: data.error };
+                }));
+                const failures = results.filter(result => !result.ok);
+                if (failures.length) showToast(`تم الحفظ مع تعذر: ${failures.map(result => result.error || result.label).join('، ')}`);
+                else showToast('تم تحديث بيانات المستخدم بنجاح');
+                closeEditUserModal();
+                fetchUsersList(usersCurrentPage);
+                fetchAdminOverview();
+            } catch(e) { showToast('خطأ في الاتصال'); }
+        }
+
+        function referralTreeNodeHtml(node, depth = 0) {
+            const status = node.isBanned ? '<span class="text-rose-400">محظور</span>' : '<span class="text-emerald-400">نشط</span>';
+            const children = node.children?.length ? `<div class="mr-4 border-r border-slate-700 pr-3 mt-2 space-y-2">${node.children.map(child => referralTreeNodeHtml(child, depth + 1)).join('')}</div>` : '';
+            return `<div class="border border-slate-800 rounded-xl p-3 bg-slate-950/70"><div class="flex justify-between gap-3"><div><b class="text-white">${escapeAdminHtml(node.email)}</b><div class="text-[10px] text-slate-500 mt-1">${escapeAdminHtml(node.referralCode || '-')} • مستوى ${escapeAdminHtml(node.tierCode || 'A1')}</div></div><div class="text-left">${status}<div class="text-[10px] text-slate-500 mt-1">إيداعات: ${Number(node.totalDeposits || 0).toFixed(2)} $</div></div></div>${children}</div>`;
+        }
+        async function viewUserReferrals() {
+            const userId = document.getElementById('editUserId').value;
+            return viewReferralTreeById(userId);
+        }
+        async function viewReferralTreeById(userId) {
+            const modal = document.getElementById('referralTreeModal');
+            const content = document.getElementById('referralTreeContent');
+            modal.classList.remove('hide');
+            content.innerHTML = 'جاري تحميل الشجرة...';
+            try {
+                const response = await fetch(`/api/admin/referrals/tree/${encodeURIComponent(userId)}`, { headers: adminHeaders() });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'تعذر تحميل الشجرة');
+                content.innerHTML = referralTreeNodeHtml(data.tree);
+            } catch (error) { content.innerHTML = `<p class="text-rose-400">${escapeAdminHtml(error.message)}</p>`; }
+        }
+        function closeReferralTreeModal() { document.getElementById('referralTreeModal').classList.add('hide'); }
+
+        // --- إدارة مستويات VIP المربوطة بالسيرفر بشكل مكتمل ونظامي ---
+        async function fetchVipPlans() {
+            const container = document.getElementById('plansContainer');
+            try {
+                const res = await fetch('/api/vip-levels', {
+                    headers: adminHeaders()
+                });
+                const levels = await res.json();
+                
+                if (Array.isArray(levels) && levels.length > 0) {
+                    const tierSelect = document.getElementById('editUserTier');
+                    if (tierSelect) tierSelect.innerHTML = levels.map(level => `<option value="${escapeAdminHtml(level.code)}">${escapeAdminHtml(level.code)}</option>`).join('');
+                    container.innerHTML = levels.map(plan => `
+                        <div class="glass-card p-5 rounded-3xl border border-slate-800 space-y-3">
+                            <h3 class="font-bold text-amber-400 text-sm">مستوى ${plan.code}</h3>
+                            <div>
+                                <label class="block text-[11px] text-slate-400 mb-1">اسم المستوى</label>
+                                <input type="text" id="name-${escapeAdminHtml(plan.code)}" value="${escapeAdminHtml(plan.name || 'المستوى ' + plan.code)}" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] text-slate-400 mb-1">سعر الاشتراك ($)</label>
+                                <input type="number" id="price-${plan.code}" value="${plan.price || 0}" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] text-slate-400 mb-1">الربح اليومي ($)</label>
+                                <input type="number" step="0.01" id="dailyProfit-${plan.code}" value="${plan.dailyProfit || 0}" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] text-slate-400 mb-1">عدد المهام اليومية</label>
+                                <input type="number" id="tasksCount-${escapeAdminHtml(plan.code)}" value="${plan.tasks || 1}" min="1" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] text-slate-400 mb-1">الربح الشهري ($)</label>
+                                <input type="number" step="0.01" id="monthlyProfit-${plan.code}" value="${plan.monthlyProfit || 0}" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] text-slate-400 mb-1">الربح السنوي ($)</label>
+                                <input type="number" step="0.01" id="yearlyProfit-${plan.code}" value="${plan.yearlyProfit || 0}" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                            </div>
+                            <div class="grid grid-cols-2 gap-2"><button onclick="updateVipPlan('${plan.code}')" class="py-2 bg-amber-500/20 text-amber-400 hover:bg-amber-500 hover:text-slate-950 text-xs font-bold rounded-xl transition-all">تحديث الخطة</button><button onclick="deleteVipPlan('${plan.code}')" class="py-2 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 text-xs font-bold rounded-xl transition-all">حذف المستوى</button></div>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = `<div class="col-span-full text-center text-slate-500 py-4">لم يتم العثور على مستويات VIP</div>`;
+                }
+            } catch(e) {
+                console.error('خطأ في جلب خطط VIP:', e);
+                container.innerHTML = `<div class="col-span-full text-center text-rose-500 py-4">خطأ في الاتصال بالخادم لجلب المستويات</div>`;
+            }
+        }
+
+        async function updateVipPlan(code) {
+            const parseNum = (id, defaultVal = 0, isInt = false) => {
+                const el = document.getElementById(id);
+                if (!el) return defaultVal;
+                const cleaned = String(el.value).trim().replace(/[^\d.-]/g, '');
+                if (cleaned === '') return defaultVal;
+                const num = isInt ? parseInt(cleaned, 10) : parseFloat(cleaned);
+                return isNaN(num) ? defaultVal : num;
+            };
+
+            const nameInput = document.getElementById(`name-${code}`);
+            const name = nameInput ? nameInput.value.trim() : '';
+
+            const price = parseNum(`price-${code}`, 0);
+            const dailyProfit = parseNum(`dailyProfit-${code}`, 0);
+            const tasksCount = parseNum(`tasksCount-${code}`, 1, true);
+            const monthlyProfit = parseNum(`monthlyProfit-${code}`, dailyProfit * 30);
+            const yearlyProfit = parseNum(`yearlyProfit-${code}`, dailyProfit * 365);
+            
+            const token = getAdminAuthToken();
+
+            if (!name || tasksCount <= 0) {
+                return showToast('يرجى التأكد من كتابة اسم المستوى وعدد مهام صحيح');
+            }
+
+            try {
+                const res = await fetch('/api/admin/vip-levels', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json', 
+                        'Authorization': `Bearer ${token}` 
+                    },
+                    body: JSON.stringify({
+                        code: code,
+                        name: name,
+                        price: price,
+                        dailyProfit: dailyProfit,
+                        tasks: tasksCount,
+                        monthlyProfit,
+                        yearlyProfit
+                    })
+                });
+
+                const data = await res.json();
+                if (res.ok && (data.success || data._id)) {
+                    showToast(`تم تحديث مستوى ${code} بنجاح`);
+                    fetchVipPlans();
+                } else {
+                    showToast(data.error || data.message || 'حدث خطأ أثناء حفظ التحديث');
+                }
+            } catch(e) {
+                showToast('خطأ في الاتصال بالسيرفر');
+            }
+        }
+
+        async function deleteVipPlan(code) { if (!await showAdminConfirm(`هل أنت متأكد من حذف المستوى ${code}؟ لا يمكن التراجع عن هذا الإجراء.`, 'حذف مستوى VIP')) return; try { const response = await fetch(`/api/admin/vip-levels/${encodeURIComponent(code)}`, { method: 'DELETE', headers: adminHeaders() }); const data = await response.json(); if (!response.ok) throw new Error(data.error || 'تعذر حذف المستوى'); showToast(data.message || 'تم حذف المستوى'); fetchVipPlans(); } catch (error) { showToast(error.message); } }
+
+        async function fetchVaultContractsAdmin() {
+            const container = document.getElementById('vaultContractsAdmin');
+            if (!container || !canAdmin('finance')) return;
+            try {
+                const response = await fetch('/api/admin/investment-vault/contracts', { headers: adminHeaders() });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'تعذر تحميل العقود');
+                const contracts = [90, 180, 365].map(duration => data.contracts?.find(contract => Number(contract.durationDays) === duration) || { durationDays: duration, expectedReturnRate: 0, enabled: false, label: '' });
+                container.innerHTML = contracts.map(contract => `<div class="rounded-2xl border border-slate-800 bg-slate-950/60 p-4 space-y-3"><h4 class="text-sm font-black text-white">${contract.durationDays} يومًا</h4><input id="vaultContractRate-${contract.durationDays}" type="number" min="0" max="100" step="0.01" value="${Number(contract.expectedReturnRate || 0)}" placeholder="العائد المتوقع %" class="w-full rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs text-white"><input id="vaultContractLabel-${contract.durationDays}" value="${escapeAdminHtml(contract.label || '')}" placeholder="اسم العقد اختياري" class="w-full rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs text-white"><label class="flex items-center gap-2 text-[10px] text-slate-400"><input id="vaultContractEnabled-${contract.durationDays}" type="checkbox" ${contract.enabled ? 'checked' : ''}> متاح للمستخدمين</label></div>`).join('');
+            } catch (error) { container.innerHTML = `<p class="text-[10px] text-rose-300">${escapeAdminHtml(error.message)}</p>`; }
+        }
+
+        async function saveVaultContractsAdmin() {
+            if (currentAdminRole !== 'admin') return showToast('حفظ عقود الخزنة متاح للمدير الكامل فقط');
+            const contracts = [90, 180, 365].map(durationDays => ({ durationDays, expectedReturnRate: Number(document.getElementById(`vaultContractRate-${durationDays}`).value), label: document.getElementById(`vaultContractLabel-${durationDays}`).value.trim(), enabled: document.getElementById(`vaultContractEnabled-${durationDays}`).checked }));
+            const response = await fetch('/api/admin/investment-vault/contracts', { method: 'POST', headers: adminJsonHeaders(), body: JSON.stringify({ contracts }) });
+            const data = await response.json();
+            if (!response.ok) return showToast(data.error || 'تعذر حفظ العقود');
+            showToast(data.message || 'تم حفظ عقود الخزنة');
+            fetchVaultContractsAdmin();
+        }
+
+        async function fetchGameSettings() {
+            try {
+                const res = await fetch('/api/admin/settings/games', {
+                    headers: adminHeaders()
+                });
+                const data = await res.json();
+                if (res.ok && data.success && data.settings) {
+                    document.getElementById('cfgSpinMin').value = data.settings.spinMin;
+                    document.getElementById('cfgSpinMax').value = data.settings.spinMax;
+                    document.getElementById('cfgBoxMin').value = data.settings.boxMin;
+                    document.getElementById('cfgBoxMax').value = data.settings.boxMax;
+                    document.getElementById('cfgDailyGameRewardCap').value = data.settings.dailyGameRewardCap;
+                    document.getElementById('cfgReferralsPerCycle').value = data.settings.referralsPerCycle || 25;
+                }
+            } catch(e) { console.error('خطأ إعدادات الألعاب:', e); }
+        }
+
+        async function saveGameSettings() {
+            const token = getAdminAuthToken();
+            const spinMin = parseFloat(document.getElementById('cfgSpinMin').value);
+            const spinMax = parseFloat(document.getElementById('cfgSpinMax').value);
+            const boxMin = parseFloat(document.getElementById('cfgBoxMin').value);
+            const boxMax = parseFloat(document.getElementById('cfgBoxMax').value);
+            const dailyGameRewardCap = parseFloat(document.getElementById('cfgDailyGameRewardCap').value);
+            const referralsPerCycle = parseInt(document.getElementById('cfgReferralsPerCycle').value, 10);
+
+            try {
+                const res = await fetch('/api/admin/settings/games', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ spinMin, spinMax, boxMin, boxMax, dailyGameRewardCap, referralsPerCycle })
+                });
+                if(res.ok) showToast('تم حفظ حدود المكافآت والألعاب بنجاح');
+            } catch(e) { showToast('خطأ بالاتصال'); }
+        }
+
+        async function sendBroadcastNotification() {
+            const title = document.getElementById('txtBroadcastTitle').value;
+            const body = document.getElementById('txtBroadcastBody').value;
+            const audienceType = document.getElementById('broadcastAudienceType').value;
+            const audienceValue = document.getElementById('broadcastAudienceValue').value;
+            const scheduledValue = document.getElementById('broadcastScheduledAt').value;
+
+            if(!title || !body) return showToast('يرجى ملء جميع الحقول');
+
+            try {
+                const res = await fetch('/api/admin/broadcast', {
+                    method: 'POST',
+                    headers: adminJsonHeaders(),
+                    body: JSON.stringify({ title, body, audienceType, audienceValue, scheduledAt: scheduledValue ? new Date(scheduledValue).toISOString() : undefined })
+                });
+                const data = await res.json();
+                if(res.ok) {
+                    showToast(data.message || 'تم حفظ حملة الإشعار بنجاح');
+                    document.getElementById('txtBroadcastTitle').value = '';
+                    document.getElementById('txtBroadcastBody').value = '';
+                    document.getElementById('broadcastScheduledAt').value = '';
+                    fetchBroadcasts();
+                } else showToast(data.error || 'تعذر حفظ الحملة');
+            } catch(e) { showToast('خطأ بالاتصال'); }
+        }
+
+            function previewBroadcast() { 
+                const preview = document.getElementById('broadcastPreview'); 
+                const title = document.getElementById('txtBroadcastTitle').value.trim(); 
+                const body = document.getElementById('txtBroadcastBody').value.trim(); 
+                if (!title || !body) return showToast('اكتب العنوان والنص أولًا'); 
+                preview.classList.remove('hidden'); 
+                preview.innerHTML = `<b class="block text-white">${escapeAdminHtml(title)}</b><span>${escapeAdminHtml(body)}</span>`; 
+            }
+
+        async function fetchBroadcasts() { const tbody = document.getElementById('tblBroadcastsBody'); if (!tbody) return; try { const response = await fetch('/api/admin/broadcasts', { headers: adminHeaders() }); const data = await response.json(); if (!response.ok) throw new Error(data.error); const audience = { all: 'الجميع', active: 'النشطون', tier: 'مستوى ', role: 'دور ' }; tbody.innerHTML = data.campaigns?.length ? data.campaigns.map(item => `<tr><td class="p-4"><b class="text-white">${escapeAdminHtml(item.title)}</b><span class="block text-[10px] text-slate-500">${escapeAdminHtml(item.body)}</span></td><td class="p-4 text-slate-400">${audience[item.audienceType] || ''}${escapeAdminHtml(item.audienceValue || '')}</td><td class="p-4 text-cyan-300">${escapeAdminHtml(item.status)}</td><td class="p-4 text-emerald-400">${item.internalSent || 0}/${item.recipientCount || 0}</td><td class="p-4 text-amber-400">${item.pushSent || 0} <span class="text-rose-300">(${item.pushFailed || 0})</span></td><td class="p-4 text-slate-300">${item.readCount || 0}</td></tr>`).join('') : '<tr><td colspan="6" class="p-4 text-center text-slate-500">لا توجد حملات بعد</td></tr>'; } catch (error) { tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-rose-300">${escapeAdminHtml(error.message || 'تعذر تحميل الحملات')}</td></tr>`; } }
+
+        function loadBroadcastPreview() {
+            const preview = document.getElementById('broadcastPreview');
+            const title = document.getElementById('txtBroadcastTitle')?.value?.trim() || '';
+            const body = document.getElementById('txtBroadcastBody')?.value?.trim() || '';
+            if (!preview) return;
+            if (!title && !body) { preview.classList.add('hidden'); return; }
+            preview.classList.remove('hidden');
+            preview.innerHTML = `
+                <div class="bg-slate-950 border border-slate-800 rounded-2xl p-3 space-y-2">
+                    <div class="flex items-center justify-between"><span class="text-[10px] text-amber-300 font-bold">معاينة الإشعار</span><span class="text-[10px] text-slate-400">OPERIX</span></div>
+                    <div class="text-sm font-bold text-white">${escapeAdminHtml(title || 'عنوان الإشعار')}</div>
+                    <div class="text-[10px] text-slate-300">${escapeAdminHtml(body || 'نص الإشعار سيظهر هنا')}</div>
+                </div>
+            `;
+        }
+
+        async function fetchSocialFeedReports() {
+            const list = document.getElementById('socialFeedReportsList');
+            if (!list) return;
+            try {
+                const response = await fetch('/api/admin/social-feed/reports', { headers: adminHeaders() });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'تعذر تحميل البلاغات');
+                list.innerHTML = data.posts?.length ? data.posts.map(post => `<article class="glass-card rounded-2xl p-4 space-y-3"><div class="flex items-center justify-between gap-3"><div><b class="text-xs text-white">${escapeAdminHtml(post.authorLabel || 'عضو')}</b><span class="block text-[10px] text-slate-500 mt-1">${new Date(post.createdAt).toLocaleString('ar')} · ${post.reportCount || 0} بلاغ</span></div><span class="rounded-full border border-rose-500/20 bg-rose-500/10 px-2 py-1 text-[10px] text-rose-300">${escapeAdminHtml(post.status)}</span></div><p class="whitespace-pre-wrap text-xs leading-6 text-slate-300">${escapeAdminHtml(post.content)}</p><div class="flex flex-wrap gap-2"><button type="button" onclick="moderateSocialFeedPost('${post._id}', 'visible')" class="rounded-xl bg-emerald-500/15 px-3 py-2 text-[10px] font-bold text-emerald-300">إظهار</button><button type="button" onclick="moderateSocialFeedPost('${post._id}', 'hidden')" class="rounded-xl bg-amber-500/15 px-3 py-2 text-[10px] font-bold text-amber-300">إخفاء</button><button type="button" onclick="moderateSocialFeedPost('${post._id}', 'removed')" class="rounded-xl bg-rose-500/15 px-3 py-2 text-[10px] font-bold text-rose-300">حذف نهائي</button></div></article>`).join('') : '<p class="glass-card rounded-2xl p-4 text-center text-xs text-slate-500">لا توجد منشورات تحتاج مراجعة.</p>';
+            } catch (error) { list.innerHTML = `<p class="text-xs text-rose-300">${escapeAdminHtml(error.message)}</p>`; }
+        }
+
+        async function moderateSocialFeedPost(postId, status) {
+            const response = await fetch(`/api/admin/social-feed/${encodeURIComponent(postId)}/moderate`, { method: 'POST', headers: adminJsonHeaders(), body: JSON.stringify({ status }) });
+            const data = await response.json();
+            if (!response.ok) return showToast(data.error || 'تعذر تحديث المنشور');
+            showToast(data.message || 'تم تحديث المنشور');
+            fetchSocialFeedReports();
+        }
+
+        async function adminLogout() {
+            const token = localStorage.getItem('adminToken');
+            if (token) { try { await fetch('/api/auth/admin-logout', { method: 'POST', headers: { Authorization: `Bearer ${token}` } }); } catch (error) { } }
+            localStorage.removeItem('adminToken');
+            window.location.href = '/admin-login.html';
+        }
+
+        function showAdminAccessMessage(message) {
+            showToast(message);
+            setTimeout(() => { window.location.href = '/admin-login.html'; }, 2500);
+        }
+
+        function getTokenRole(token) {
+            try {
+                const payload = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+                return JSON.parse(atob(payload)).role;
+            } catch (error) { return null; }
+        }
+
+        function startAdminRealtimeStream(token) {
+            if (!token) return;
+            if (!window.Ably) return startAdminRealtimeSse(token);
+            if (adminRealtimeClient) adminRealtimeClient.close();
+            adminRealtimeClient = new Ably.Realtime({
+                authUrl: '/api/realtime/token',
+                authHeaders: { Authorization: `Bearer ${token}` },
+                disconnectedRetryTimeout: 5000,
+                suspendedRetryTimeout: 10000
+            });
+            adminRealtimeClient.connection.on('failed', state => { console.error('Ably admin connection failed:', state.reason); startAdminRealtimeSse(token); });
+            adminRealtimeClient.connection.on('suspended', state => console.warn('Ably admin connection suspended:', state.reason));
+            const channel = adminRealtimeClient.channels.get('operix:admin');
+            channel.subscribe('user_status_changed', () => {
+                fetchUsersList(usersCurrentPage);
+                refreshAdminAlerts();
+            });
+            channel.subscribe('notification_created', () => refreshAdminAlerts());
+            channel.subscribe('admin_transaction_updated', () => { fetchTransactionsList(txCurrentPage); refreshAdminAlerts(); });
+            channel.subscribe('admin_transaction_created', () => { fetchTransactionsList(1); refreshAdminAlerts(); });
+        }
+
+        function startAdminRealtimeSse(token) {
+            if (!token || !window.EventSource || window.adminRealtimeEventSource) return;
+            window.adminRealtimeEventSource = new EventSource(`/api/realtime/stream?token=${encodeURIComponent(token)}`);
+            const refresh = () => { fetchUsersList(usersCurrentPage); fetchTransactionsList(txCurrentPage); refreshAdminAlerts(); };
+            ['user_status_changed', 'notification_created', 'admin_transaction_updated', 'admin_transaction_created'].forEach(eventName => window.adminRealtimeEventSource.addEventListener(eventName, refresh));
+            window.adminRealtimeEventSource.onerror = () => { if (window.adminRealtimeEventSource?.readyState === EventSource.CLOSED) { window.adminRealtimeEventSource.close(); window.adminRealtimeEventSource = null; setTimeout(() => startAdminRealtimeSse(token), 5000); } };
+        }
+
+        window.onload = () => {
+            const token = getAdminAuthToken();
+            const sessionHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+            fetch('/api/auth/admin-session', { credentials: 'same-origin', headers: sessionHeaders })
+                .then(async response => {
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.error || 'جلسة الإدارة غير صالحة');
+                    return data;
+                })
+                .then(data => {
+                    currentAdminRole = data.user?.role || getTokenRole(token || '');
+                    if (!adminPermissions[currentAdminRole]) throw new Error('هذا الحساب ليس حساب مدير.');
+                    applyRoleVisibility();
+                    loadPlatformSupportUrl();
+                    refreshOverviewDashboard();
+                    fetchUsersList();
+                    if (canAdmin('finance')) fetchTransactionsList();
+                    refreshAdminAlerts();
+                    startAdminRealtimeStream(token);
+                    setInterval(refreshAdminAlerts, 30000);
+                })
+                .catch(error => showAdminAccessMessage(error.message));
+        }
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => navigator.serviceWorker.getRegistrations().then(registrations => Promise.all(registrations.map(registration => registration.unregister()))).catch(() => {}));
+        }
+    </script>
+</body>
+</html>
