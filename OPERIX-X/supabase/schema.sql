@@ -26,6 +26,37 @@ create table if not exists public.users (
   metadata jsonb not null default '{}'::jsonb
 );
 
+alter table public.users add column if not exists email_verification_token text;
+alter table public.users add column if not exists email_verification_expire timestamptz;
+alter table public.users add column if not exists is_official_platform boolean not null default false;
+alter table public.users add column if not exists today_completed_tasks integer not null default 0;
+alter table public.users add column if not exists reset_otp text;
+alter table public.users add column if not exists reset_otp_expire timestamptz;
+alter table public.users add column if not exists reset_otp_attempts integer not null default 0;
+alter table public.users add column if not exists two_factor_code text;
+alter table public.users add column if not exists two_factor_expire timestamptz;
+alter table public.users add column if not exists admin_invite_token text;
+alter table public.users add column if not exists admin_invite_expire timestamptz;
+alter table public.users add column if not exists admin_invite_used boolean not null default false;
+alter table public.users add column if not exists terms_accepted_at timestamptz;
+alter table public.users add column if not exists game_cycles_granted integer not null default 0;
+alter table public.users add column if not exists wheel_credits integer not null default 0;
+alter table public.users add column if not exists mystery_box_credits integer not null default 0;
+alter table public.users add column if not exists profile_image text not null default '';
+alter table public.users add column if not exists cover_image text not null default '';
+alter table public.users add column if not exists social_bio text not null default '';
+alter table public.users add column if not exists push_subscription jsonb;
+alter table public.users add column if not exists kyc_full_name text not null default '';
+alter table public.users add column if not exists kyc_document_type text not null default '';
+alter table public.users add column if not exists kyc_document_number text not null default '';
+alter table public.users add column if not exists kyc_document_url text not null default '';
+alter table public.users add column if not exists kyc_country text not null default '';
+alter table public.users add column if not exists kyc_submitted_at timestamptz;
+alter table public.users add column if not exists kyc_reviewed_at timestamptz;
+alter table public.users add column if not exists kyc_reviewed_by uuid references public.users(id) on delete set null;
+alter table public.users add column if not exists kyc_notes text not null default '';
+alter table public.users add column if not exists kyc_reason text not null default '';
+
 create table if not exists public.wallet_balances (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid not null references public.users(id) on delete cascade,
@@ -204,6 +235,140 @@ create table if not exists public.general_settings (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.broadcasts (
+  id uuid primary key default uuid_generate_v4(),
+  title text not null check (char_length(title) <= 120),
+  body text not null check (char_length(body) <= 500),
+  audience_type text not null default 'all' check (audience_type in ('all','active','tier','role')),
+  audience_value text not null default '',
+  scheduled_at timestamptz,
+  status text not null default 'scheduled' check (status in ('scheduled','sending','sent','failed')),
+  recipient_count integer not null default 0,
+  internal_sent integer not null default 0,
+  push_sent integer not null default 0,
+  push_failed integer not null default 0,
+  read_count integer not null default 0,
+  created_by uuid not null references public.users(id),
+  sent_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.coupons (
+  id uuid primary key default uuid_generate_v4(),
+  code text not null unique,
+  amount numeric(18,4) not null check (amount >= 0),
+  max_uses integer not null default 1 check (max_uses >= 1),
+  used_count integer not null default 0 check (used_count >= 0),
+  expires_at timestamptz,
+  active boolean not null default true,
+  used_by uuid[] not null default '{}',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.coupon_redemptions (
+  id uuid primary key default uuid_generate_v4(),
+  coupon_id uuid not null references public.coupons(id) on delete cascade,
+  user_id uuid not null references public.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique(coupon_id, user_id)
+);
+
+create table if not exists public.cpa_lead_conversions (
+  id uuid primary key default uuid_generate_v4(),
+  lead_id text not null unique,
+  user_id uuid not null references public.users(id) on delete cascade,
+  campaign_id text not null default '',
+  event_key text not null default '',
+  payout_usd numeric(18,4) not null check (payout_usd >= 0),
+  credited_gross numeric(18,4) not null check (credited_gross >= 0),
+  usdt_amount numeric(18,4) not null check (usdt_amount >= 0),
+  opx_amount numeric(18,4) not null check (opx_amount >= 0),
+  status text not null default 'credited' check (status in ('credited','reversed')),
+  credited_at timestamptz not null default now(),
+  reversed_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.external_tasks (
+  id uuid primary key default uuid_generate_v4(),
+  platform text not null check (platform in ('zealy')),
+  community_subdomain text not null,
+  external_id text not null,
+  title text not null,
+  description text not null default '',
+  category text not null default 'operations',
+  xp integer not null default 0 check (xp >= 0),
+  reward_usdt numeric(18,4) not null default 0 check (reward_usdt >= 0),
+  minimum_tier text not null default 'A1',
+  url text not null default '',
+  active boolean not null default true,
+  synced_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(platform, external_id)
+);
+
+create table if not exists public.investment_vault (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid not null references public.users(id) on delete cascade,
+  amount numeric(18,4) not null check (amount >= 0.01),
+  duration_days integer not null check (duration_days in (90,180,365)),
+  expected_return_rate numeric(7,4) not null default 0 check (expected_return_rate between 0 and 100),
+  expected_profit numeric(18,4) not null default 0 check (expected_profit >= 0),
+  start_date timestamptz not null default now(),
+  maturity_date timestamptz not null,
+  incentive_amount numeric(18,4) not null default 0 check (incentive_amount >= 0),
+  incentive_status text not null default 'pending' check (incentive_status in ('pending','approved','none')),
+  penalty_amount numeric(18,4) not null default 0 check (penalty_amount >= 0),
+  status text not null default 'active' check (status in ('active','matured','claimed','emergency_released')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.investment_vault_contracts (
+  id uuid primary key default uuid_generate_v4(),
+  duration_days integer not null unique check (duration_days in (90,180,365)),
+  expected_return_rate numeric(7,4) not null check (expected_return_rate between 0 and 100),
+  enabled boolean not null default true,
+  label text not null default '' check (char_length(label) <= 120),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.stakings (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid not null references public.users(id) on delete cascade,
+  amount numeric(18,4) not null check (amount >= 0),
+  duration_days integer not null check (duration_days in (7,15,30)),
+  profit_rate numeric(9,6) not null,
+  expected_profit numeric(18,4) not null check (expected_profit >= 0),
+  start_date timestamptz not null default now(),
+  end_date timestamptz not null,
+  status text not null default 'active' check (status in ('active','completed','claimed')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.task_completions (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid not null references public.users(id) on delete cascade,
+  task_id uuid not null references public.external_tasks(id) on delete cascade,
+  platform text not null check (platform in ('zealy')),
+  external_event_id text not null,
+  external_user_id text not null default '',
+  status text not null default 'approved' check (status in ('pending','approved','rejected')),
+  reward_usdt numeric(18,4) not null default 0 check (reward_usdt >= 0),
+  reward_opx numeric(18,4) not null default 0 check (reward_opx >= 0),
+  verified_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(platform, external_event_id),
+  unique(user_id, task_id)
+);
+
 create table if not exists public.audit_logs (
   id uuid primary key default uuid_generate_v4(),
   actor_id uuid,
@@ -221,6 +386,11 @@ create index if not exists idx_notifications_user_created on public.notification
 create index if not exists idx_support_tickets_user_updated on public.support_tickets(user_id, updated_at desc);
 create index if not exists idx_social_posts_status_created on public.social_posts(status, created_at desc);
 create index if not exists idx_messages_pair_created on public.messages(sender_id, recipient_id, created_at desc);
+create index if not exists idx_broadcasts_status_schedule on public.broadcasts(status, scheduled_at);
+create index if not exists idx_cpa_conversions_user on public.cpa_lead_conversions(user_id, created_at desc);
+create index if not exists idx_external_tasks_visibility on public.external_tasks(platform, community_subdomain, active, minimum_tier);
+create index if not exists idx_investment_vault_user_status_maturity on public.investment_vault(user_id, status, maturity_date);
+create index if not exists idx_stakings_user_status_end on public.stakings(user_id, status, end_date);
 
 create or replace function public.set_updated_at()
 returns trigger as $$
