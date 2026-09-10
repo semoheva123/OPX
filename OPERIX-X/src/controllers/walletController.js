@@ -3,11 +3,14 @@ const User = require('../models/User');
 const Transaction = require('../models/Transaction');
 const VipLevel = require('../models/VipLevel');
 const blockchainService = require('../services/blockchainService');
-const { verifySync } = require('otplib');
+const { authenticator } = require('otplib');
 const emailFrom = String(process.env.EMAIL_FROM || '').trim();
+
+const verifySync = ({ token, secret }) => ({ valid: authenticator.check(token, secret) });
 const realtimeService = require('../services/realtimeService');
 const SecurityEvent = require('../models/SecurityEvent');
 const { withdrawalRequestTemplate } = require('../services/emailTemplates');
+const { recordLedgerEntry } = require('../services/financialLedger');
 
 const HYBRID_WITHDRAWAL_RATE = 0.05;
 const HYBRID_WITHDRAWAL_FIXED_FEE = 2;
@@ -49,6 +52,11 @@ async function deposit(req, res) {
     let updatedUser;
 
     await session.withTransaction(async () => {
+      const existingDeposit = await Transaction.findOne({ userId: req.user.id, type: 'deposit', txHash: verifiedDeposit.txHash }).session(session);
+      if (existingDeposit) {
+        throw Object.assign(new Error('DUPLICATE_DEPOSIT'), { code: 11000 });
+      }
+
       depositTransaction = new Transaction({
         userId: req.user.id,
         type: 'deposit',
@@ -60,15 +68,29 @@ async function deposit(req, res) {
       });
       await depositTransaction.save({ session });
 
-      updatedUser = await User.findByIdAndUpdate(req.user.id, {
-        $inc: {
-          'wallet.depositBalance': verifiedDeposit.amount,
-          'wallet.balance': verifiedDeposit.amount,
-          'wallet.totalDeposits': verifiedDeposit.amount
-        }
-      }, { new: true, session }).select('-password -resetOTP -twoFactorCode');
-
+      updatedUser = await User.findById(req.user.id).session(session);
       if (!updatedUser) throw new Error('User not found while processing deposit');
+
+      updatedUser.wallet = updatedUser.wallet || { balance: 0, depositBalance: 0, profitBalance: 0, totalDeposits: 0, totalWithdrawn: 0 };
+      const beforeBalance = Number(updatedUser.wallet.balance || 0);
+      updatedUser.wallet.depositBalance = Number((Number(updatedUser.wallet.depositBalance || 0) + Number(verifiedDeposit.amount)).toFixed(2));
+      updatedUser.wallet.totalDeposits = Number((Number(updatedUser.wallet.totalDeposits || 0) + Number(verifiedDeposit.amount)).toFixed(2));
+      updatedUser.syncWallet();
+      await updatedUser.save({ session });
+
+      await recordLedgerEntry({
+        userId: req.user.id,
+        type: 'deposit',
+        amount: verifiedDeposit.amount,
+        currency: 'USDT',
+        status: 'approved',
+        source: 'blockchain_deposit',
+        referenceId: depositTransaction._id.toString(),
+        notes: 'On-chain deposit approved',
+        metadata: { network: verifiedDeposit.network, txHash: verifiedDeposit.txHash },
+        balanceBefore: beforeBalance,
+        balanceAfter: Number(updatedUser.wallet.balance || 0)
+      }, session);
     });
 
     await realtimeService.publish('user_data_changed', { reason: 'deposit_created', timestamp: new Date().toISOString() }, { userId: req.user.id });
@@ -139,10 +161,11 @@ async function withdraw(req, res) {
       if ((weeklyWithdrawals[0]?.total || 0) + withdrawNum > maxLimit) throw Object.assign(new Error(`WEEKLY_WITHDRAWAL:${maxLimit}`), { statusCode: 400 });
 
       const risk = await calculateWithdrawalRisk(user, withdrawNum, req.ip, session);
+      const beforeBalance = Number(user.wallet.balance || 0);
 
-      user.wallet.profitBalance -= withdrawNum;
-      user.wallet.balance = user.wallet.depositBalance + user.wallet.profitBalance;
-      user.wallet.totalWithdrawn += withdrawNum;
+      user.wallet.profitBalance = Number((Number(user.wallet.profitBalance) - withdrawNum).toFixed(2));
+      user.wallet.totalWithdrawn = Number((Number(user.wallet.totalWithdrawn || 0) + withdrawNum).toFixed(2));
+      user.syncWallet();
       user.twoFactorCode = null;
       user.twoFactorExpire = null;
       await user.save({ session });
@@ -161,6 +184,21 @@ async function withdraw(req, res) {
         riskFlags: risk.riskFlags
       });
       await withdrawal.save({ session });
+      await recordLedgerEntry({
+        userId: user._id,
+        type: 'withdraw',
+        amount: withdrawNum,
+        feeAmount: feeSummary.feeAmount,
+        netAmount: feeSummary.netAmount,
+        currency: 'USDT',
+        status: 'pending',
+        source: 'withdrawal_request',
+        referenceId: withdrawal._id.toString(),
+        notes: 'Withdrawal request created',
+        metadata: { walletAddress: walletAddress.trim(), riskLevel: risk.riskLevel, riskFlags: risk.riskFlags },
+        balanceBefore: beforeBalance,
+        balanceAfter: Number(user.wallet.balance || 0)
+      }, session);
       if (risk.riskLevel !== 'low') {
         await SecurityEvent.create([{ userId: user._id, email: user.email, event: 'withdrawal_risk', ip: req.ip, userAgent: req.get('user-agent') || 'unknown', metadata: { transactionId: withdrawal._id, riskScore: risk.riskScore, riskLevel: risk.riskLevel, riskFlags: risk.riskFlags } }], { session });
       }
