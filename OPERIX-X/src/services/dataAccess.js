@@ -65,6 +65,23 @@ function toSnakeCaseKey(key) {
 
 function toCamelCaseKey(key) {
   if (key === 'id') return 'id';
+  const aliases = {
+    password_hash: 'password',
+    email_verified: 'emailVerified',
+    is_banned: 'isBanned',
+    tier_code: 'tierCode',
+    referral_code: 'referralCode',
+    referred_by: 'referredBy',
+    wallet_address: 'walletAddress',
+    kyc_status: 'kycStatus',
+    two_factor_enabled: 'twoFactorEnabled',
+    two_factor_secret: 'twoFactorSecret',
+    admin_two_factor_enabled: 'adminTwoFactorEnabled',
+    admin_two_factor_secret: 'adminTwoFactorSecret',
+    asset_wallet: 'assetWallet',
+    last_login_at: 'lastLoginAt'
+  };
+  if (aliases[key]) return aliases[key];
   if (key === 'usdt_balance') return 'USDT_balance';
   if (key === 'opx_balance') return 'OPX_balance';
 
@@ -95,6 +112,8 @@ function normalizeSupabaseResult(data) {
     const normalizedKey = toCamelCaseKey(key);
     result[normalizedKey] = normalizeSupabaseResult(data[key]);
   });
+
+  if (result.id && !result._id) result._id = result.id;
 
   return result;
 }
@@ -144,7 +163,21 @@ async function supabaseFindOne(table, query = {}) {
   if (error && error.code !== 'PGRST116') {
     throw error;
   }
-  return normalizeSupabaseResult(data || null);
+  const result = normalizeSupabaseResult(data || null);
+  if (result && table === 'users' && result.id) {
+    const wallet = await supabaseAdmin.from('wallet_balances').select('*').eq('user_id', result.id).maybeSingle();
+    if (!wallet.error && wallet.data) {
+      const walletData = normalizeSupabaseResult(wallet.data);
+      result.wallet = {
+        balance: walletData.balance || 0,
+        depositBalance: walletData.depositBalance || 0,
+        profitBalance: walletData.profitBalance || 0,
+        totalDeposits: walletData.totalDeposits || 0,
+        totalWithdrawn: walletData.totalWithdrawn || 0
+      };
+    }
+  }
+  return result;
 }
 
 async function supabaseFind(table, query = {}) {
@@ -279,9 +312,30 @@ const dataAccess = {
     },
     async create(data) {
       if (isSupabaseRuntime() && supabaseAdmin) {
-        return supabaseInsert('users', normalizeSupabaseDoc(data));
+        const payload = normalizeSupabaseDoc({ ...data, password_hash: data.password || data.password_hash });
+        delete payload.password;
+        delete payload.wallet;
+        const user = await supabaseInsert('users', payload);
+        if (user?.id) {
+          await supabaseAdmin.from('wallet_balances').upsert({
+            user_id: user.id,
+            balance: Number(data.wallet?.balance || 0),
+            deposit_balance: Number(data.wallet?.depositBalance || 0),
+            profit_balance: Number(data.wallet?.profitBalance || 0),
+            total_deposits: Number(data.wallet?.totalDeposits || 0),
+            total_withdrawn: Number(data.wallet?.totalWithdrawn || 0),
+            usdt_balance: Number(data.USDT_balance || 0),
+            opx_balance: Number(data.OPX_balance || 0)
+          }, { onConflict: 'user_id' });
+          user.wallet = data.wallet || { balance: 0, depositBalance: 0, profitBalance: 0, totalDeposits: 0, totalWithdrawn: 0 };
+        }
+        return user;
       }
       return User.create(data);
+    },
+    async updateOne(filter, update) {
+      if (isSupabaseRuntime() && supabaseAdmin) return supabaseUpdateOne('users', filter, update.$set || update);
+      return User.updateOne(filter, update);
     },
     async countDocuments(query = {}) {
       if (isSupabaseRuntime() && supabaseAdmin) {
