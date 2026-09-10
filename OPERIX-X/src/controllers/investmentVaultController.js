@@ -77,7 +77,7 @@ async function claimVault(req, res) {
       const releaseAmount = Number((vault.amount + vault.incentiveAmount).toFixed(4));
       user.USDT_balance = Number((Number(user.USDT_balance || 0) + releaseAmount).toFixed(4));
       user.wallet.profitBalance = Number((Number(user.wallet.profitBalance || 0) + releaseAmount).toFixed(4));
-      user.wallet.balance = Number((Number(user.wallet.depositBalance || 0) + user.wallet.profitBalance).toFixed(2));
+      user.syncWallet();
       await user.save({ session });
       await new Transaction({ userId: user._id, type: 'vault_release', amount: releaseAmount, grossAmount: releaseAmount, usdtAmount: releaseAmount, walletAddress: `Investment Vault release ${vault._id}`, status: 'approved' }).save({ session });
     });
