@@ -1,6 +1,7 @@
 const SocialFollow = require('../models/SocialFollow');
 const User = require('../models/User');
 const SocialPost = require('../models/SocialPost');
+const dataAccess = require('../services/dataAccess');
 
 async function toggleFollow(req, res) {
   try {
@@ -24,6 +25,13 @@ async function toggleFollow(req, res) {
 
 async function listCommunity(req, res) {
   try {
+    if (dataAccess.isSupabaseRuntime()) {
+      const users = await dataAccess.user.find({ isBanned: false }, { sort: { createdAt: -1 }, limit: 31 });
+      const visibleUsers = users.filter(user => String(user.id || user._id) !== String(req.user.id)).slice(0, 30);
+      const following = await dataAccess.socialFollow.find({ followerId: req.user.id }, { limit: 500 });
+      const followingIds = new Set(following.map(item => String(item.followingId)));
+      return res.json({ success: true, users: visibleUsers.map(user => { const id = user.id || user._id; return { id, label: user.isOfficialPlatform ? 'OPERIX Official' : user.referralCode ? `عضو ${user.referralCode}` : `عضو ${String(user.email).slice(0, 2)}•••`, isOfficialPlatform: Boolean(user.isOfficialPlatform), profileImage: user.profileImage || '', coverImage: user.coverImage || '', socialBio: user.socialBio || '', following: followingIds.has(String(id)), posts: 0, followers: 0 }; }) });
+    }
     const users = await User.find({ _id: { $ne: req.user.id }, isBanned: false })
       .select('email referralCode profileImage coverImage socialBio isOfficialPlatform')
       .sort({ createdAt: -1 }).limit(30).lean();

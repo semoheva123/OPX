@@ -4,6 +4,7 @@ const User = require('../models/User');
 const Notification = require('../models/Notification');
 const { moderateText } = require('../services/socialSafetyBot');
 const realtimeService = require('../services/realtimeService');
+const dataAccess = require('../services/dataAccess');
 
 function validId(value) { return mongoose.Types.ObjectId.isValid(value); }
 
@@ -17,6 +18,15 @@ function safeMessage(message) {
 
 async function listConversations(req, res) {
   try {
+    if (dataAccess.isSupabaseRuntime()) {
+      const userId = String(req.user.id);
+      const messages = await dataAccess.message.find({ $or: [{ senderId: userId }, { recipientId: userId }] }, { sort: { createdAt: -1 }, limit: 500 });
+      const conversations = new Map();
+      for (const message of messages) { const otherId = String(message.senderId) === userId ? String(message.recipientId) : String(message.senderId); if (!conversations.has(otherId)) conversations.set(otherId, { otherId, lastMessage: safeMessage(message), unread: 0 }); if (String(message.recipientId) === userId && !message.readAt && message.status === 'visible') conversations.get(otherId).unread += 1; }
+      const users = await dataAccess.user.find({ id: { $in: [...conversations.keys()] }, isBanned: false });
+      const byId = new Map(users.map(user => [String(user.id || user._id), user]));
+      return res.json({ success: true, conversations: [...conversations.keys()].map(id => ({ ...conversations.get(id), user: byId.get(id) ? { _id: id, label: labelFor(byId.get(id)), profileImage: byId.get(id).profileImage || '' } : null })).filter(item => item.user) });
+    }
     const userId = String(req.user.id);
     const messages = await Message.find({ $or: [{ senderId: userId }, { recipientId: userId }] }).sort({ createdAt: -1 }).limit(500).lean();
     const conversations = new Map();

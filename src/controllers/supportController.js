@@ -1,10 +1,11 @@
 const SupportTicket = require('../models/SupportTicket');
 const Notification = require('../models/Notification');
 const realtimeService = require('../services/realtimeService');
+const dataAccess = require('../services/dataAccess');
 
 async function list(req, res) {
   try {
-    const tickets = await SupportTicket.find({ userId: req.user.id }).sort({ updatedAt: -1 }).limit(50).lean();
+    const tickets = dataAccess.isSupabaseRuntime() ? await dataAccess.supportTicket.find({ userId: req.user.id }, { sort: { updatedAt: -1 }, limit: 50 }) : await SupportTicket.find({ userId: req.user.id }).sort({ updatedAt: -1 }).limit(50).lean();
     res.json({ success: true, tickets });
   } catch (error) { res.status(500).json({ error: 'تعذر تحميل تذاكر الدعم' }); }
 }
@@ -14,7 +15,7 @@ async function create(req, res) {
     const subject = String(req.body.subject || '').trim();
     const message = String(req.body.message || '').trim();
     if (subject.length < 3 || message.length < 10) return res.status(400).json({ error: 'يرجى إدخال عنوان ورسالة واضحين' });
-    const ticket = await SupportTicket.create({ userId: req.user.id, subject, message });
+    const ticket = dataAccess.isSupabaseRuntime() ? await dataAccess.supportTicket.create({ userId: req.user.id, subject, message }) : await SupportTicket.create({ userId: req.user.id, subject, message });
     res.status(201).json({ success: true, ticket, message: 'تم إنشاء تذكرة الدعم' });
   } catch (error) { res.status(500).json({ error: 'تعذر إنشاء تذكرة الدعم' }); }
 }
