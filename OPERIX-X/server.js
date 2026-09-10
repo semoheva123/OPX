@@ -1362,6 +1362,8 @@ async function initializeRuntime() {
     const runtimeMode = String(process.env.DATABASE_MODE || 'supabase').toLowerCase();
     if (runtimeMode === 'supabase') {
       console.log('✅ تم تفعيل وضع Supabase فقط. تم إيقاف التهيئة القديمة للـ MongoDB بنجاح.');
+      await seedVipLevels();
+      await loadGameSettings();
       if (!isVercelRuntime) scheduleDailyTaskReset();
     } else {
       await seedVipLevels();
