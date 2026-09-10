@@ -1,5 +1,0 @@
-User-agent: *
-Allow: /
-Disallow: /admin.html
-Disallow: /api/
-Sitemap: http://localhost:5000/sitemap.xml
