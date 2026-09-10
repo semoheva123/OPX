@@ -483,7 +483,7 @@ const dataAccess = {
     async create(data) {
       if (isSupabaseRuntime() && supabaseAdmin) {
         return supabaseInsert('security_events', normalizeSupabaseDoc({
-          id: data._id || new mongoose.Types.ObjectId().toString(),
+          id: data._id || crypto.randomUUID(),
           user_id: data.userId ? String(data.userId) : null,
           event: data.event,
           ip_address: data.ip || null,
@@ -518,7 +518,7 @@ const dataAccess = {
     async create(data) {
       if (isSupabaseRuntime() && supabaseAdmin) {
         const payload = normalizeSupabaseDoc({
-          id: data._id || new mongoose.Types.ObjectId().toString(),
+          id: data._id || crypto.randomUUID(),
           user_id: data.userId ? String(data.userId) : null,
           type: data.type,
           status: data.status || 'pending',
@@ -571,7 +571,7 @@ const dataAccess = {
     async create(data) {
       if (isSupabaseRuntime() && supabaseAdmin) {
         const payload = normalizeSupabaseDoc({
-          id: data._id || new mongoose.Types.ObjectId().toString(),
+          id: data._id || crypto.randomUUID(),
           user_id: data.userId ? String(data.userId) : null,
           type: data.type,
           currency: data.currency || 'USDT',
