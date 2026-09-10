@@ -1324,6 +1324,7 @@ app.post('/api/admin/broadcast', verifyAdmin, async (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 let server;
+let initializationPromise;
 
 async function ensureSupabaseSchema() {
   const dbUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
@@ -1350,15 +1351,17 @@ async function ensureSupabaseSchema() {
   }
 }
 
-(async () => {
-  try {
+async function initializeRuntime() {
+  if (initializationPromise) return initializationPromise;
+
+  initializationPromise = (async () => {
     await connectDatabase();
     await ensureSupabaseSchema();
 
     const runtimeMode = String(process.env.DATABASE_MODE || 'supabase').toLowerCase();
     if (runtimeMode === 'supabase') {
       console.log('✅ تم تفعيل وضع Supabase فقط. تم إيقاف التهيئة القديمة للـ MongoDB بنجاح.');
-      scheduleDailyTaskReset();
+      if (!process.env.VERCEL) scheduleDailyTaskReset();
     } else {
       await seedVipLevels();
       await loadGameSettings();
@@ -1366,18 +1369,41 @@ async function ensureSupabaseSchema() {
       await ensureOfficialCommunityAccount();
       await followOfficialForExistingUsers();
       await Transaction.init();
-      scheduleDailyTaskReset();
-      setInterval(() => processScheduledBroadcasts(webpush).catch(error => console.error('Broadcast scheduler error:', error.message)), 60 * 1000);
+      if (!process.env.VERCEL) {
+        scheduleDailyTaskReset();
+        setInterval(() => processScheduledBroadcasts(webpush).catch(error => console.error('Broadcast scheduler error:', error.message)), 60 * 1000);
+      }
     }
+  })().catch(error => {
+    initializationPromise = null;
+    throw error;
+  });
 
-    server = app.listen(PORT, '0.0.0.0', () => {
-      console.log(`🚀 الخادم يعمل بنجاح على المنفذ: ${PORT}`);
+  return initializationPromise;
+}
+
+if (!process.env.VERCEL) {
+  initializeRuntime()
+    .then(() => {
+      server = app.listen(PORT, '0.0.0.0', () => {
+        console.log(`🚀 الخادم يعمل بنجاح على المنفذ: ${PORT}`);
+      });
+    })
+    .catch(error => {
+      console.error('❌ خطأ حرج في إعداد التطبيق مع قاعدة Supabase:', error);
+      process.exit(1);
     });
-  } catch (err) {
-    console.error('❌ خطأ حرج في إعداد التطبيق مع قاعدة Supabase:', err);
-    process.exit(1);
-  }
-})();
+} else {
+  module.exports = async (req, res) => {
+    try {
+      await initializeRuntime();
+      return app(req, res);
+    } catch (error) {
+      console.error('❌ خطأ حرج في تهيئة Vercel runtime:', error);
+      return res.status(500).json({ error: 'تعذر تهيئة الخادم' });
+    }
+  };
+}
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('⚠️ Unhandled Rejection:', reason);
