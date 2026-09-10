@@ -9,6 +9,7 @@
     "test": "node --check app.js && node --check server.js && node --check src/app.js && node --check src/controllers/authController.js && node --check src/controllers/adminController.js && node --check src/controllers/notificationController.js && node --check src/controllers/supportController.js && node --check src/controllers/couponController.js && node --check src/controllers/socialFeedController.js && node --check src/controllers/messageController.js && node --check src/jobs/aiAnnouncer.js && node --check src/models/SocialPost.js && node --check src/models/Message.js && node --check src/routes/socialFeedRoutes.js && node --check src/routes/messageRoutes.js && node --check src/routes/adminRoutes.js && node tests/social-feed-unit.test.js"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.116.0",
     "ably": "^2.28.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
@@ -22,6 +23,7 @@
     "node-cron": "^4.2.1",
     "nodemailer": "^9.1.1",
     "otplib": "12.0.1",
+    "pg": "^8.12.0",
     "qrcode": "^1.5.4",
     "resend": "^3.2.0",
     "tailwindcss": "^3.4.17",
@@ -33,6 +35,7 @@
   "devDependencies": {
     "baseline-browser-mapping": "^2.11.20",
     "browserslist": "^4.28.8",
-    "caniuse-lite": "^1.0.30001810"
+    "caniuse-lite": "^1.0.30001810",
+    "mongodb-memory-server": "^11.2.0"
   }
 }

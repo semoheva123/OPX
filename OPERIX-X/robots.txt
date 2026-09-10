@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /admin.html
 Disallow: /api/
-Sitemap: https://operix.website/sitemap.xml
+Sitemap: http://localhost:5000/sitemap.xml

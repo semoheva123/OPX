@@ -2,14 +2,15 @@
 // تم تحديث الكود وتطبيق أفضل الممارسات الأمنية وإدارة المعاملات المعقدة وفصل الأرباح عن الإيداع.
 
 require('dotenv').config();
+const fs = require('fs');
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const path = require('path');
 const helmet = require('helmet');
 const { Resend } = require('resend');
+const { Client } = require('pg');
 const Groq = require('groq-sdk');
 const webpush = require('web-push');
 const crypto = require('crypto');
@@ -21,6 +22,7 @@ const Staking = require('./src/models/Staking');
 const VipLevel = require('./src/models/VipLevel');
 const GameSetting = require('./src/models/GameSetting');
 const { connectDatabase, closeDatabase } = require('./src/config/database');
+const dataAccess = require('./src/services/dataAccess');
 const { resetDailyTasks, scheduleDailyTaskReset } = require('./src/jobs/dailyTasksReset');
 const { generateOfficialAiPost } = require('./src/jobs/aiAnnouncer');
 const { ensureOfficialCommunityAccount, followOfficialForExistingUsers } = require('./src/services/officialCommunity');
@@ -88,7 +90,7 @@ const app = createApp({
 // دالة تهيئة مستويات VIP الافتراضية
 async function seedVipLevels() {
   try {
-    const count = await VipLevel.countDocuments();
+    const count = await dataAccess.vipLevel.countDocuments();
     if (count === 0) {
       const defaultLevels = [
         { code: 'A1', name: 'المستوى A1 المعتمد', price: 50, tasks: 33, dailyProfit: 2.50, monthlyProfit: 75.00, yearlyProfit: 912.50, badgeColor: 'from-amber-500/20 to-amber-700/20 border-amber-500/40 text-amber-400' },
@@ -97,7 +99,7 @@ async function seedVipLevels() {
         { code: 'A4', name: 'المستوى A4 المحترف', price: 750, tasks: 45, dailyProfit: 45.00, monthlyProfit: 1350.00, yearlyProfit: 16425.00, badgeColor: 'from-rose-500/20 to-pink-700/20 border-rose-500/40 text-rose-400' },
         { code: 'A5', name: 'المستوى A5 الخارق (VIP)', price: 1500, tasks: 50, dailyProfit: 100.00, monthlyProfit: 3000.00, yearlyProfit: 36500.00, badgeColor: 'from-emerald-500/20 to-teal-700/20 border-emerald-500/40 text-emerald-400' }
       ];
-      await VipLevel.insertMany(defaultLevels);
+      await dataAccess.vipLevel.create(defaultLevels);
       console.log('🌟 تم إنشاء مستويات VIP الافتراضية بنجاح في قاعدة البيانات');
     }
   } catch (err) {
@@ -106,8 +108,8 @@ async function seedVipLevels() {
 }
 
 async function loadGameSettings() {
-  let stored = await GameSetting.findOne({ key: 'default' });
-  if (!stored) stored = await GameSetting.create({ key: 'default', spinMin: gameSettings.spinMin, spinMax: gameSettings.spinMax, boxMin: gameSettings.boxMin, boxMax: gameSettings.boxMax, dailyGameRewardCap: gameSettings.dailyGameRewardCap });
+  let stored = await dataAccess.gameSetting.findOne({ key: 'default' });
+  if (!stored) stored = await dataAccess.gameSetting.create({ key: 'default', spinMin: gameSettings.spinMin, spinMax: gameSettings.spinMax, boxMin: gameSettings.boxMin, boxMax: gameSettings.boxMax, dailyGameRewardCap: gameSettings.dailyGameRewardCap });
   Object.assign(gameSettings, { spinMin: stored.spinMin, spinMax: stored.spinMax, boxMin: stored.boxMin, boxMax: stored.boxMax, dailyGameRewardCap: stored.dailyGameRewardCap, referralsPerCycle: stored.referralsPerCycle || 25 });
 }
 
@@ -1323,25 +1325,59 @@ app.post('/api/admin/broadcast', verifyAdmin, async (req, res) => {
 const PORT = process.env.PORT || 5000;
 let server;
 
-connectDatabase()
-  .then(async () => {
-    await seedVipLevels();
-    await loadGameSettings();
-    await migrateLegacyReferralCodes();
-    await ensureOfficialCommunityAccount();
-    await followOfficialForExistingUsers();
-    await Transaction.init();
-    scheduleDailyTaskReset();
-    setInterval(() => processScheduledBroadcasts(webpush).catch(error => console.error('Broadcast scheduler error:', error.message)), 60 * 1000);
+async function ensureSupabaseSchema() {
+  const dbUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
+  if (!dbUrl) {
+    console.log('ℹ️ لا يوجد رابط قاعدة بيانات مباشر (SUPABASE_DATABASE_URL/DATABASE_URL). سيتم إنشاء الجداول يدويًا داخل Supabase SQL Editor.');
+    return;
+  }
+
+  try {
+    const schemaPath = path.join(__dirname, 'supabase', 'schema.sql');
+    const sqlText = fs.readFileSync(schemaPath, 'utf8');
+    const client = new Client({
+      connectionString: dbUrl,
+      ssl: { rejectUnauthorized: false }
+    });
+
+    await client.connect();
+    await client.query(sqlText);
+    await client.end();
+    console.log('✅ تم التحقق من وجود جداول Supabase وتطبيق هيكل المشروع بنجاح.');
+  } catch (error) {
+    console.error('⚠️ فشل التحقق التلقائي للجدول في Supabase:', error.message);
+    console.error('تأكد من أن رابط قاعدة البيانات صحيح وأن SQL في supabase/schema.sql متوافق مع مشروعك.');
+  }
+}
+
+(async () => {
+  try {
+    await connectDatabase();
+    await ensureSupabaseSchema();
+
+    const runtimeMode = String(process.env.DATABASE_MODE || 'supabase').toLowerCase();
+    if (runtimeMode === 'supabase') {
+      console.log('✅ تم تفعيل وضع Supabase فقط. تم إيقاف التهيئة القديمة للـ MongoDB بنجاح.');
+      scheduleDailyTaskReset();
+    } else {
+      await seedVipLevels();
+      await loadGameSettings();
+      await migrateLegacyReferralCodes();
+      await ensureOfficialCommunityAccount();
+      await followOfficialForExistingUsers();
+      await Transaction.init();
+      scheduleDailyTaskReset();
+      setInterval(() => processScheduledBroadcasts(webpush).catch(error => console.error('Broadcast scheduler error:', error.message)), 60 * 1000);
+    }
 
     server = app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 الخادم يعمل بنجاح على المنفذ: ${PORT}`);
     });
-  })
-  .catch(err => {
-    console.error('❌ خطأ حرج في الاتصال بقاعدة بيانات MongoDB:', err);
+  } catch (err) {
+    console.error('❌ خطأ حرج في إعداد التطبيق مع قاعدة Supabase:', err);
     process.exit(1);
-  });
+  }
+})();
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('⚠️ Unhandled Rejection:', reason);

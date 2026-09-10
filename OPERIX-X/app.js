@@ -180,6 +180,21 @@ function closeGameResult() {
     if (modal) modal.classList.add('hide');
 }
 
+function buildDemoTickerMessages() {
+    const levels = tiersData.slice(0, 5);
+    const deposits = Array.from({ length: 20 }, (_, index) => {
+        const level = levels[index % levels.length];
+        const amount = Number(level.price || 0) + (index % 4) * 25;
+        return `بيانات العرض: إيداع توضيحي بقيمة $${amount.toLocaleString('en-US')} USDT للمستوى ${level.code}.`;
+    });
+    const withdrawals = Array.from({ length: 20 }, (_, index) => {
+        const level = levels[index % levels.length];
+        const weeklyProfit = Number(level.weeklyProfit || (Number(level.dailyProfit || 0) * 7));
+        const amount = Math.max(20, Number((weeklyProfit * (index % 3 + 1)).toFixed(2)));
+        return `بيانات العرض: سحب توضيحي بقيمة $${amount.toLocaleString('en-US')} USDT من الربح الأسبوعي للمستوى ${level.code}.`;
+    });
+    return [...deposits, ...withdrawals];
+}
 let liveTickerEvents = [];
 let liveTickerIndex = 0;
 let liveTickerTimer = null;
@@ -189,27 +204,21 @@ let homeSummaryRetryTimer = null;
 async function loadLiveTicker() {
     const message = document.getElementById('liveTickerMessage');
     if (!message) return;
-    try {
-        const response = await fetch('/api/live-activity');
-        const data = await response.json();
-        liveTickerEvents = Array.isArray(data.events) ? data.events : [];
-        if (!liveTickerEvents.length) {
-            message.innerText = 'لا توجد نشاطات مالية حقيقية مسجلة حتى الآن';
-            return;
-        }
-        renderLiveTickerEvent();
-        if (liveTickerTimer) clearInterval(liveTickerTimer);
-        liveTickerTimer = setInterval(renderLiveTickerEvent, 5000);
-        if (!liveTickerRefreshTimer) liveTickerRefreshTimer = setInterval(loadLiveTicker, 30000);
-    } catch (error) {
-        message.innerText = 'تعذر تحديث نشاط المنصة حاليًا';
-    }
+    liveTickerEvents = buildDemoTickerMessages().map(text => ({ text }));
+    renderLiveTickerEvent();
+    if (liveTickerTimer) clearInterval(liveTickerTimer);
+    liveTickerTimer = setInterval(renderLiveTickerEvent, 5000);
 }
 
 function renderLiveTickerEvent() {
     const message = document.getElementById('liveTickerMessage');
     const event = liveTickerEvents[liveTickerIndex % liveTickerEvents.length];
     if (!message || !event) return;
+    if (event.text) {
+        message.innerText = event.text;
+        liveTickerIndex += 1;
+        return;
+    }
     const amount = `$${Number(event.amount).toFixed(2)} USDT`;
     const labels = {
         deposit: `تم إيداع ${amount} في حساب مستخدم`,
