@@ -50,6 +50,7 @@ function isSupabaseRuntime() {
 function toSnakeCaseKey(key) {
   if (key === '_id') return 'id';
   if (key === 'id') return 'id';
+  if (key === 'ip') return 'ip_address';
   if (key === 'USDT_balance') return 'usdt_balance';
   if (key === 'OPX_balance') return 'opx_balance';
 
