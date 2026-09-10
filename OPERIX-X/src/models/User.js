@@ -1,4 +1,9 @@
 const mongoose = require('mongoose');
+const { maybeMirrorDocument } = require('../services/supabaseWriteMirror');
+
+function normalizeMoney(value) {
+  return Number(Number(value || 0).toFixed(2));
+}
 
 const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
@@ -57,5 +62,36 @@ const userSchema = new mongoose.Schema({
   kycNotes: { type: String, default: '', trim: true },
   kycReason: { type: String, default: '', trim: true }
 }, { timestamps: true });
+
+userSchema.methods.syncWallet = function syncWallet() {
+  const wallet = this.wallet || {};
+  const depositBalance = normalizeMoney(wallet.depositBalance || 0);
+  const profitBalance = normalizeMoney(wallet.profitBalance || 0);
+
+  wallet.depositBalance = depositBalance;
+  wallet.profitBalance = profitBalance;
+  wallet.balance = normalizeMoney(depositBalance + profitBalance);
+  wallet.totalDeposits = normalizeMoney(wallet.totalDeposits || 0);
+  wallet.totalWithdrawn = normalizeMoney(wallet.totalWithdrawn || 0);
+
+  this.USDT_balance = normalizeMoney(wallet.balance);
+  this.assetWallet = normalizeMoney(this.assetWallet || 0);
+  this.OPX_balance = normalizeMoney(this.OPX_balance || 0);
+
+  return this;
+};
+
+userSchema.pre('save', function(next) {
+  this.syncWallet();
+  next();
+});
+
+userSchema.post('save', async function(doc) {
+  try {
+    await maybeMirrorDocument('User', doc);
+  } catch (error) {
+    console.warn('Supabase user mirror skipped:', error.message);
+  }
+});
 
 module.exports = mongoose.model('User', userSchema);
