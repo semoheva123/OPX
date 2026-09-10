@@ -26,6 +26,37 @@ create table if not exists public.users (
   metadata jsonb not null default '{}'::jsonb
 );
 
+alter table public.users add column if not exists email_verification_token text;
+alter table public.users add column if not exists email_verification_expire timestamptz;
+alter table public.users add column if not exists is_official_platform boolean not null default false;
+alter table public.users add column if not exists today_completed_tasks integer not null default 0;
+alter table public.users add column if not exists reset_otp text;
+alter table public.users add column if not exists reset_otp_expire timestamptz;
+alter table public.users add column if not exists reset_otp_attempts integer not null default 0;
+alter table public.users add column if not exists two_factor_code text;
+alter table public.users add column if not exists two_factor_expire timestamptz;
+alter table public.users add column if not exists admin_invite_token text;
+alter table public.users add column if not exists admin_invite_expire timestamptz;
+alter table public.users add column if not exists admin_invite_used boolean not null default false;
+alter table public.users add column if not exists terms_accepted_at timestamptz;
+alter table public.users add column if not exists game_cycles_granted integer not null default 0;
+alter table public.users add column if not exists wheel_credits integer not null default 0;
+alter table public.users add column if not exists mystery_box_credits integer not null default 0;
+alter table public.users add column if not exists profile_image text not null default '';
+alter table public.users add column if not exists cover_image text not null default '';
+alter table public.users add column if not exists social_bio text not null default '';
+alter table public.users add column if not exists push_subscription jsonb;
+alter table public.users add column if not exists kyc_full_name text not null default '';
+alter table public.users add column if not exists kyc_document_type text not null default '';
+alter table public.users add column if not exists kyc_document_number text not null default '';
+alter table public.users add column if not exists kyc_document_url text not null default '';
+alter table public.users add column if not exists kyc_country text not null default '';
+alter table public.users add column if not exists kyc_submitted_at timestamptz;
+alter table public.users add column if not exists kyc_reviewed_at timestamptz;
+alter table public.users add column if not exists kyc_reviewed_by uuid references public.users(id) on delete set null;
+alter table public.users add column if not exists kyc_notes text not null default '';
+alter table public.users add column if not exists kyc_reason text not null default '';
+
 create table if not exists public.wallet_balances (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid not null references public.users(id) on delete cascade,
