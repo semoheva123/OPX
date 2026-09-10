@@ -94,7 +94,7 @@ function normalizeSupabaseDoc(doc = {}) {
   Object.keys(clone).forEach((key) => {
     if (clone[key] === undefined) return;
     const normalizedKey = toSnakeCaseKey(key);
-    result[normalizedKey] = clone[key];
+    result[normalizedKey] = clone[key] instanceof Date ? clone[key].toISOString() : clone[key];
   });
 
   return result;
