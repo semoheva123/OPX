@@ -10,10 +10,11 @@ function splitReward(amount) {
 
 function applyRewardToUser(user, amount) {
   const split = splitReward(amount);
-  user.wallet.profitBalance = Number(user.wallet.profitBalance || 0) + split.usdtAmount;
-  user.wallet.balance = Number(user.wallet.depositBalance || 0) + user.wallet.profitBalance;
+  user.wallet = user.wallet || { balance: 0, depositBalance: 0, profitBalance: 0, totalDeposits: 0, totalWithdrawn: 0 };
+  user.wallet.profitBalance = Number((Number(user.wallet.profitBalance || 0) + split.usdtAmount).toFixed(4));
   user.USDT_balance = Number((Number(user.USDT_balance || 0) + split.usdtAmount).toFixed(4));
   user.OPX_balance = Number((Number(user.OPX_balance || 0) + split.opxAmount).toFixed(4));
+  user.syncWallet();
   return split;
 }
 
