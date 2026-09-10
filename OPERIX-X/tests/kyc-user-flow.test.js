@@ -24,6 +24,7 @@ assert.match(fs.readFileSync(require.resolve('../src/routes/adminRoutes'), 'utf8
 assert.equal(fs.existsSync(require.resolve('../admin-first-login.html')), true, 'admin invitation page should exist');
 assert.match(fs.readFileSync(require.resolve('../src/app'), 'utf8'), /private/, 'private storage path should be blocked from static serving');
 assert.match(fs.readFileSync(require.resolve('../index.html'), 'utf8'), /\/api\/user\/2fa\/send-code/, 'withdrawal 2FA UI should use the user endpoint');
+assert.match(adminControllerSource, /لا يمكن حظر حسابات الإدارة/, 'admin accounts should be protected from bans');
 assert.match(fs.readFileSync(require.resolve('../src/app'), 'utf8'), /internal\/cron/, 'scheduled jobs should have a protected HTTP endpoint');
 assert.match(fs.readFileSync(require.resolve('../vercel.json'), 'utf8'), /"crons"/, 'Vercel should configure scheduled jobs');
 
