@@ -1,0 +1,21 @@
+{
+  "name": "OPERIX Admin - لوحة الإدارة",
+  "short_name": "OPERIX Admin",
+  "description": "لوحة إدارة OPERIX ومتابعة عمليات المنصة.",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/admin.html?source=admin-pwa",
+  "scope": "/admin.html",
+  "display": "standalone",
+  "orientation": "landscape-primary",
+  "theme_color": "#030712",
+  "background_color": "#07111f",
+  "icons": [
+    {
+      "src": "/operix-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
