@@ -371,11 +371,16 @@ async function forgotPassword(req, res) {
     if (!user) return res.status(200).json({ success: true, message: 'إذا كان البريد مسجلاً، فستصلك تعليمات استعادة كلمة المرور' });
 
     const otp = crypto.randomInt(100000, 1000000).toString();
-    await dataAccess.user.updateOne({ id: user._id }, { $set: {
-      reset_otp: hashOtp(otp),
-      reset_otp_expire: new Date(Date.now() + 10 * 60 * 1000),
-      reset_otp_attempts: 0
-    } });
+    if (dataAccess.isSupabaseRuntime()) {
+      await dataAccess.user.updateOne({ id: user._id }, { $set: { metadata: {
+        ...(user.metadata || {}), resetOtp: hashOtp(otp), resetOtpExpire: new Date(Date.now() + 10 * 60 * 1000), resetOtpAttempts: 0
+      } } });
+    } else {
+      user.resetOTP = hashOtp(otp);
+      user.resetOTPExpire = Date.now() + 10 * 60 * 1000;
+      user.resetOTPAttempts = 0;
+      await user.save();
+    }
 
     if (resend) {
       try {
@@ -409,9 +414,18 @@ async function verifyOtp(req, res) {
   try {
     const { email, otp } = req.body;
     const user = await dataAccess.user.findOne({ email: String(email || '').trim().toLowerCase() });
-    if (!user || !user.resetOtp || !user.resetOtpExpire || new Date(user.resetOtpExpire).getTime() <= Date.now() || user.resetOtpAttempts >= MAX_RESET_OTP_ATTEMPTS) return res.status(400).json({ error: 'رمز التحقق غير صحيح أو انتهت صلاحيته' });
-    const valid = matchesHash(String(otp || ''), user.resetOtp);
-    await dataAccess.user.updateOne({ id: user._id }, { $set: { reset_otp_attempts: Number(user.resetOtpAttempts || 0) + 1 } });
+    const resetState = dataAccess.isSupabaseRuntime() ? (user?.metadata || {}) : user;
+    const resetOtp = dataAccess.isSupabaseRuntime() ? resetState.resetOtp : resetState.resetOTP;
+    const resetOtpExpire = dataAccess.isSupabaseRuntime() ? resetState.resetOtpExpire : resetState.resetOTPExpire;
+    const resetOtpAttempts = Number(dataAccess.isSupabaseRuntime() ? resetState.resetOtpAttempts : resetState.resetOTPAttempts || 0);
+    if (!user || !resetOtp || !resetOtpExpire || new Date(resetOtpExpire).getTime() <= Date.now() || resetOtpAttempts >= MAX_RESET_OTP_ATTEMPTS) return res.status(400).json({ error: 'رمز التحقق غير صحيح أو انتهت صلاحيته' });
+    const valid = matchesHash(String(otp || ''), resetOtp);
+    if (dataAccess.isSupabaseRuntime()) {
+      await dataAccess.user.updateOne({ id: user._id }, { $set: { metadata: { ...(user.metadata || {}), resetOtpAttempts: resetOtpAttempts + 1 } } });
+    } else {
+      user.resetOTPAttempts = resetOtpAttempts + 1;
+      await user.save();
+    }
     if (!valid) return res.status(400).json({ error: 'رمز التحقق غير صحيح أو انتهت صلاحيته' });
     res.json({ success: true, message: 'رمز التحقق صحيح' });
   } catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
@@ -422,18 +436,27 @@ async function resetPassword(req, res) {
     const { email, otp, newPassword } = req.body;
     if (!email || !otp || typeof newPassword !== 'string' || newPassword.length < 8) return res.status(400).json({ error: 'كلمة المرور يجب أن لا تقل عن 8 أحرف وجميع الحقول مطلوبة' });
     const user = await dataAccess.user.findOne({ email: email.trim().toLowerCase() });
-    if (!user || !user.resetOtp || !user.resetOtpExpire || new Date(user.resetOtpExpire).getTime() <= Date.now() || user.resetOtpAttempts >= MAX_RESET_OTP_ATTEMPTS) return res.status(400).json({ error: 'جلسة التغيير غير صالحة أو انتهت الصلاحية' });
-    const nextAttempts = Number(user.resetOtpAttempts || 0) + 1;
-    if (!matchesHash(String(otp), user.resetOtp)) {
-      await dataAccess.user.updateOne({ id: user._id }, { $set: { reset_otp_attempts: nextAttempts } });
+    const resetState = dataAccess.isSupabaseRuntime() ? (user?.metadata || {}) : user;
+    const resetOtp = dataAccess.isSupabaseRuntime() ? resetState.resetOtp : resetState.resetOTP;
+    const resetOtpExpire = dataAccess.isSupabaseRuntime() ? resetState.resetOtpExpire : resetState.resetOTPExpire;
+    const resetOtpAttempts = Number(dataAccess.isSupabaseRuntime() ? resetState.resetOtpAttempts : resetState.resetOTPAttempts || 0);
+    if (!user || !resetOtp || !resetOtpExpire || new Date(resetOtpExpire).getTime() <= Date.now() || resetOtpAttempts >= MAX_RESET_OTP_ATTEMPTS) return res.status(400).json({ error: 'جلسة التغيير غير صالحة أو انتهت الصلاحية' });
+    const nextAttempts = resetOtpAttempts + 1;
+    if (!matchesHash(String(otp), resetOtp)) {
+      if (dataAccess.isSupabaseRuntime()) await dataAccess.user.updateOne({ id: user._id }, { $set: { metadata: { ...(user.metadata || {}), resetOtpAttempts: nextAttempts } } });
+      else { user.resetOTPAttempts = nextAttempts; await user.save(); }
       return res.status(400).json({ error: 'جلسة التغيير غير صالحة أو انتهت الصلاحية' });
     }
-    await dataAccess.user.updateOne({ id: user._id }, { $set: {
-      password_hash: await bcrypt.hash(newPassword, 12),
-      reset_otp: null,
-      reset_otp_expire: null,
-      reset_otp_attempts: 0
-    } });
+    if (dataAccess.isSupabaseRuntime()) {
+      await dataAccess.user.updateOne({ id: user._id }, { $set: {
+        password_hash: await bcrypt.hash(newPassword, 12),
+        metadata: { ...(user.metadata || {}), resetOtp: null, resetOtpExpire: null, resetOtpAttempts: 0 }
+      } });
+    } else {
+      user.password = await bcrypt.hash(newPassword, 12);
+      user.resetOTP = null; user.resetOTPExpire = null; user.resetOTPAttempts = 0;
+      await user.save();
+    }
     await dataAccess.session.updateMany({ userId: user._id, revokedAt: null }, { $set: { revokedAt: new Date() } });
     res.json({ success: true, message: 'تم تغيير كلمة المرور بنجاح' });
   } catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
