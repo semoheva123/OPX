@@ -46,9 +46,18 @@ async function completeTask(req, res) {
       const dailyProfit = vipLevel ? vipLevel.dailyProfit : 2.5;
       const commission = parseFloat((dailyProfit / maxTasks).toFixed(4));
       const split = splitHybridReward(commission);
-      updatedUser = await User.findOneAndUpdate({ _id: req.user.id, todayCompletedTasks: { $lt: maxTasks } }, { $inc: { assetWallet: commission, 'wallet.profitBalance': split.usdtAmount, 'wallet.balance': split.usdtAmount, USDT_balance: split.usdtAmount, OPX_balance: split.opxAmount, todayCompletedTasks: 1 } }, { new: true, session }).select('-password -resetOTP -twoFactorCode');
-      if (!updatedUser) throw Object.assign(new Error('TASK_LIMIT'), { statusCode: 400 });
-      await new Transaction({ userId: updatedUser._id, type: 'reward', amount: commission, walletAddress: 'Daily Task Reward', status: 'approved' }).save({ session });
+      const userToUpdate = await User.findById(req.user.id).session(session);
+      if (!userToUpdate) throw Object.assign(new Error('USER_NOT_FOUND'), { statusCode: 404 });
+      if (userToUpdate.todayCompletedTasks >= maxTasks) throw Object.assign(new Error('TASK_LIMIT'), { statusCode: 400 });
+
+      userToUpdate.assetWallet = Number((Number(userToUpdate.assetWallet || 0) + commission).toFixed(4));
+      userToUpdate.wallet.profitBalance = Number((Number(userToUpdate.wallet.profitBalance || 0) + split.usdtAmount).toFixed(4));
+      userToUpdate.USDT_balance = Number((Number(userToUpdate.USDT_balance || 0) + split.usdtAmount).toFixed(4));
+      userToUpdate.OPX_balance = Number((Number(userToUpdate.OPX_balance || 0) + split.opxAmount).toFixed(4));
+      userToUpdate.todayCompletedTasks = Number(userToUpdate.todayCompletedTasks || 0) + 1;
+      userToUpdate.syncWallet();
+      updatedUser = await userToUpdate.save({ session });
+      await new Transaction({ userId: updatedUser._id, type: 'reward', amount: commission, grossAmount: commission, usdtAmount: split.usdtAmount, opxAmount: split.opxAmount, walletAddress: 'Daily Task Reward', status: 'approved' }).save({ session });
     });
     res.json({ success: true, assetWallet: updatedUser.assetWallet, wallet: updatedUser.wallet, completed: updatedUser.todayCompletedTasks });
   } catch (err) {
@@ -82,12 +91,12 @@ async function reward(req, res, min, max, label) {
         { $group: { _id: null, total: { $sum: '$amount' } } }
       ]).session(session);
       if ((dailyRewardTotal[0]?.total || 0) + rewardAmount > (req.app.locals.gameSettings.dailyGameRewardCap || 100)) throw Object.assign(new Error('DAILY_GAME_CAP'), { statusCode: 400 });
-      user.wallet.profitBalance += split.usdtAmount;
-      user.wallet.balance = user.wallet.depositBalance + user.wallet.profitBalance;
+      user.wallet.profitBalance = Number((Number(user.wallet.profitBalance || 0) + split.usdtAmount).toFixed(4));
       user.USDT_balance = Number((Number(user.USDT_balance || 0) + split.usdtAmount).toFixed(4));
       user.OPX_balance = Number((Number(user.OPX_balance || 0) + split.opxAmount).toFixed(4));
+      user.syncWallet();
       updatedUser = await user.save({ session });
-      await new Transaction({ userId: updatedUser._id, type: 'reward', amount: rewardAmount, walletAddress: label, status: 'approved' }).save({ session });
+      await new Transaction({ userId: updatedUser._id, type: 'reward', amount: rewardAmount, grossAmount: rewardAmount, usdtAmount: split.usdtAmount, opxAmount: split.opxAmount, walletAddress: label, status: 'approved' }).save({ session });
     });
     res.json({ success: true, reward: rewardAmount, wallet: updatedUser.wallet });
   } catch (err) {

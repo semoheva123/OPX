@@ -10,6 +10,7 @@ const { authenticator } = require('otplib');
 const QRCode = require('qrcode');
 const { emailVerificationTemplate, passwordResetTemplate, adminInviteTemplate } = require('../services/emailTemplates');
 const { followOfficialCommunityAccount } = require('../services/officialCommunity');
+const dataAccess = require('../services/dataAccess');
 
 const verifySync = ({ token, secret }) => ({ valid: authenticator.check(token, secret) });
 const generateSecret = () => authenticator.generateSecret();
@@ -51,11 +52,11 @@ async function register(req, res) {
     if (acceptTerms !== true) return res.status(400).json({ error: 'يجب الموافقة على شروط الاستخدام وسياسة الخصوصية' });
     if (password.length < 8) return res.status(400).json({ error: 'كلمة المرور يجب أن لا تقل عن 8 أحرف' });
     const cleanEmail = email.trim().toLowerCase();
-    if (await User.findOne({ email: cleanEmail })) return res.status(400).json({ error: 'البريد الإلكتروني مسجل بالفعل' });
+    if (await dataAccess.user.findOne({ email: cleanEmail })) return res.status(400).json({ error: 'البريد الإلكتروني مسجل بالفعل' });
 
     let validReferralCode = null;
     if (typeof referralCode === 'string' && referralCode.trim()) {
-      const referrer = await User.findOne({ referralCode: referralCode.trim().toUpperCase() });
+      const referrer = await dataAccess.user.findOne({ referralCode: referralCode.trim().toUpperCase() });
       if (referrer) validReferralCode = referrer.referralCode;
     }
     const newUser = new User({
@@ -138,19 +139,20 @@ async function login(req, res) {
   try {
     const { email, password } = req.body || {};
     if (!email || !password || typeof email !== 'string' || typeof password !== 'string') return res.status(400).json({ error: 'يرجى إدخال البريد وكلمة المرور' });
-    const user = await User.findOne({ email: email.trim().toLowerCase() });
+    const user = await dataAccess.user.findOne({ email: email.trim().toLowerCase() });
     if (!user || !(await bcrypt.compare(password, user.password))) {
       try {
-        await SecurityEvent.create({ email: email.trim().toLowerCase(), event: 'login_failed', ip: req.ip, userAgent: req.get('user-agent') || 'unknown' });
+        await dataAccess.securityEvent.create({ email: email.trim().toLowerCase(), event: 'login_failed', ip: req.ip, userAgent: req.get('user-agent') || 'unknown' });
       } catch (securityError) {
         console.error('Failed to record login failure:', securityError.message);
       }
       return res.status(400).json({ error: 'بيانات الدخول غير صحيحة' });
     }
     if (user.isBanned) return res.status(403).json({ error: 'حسابك معطل حالياً من قبل الإدارة. يرجى التواصل مع الدعم.' });
+    if (!user.wallet) user.wallet = { balance: 0, depositBalance: 0, profitBalance: 0, totalDeposits: 0, totalWithdrawn: 0 };
     if (user.wallet.depositBalance === undefined) user.wallet.depositBalance = 0;
     if (user.wallet.profitBalance === undefined) user.wallet.profitBalance = user.wallet.balance || 0;
-    user.wallet.balance = user.wallet.depositBalance + user.wallet.profitBalance;
+    user.syncWallet();
     user.lastLoginAt = new Date();
     await user.save();
     const jti = crypto.randomUUID();
@@ -158,10 +160,10 @@ async function login(req, res) {
     const token = jwt.sign({ id: user._id, email: user.email, role: user.role, jti }, JWT_SECRET, { expiresIn: expiresInSeconds });
     const userAgent = req.get('user-agent') || 'unknown';
     const previousSession = await Session.findOne({ userId: user._id, revokedAt: null, ip: { $ne: req.ip }, userAgent: { $ne: userAgent }, expiresAt: { $gt: new Date() } }).select('_id');
-    await Session.create({ userId: user._id, jti, userAgent, ip: req.ip, expiresAt: new Date(Date.now() + expiresInSeconds * 1000) });
-    await SecurityEvent.create({ userId: user._id, email: user.email, event: 'login_success', ip: req.ip, userAgent });
+    await dataAccess.session.create({ userId: user._id, jti, userAgent, ip: req.ip, expiresAt: new Date(Date.now() + expiresInSeconds * 1000) });
+    await dataAccess.securityEvent.create({ userId: user._id, email: user.email, event: 'login_success', ip: req.ip, userAgent });
     if (previousSession) {
-      await SecurityEvent.create({ userId: user._id, email: user.email, event: 'new_device', ip: req.ip, userAgent, metadata: { reason: 'new_ip_and_user_agent' } });
+      await dataAccess.securityEvent.create({ userId: user._id, email: user.email, event: 'new_device', ip: req.ip, userAgent, metadata: { reason: 'new_ip_and_user_agent' } });
       const notification = await Notification.create({ userId: user._id, title: 'تسجيل دخول من جهاز جديد', body: 'تم تسجيل الدخول إلى حسابك من جهاز أو شبكة مختلفة. راجع الجلسات النشطة إذا لم تكن هذه العملية منك.', type: 'security' });
       realtimeService.emit('notification_created', { notificationId: notification._id, title: notification.title, type: notification.type }, { userId: user._id });
     }

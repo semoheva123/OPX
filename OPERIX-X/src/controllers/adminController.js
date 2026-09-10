@@ -740,8 +740,24 @@ async function applyWithdrawalAction(transactionId, action, req) {
       if (tx.status !== 'pending') throw Object.assign(new Error('PROCESSED'), { statusCode: 400 });
       if (action !== 'approve' && action !== 'reject') throw Object.assign(new Error('INVALID_ACTION'), { statusCode: 400 });
       tx.status = action === 'approve' ? 'approved' : 'rejected';
-      if (action === 'approve' && tx.type === 'deposit') await User.findByIdAndUpdate(tx.userId._id, { $inc: { 'wallet.depositBalance': tx.amount, 'wallet.balance': tx.amount, 'wallet.totalDeposits': tx.amount } }, { session });
-      if (action === 'reject' && tx.type === 'withdraw') await User.findByIdAndUpdate(tx.userId._id, { $inc: { 'wallet.profitBalance': tx.amount, 'wallet.balance': tx.amount, 'wallet.totalWithdrawn': -tx.amount } }, { session });
+      if (action === 'approve' && tx.type === 'deposit') {
+        const user = await User.findById(tx.userId._id).session(session);
+        if (!user) throw Object.assign(new Error('USER_NOT_FOUND'), { statusCode: 404 });
+        user.wallet = user.wallet || { balance: 0, depositBalance: 0, profitBalance: 0, totalDeposits: 0, totalWithdrawn: 0 };
+        user.wallet.depositBalance = Number((Number(user.wallet.depositBalance || 0) + Number(tx.amount || 0)).toFixed(2));
+        user.wallet.totalDeposits = Number((Number(user.wallet.totalDeposits || 0) + Number(tx.amount || 0)).toFixed(2));
+        user.syncWallet();
+        await user.save({ session });
+      }
+      if (action === 'reject' && tx.type === 'withdraw') {
+        const user = await User.findById(tx.userId._id).session(session);
+        if (!user) throw Object.assign(new Error('USER_NOT_FOUND'), { statusCode: 404 });
+        user.wallet = user.wallet || { balance: 0, depositBalance: 0, profitBalance: 0, totalDeposits: 0, totalWithdrawn: 0 };
+        user.wallet.profitBalance = Number((Number(user.wallet.profitBalance || 0) + Number(tx.amount || 0)).toFixed(2));
+        user.wallet.totalWithdrawn = Number(Math.max(0, Number(user.wallet.totalWithdrawn || 0) - Number(tx.amount || 0)).toFixed(2));
+        user.syncWallet();
+        await user.save({ session });
+      }
       await tx.save({ session });
       await createAudit(req, `transaction_${action}`, tx._id.toString(), { type: tx.type, amount: tx.amount, newValue: action }, session);
     });
@@ -839,8 +855,14 @@ async function listBroadcasts(req, res) {
 }
 
 async function processScheduledBroadcasts(webpush) {
+  const runtimeMode = String(process.env.DATABASE_MODE || '').trim().toLowerCase();
+  if (runtimeMode === 'supabase') {
+    return [];
+  }
+
   const campaigns = await Broadcast.find({ status: 'scheduled', scheduledAt: { $lte: new Date() } }).limit(5);
   for (const campaign of campaigns) await deliverBroadcast(campaign, webpush);
+  return campaigns;
 }
 
 module.exports = { saveVipLevel, deleteVipLevel, overview, analytics, financialSummary, investmentVaultSummary, getInvestmentVaultContracts, updateInvestmentVaultContracts, listInvestmentVaults, emergencyReleaseInvestmentVault, riskSummary, kycSummary, listUsers, userDetails, streamKycDocument, complianceReport, reviewUserKyc, resetDailyTasks, toggleBan, bulkToggleBan, revokeUserSessions, verifyUserEmail, disableUserTwoFactor, updateUser, updateUserAccount, updateUserRole, updateUserTier, listWithdrawals, transactionDetails, exportTransactions, listAuditLogs, listReferrals, referralTree, withdrawalAction, bulkWithdrawalAction, gameSettings, updateGameSettings, broadcast, listBroadcasts, processScheduledBroadcasts, sendAdminAuditBroadcast };
