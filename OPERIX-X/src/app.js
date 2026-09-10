@@ -20,11 +20,13 @@ const socialFeedRoutes = require('./routes/socialFeedRoutes');
 const socialGraphRoutes = require('./routes/socialGraphRoutes');
 const messageRoutes = require('./routes/messageRoutes');
 const zealyRoutes = require('./routes/zealyRoutes');
+const cpaLeadRoutes = require('./routes/cpaLeadRoutes');
 const { verifyAdmin } = require('./middlewares/auth');
 const jwt = require('jsonwebtoken');
 const Session = require('./models/Session');
 const User = require('./models/User');
 const realtimeService = require('./services/realtimeService');
+const { checkSupabaseConnection } = require('./config/supabase');
 
 function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
   const app = express();
@@ -46,6 +48,7 @@ function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
         fontSrc: ["'self'", 'https://cdnjs.cloudflare.com', 'https://fonts.gstatic.com', 'data:'],
         imgSrc: ["'self'", 'data:', 'https:'],
         connectSrc: ["'self'", 'https:', 'wss://*.ably-realtime.com', 'wss://*.ably-realtime.net', 'wss://*.ably.net'],
+        frameSrc: ["'self'", 'https://www.cpalead.com'],
         objectSrc: ["'none'"],
         baseUri: ["'self'"],
         frameAncestors: ["'self'"]
@@ -54,9 +57,13 @@ function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
   }));
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-  app.get('/api/health', (req, res) => {
-    const databaseReady = mongoose.connection.readyState === 1;
-    res.status(databaseReady ? 200 : 503).json({ success: databaseReady, status: databaseReady ? 'ok' : 'degraded', database: databaseReady ? 'connected' : 'disconnected', deploymentVersion: req.app.locals.deploymentVersion, uptime: Math.floor(process.uptime()), timestamp: new Date().toISOString() });
+  app.get('/api/health', async (req, res) => {
+    const runtimeMode = String(process.env.DATABASE_MODE || 'mongo').toLowerCase();
+    const supabase = await checkSupabaseConnection().catch(error => ({ configured: true, reachable: false, error: error.message }));
+    const mongoReady = mongoose.connection.readyState === 1;
+    const databaseReady = runtimeMode === 'supabase' ? Boolean(supabase?.reachable) : mongoReady;
+    const databaseName = runtimeMode === 'supabase' ? 'supabase' : (mongoReady ? 'mongo' : 'disconnected');
+    res.status(databaseReady ? 200 : 503).json({ success: databaseReady, status: databaseReady ? 'ok' : 'degraded', database: databaseReady ? databaseName : 'disconnected', supabase, migrationMode: runtimeMode, deploymentVersion: req.app.locals.deploymentVersion, uptime: Math.floor(process.uptime()), timestamp: new Date().toISOString() });
   });
 
   const runCronJob = async (req, res) => {
@@ -160,6 +167,7 @@ function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
   app.use('/api/social', socialGraphRoutes);
   app.use('/api/messages', messageRoutes);
   app.use('/api/integrations/zealy', zealyRoutes);
+  app.use('/api/integrations/cpalead', cpaLeadRoutes);
 
   app.use((req, res, next) => {
     if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'المسار غير موجود' });
