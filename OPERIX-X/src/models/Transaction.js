@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { maybeMirrorDocument } = require('../services/supabaseWriteMirror');
 
 const transactionSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -24,5 +25,13 @@ transactionSchema.index(
   { type: 1, network: 1, txHash: 1 },
   { unique: true, partialFilterExpression: { type: 'deposit', txHash: { $type: 'string' } } }
 );
+
+transactionSchema.post('save', async function(doc) {
+  try {
+    await maybeMirrorDocument('Transaction', doc);
+  } catch (error) {
+    console.warn('Supabase transaction mirror skipped:', error.message);
+  }
+});
 
 module.exports = mongoose.model('Transaction', transactionSchema);
