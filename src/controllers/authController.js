@@ -356,7 +356,7 @@ async function revokeSession(req, res) {
 
 async function listSessions(req, res) {
   const sessions = dataAccess.isSupabaseRuntime()
-    ? await dataAccess.session.find({ userId: req.user.id, revokedAt: null, expiresAt: { $gt: new Date() } }, { sort: { lastSeenAt: -1 }, select: 'jti userAgent ip lastSeenAt createdAt expiresAt' })
+    ? await dataAccess.session.find({ userId: req.user.id, revokedAt: null, expiresAt: { $gt: new Date() } }, { sort: { createdAt: -1 }, select: 'jti userAgent ipAddress createdAt expiresAt' })
     : await Session.find({ userId: req.user.id, revokedAt: null, expiresAt: { $gt: new Date() } }).sort({ lastSeenAt: -1 }).select('jti userAgent ip lastSeenAt createdAt expiresAt');
   res.json({ success: true, sessions: sessions.map(session => ({ ...(session.toObject ? session.toObject() : session), isCurrent: session.jti === req.session?.jti })) });
 }

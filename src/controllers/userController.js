@@ -200,6 +200,13 @@ async function updateSocialProfile(req, res) {
 
 async function getReferrals(req, res) {
   try {
+    if (dataAccess.isSupabaseRuntime()) {
+      const currentUser = await dataAccess.user.findById(req.user.id);
+      if (!currentUser) return res.status(404).json({ error: 'المستخدم غير موجود' });
+      const referrals = await dataAccess.user.find({ referredBy: currentUser.referralCode?.trim().toUpperCase() }, { sort: { createdAt: -1 }, limit: 100 });
+      const activeReferrals = referrals.filter(referral => !referral.isBanned && Number(referral.wallet?.totalDeposits || 0) > 0).length;
+      return res.json({ success: true, referralCode: currentUser.referralCode, referredBy: currentUser.referredBy || null, totalReferrals: referrals.length, activeReferrals, referrals });
+    }
     const currentUser = await User.findById(req.user.id);
     if (!currentUser) return res.status(404).json({ error: 'المستخدم غير موجود' });
     const userCode = currentUser.referralCode?.trim().toUpperCase() || '';
@@ -211,6 +218,18 @@ async function getReferrals(req, res) {
 
 async function getTeamNetwork(req, res) {
   try {
+    if (dataAccess.isSupabaseRuntime()) {
+      const currentUser = await dataAccess.user.findById(req.user.id);
+      if (!currentUser) return res.status(404).json({ error: 'المستخدم غير موجود' });
+      const levels = [];
+      let parentCodes = [currentUser.referralCode?.trim().toUpperCase()].filter(Boolean);
+      for (let level = 1; level <= 3 && parentCodes.length; level++) {
+        const members = await dataAccess.user.find({ referredBy: { $in: parentCodes } }, { sort: { createdAt: -1 }, limit: 300 });
+        levels.push({ level, total: members.length, active: members.filter(member => !member.isBanned && Number(member.wallet?.totalDeposits || 0) > 0).length, members });
+        parentCodes = members.map(member => member.referralCode).filter(Boolean).map(code => code.trim().toUpperCase());
+      }
+      return res.json({ success: true, levels });
+    }
     const currentUser = await User.findById(req.user.id).select('referralCode');
     if (!currentUser) return res.status(404).json({ error: 'المستخدم غير موجود' });
     const levels = [];
@@ -227,6 +246,11 @@ async function getTeamNetwork(req, res) {
 
 async function getGrowth(req, res) {
   try {
+    if (dataAccess.isSupabaseRuntime()) {
+      const transactions = await dataAccess.transaction.find({ userId: req.user.id, status: { $in: ['approved', 'completed'] } }, { sort: { createdAt: 1 }, limit: 100, select: 'type amount createdAt' });
+      let balance = 0;
+      return res.json({ success: true, points: transactions.map(transaction => { const amount = Number(transaction.amount) || 0; balance += ['withdraw', 'upgrade_deduction'].includes(transaction.type) ? -amount : amount; return { date: transaction.createdAt, balance: Math.max(0, balance) }; }).slice(-7) });
+    }
     const transactions = await Transaction.find({ userId: req.user.id, status: { $in: ['approved', 'completed'] } }).sort({ createdAt: 1 }).select('type amount createdAt').limit(100);
     let balance = 0;
     const points = transactions.map(transaction => {
@@ -241,6 +265,7 @@ async function getGrowth(req, res) {
 
 async function getUpgradeHistory(req, res) {
   try {
+    if (dataAccess.isSupabaseRuntime()) return res.json({ success: true, history: await dataAccess.transaction.find({ userId: req.user.id, type: { $in: ['upgrade_deduction', 'token_burn'] } }, { sort: { createdAt: -1 }, limit: 30, select: 'type amount usdtAmount opxAmount walletAddress createdAt status' }) });
     const history = await Transaction.find({ userId: req.user.id, type: { $in: ['upgrade_deduction', 'token_burn'] } }).sort({ createdAt: -1 }).limit(30).select('type amount usdtAmount opxAmount walletAddress createdAt status').lean();
     res.json({ success: true, history });
   } catch (err) { res.status(500).json({ error: 'تعذر تحميل سجل الترقيات' }); }
@@ -248,6 +273,17 @@ async function getUpgradeHistory(req, res) {
 
 async function getHomeSummary(req, res) {
   try {
+    if (dataAccess.isSupabaseRuntime()) {
+      const user = await dataAccess.user.findById(req.user.id);
+      if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
+      const transactions = await dataAccess.transaction.find({ userId: req.user.id }, { sort: { createdAt: -1 }, limit: 25 });
+      const approvedTransactions = transactions.filter(transaction => ['approved', 'completed'].includes(transaction.status));
+      const referralCount = await dataAccess.user.countDocuments({ referredBy: user.referralCode?.trim().toUpperCase() });
+      const earnings = approvedTransactions.filter(transaction => ['deposit', 'reward', 'staking_reward', 'referral_commission'].includes(transaction.type)).reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0);
+      const pendingTransactions = transactions.filter(transaction => transaction.status === 'pending');
+      const healthChecks = { email: Boolean(user.email), twoFactor: Boolean(user.twoFactorEnabled), wallet: Boolean(user.walletAddress?.trim()), deposit: Number(user.wallet?.totalDeposits) > 0, activity: approvedTransactions.length > 0 };
+      return res.json({ success: true, summary: { todayEarned: Number(earnings.toFixed(2)), earnings: { today: Number(earnings.toFixed(2)), week: Number(earnings.toFixed(2)), month: Number(earnings.toFixed(2)) }, health: Object.values(healthChecks).filter(Boolean).length * 20, healthChecks, referralCount, pendingTransactions: pendingTransactions.length, pendingByType: { deposits: pendingTransactions.filter(item => item.type === 'deposit').length, withdrawals: pendingTransactions.filter(item => item.type === 'withdraw').length }, completedTasks: user.todayCompletedTasks || 0, teamStats: user.teamStats || {}, nextLevel: null, timeline: [{ type: 'registered', date: user.createdAt, title: 'إنشاء الحساب' }], recentActivity: approvedTransactions.slice(0, 10) } });
+    }
     const user = await User.findById(req.user.id).select('-password -resetOTP -twoFactorCode');
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     const transactions = await Transaction.find({ userId: user._id }).sort({ createdAt: -1 }).limit(25).select('type amount status createdAt');
