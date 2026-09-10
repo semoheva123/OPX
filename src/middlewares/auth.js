@@ -44,7 +44,9 @@ const verifyToken = async (req, res, next) => {
 
     req.user = decoded;
     req.session = activeSession;
-    if (activeSession) await dataAccess.session.updateOne({ _id: activeSession._id }, { $set: { lastSeenAt: new Date() } });
+    if (activeSession && !dataAccess.isSupabaseRuntime()) {
+      await dataAccess.session.updateOne({ _id: activeSession._id }, { $set: { lastSeenAt: new Date() } });
+    }
     next();
   } catch (err) {
     return res.status(401).json({ error: 'التوكن غير صالح أو انتهت صلاحيته' });
