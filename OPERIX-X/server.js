@@ -1323,6 +1323,7 @@ app.post('/api/admin/broadcast', verifyAdmin, async (req, res) => {
 */
 
 const PORT = process.env.PORT || 5000;
+const isVercelRuntime = Boolean(process.env.VERCEL);
 let server;
 let initializationPromise;
 
@@ -1361,7 +1362,7 @@ async function initializeRuntime() {
     const runtimeMode = String(process.env.DATABASE_MODE || 'supabase').toLowerCase();
     if (runtimeMode === 'supabase') {
       console.log('✅ تم تفعيل وضع Supabase فقط. تم إيقاف التهيئة القديمة للـ MongoDB بنجاح.');
-      if (!process.env.VERCEL) scheduleDailyTaskReset();
+      if (!isVercelRuntime) scheduleDailyTaskReset();
     } else {
       await seedVipLevels();
       await loadGameSettings();
@@ -1369,7 +1370,7 @@ async function initializeRuntime() {
       await ensureOfficialCommunityAccount();
       await followOfficialForExistingUsers();
       await Transaction.init();
-      if (!process.env.VERCEL) {
+      if (!isVercelRuntime) {
         scheduleDailyTaskReset();
         setInterval(() => processScheduledBroadcasts(webpush).catch(error => console.error('Broadcast scheduler error:', error.message)), 60 * 1000);
       }
@@ -1382,7 +1383,7 @@ async function initializeRuntime() {
   return initializationPromise;
 }
 
-if (!process.env.VERCEL) {
+if (!isVercelRuntime) {
   initializeRuntime()
     .then(() => {
       server = app.listen(PORT, '0.0.0.0', () => {
