@@ -59,7 +59,7 @@ async function register(req, res) {
       const referrer = await dataAccess.user.findOne({ referralCode: referralCode.trim().toUpperCase() });
       if (referrer) validReferralCode = referrer.referralCode;
     }
-    const newUser = new User({
+    const userPayload = {
       email: cleanEmail,
       password: await bcrypt.hash(password, 12),
       referralCode: `OPERIX${Date.now().toString(36).slice(-5).toUpperCase()}${crypto.randomBytes(2).toString('hex').toUpperCase()}`,
@@ -68,9 +68,10 @@ async function register(req, res) {
       emailVerificationToken: crypto.createHash('sha256').update(crypto.randomBytes(32)).digest('hex'),
       emailVerificationExpire: new Date(Date.now() + 24 * 60 * 60 * 1000),
       wallet: { balance: 0, depositBalance: 0, profitBalance: 0, totalDeposits: 0, totalWithdrawn: 0 }
-    });
-    await newUser.save();
-    await followOfficialCommunityAccount(newUser._id);
+    };
+    const newUser = dataAccess.isSupabaseRuntime() ? await dataAccess.user.create(userPayload) : new User(userPayload);
+    if (!dataAccess.isSupabaseRuntime()) await newUser.save();
+    if (!dataAccess.isSupabaseRuntime()) await followOfficialCommunityAccount(newUser._id);
     if (req.app.locals.resend) {
       const verifyUrl = `${process.env.APP_URL || 'http://localhost:5000'}/api/auth/verify-email?token=${newUser.emailVerificationToken}`;
       await req.app.locals.resend.emails.send({
@@ -152,9 +153,19 @@ async function login(req, res) {
     if (!user.wallet) user.wallet = { balance: 0, depositBalance: 0, profitBalance: 0, totalDeposits: 0, totalWithdrawn: 0 };
     if (user.wallet.depositBalance === undefined) user.wallet.depositBalance = 0;
     if (user.wallet.profitBalance === undefined) user.wallet.profitBalance = user.wallet.balance || 0;
-    user.syncWallet();
+    const wallet = user.wallet || { balance: 0, depositBalance: 0, profitBalance: 0, totalDeposits: 0, totalWithdrawn: 0 };
+    wallet.depositBalance = Number(wallet.depositBalance || 0);
+    wallet.profitBalance = Number(wallet.profitBalance ?? wallet.balance ?? 0);
+    wallet.balance = Number((wallet.depositBalance + wallet.profitBalance).toFixed(2));
+    user.wallet = wallet;
+    user.USDT_balance = wallet.balance;
     user.lastLoginAt = new Date();
-    await user.save();
+    if (dataAccess.isSupabaseRuntime()) {
+      await dataAccess.user.updateOne({ id: user._id }, { $set: { lastLoginAt: user.lastLoginAt } });
+    } else {
+      user.syncWallet();
+      await user.save();
+    }
     const jti = crypto.randomUUID();
     const expiresInSeconds = 7 * 24 * 60 * 60;
     const token = jwt.sign({ id: user._id, email: user.email, role: user.role, jti }, JWT_SECRET, { expiresIn: expiresInSeconds });
