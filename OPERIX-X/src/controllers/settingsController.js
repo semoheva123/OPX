@@ -35,7 +35,10 @@ async function getPublic(req, res) {
       : await GeneralSetting.findOne({ key: 'default' }).lean() || defaultSettings;
     res.json({ success: true, settings: sanitizeSettings(settings) });
   }
-  catch (error) { res.status(500).json({ error: 'تعذر تحميل إعدادات المنصة' }); }
+  catch (error) {
+    if (error?.code === 'PGRST205') return res.json({ success: true, settings: defaultSettings, source: 'defaults' });
+    res.status(500).json({ error: 'تعذر تحميل إعدادات المنصة' });
+  }
 }
 
 async function getAdmin(req, res) {
@@ -45,7 +48,10 @@ async function getAdmin(req, res) {
       : await GeneralSetting.findOneAndUpdate({ key: 'default' }, { $setOnInsert: defaultSettings }, { upsert: true, new: true });
     res.json({ success: true, settings: sanitizeSettings(settings) });
   }
-  catch (error) { res.status(500).json({ error: 'تعذر تحميل الإعدادات' }); }
+  catch (error) {
+    if (error?.code === 'PGRST205') return res.status(503).json({ error: 'جدول إعدادات المنصة غير مهيأ في Supabase' });
+    res.status(500).json({ error: 'تعذر تحميل الإعدادات' });
+  }
 }
 
 async function update(req, res) {
@@ -63,6 +69,9 @@ async function update(req, res) {
       ? await saveSupabaseSettings(update)
       : await GeneralSetting.findOneAndUpdate({ key: 'default' }, { $set: update }, { upsert: true, new: true, runValidators: true });
     res.json({ success: true, settings, message: 'تم حفظ إعدادات المنصة' });
-  } catch (error) { res.status(500).json({ error: 'تعذر حفظ الإعدادات' }); }
+  } catch (error) {
+    if (error?.code === 'PGRST205') return res.status(503).json({ error: 'جدول إعدادات المنصة غير مهيأ في Supabase' });
+    res.status(500).json({ error: 'تعذر حفظ الإعدادات' });
+  }
 }
 module.exports = { getPublic, getAdmin, update };
