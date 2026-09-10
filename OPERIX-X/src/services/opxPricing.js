@@ -15,7 +15,7 @@ function applyOpxUpgradePayment(user, usdAmount, options = {}) {
       throw new Error(`INSUFFICIENT:${upgradeCost}:0:${upgradeCost}:${user.wallet.depositBalance}`);
     }
     user.wallet.depositBalance = Number((user.wallet.depositBalance - upgradeCost).toFixed(2));
-    user.wallet.balance = Number((user.wallet.depositBalance + Number(user.wallet.profitBalance || 0)).toFixed(2));
+    user.syncWallet();
     return { upgradeCost, opxAmount: 0, opxValue: 0, usdtAmount: upgradeCost };
   }
   const availableOpx = Number(user.OPX_balance || 0);
@@ -36,7 +36,7 @@ function applyOpxUpgradePayment(user, usdAmount, options = {}) {
     user.wallet.depositBalance = 0;
     user.wallet.profitBalance -= remainingUsdt;
   }
-  user.wallet.balance = Number((user.wallet.depositBalance + user.wallet.profitBalance).toFixed(2));
+  user.syncWallet();
 
   return { upgradeCost, opxAmount, opxValue, usdtAmount };
 }
