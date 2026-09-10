@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { maybeMirrorDocument } = require('../services/supabaseWriteMirror');
 
 const sessionSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
@@ -12,5 +13,13 @@ const sessionSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 sessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
+sessionSchema.post('save', async function(doc) {
+  try {
+    await maybeMirrorDocument('Session', doc);
+  } catch (error) {
+    console.warn('Supabase session mirror skipped:', error.message);
+  }
+});
 
 module.exports = mongoose.model('Session', sessionSchema);
