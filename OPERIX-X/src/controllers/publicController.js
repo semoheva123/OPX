@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const User = require('../models/User');
 const Transaction = require('../models/Transaction');
 const VipLevel = require('../models/VipLevel');
+const dataAccess = require('../services/dataAccess');
 const { applyRewardToUser, rewardTransactionFields } = require('../services/hybridRewardLedger');
 const { OPX_INTERNAL_USD_PRICE, OPX_FUTURE_LISTING_USD_PRICE, OPX_MAX_UPGRADE_DISCOUNT_SHARE, OPX_MIN_USDT_UPGRADE_SHARE, OPX_MAX_UPGRADE_VALUE_USD, calculateOpxForUsd, applyOpxUpgradePayment } = require('../services/opxPricing');
 
@@ -33,7 +34,12 @@ async function getOpxMarketData(req, res) {
 }
 
 async function getVipLevels(req, res) {
-  try { res.json(await VipLevel.find().sort({ price: 1 })); }
+  try {
+    const levels = dataAccess.isSupabaseRuntime()
+      ? await dataAccess.vipLevel.find()
+      : await VipLevel.find().sort({ price: 1 });
+    res.json(levels.sort((first, second) => Number(first.price || 0) - Number(second.price || 0)));
+  }
   catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
 }
 
