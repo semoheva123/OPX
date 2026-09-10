@@ -11,6 +11,14 @@ const SupportTicket = require('../models/SupportTicket');
 const SocialFollow = require('../models/SocialFollow');
 const SocialPost = require('../models/SocialPost');
 const Message = require('../models/Message');
+const Broadcast = require('../models/Broadcast');
+const Coupon = require('../models/Coupon');
+const CpaLeadConversion = require('../models/CpaLeadConversion');
+const ExternalTask = require('../models/ExternalTask');
+const InvestmentVault = require('../models/InvestmentVault');
+const InvestmentVaultContract = require('../models/InvestmentVaultContract');
+const Staking = require('../models/Staking');
+const TaskCompletion = require('../models/TaskCompletion');
 const { supabaseAdmin } = require('../config/supabase');
 const { getDatabaseMode } = require('../config/database');
 
@@ -27,6 +35,14 @@ const modelMap = {
   SocialFollow: { model: SocialFollow, table: 'social_follows' },
   SocialPost: { model: SocialPost, table: 'social_posts' },
   Message: { model: Message, table: 'messages' }
+  ,Broadcast: { model: Broadcast, table: 'broadcasts' }
+  ,Coupon: { model: Coupon, table: 'coupons' }
+  ,CpaLeadConversion: { model: CpaLeadConversion, table: 'cpa_lead_conversions' }
+  ,ExternalTask: { model: ExternalTask, table: 'external_tasks' }
+  ,InvestmentVault: { model: InvestmentVault, table: 'investment_vault' }
+  ,InvestmentVaultContract: { model: InvestmentVaultContract, table: 'investment_vault_contracts' }
+  ,Staking: { model: Staking, table: 'stakings' }
+  ,TaskCompletion: { model: TaskCompletion, table: 'task_completions' }
 };
 
 function isSupabaseRuntime() {
@@ -333,6 +349,14 @@ const dataAccess = {
   socialFollow: createRepository('SocialFollow'),
   socialPost: createRepository('SocialPost'),
   message: createRepository('Message'),
+  broadcast: createRepository('Broadcast'),
+  coupon: createRepository('Coupon'),
+  cpaLeadConversion: createRepository('CpaLeadConversion'),
+  externalTask: createRepository('ExternalTask'),
+  investmentVault: createRepository('InvestmentVault'),
+  investmentVaultContract: createRepository('InvestmentVaultContract'),
+  staking: createRepository('Staking'),
+  taskCompletion: createRepository('TaskCompletion'),
   transaction: {
     async create(data) {
       if (isSupabaseRuntime() && supabaseAdmin) {
