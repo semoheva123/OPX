@@ -37,8 +37,15 @@ function adminRepository(repo) {
         return repo.updateOne({ id: current.id }, changes);
       }
       const rows = await repo.find(filter, options);
-      return single ? (rows[0] || null) : rows;
+      const decorated = rows.map(item => decorate(item));
+      return single ? (decorated[0] || null) : decorated;
     }, query);
+  }
+  function decorate(document) {
+    if (!document || typeof document !== 'object') return document;
+    if (!document.toObject) document.toObject = () => ({ ...document });
+    if (!document.save) document.save = async () => repo.updateOne({ id: document.id }, Object.fromEntries(Object.entries(document).filter(([key]) => !['id', '_id', 'toObject', 'save'].includes(key))));
+    return document;
   }
   return {
     find(query = {}) { return queryBuilder(query, false); },
@@ -152,9 +159,9 @@ async function overview(req, res) {
       Transaction.countDocuments({ type: 'withdraw', status: 'pending' }),
       Transaction.countDocuments({ type: 'deposit', status: 'pending' }),
       User.countDocuments({ updatedAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } }),
-      Transaction.aggregate([{ $match: { type: 'deposit', status: 'approved' } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
-      Transaction.aggregate([{ $match: { type: 'withdraw', status: 'approved' } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
-      Transaction.aggregate([{ $match: { type: { $in: ['reward', 'staking_reward', 'referral_commission'] }, status: 'approved' } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
+      dataAccess.transaction.find({ type: 'deposit', status: 'approved' }, { limit: 10000 }).then(rows => [{ total: rows.reduce((sum, row) => sum + Number(row.amount || 0), 0) }]),
+      dataAccess.transaction.find({ type: 'withdraw', status: 'approved' }, { limit: 10000 }).then(rows => [{ total: rows.reduce((sum, row) => sum + Number(row.amount || 0), 0) }]),
+      dataAccess.transaction.find({ type: { $in: ['reward', 'staking_reward', 'referral_commission'] }, status: 'approved' }, { limit: 10000 }).then(rows => [{ total: rows.reduce((sum, row) => sum + Number(row.amount || 0), 0) }]),
       buildRiskSummary(30),
       buildFinancialSummary(30),
       buildKycSummary()
