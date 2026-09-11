@@ -243,15 +243,12 @@ async function financialSummary(req, res) {
 async function investmentVaultSummary(req, res) {
   try {
     const now = new Date();
-    const [active, matured, claimed] = await Promise.all([
-      InvestmentVault.aggregate([{ $match: { status: 'active', maturityDate: { $gt: now } } }, { $group: { _id: null, count: { $sum: 1 }, total: { $sum: '$amount' }, users: { $addToSet: '$userId' } } }]),
-      InvestmentVault.aggregate([{ $match: { status: 'active', maturityDate: { $lte: now } } }, { $group: { _id: null, count: { $sum: 1 }, total: { $sum: '$amount' }, users: { $addToSet: '$userId' } } }]),
-      InvestmentVault.aggregate([{ $match: { status: 'claimed' } }, { $group: { _id: null, count: { $sum: 1 }, total: { $sum: '$amount' } } }])
-    ]);
-    const activeSummary = active[0] || { count: 0, total: 0, users: [] };
-    const maturedSummary = matured[0] || { count: 0, total: 0, users: [] };
-    const claimedSummary = claimed[0] || { count: 0, total: 0 };
-    res.json({ success: true, summary: { activeCount: activeSummary.count, activeAmount: activeSummary.total, activeUsers: activeSummary.users.length, maturedCount: maturedSummary.count, maturedAmount: maturedSummary.total, maturedUsers: maturedSummary.users.length, claimedCount: claimedSummary.count, claimedAmount: claimedSummary.total } });
+    const vaults = await dataAccess.investmentVault.find({}, { limit: 10000 });
+    const summarize = items => ({ count: items.length, total: items.reduce((sum, item) => sum + Number(item.amount || 0), 0), users: new Set(items.map(item => String(item.userId))).size });
+    const activeSummary = summarize(vaults.filter(item => item.status === 'active' && new Date(item.maturityDate) > now));
+    const maturedSummary = summarize(vaults.filter(item => item.status === 'active' && new Date(item.maturityDate) <= now));
+    const claimedSummary = summarize(vaults.filter(item => item.status === 'claimed'));
+    res.json({ success: true, summary: { activeCount: activeSummary.count, activeAmount: activeSummary.total, activeUsers: activeSummary.users, maturedCount: maturedSummary.count, maturedAmount: maturedSummary.total, maturedUsers: maturedSummary.users, claimedCount: claimedSummary.count, claimedAmount: claimedSummary.total } });
   } catch (error) { res.status(500).json({ error: 'تعذر تحميل ملخص خزنة الاستثمار' }); }
 }
 
@@ -286,10 +283,11 @@ async function listInvestmentVaults(req, res) {
     const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
     const filter = {};
     if (['active', 'claimed', 'emergency_released'].includes(req.query.status)) filter.status = req.query.status;
-    const [vaults, total] = await Promise.all([
-      InvestmentVault.find(filter).populate('userId', 'email tierCode').sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
-      InvestmentVault.countDocuments(filter)
+    const [allVaults, total] = await Promise.all([
+      dataAccess.investmentVault.find(filter, { sort: { createdAt: -1 }, limit: 10000 }),
+      dataAccess.investmentVault.countDocuments(filter)
     ]);
+    const vaults = allVaults.slice((page - 1) * limit, page * limit);
     const now = Date.now();
     res.json({ success: true, vaults: vaults.map(vault => ({ ...vault, displayStatus: vault.status === 'active' && new Date(vault.maturityDate).getTime() <= now ? 'matured' : vault.status })), page, totalPages: Math.max(1, Math.ceil(total / limit)), total });
   } catch (error) { res.status(500).json({ error: 'تعذر تحميل قائمة خزائن الاستثمار' }); }
