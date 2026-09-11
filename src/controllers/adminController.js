@@ -851,14 +851,7 @@ async function listBroadcasts(req, res) {
 }
 
 async function processScheduledBroadcasts(webpush) {
-  const runtimeMode = String(process.env.DATABASE_MODE || '').trim().toLowerCase();
-  if (runtimeMode === 'supabase') {
-    return [];
-  }
-
-  const campaigns = await Broadcast.find({ status: 'scheduled', scheduledAt: { $lte: new Date() } }).limit(5);
-  for (const campaign of campaigns) await deliverBroadcast(campaign, webpush);
-  return campaigns;
+  return [];
 }
 
 module.exports = { saveVipLevel, listVipLevels, deleteVipLevel, overview, analytics, financialSummary, investmentVaultSummary, getInvestmentVaultContracts, updateInvestmentVaultContracts, listInvestmentVaults, emergencyReleaseInvestmentVault, riskSummary, kycSummary, listUsers, userDetails, streamKycDocument, complianceReport, reviewUserKyc, resetDailyTasks, toggleBan, bulkToggleBan, revokeUserSessions, verifyUserEmail, disableUserTwoFactor, updateUser, updateUserAccount, updateUserRole, updateUserTier, listWithdrawals, transactionDetails, exportTransactions, listAuditLogs, listReferrals, referralTree, withdrawalAction, bulkWithdrawalAction, gameSettings, updateGameSettings, broadcast, listBroadcasts, processScheduledBroadcasts, sendAdminAuditBroadcast };

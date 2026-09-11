@@ -22,9 +22,7 @@ function getGameConfig(req, res) {
 async function getGameHistory(req, res) {
   try {
     const query = { userId: req.user.id, walletAddress: { $in: ['Lucky Spin Wheel', 'Mystery Box'] }, status: { $in: ['approved', 'completed'] } };
-    const history = dataAccess.isSupabaseRuntime()
-      ? await dataAccess.transaction.find(query, { sort: { createdAt: -1 }, limit: 20, select: 'walletAddress amount createdAt' })
-      : await Transaction.find(query).sort({ createdAt: -1 }).limit(20).select('walletAddress amount createdAt');
+    const history = await dataAccess.transaction.find(query, { sort: { createdAt: -1 }, limit: 20, select: 'walletAddress amount createdAt' });
     res.json({ success: true, history });
   } catch (err) { res.status(500).json({ error: 'تعذر تحميل سجل الألعاب' }); }
 }
@@ -33,20 +31,16 @@ async function getGameStats(req, res) {
   try {
     const query = { userId: req.user.id, type: 'reward', walletAddress: { $in: ['Lucky Spin Wheel', 'Mystery Box'] }, status: 'approved' };
     let stats;
-    if (dataAccess.isSupabaseRuntime()) {
-      const transactions = await dataAccess.transaction.find(query);
-      const grouped = new Map();
-      transactions.forEach(transaction => {
-        const current = grouped.get(transaction.walletAddress) || { _id: transaction.walletAddress, plays: 0, total: 0, lastPlayed: null };
-        current.plays += 1;
-        current.total += Number(transaction.amount || 0);
-        if (!current.lastPlayed || new Date(transaction.createdAt) > new Date(current.lastPlayed)) current.lastPlayed = transaction.createdAt;
-        grouped.set(transaction.walletAddress, current);
-      });
-      stats = [...grouped.values()];
-    } else {
-      stats = await Transaction.aggregate([{ $match: query }, { $group: { _id: '$walletAddress', plays: { $sum: 1 }, total: { $sum: '$amount' }, lastPlayed: { $max: '$createdAt' } } }]);
-    }
+    const transactions = await dataAccess.transaction.find(query);
+    const grouped = new Map();
+    transactions.forEach(transaction => {
+      const current = grouped.get(transaction.walletAddress) || { _id: transaction.walletAddress, plays: 0, total: 0, lastPlayed: null };
+      current.plays += 1;
+      current.total += Number(transaction.amount || 0);
+      if (!current.lastPlayed || new Date(transaction.createdAt) > new Date(current.lastPlayed)) current.lastPlayed = transaction.createdAt;
+      grouped.set(transaction.walletAddress, current);
+    });
+    stats = [...grouped.values()];
     res.json({ success: true, stats });
   } catch (err) { res.status(500).json({ error: 'تعذر تحميل إحصاءات الألعاب' }); }
 }
@@ -138,7 +132,7 @@ async function createStakingSupabase(req, res) {
 }
 
 async function getStakings(req, res) {
-  try { res.json({ success: true, stakings: dataAccess.isSupabaseRuntime() ? await dataAccess.staking.find({ userId: req.user.id }, { sort: { createdAt: -1 } }) : await Staking.find({ userId: req.user.id }).sort({ createdAt: -1 }) }); }
+  try { res.json({ success: true, stakings: await dataAccess.staking.find({ userId: req.user.id }, { sort: { createdAt: -1 } }) }); }
   catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
 }
 

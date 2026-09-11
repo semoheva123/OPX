@@ -37,7 +37,6 @@ async function listConversations(req, res) {
     const byId = new Map(users.map(user => [String(user.id || user._id), user]));
     return res.json({ success: true, conversations: ids.map(id => ({ ...conversations.get(id), user: byId.get(id) ? { _id: id, label: labelFor(byId.get(id)), profileImage: byId.get(id).profileImage || '' } : null })).filter(item => item.user) });
   } catch (error) {
-    if (String(error?.code || '') === 'PGRST205') return res.json({ success: true, conversations: [], storageUnavailable: true });
     res.status(500).json({ error: 'تعذر تحميل المحادثات الخاصة' });
   }
 }

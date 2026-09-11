@@ -6,13 +6,10 @@ const DEFAULT_CONTRACTS = [90, 180, 365].map(durationDays => ({ durationDays, ex
 
 async function getVaultContracts(req, res) {
   try {
-    const storedContracts = dataAccess.isSupabaseRuntime()
-      ? await dataAccess.investmentVaultContract.find({ enabled: true }, { sort: { durationDays: 1 } })
-      : await InvestmentVaultContract.find({ enabled: true }).sort({ durationDays: 1 }).lean();
+    const storedContracts = await dataAccess.investmentVaultContract.find({ enabled: true }, { sort: { durationDays: 1 } });
     const contracts = storedContracts.length ? storedContracts : DEFAULT_CONTRACTS;
     res.json({ success: true, contracts });
   } catch (error) {
-    if (dataAccess.isSupabaseRuntime()) return res.json({ success: true, contracts: DEFAULT_CONTRACTS, storageUnavailable: true });
     res.status(500).json({ error: 'تعذر تحميل عقود الخزنة' });
   }
 }
@@ -48,13 +45,10 @@ async function createVaultSupabase(req, res) {
 
 async function getVaults(req, res) {
   try {
-    const vaults = dataAccess.isSupabaseRuntime()
-      ? await dataAccess.investmentVault.find({ userId: req.user.id }, { sort: { createdAt: -1 } })
-      : await InvestmentVault.find({ userId: req.user.id }).sort({ createdAt: -1 }).lean();
+    const vaults = await dataAccess.investmentVault.find({ userId: req.user.id }, { sort: { createdAt: -1 } });
     const now = Date.now();
     res.json({ success: true, vaults: vaults.map(vault => ({ ...vault, status: vault.status === 'active' && new Date(vault.maturityDate).getTime() <= now ? 'matured' : vault.status })) });
   } catch (error) {
-    if (dataAccess.isSupabaseRuntime()) return res.json({ success: true, vaults: [], storageUnavailable: true });
     res.status(500).json({ error: 'تعذر تحميل خزائن الاستثمار' });
   }
 }

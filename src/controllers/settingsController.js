@@ -1,6 +1,5 @@
 const { supabaseAdmin } = require('../config/supabase');
 const dataAccess = require('../services/dataAccess');
-const GeneralSetting = dataAccess.generalSetting;
 
 const defaultSettings = { platformName: 'OPERIX', supportUrl: '', maintenanceMode: false, maintenanceMessage: 'الخدمة متاحة حاليًا' };
 
@@ -31,9 +30,7 @@ async function saveSupabaseSettings(update) {
 
 async function getPublic(req, res) {
   try {
-    const settings = (process.env.DATABASE_MODE || '').toLowerCase() === 'supabase'
-      ? await getSupabaseSettings() || defaultSettings
-      : await GeneralSetting.findOne({ key: 'default' }).lean() || defaultSettings;
+    const settings = await getSupabaseSettings() || defaultSettings;
     res.json({ success: true, settings: sanitizeSettings(settings) });
   }
   catch (error) {
@@ -44,9 +41,7 @@ async function getPublic(req, res) {
 
 async function getAdmin(req, res) {
   try {
-    const settings = (process.env.DATABASE_MODE || '').toLowerCase() === 'supabase'
-      ? await saveSupabaseSettings({})
-      : await GeneralSetting.findOneAndUpdate({ key: 'default' }, { $setOnInsert: defaultSettings }, { upsert: true, new: true });
+    const settings = await saveSupabaseSettings({});
     res.json({ success: true, settings: sanitizeSettings(settings) });
   }
   catch (error) {
@@ -66,9 +61,7 @@ async function update(req, res) {
     }
     if (req.body.maintenanceMode !== undefined) update.maintenanceMode = Boolean(req.body.maintenanceMode);
     if (req.body.maintenanceMessage !== undefined) update.maintenanceMessage = String(req.body.maintenanceMessage).trim().slice(0, 240);
-    const settings = (process.env.DATABASE_MODE || '').toLowerCase() === 'supabase'
-      ? await saveSupabaseSettings(update)
-      : await GeneralSetting.findOneAndUpdate({ key: 'default' }, { $set: update }, { upsert: true, new: true, runValidators: true });
+    const settings = await saveSupabaseSettings(update);
     res.json({ success: true, settings, message: 'تم حفظ إعدادات المنصة' });
   } catch (error) {
     if (error?.code === 'PGRST205') return res.status(503).json({ error: 'جدول إعدادات المنصة غير مهيأ في Supabase' });

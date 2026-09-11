@@ -85,9 +85,7 @@ async function depositSupabase(req, res) {
 
 async function getMyHistory(req, res) {
   try {
-    const transactions = dataAccess.isSupabaseRuntime()
-      ? await dataAccess.transaction.find({ userId: req.user.id }, { sort: { createdAt: -1 } })
-      : await Transaction.find({ userId: req.user.id }).sort({ createdAt: -1 });
+    const transactions = await dataAccess.transaction.find({ userId: req.user.id }, { sort: { createdAt: -1 } });
     res.status(200).json({ success: true, transactions });
   } catch (err) {
     res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' });

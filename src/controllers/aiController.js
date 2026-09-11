@@ -31,12 +31,12 @@ async function chat(req, res) {
   try {
     const { message, history, mode } = req.body;
     if (!message || typeof message !== 'string' || !message.trim()) return res.status(400).json({ reply: 'يرجى كتابة سؤالك أولاً.' });
-    const user = dataAccess.isSupabaseRuntime() ? await dataAccess.user.findById(req.user.id) : await User.findById(req.user.id).select('-password');
+    const user = await dataAccess.user.findById(req.user.id);
     const userName = user ? user.email.split('@')[0] : 'المستخدم';
     const userBalance = user?.wallet?.balance || 0;
     const userTier = user?.tierCode || 'A1';
-    const referrals = user?.referralCode ? (dataAccess.isSupabaseRuntime() ? await dataAccess.user.countDocuments({ referredBy: user.referralCode, isBanned: false }) : await User.countDocuments({ referredBy: user.referralCode, isBanned: false })) : 0;
-    const activeReferrals = user?.referralCode ? (dataAccess.isSupabaseRuntime() ? (await dataAccess.user.find({ referredBy: user.referralCode, isBanned: false })).filter(item => Number(item.wallet?.totalDeposits || 0) > 0).length : await User.countDocuments({ referredBy: user.referralCode, isBanned: false, 'wallet.totalDeposits': { $gt: 0 } })) : 0;
+    const referrals = user?.referralCode ? await dataAccess.user.countDocuments({ referredBy: user.referralCode, isBanned: false }) : 0;
+    const activeReferrals = user?.referralCode ? (await dataAccess.user.find({ referredBy: user.referralCode, isBanned: false })).filter(item => Number(item.wallet?.totalDeposits || 0) > 0).length : 0;
     const context = `المهام اليوم: ${user?.todayCompletedTasks || 0}، الإحالات: ${referrals}، الإحالات النشطة: ${activeReferrals}، دورات العجلة: ${user?.wheelCredits || 0}، دورات الصندوق: ${user?.mysteryBoxCredits || 0}، المصادقة الثنائية: ${user?.twoFactorEnabled ? 'مفعلة' : 'غير مفعلة'}، محفظة السحب: ${user?.walletAddress ? 'مثبتة' : 'غير مثبتة'}.`;
     const cleanMessage = message.trim().toLowerCase();
     const flagKeywords = ['نصب', 'احتيال', 'سرقة', 'وهمي', 'فاشل', 'كذب', 'تزوير', 'حرام'];

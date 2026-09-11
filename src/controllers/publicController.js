@@ -31,9 +31,7 @@ async function getOpxMarketData(req, res) {
 
 async function getVipLevels(req, res) {
   try {
-    const levels = dataAccess.isSupabaseRuntime()
-      ? await dataAccess.vipLevel.find()
-      : await VipLevel.find().sort({ price: 1 });
+    const levels = await dataAccess.vipLevel.find({}, { sort: { price: 1 } });
     res.json(levels.sort((first, second) => Number(first.price || 0) - Number(second.price || 0)));
   }
   catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
@@ -41,9 +39,7 @@ async function getVipLevels(req, res) {
 
 async function leaderboard(req, res) {
   try {
-    const users = dataAccess.isSupabaseRuntime()
-      ? (await dataAccess.user.find({ isBanned: false }, { select: 'email tierCode', limit: 100 })).sort((first, second) => Number(second.wallet?.balance || 0) - Number(first.wallet?.balance || 0)).slice(0, 10)
-      : await User.find({ isBanned: false }).sort({ 'wallet.balance': -1 }).limit(10).select('email wallet.balance tierCode');
+    const users = (await dataAccess.user.find({ isBanned: false }, { select: 'email tierCode', limit: 100 })).sort((first, second) => Number(second.wallet?.balance || 0) - Number(first.wallet?.balance || 0)).slice(0, 10);
     const result = users.map((user, index) => {
       const [name, domain] = user.email.split('@');
       return { rank: index + 1, email: name.length > 3 ? `${name.substring(0, 3)}***@${domain}` : `***@${domain}`, balance: user.wallet?.balance || 0, tierCode: user.tierCode };
@@ -54,14 +50,9 @@ async function leaderboard(req, res) {
 
 async function liveActivity(req, res) {
   try {
-    const [transactions, referrals] = dataAccess.isSupabaseRuntime()
-      ? await Promise.all([
+    const [transactions, referrals] = await Promise.all([
         dataAccess.transaction.find({ status: { $in: ['approved', 'completed'] } }, { sort: { createdAt: -1 }, limit: 20, select: 'userId type amount createdAt' }),
         dataAccess.user.find({ isBanned: false, referredBy: { $ne: null } }, { sort: { createdAt: -1 }, limit: 20, select: 'email createdAt' })
-      ])
-      : await Promise.all([
-        Transaction.find({ status: { $in: ['approved', 'completed'] } }).sort({ createdAt: -1 }).limit(20).select('userId type amount createdAt'),
-        User.find({ referredBy: { $exists: true, $ne: null }, isBanned: false }).sort({ createdAt: -1 }).limit(20).select('email createdAt')
       ]);
     const transactionEvents = transactions.map(transaction => ({
       id: `transaction-${transaction._id}`,

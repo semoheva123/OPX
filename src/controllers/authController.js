@@ -69,9 +69,8 @@ async function register(req, res) {
       emailVerificationExpire: new Date(Date.now() + 24 * 60 * 60 * 1000),
       wallet: { balance: 0, depositBalance: 0, profitBalance: 0, totalDeposits: 0, totalWithdrawn: 0 }
     };
-    const newUser = dataAccess.isSupabaseRuntime() ? await dataAccess.user.create(userPayload) : new User(userPayload);
-    if (!dataAccess.isSupabaseRuntime()) await newUser.save();
-    if (!dataAccess.isSupabaseRuntime()) await followOfficialCommunityAccount(newUser._id);
+    const newUser = await dataAccess.user.create(userPayload);
+    await followOfficialCommunityAccount(newUser.id || newUser._id);
     if (req.app.locals.resend) {
       const verifyUrl = `${process.env.APP_URL || 'http://localhost:5000'}/api/auth/verify-email?token=${newUser.emailVerificationToken}`;
       await req.app.locals.resend.emails.send({
@@ -93,11 +92,10 @@ async function verifyEmail(req, res) {
     const token = String(req.query.token || '').trim();
     const resultPage = (statusCode, title, message, actionText = 'العودة إلى OPERIX') => res.status(statusCode).send(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title} - OPERIX</title></head><body style="margin:0;background:#060d18;color:#f8fafc;font-family:Tahoma,Arial,sans-serif;display:grid;place-items:center;min-height:100vh;padding:24px"><main style="width:100%;max-width:520px;background:#0d1726;border:1px solid #26364b;border-radius:18px;padding:36px 28px;text-align:center;box-sizing:border-box"><div style="display:inline-block;background:#eeb34e;color:#08111e;font-size:22px;font-weight:700;letter-spacing:1px;padding:12px 18px;border-radius:10px;margin-bottom:24px">OPERIX</div><h1 style="margin:0 0 14px;font-size:26px">${title}</h1><p style="margin:0 0 26px;color:#cbd5e1;line-height:1.9">${message}</p><a href="/" style="display:inline-block;background:#eeb34e;color:#08111e;text-decoration:none;font-weight:700;padding:14px 22px;border-radius:9px">${actionText}</a></main></body></html>`);
     if (!token) return resultPage(400, 'رابط التحقق غير صالح', 'يرجى طلب رابط توثيق جديد من قسم حسابي.');
-    const user = await User.findOne({ emailVerificationToken: token, emailVerificationExpire: { $gt: new Date() } }).select('+emailVerificationToken +emailVerificationExpire');
+    const user = await dataAccess.user.findOne({ emailVerificationToken: token, emailVerificationExpire: { $gt: new Date() } });
     if (!user) return resultPage(400, 'الرابط غير صالح أو منتهي الصلاحية', 'يرجى طلب رابط توثيق جديد من قسم حسابي.');
-    user.emailVerified = true; user.emailVerificationToken = null; user.emailVerificationExpire = null;
-    await user.save();
-    await SecurityEvent.create({ userId: user._id, email: user.email, event: 'email_verified', ip: req.ip, userAgent: req.get('user-agent') || 'unknown' });
+    await dataAccess.user.updateOne({ id: user.id }, { emailVerified: true, emailVerificationToken: null, emailVerificationExpire: null });
+    await dataAccess.securityEvent.create({ userId: user.id, email: user.email, event: 'email_verified', ip: req.ip, userAgent: req.get('user-agent') || 'unknown' });
     return resultPage(200, 'تم تأكيد البريد بنجاح', 'تم توثيق بريدك الإلكتروني ويمكنك الآن العودة إلى المنصة واستخدام جميع ميزات الحساب.');
   } catch (error) {
     console.error('Verify email error:', error.message);
@@ -108,14 +106,13 @@ async function verifyEmail(req, res) {
 async function resendVerification(req, res) {
   try {
     const email = String(req.body.email || '').trim().toLowerCase();
-    const user = await User.findOne({ email }).select('+emailVerificationToken +emailVerificationExpire email emailVerified');
+    const user = await dataAccess.user.findOne({ email });
     if (!user || user.emailVerified) return res.json({ success: true, message: 'إذا كان الحساب يحتاج تحققًا، فسيصلك رابط جديد' });
     const rawToken = crypto.randomBytes(32).toString('hex');
-    user.emailVerificationToken = crypto.createHash('sha256').update(rawToken).digest('hex');
-    user.emailVerificationExpire = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    await user.save();
+    const verificationToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+    await dataAccess.user.updateOne({ id: user.id }, { emailVerificationToken: verificationToken, emailVerificationExpire: new Date(Date.now() + 24 * 60 * 60 * 1000) });
     if (req.app.locals.resend) {
-      const verifyUrl = `${process.env.APP_URL || 'http://localhost:5000'}/api/auth/verify-email?token=${user.emailVerificationToken}`;
+      const verifyUrl = `${process.env.APP_URL || 'http://localhost:5000'}/api/auth/verify-email?token=${verificationToken}`;
       const emailResult = await req.app.locals.resend.emails.send({
         from: emailFrom,
         to: user.email,
@@ -160,26 +157,17 @@ async function login(req, res) {
     user.wallet = wallet;
     user.USDT_balance = wallet.balance;
     user.lastLoginAt = new Date();
-    if (dataAccess.isSupabaseRuntime()) {
-      await dataAccess.user.updateOne({ id: user._id }, { $set: { lastLoginAt: user.lastLoginAt } });
-    } else {
-      user.syncWallet();
-      await user.save();
-    }
+    await dataAccess.user.updateOne({ id: user.id }, { lastLoginAt: user.lastLoginAt });
     const jti = crypto.randomUUID();
     const expiresInSeconds = 7 * 24 * 60 * 60;
     const token = jwt.sign({ id: user._id, email: user.email, role: user.role, jti }, JWT_SECRET, { expiresIn: expiresInSeconds });
     const userAgent = req.get('user-agent') || 'unknown';
-    const previousSession = dataAccess.isSupabaseRuntime()
-      ? await dataAccess.session.findOne({ userId: user._id, revokedAt: null, ip: { $ne: req.ip }, userAgent: { $ne: userAgent }, expiresAt: { $gt: new Date() } })
-      : await Session.findOne({ userId: user._id, revokedAt: null, ip: { $ne: req.ip }, userAgent: { $ne: userAgent }, expiresAt: { $gt: new Date() } }).select('_id');
+    const previousSession = await dataAccess.session.findOne({ userId: user.id, revokedAt: null, ip: { $ne: req.ip }, userAgent: { $ne: userAgent }, expiresAt: { $gt: new Date() } });
     await dataAccess.session.create({ userId: user._id, jti, userAgent, ip: req.ip, expiresAt: new Date(Date.now() + expiresInSeconds * 1000) });
     await dataAccess.securityEvent.create({ userId: user._id, email: user.email, event: 'login_success', ip: req.ip, userAgent });
     if (previousSession) {
       await dataAccess.securityEvent.create({ userId: user._id, email: user.email, event: 'new_device', ip: req.ip, userAgent, metadata: { reason: 'new_ip_and_user_agent' } });
-      const notification = dataAccess.isSupabaseRuntime()
-        ? await dataAccess.notification.create({ userId: user._id, title: 'تسجيل دخول من جهاز جديد', body: 'تم تسجيل الدخول إلى حسابك من جهاز أو شبكة مختلفة. راجع الجلسات النشطة إذا لم تكن هذه العملية منك.', type: 'security' })
-        : await Notification.create({ userId: user._id, title: 'تسجيل دخول من جهاز جديد', body: 'تم تسجيل الدخول إلى حسابك من جهاز أو شبكة مختلفة. راجع الجلسات النشطة إذا لم تكن هذه العملية منك.', type: 'security' });
+      const notification = await dataAccess.notification.create({ userId: user.id, title: 'تسجيل دخول من جهاز جديد', body: 'تم تسجيل الدخول إلى حسابك من جهاز أو شبكة مختلفة. راجع الجلسات النشطة إذا لم تكن هذه العملية منك.', type: 'security' });
       realtimeService.emit('notification_created', { notificationId: notification._id, title: notification.title, type: notification.type }, { userId: user._id });
     }
     res.status(200).json({ success: true, token, user: safeUser(user) });
@@ -193,9 +181,7 @@ async function adminLogin(req, res) {
   try {
     const { email, password, twoFactorCode } = req.body || {};
     if (!email || !password || typeof email !== 'string' || typeof password !== 'string') return res.status(400).json({ error: 'يرجى إدخال البريد وكلمة المرور' });
-    const user = dataAccess.isSupabaseRuntime()
-      ? await dataAccess.user.findOne({ email: email.trim().toLowerCase() })
-      : await User.findOne({ email: email.trim().toLowerCase() }).select('+adminTwoFactorSecret');
+    const user = await dataAccess.user.findOne({ email: email.trim().toLowerCase() });
     const allowedRoles = ['admin', 'financial_admin', 'support_admin', 'monitor'];
     if (!user || !allowedRoles.includes(user.role) || !(await bcrypt.compare(password, user.password))) return res.status(401).json({ error: 'بيانات الدخول الإدارية غير صحيحة' });
     if (user.isBanned) return res.status(403).json({ error: 'حساب الإدارة موقوف' });
@@ -255,9 +241,7 @@ async function adminConfirmTwoFactor(req, res) {
 }
 
 async function adminSecurityStatus(req, res) {
-  const user = dataAccess.isSupabaseRuntime()
-    ? await dataAccess.user.findById(req.user.id)
-    : await User.findById(req.user.id).select('adminTwoFactorEnabled');
+  const user = await dataAccess.user.findById(req.user.id);
   res.json({ success: true, enabled: Boolean(user?.adminTwoFactorEnabled) });
 }
 
