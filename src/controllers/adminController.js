@@ -58,7 +58,10 @@ async function saveVipLevel(req, res) {
     if (String(name).trim().length < 2 || String(name).trim().length > 100) return res.status(400).json({ error: 'اسم المستوى غير صالح' });
     if (![price, tasks, dailyProfit, monthlyProfit, yearlyProfit].every(value => value === undefined || Number.isFinite(Number(value)) && Number(value) >= 0) || Number(tasks) < 1) return res.status(400).json({ error: 'قيم المستوى غير صالحة' });
     const level = { code: code.trim().toUpperCase(), name, price: Number(price), tasks: Number(tasks), dailyProfit: Number(dailyProfit), monthlyProfit: monthlyProfit ? Number(monthlyProfit) : Number(dailyProfit) * 30, yearlyProfit: yearlyProfit ? Number(yearlyProfit) : Number(dailyProfit) * 365, badgeColor: ALLOWED_BADGE_COLORS.has(badgeColor) ? badgeColor : DEFAULT_BADGE_COLOR };
-    const updatedLevel = await VipLevel.findOneAndUpdate({ code: level.code }, level, { upsert: true, new: true });
+    const existingLevel = await dataAccess.vipLevel.findOne({ code: level.code });
+    const updatedLevel = existingLevel
+      ? await dataAccess.vipLevel.updateOne({ id: existingLevel.id }, level)
+      : await dataAccess.vipLevel.create(level);
     await createAudit(req, 'update_vip_level', level.code, { newValue: { price: level.price, tasks: level.tasks, dailyProfit: level.dailyProfit } });
     await emitPlatformDataChanged('vip_level_updated');
     res.json({ success: true, message: 'تم حفظ المستوى بنجاح', level: updatedLevel });
@@ -70,12 +73,22 @@ async function deleteVipLevel(req, res) {
     const code = req.params.code.toUpperCase();
     const assignedUsers = await User.countDocuments({ tierCode: code });
     if (assignedUsers > 0) return res.status(400).json({ error: `لا يمكن حذف المستوى لأنه مرتبط بـ ${assignedUsers} مستخدم. غيّر مستوياتهم أولًا.` });
-    const deleted = await VipLevel.findOneAndDelete({ code });
+    const deleted = await dataAccess.vipLevel.findOne({ code });
     if (!deleted) return res.status(404).json({ error: 'المستوى غير موجود' });
-    await createAudit(req, 'delete_vip_level', deleted.code, { oldValue: deleted.toObject() });
+    await dataAccess.vipLevel.deleteOne({ id: deleted.id });
+    await createAudit(req, 'delete_vip_level', deleted.code, { oldValue: deleted });
     await emitPlatformDataChanged('vip_level_deleted');
     res.json({ success: true, message: 'تم حذف المستوى بنجاح' });
   } catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
+}
+
+async function listVipLevels(req, res) {
+  try {
+    const levels = await dataAccess.vipLevel.find({}, { sort: { price: 1 }, limit: 100 });
+    res.json({ success: true, levels });
+  } catch (error) {
+    res.status(500).json({ error: 'تعذر تحميل مستويات VIP' });
+  }
 }
 
 async function overview(req, res) {
@@ -143,55 +156,35 @@ async function kycSummary(req, res) {
 async function analytics(req, res) {
   try {
     const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const [daily, usersByRole, security] = await Promise.all([
-      Transaction.aggregate([{ $match: { createdAt: { $gte: since } } }, { $group: { _id: { day: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, type: '$type' }, total: { $sum: '$amount' }, count: { $sum: 1 } } }, { $sort: { '_id.day': 1 } }]),
-      User.aggregate([{ $group: { _id: '$role', count: { $sum: 1 } } }]),
-      SecurityEvent.aggregate([{ $match: { createdAt: { $gte: since } } }, { $group: { _id: '$event', count: { $sum: 1 } } }])
+    const [transactions, users, securityEvents] = await Promise.all([
+      dataAccess.transaction.find({ createdAt: { $gte: since } }, { limit: 10000 }),
+      dataAccess.user.find({}, { limit: 10000 }),
+      dataAccess.securityEvent.find({ createdAt: { $gte: since } }, { limit: 10000 })
     ]);
+    const dailyMap = new Map();
+    transactions.forEach(transaction => { const day = new Date(transaction.createdAt).toISOString().slice(0, 10); const key = `${day}:${transaction.type}`; const item = dailyMap.get(key) || { _id: { day, type: transaction.type }, total: 0, count: 0 }; item.total += Number(transaction.amount || 0); item.count += 1; dailyMap.set(key, item); });
+    const roleMap = new Map();
+    users.forEach(user => roleMap.set(user.role, (roleMap.get(user.role) || 0) + 1));
+    const securityMap = new Map();
+    securityEvents.forEach(event => securityMap.set(event.event, (securityMap.get(event.event) || 0) + 1));
+    const daily = [...dailyMap.values()].sort((a, b) => a._id.day.localeCompare(b._id.day));
+    const usersByRole = [...roleMap.entries()].map(([role, count]) => ({ _id: role, count }));
+    const security = [...securityMap.entries()].map(([event, count]) => ({ _id: event, count }));
     res.json({ success: true, periodDays: 30, daily, usersByRole, security });
   } catch (err) { res.status(500).json({ error: 'تعذر تحميل التحليلات' }); }
 }
 
 async function buildFinancialSummary(days = 30) {
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-  const [approved, pending, rejected, byDay] = await Promise.all([
-    Transaction.aggregate([
-      { $match: { createdAt: { $gte: since }, status: 'approved' } },
-      {
-        $group: {
-          _id: null,
-          deposits: { $sum: { $cond: [{ $eq: ['$type', 'deposit'] }, '$amount', 0] } },
-          withdrawals: { $sum: { $cond: [{ $eq: ['$type', 'withdraw'] }, '$amount', 0] } },
-          net: { $sum: { $cond: [{ $eq: ['$type', 'deposit'] }, '$amount', { $multiply: ['$amount', -1] }] } }
-        }
-      }
-    ]),
-    Transaction.aggregate([
-      { $match: { createdAt: { $gte: since }, status: 'pending' } },
-      { $group: { _id: null, count: { $sum: 1 }, total: { $sum: '$amount' } } }
-    ]),
-    Transaction.aggregate([
-      { $match: { createdAt: { $gte: since }, status: 'rejected' } },
-      { $group: { _id: null, count: { $sum: 1 }, total: { $sum: '$amount' } } }
-    ]),
-    Transaction.aggregate([
-      { $match: { createdAt: { $gte: since } } },
-      {
-        $group: {
-          _id: { day: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } } },
-          deposits: { $sum: { $cond: [{ $eq: ['$type', 'deposit'] }, '$amount', 0] } },
-          withdrawals: { $sum: { $cond: [{ $eq: ['$type', 'withdraw'] }, '$amount', 0] } },
-          net: { $sum: { $cond: [{ $eq: ['$type', 'deposit'] }, '$amount', { $multiply: ['$amount', -1] }] } },
-          count: { $sum: 1 }
-        }
-      },
-      { $sort: { '_id.day': 1 } }
-    ])
-  ]);
-
-  const approvedSummary = approved[0] || { deposits: 0, withdrawals: 0, net: 0 };
-  const pendingSummary = pending[0] || { count: 0, total: 0 };
-  const rejectedSummary = rejected[0] || { count: 0, total: 0 };
+  const transactions = await dataAccess.transaction.find({ createdAt: { $gte: since } }, { limit: 10000 });
+  const approvedTransactions = transactions.filter(item => item.status === 'approved');
+  const approvedSummary = approvedTransactions.reduce((summary, item) => { const amount = Number(item.amount || 0); if (item.type === 'deposit') summary.deposits += amount; if (item.type === 'withdraw') summary.withdrawals += amount; summary.net += item.type === 'deposit' ? amount : item.type === 'withdraw' ? -amount : 0; return summary; }, { deposits: 0, withdrawals: 0, net: 0 });
+  const pendingTransactions = transactions.filter(item => item.status === 'pending');
+  const rejectedTransactions = transactions.filter(item => item.status === 'rejected');
+  const pendingSummary = { count: pendingTransactions.length, total: pendingTransactions.reduce((sum, item) => sum + Number(item.amount || 0), 0) };
+  const rejectedSummary = { count: rejectedTransactions.length, total: rejectedTransactions.reduce((sum, item) => sum + Number(item.amount || 0), 0) };
+  const byDayMap = new Map();
+  transactions.forEach(item => { const date = new Date(item.createdAt).toISOString().slice(0, 10); const row = byDayMap.get(date) || { date, deposits: 0, withdrawals: 0, net: 0, count: 0 }; const amount = Number(item.amount || 0); if (item.type === 'deposit') { row.deposits += amount; row.net += amount; } if (item.type === 'withdraw') { row.withdrawals += amount; row.net -= amount; } row.count += 1; byDayMap.set(date, row); });
 
   return {
     periodDays: days,
@@ -202,7 +195,7 @@ async function buildFinancialSummary(days = 30) {
     pendingAmount: Number(pendingSummary.total || 0),
     rejectedCount: Number(rejectedSummary.count || 0),
     rejectedAmount: Number(rejectedSummary.total || 0),
-    byDay: byDay.map(item => ({ date: item._id.day, deposits: Number(item.deposits || 0), withdrawals: Number(item.withdrawals || 0), net: Number(item.net || 0), count: Number(item.count || 0) }))
+    byDay: [...byDayMap.values()].sort((a, b) => a.date.localeCompare(b.date))
   };
 }
 
@@ -264,7 +257,7 @@ async function investmentVaultSummary(req, res) {
 
 async function getInvestmentVaultContracts(req, res) {
   try {
-    const storedContracts = await InvestmentVaultContract.find().sort({ durationDays: 1 }).lean();
+    const storedContracts = await dataAccess.investmentVaultContract.find({}, { sort: { durationDays: 1 } });
     const contracts = storedContracts.length ? storedContracts : DEFAULT_VAULT_CONTRACTS;
     res.json({ success: true, contracts });
   } catch (error) { res.status(500).json({ error: 'تعذر تحميل عقود الخزنة' }); }
@@ -277,7 +270,10 @@ async function updateInvestmentVaultContracts(req, res) {
     if (contracts.some(contract => ![90, 180, 365].includes(contract.durationDays) || !Number.isFinite(contract.expectedReturnRate) || contract.expectedReturnRate < 0 || contract.expectedReturnRate > 100)) return res.status(400).json({ error: 'بيانات عقود الخزنة غير صالحة' });
     if (new Set(contracts.map(contract => contract.durationDays)).size !== contracts.length) return res.status(400).json({ error: 'لا يمكن تكرار مدة العقد' });
     const saved = [];
-    for (const contract of contracts) saved.push(await InvestmentVaultContract.findOneAndUpdate({ durationDays: contract.durationDays }, contract, { upsert: true, new: true, runValidators: true }));
+    for (const contract of contracts) {
+      const existing = await dataAccess.investmentVaultContract.findOne({ durationDays: contract.durationDays });
+      saved.push(existing ? await dataAccess.investmentVaultContract.updateOne({ id: existing.id }, contract) : await dataAccess.investmentVaultContract.create(contract));
+    }
     await createAudit(req, 'update_investment_vault_contracts', null, { newValue: contracts });
     await emitPlatformDataChanged('vault_contracts_updated');
     res.json({ success: true, message: 'تم حفظ عقود الخزنة', contracts: saved });
@@ -317,7 +313,6 @@ async function listUsers(req, res) {
     const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 10));
     const search = String(req.query.search || '').trim().slice(0, 120);
     const filter = {};
-    if (search) filter.$or = [{ email: { $regex: search, $options: 'i' } }, { referralCode: { $regex: search, $options: 'i' } }];
     if (['user', 'admin', 'financial_admin', 'support_admin', 'monitor'].includes(req.query.role)) filter.role = req.query.role;
     if (req.query.tier) filter.tierCode = String(req.query.tier).trim().toUpperCase();
     if (req.query.status === 'banned') filter.isBanned = true;
@@ -325,10 +320,10 @@ async function listUsers(req, res) {
     if (req.query.verified === 'yes') filter.emailVerified = true;
     if (req.query.verified === 'no') filter.emailVerified = false;
     if (['not_started', 'pending', 'verified', 'rejected'].includes(req.query.kycStatus)) filter.kycStatus = req.query.kycStatus;
-    const [users, total] = await Promise.all([
-      User.find(filter).select('-password -resetOTP -twoFactorCode -twoFactorSecret -adminTwoFactorSecret').sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit),
-      User.countDocuments(filter)
-    ]);
+    const allUsers = await dataAccess.user.find(filter, { sort: { createdAt: -1 }, limit: 10000 });
+    const searchedUsers = search ? allUsers.filter(user => `${user.email || ''} ${user.referralCode || ''}`.toLowerCase().includes(search.toLowerCase())) : allUsers;
+    const total = searchedUsers.length;
+    const users = searchedUsers.slice((page - 1) * limit, page * limit);
     res.json({ success: true, users, page, totalPages: Math.max(1, Math.ceil(total / limit)), total });
   }
   catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
@@ -606,10 +601,9 @@ async function listWithdrawals(req, res) {
       if (req.query.from) filter.createdAt.$gte = new Date(`${req.query.from}T00:00:00.000Z`);
       if (req.query.to) { const end = new Date(`${req.query.to}T00:00:00.000Z`); end.setUTCDate(end.getUTCDate() + 1); filter.createdAt.$lt = end; }
     }
-    const [withdrawals, total] = await Promise.all([
-      Transaction.find(filter).populate('userId', 'email tierCode kycStatus').sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit),
-      Transaction.countDocuments(filter)
-    ]);
+    const allTransactions = await dataAccess.transaction.find(filter, { sort: { createdAt: -1 }, limit: 10000 });
+    const total = allTransactions.length;
+    const withdrawals = allTransactions.slice((page - 1) * limit, page * limit);
     res.json({ success: true, withdrawals, page, totalPages: Math.max(1, Math.ceil(total / limit)), total });
   }
   catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
@@ -744,8 +738,9 @@ async function updateGameSettings(req, res) {
     const settings = req.app.locals.gameSettings;
     ['spinMin', 'spinMax', 'boxMin', 'boxMax', 'dailyGameRewardCap', 'referralsPerCycle'].forEach(key => { if (req.body[key] !== undefined) settings[key] = Number(req.body[key]); });
     if ([settings.spinMin, settings.spinMax, settings.boxMin, settings.boxMax, settings.dailyGameRewardCap].some(value => !Number.isFinite(value) || value < 0) || !Number.isInteger(settings.referralsPerCycle) || settings.referralsPerCycle < 1 || settings.spinMin > settings.spinMax || settings.boxMin > settings.boxMax || settings.dailyGameRewardCap < Math.max(settings.spinMax, settings.boxMax)) return res.status(400).json({ success: false, error: 'إعدادات المكافآت غير صالحة أو السقف اليومي أقل من أعلى مكافأة ممكنة' });
-    const GameSetting = dataAccess.gameSetting;
-    await GameSetting.findOneAndUpdate({ key: 'default' }, settings, { upsert: true, new: true, runValidators: true });
+    const existing = await dataAccess.gameSetting.findOne({ key: 'default' });
+    if (existing) await dataAccess.gameSetting.updateOne({ id: existing.id }, settings);
+    else await dataAccess.gameSetting.create({ key: 'default', ...settings });
     await createAudit(req, 'update_game_settings', null, { newValue: { ...settings } });
     await emitPlatformDataChanged('game_settings_updated');
     res.json({ success: true, message: 'تم حفظ إعدادات الألعاب بنجاح', settings });
@@ -807,4 +802,4 @@ async function processScheduledBroadcasts(webpush) {
   return campaigns;
 }
 
-module.exports = { saveVipLevel, deleteVipLevel, overview, analytics, financialSummary, investmentVaultSummary, getInvestmentVaultContracts, updateInvestmentVaultContracts, listInvestmentVaults, emergencyReleaseInvestmentVault, riskSummary, kycSummary, listUsers, userDetails, streamKycDocument, complianceReport, reviewUserKyc, resetDailyTasks, toggleBan, bulkToggleBan, revokeUserSessions, verifyUserEmail, disableUserTwoFactor, updateUser, updateUserAccount, updateUserRole, updateUserTier, listWithdrawals, transactionDetails, exportTransactions, listAuditLogs, listReferrals, referralTree, withdrawalAction, bulkWithdrawalAction, gameSettings, updateGameSettings, broadcast, listBroadcasts, processScheduledBroadcasts, sendAdminAuditBroadcast };
+module.exports = { saveVipLevel, listVipLevels, deleteVipLevel, overview, analytics, financialSummary, investmentVaultSummary, getInvestmentVaultContracts, updateInvestmentVaultContracts, listInvestmentVaults, emergencyReleaseInvestmentVault, riskSummary, kycSummary, listUsers, userDetails, streamKycDocument, complianceReport, reviewUserKyc, resetDailyTasks, toggleBan, bulkToggleBan, revokeUserSessions, verifyUserEmail, disableUserTwoFactor, updateUser, updateUserAccount, updateUserRole, updateUserTier, listWithdrawals, transactionDetails, exportTransactions, listAuditLogs, listReferrals, referralTree, withdrawalAction, bulkWithdrawalAction, gameSettings, updateGameSettings, broadcast, listBroadcasts, processScheduledBroadcasts, sendAdminAuditBroadcast };

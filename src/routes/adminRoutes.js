@@ -10,6 +10,7 @@ router.use(verifyAdmin);
 
 router.post('/vip-levels', requirePermission('manage_vip'), adminController.saveVipLevel);
 router.delete('/vip-levels/:code', requirePermission('manage_vip'), adminController.deleteVipLevel);
+router.get('/vip-levels', requirePermission('manage_vip'), adminController.listVipLevels);
 router.get('/overview', requirePermission('read_overview'), adminController.overview);
 router.get('/analytics', requirePermission('read_overview'), adminController.analytics);
 router.get('/risk-summary', requirePermission('read_overview'), adminController.riskSummary);
