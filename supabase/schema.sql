@@ -569,4 +569,130 @@ begin
 end;
 $$;
 
+create or replace function public.operix_admin_adjust_balance_atomic(
+  p_user_id uuid,
+  p_deposit_balance numeric,
+  p_profit_balance numeric,
+  p_balance numeric,
+  p_admin_user_id uuid,
+  p_reason text default 'admin_adjustment'
+) returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  user_row users%rowtype;
+  wallet_row wallet_balances%rowtype;
+  delta_amount numeric := 0;
+  tx_id uuid;
+begin
+  select * into user_row from users where id = p_user_id for update;
+  if user_row.id is null then raise exception using errcode = 'P0002', message = 'USER_NOT_FOUND'; end if;
+
+  select * into wallet_row from wallet_balances where user_id = p_user_id for update;
+  if wallet_row.id is null then raise exception using errcode = 'P0002', message = 'USER_WALLET_NOT_FOUND'; end if;
+
+  if p_deposit_balance is not null then
+    wallet_row.deposit_balance := p_deposit_balance;
+  end if;
+
+  if p_profit_balance is not null then
+    wallet_row.profit_balance := p_profit_balance;
+  end if;
+
+  if p_balance is not null and (p_deposit_balance is null and p_profit_balance is null) then
+    wallet_row.profit_balance := greatest(p_balance - wallet_row.deposit_balance, 0);
+  end if;
+
+  if p_balance is not null and (p_deposit_balance is not null or p_profit_balance is not null) then
+    wallet_row.profit_balance := greatest(p_balance - wallet_row.deposit_balance, 0);
+  end if;
+
+  wallet_row.balance := wallet_row.deposit_balance + wallet_row.profit_balance;
+  update wallet_balances
+    set deposit_balance = wallet_row.deposit_balance,
+        profit_balance = wallet_row.profit_balance,
+        balance = wallet_row.balance,
+        updated_at = now()
+    where user_id = p_user_id;
+
+  delta_amount := wallet_row.balance - (coalesce(wallet_row.balance, 0) - wallet_row.balance);
+  insert into transactions(user_id, type, status, amount, gross_amount, usdt_amount, wallet_address, created_at)
+  values(p_user_id, 'admin_adjustment', 'approved', abs(delta_amount), abs(delta_amount), abs(delta_amount), 'ADMIN_ADJUSTMENT', now())
+  returning id into tx_id;
+
+  insert into financial_ledger(user_id, type, currency, amount, net_amount, balance_before, balance_after, status, source, reference_id, metadata)
+  values(p_user_id, 'admin_adjustment', 'USDT', abs(delta_amount), abs(delta_amount), wallet_row.balance, wallet_row.balance, 'approved', 'admin_balance_adjustment', tx_id::text, jsonb_build_object('reason', coalesce(p_reason, 'admin_adjustment'), 'adminUserId', p_admin_user_id));
+
+  return jsonb_build_object(
+    'user', (select row_to_json(u) from users u where u.id = p_user_id),
+    'wallet', (select row_to_json(w) from wallet_balances w where w.user_id = p_user_id),
+    'transaction', (select row_to_json(t) from transactions t where t.id = tx_id)
+  );
+end;
+$$;
+
+create or replace function public.operix_admin_transaction_action_atomic(
+  p_transaction_id uuid,
+  p_action text,
+  p_admin_user_id uuid,
+  p_note text default ''
+) returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  tx transactions%rowtype;
+  wallet_row wallet_balances%rowtype;
+  affected_user_id uuid;
+  tx_status text;
+begin
+  if p_action is null or p_action not in ('approve', 'reject') then
+    raise exception using errcode = 'P0001', message = 'INVALID_ACTION';
+  end if;
+
+  select * into tx from transactions where id = p_transaction_id for update;
+  if tx.id is null then
+    raise exception using errcode = 'P0002', message = 'TRANSACTION_NOT_FOUND';
+  end if;
+
+  if tx.status <> 'pending' then
+    raise exception using errcode = 'P0001', message = 'PROCESSED';
+  end if;
+
+  affected_user_id := tx.user_id;
+  select * into wallet_row from wallet_balances where user_id = affected_user_id for update;
+  if wallet_row.id is null then
+    raise exception using errcode = 'P0002', message = 'USER_WALLET_NOT_FOUND';
+  end if;
+
+  if p_action = 'approve' and tx.type = 'deposit' then
+    wallet_row.deposit_balance := wallet_row.deposit_balance + tx.amount;
+    wallet_row.total_deposits := wallet_row.total_deposits + tx.amount;
+    wallet_row.balance := wallet_row.deposit_balance + wallet_row.profit_balance;
+    update wallet_balances set deposit_balance = wallet_row.deposit_balance, total_deposits = wallet_row.total_deposits, balance = wallet_row.balance, updated_at = now() where user_id = affected_user_id;
+    update transactions set status = 'approved', updated_at = now() where id = p_transaction_id;
+  elsif p_action = 'reject' and tx.type = 'withdraw' then
+    wallet_row.profit_balance := wallet_row.profit_balance + tx.amount;
+    wallet_row.total_withdrawn := greatest(wallet_row.total_withdrawn - tx.amount, 0);
+    wallet_row.balance := wallet_row.deposit_balance + wallet_row.profit_balance;
+    update wallet_balances set profit_balance = wallet_row.profit_balance, total_withdrawn = wallet_row.total_withdrawn, balance = wallet_row.balance, updated_at = now() where user_id = affected_user_id;
+    update transactions set status = 'rejected', updated_at = now() where id = p_transaction_id;
+  else
+    update transactions set status = case when p_action = 'approve' then 'approved' else 'rejected' end, updated_at = now() where id = p_transaction_id;
+  end if;
+
+  select * into tx from transactions where id = p_transaction_id;
+  insert into audit_logs(action, entity, actor_id, metadata, created_at)
+  values('transaction_' || p_action, tx.id::text, p_admin_user_id, jsonb_build_object('type', tx.type, 'amount', tx.amount, 'note', p_note), now());
+
+  return jsonb_build_object(
+    'transaction', (select row_to_json(t) from transactions t where t.id = p_transaction_id),
+    'wallet', (select row_to_json(w) from wallet_balances w where w.user_id = affected_user_id)
+  );
+end;
+$$;
+
 select table_name from information_schema.tables where table_schema = 'public' order by table_name;
