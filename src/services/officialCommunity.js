@@ -8,7 +8,7 @@ const OFFICIAL_BIO = 'الحساب الرسمي لمنصة OPERIX. أخبار ا
 
 async function findOfficial() {
   const byEmail = await dataAccess.user.findOne({ email: OFFICIAL_EMAIL });
-  return byEmail || dataAccess.user.findOne({ isOfficialPlatform: true });
+  return byEmail;
 }
 
 async function ensureOfficialCommunityAccount() {
@@ -21,9 +21,9 @@ async function ensureOfficialCommunityAccount() {
       password: await bcrypt.hash(process.env.OFFICIAL_PLATFORM_PASSWORD || crypto.randomBytes(32).toString('hex'), 12),
       role: 'admin',
       referralCode: OFFICIAL_REFERRAL_CODE,
-      isOfficialPlatform: true,
       emailVerified: true,
       socialBio: OFFICIAL_BIO,
+      metadata: { officialPlatform: true },
       termsAcceptedAt: new Date()
     });
   } else {
@@ -31,9 +31,9 @@ async function ensureOfficialCommunityAccount() {
       email: OFFICIAL_EMAIL,
       role: 'admin',
       referralCode: OFFICIAL_REFERRAL_CODE,
-      isOfficialPlatform: true,
       emailVerified: true,
-      socialBio: OFFICIAL_BIO
+      socialBio: OFFICIAL_BIO,
+      metadata: { ...(official.metadata || {}), officialPlatform: true }
     });
   }
 

@@ -5,7 +5,7 @@ function idOf(value) {
 }
 
 function labelFor(user) {
-  return user.isOfficialPlatform ? 'OPERIX Official' : user.referralCode ? `عضو ${user.referralCode}` : `عضو ${String(user.email || '').slice(0, 2)}•••`;
+  return (user.isOfficialPlatform || user.metadata?.officialPlatform || String(user.email || '').toLowerCase() === 'official@operix.website') ? 'OPERIX Official' : user.referralCode ? `عضو ${user.referralCode}` : `عضو ${String(user.email || '').slice(0, 2)}•••`;
 }
 
 function toClientPost(post) {
@@ -20,7 +20,7 @@ async function toggleFollow(req, res) {
     const user = await dataAccess.user.findById(followingId);
     if (!user || user.isBanned) return res.status(404).json({ error: 'المستخدم غير موجود' });
     const existing = await dataAccess.socialFollow.findOne({ followerId: req.user.id, followingId });
-    if (user.isOfficialPlatform && existing) return res.json({ success: true, following: true, locked: true });
+    if ((user.isOfficialPlatform || user.metadata?.officialPlatform || user.email?.toLowerCase() === 'official@operix.website') && existing) return res.json({ success: true, following: true, locked: true });
     if (existing) {
       await dataAccess.socialFollow.deleteOne({ id: idOf(existing) });
       return res.json({ success: true, following: false });
@@ -45,7 +45,7 @@ async function listCommunity(req, res) {
         dataAccess.socialPost.countDocuments({ authorId: id, status: 'visible' }),
         dataAccess.socialFollow.countDocuments({ followingId: id })
       ]);
-      return { id, label: labelFor(user), isOfficialPlatform: Boolean(user.isOfficialPlatform), profileImage: user.profileImage || '', coverImage: user.coverImage || '', socialBio: user.socialBio || '', following: followingIds.has(id), posts, followers };
+      return { id, label: labelFor(user), isOfficialPlatform: Boolean(user.isOfficialPlatform || user.metadata?.officialPlatform || user.email?.toLowerCase() === 'official@operix.website'), profileImage: user.profileImage || '', coverImage: user.coverImage || '', socialBio: user.socialBio || '', following: followingIds.has(id), posts, followers };
     }));
     res.json({ success: true, users: result });
   } catch (error) { res.status(500).json({ error: 'تعذر تحميل أعضاء المجتمع' }); }
@@ -61,7 +61,7 @@ async function getSocialProfile(req, res) {
       dataAccess.socialFollow.countDocuments({ followerId: idOf(user) }),
       dataAccess.socialFollow.findOne({ followerId: req.user.id, followingId: idOf(user) })
     ]);
-    res.json({ success: true, profile: { id: idOf(user), label: labelFor(user), isOfficialPlatform: Boolean(user.isOfficialPlatform), profileImage: user.profileImage || '', coverImage: user.coverImage || '', socialBio: user.socialBio || '', posts, followers, following, isFollowing: Boolean(relation) } });
+    res.json({ success: true, profile: { id: idOf(user), label: labelFor(user), isOfficialPlatform: Boolean(user.isOfficialPlatform || user.metadata?.officialPlatform || user.email?.toLowerCase() === 'official@operix.website'), profileImage: user.profileImage || '', coverImage: user.coverImage || '', socialBio: user.socialBio || '', posts, followers, following, isFollowing: Boolean(relation) } });
   } catch (error) { res.status(500).json({ error: 'تعذر تحميل بطاقة المستخدم' }); }
 }
 

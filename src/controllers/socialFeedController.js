@@ -30,6 +30,10 @@ function getId(value) {
   return String(value?.id || value?._id || '');
 }
 
+function isOfficialUser(user) {
+  return Boolean(user?.isOfficialPlatform || user?.metadata?.officialPlatform || String(user?.email || '').toLowerCase() === 'official@operix.website');
+}
+
 function toClientPost(post) {
   if (post && post.imageUrl !== undefined && post.image_url === undefined) post.image_url = post.imageUrl;
   return post;
@@ -69,7 +73,7 @@ async function listPosts(req, res) {
       post.authorProfileImage = author?.profileImage || '';
       post.authorCoverImage = author?.coverImage || '';
       post.authorBio = author?.socialBio || '';
-      post.authorIsOfficial = Boolean(author?.isOfficialPlatform);
+      post.authorIsOfficial = isOfficialUser(author);
       post.isSaved = Array.isArray(post.savedBy) && post.savedBy.some(id => String(id) === String(req.user.id));
       delete post.savedBy;
       delete post.reportedBy;
@@ -91,7 +95,7 @@ async function createPost(req, res) {
     if (await dataAccess.socialPost.exists({ authorId: req.user.id, createdAt: { $gte: new Date(Date.now() - 5 * 60 * 1000) } })) return res.status(429).json({ error: 'انتظر خمس دقائق قبل نشر منشور جديد' });
     const user = await dataAccess.user.findById(req.user.id);
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
-    const authorLabel = user.isOfficialPlatform ? 'OPERIX Official' : user.referralCode ? `عضو ${user.referralCode}` : `عضو ${String(user.email || '').slice(0, 2)}•••`;
+    const authorLabel = isOfficialUser(user) ? 'OPERIX Official' : user.referralCode ? `عضو ${user.referralCode}` : `عضو ${String(user.email || '').slice(0, 2)}•••`;
     const post = await dataAccess.socialPost.create({ authorId: getId(user), authorLabel, content, hashtags: extractHashtags(content), imageUrl, isOfficialAi: false, source: 'user', status: moderation.status, moderationReason: moderation.matchedWord ? 'banned_word' : '' });
     await realtimeService.publish('social_post_created', { postId: getId(post), status: post.status }, { scope: 'user' });
     res.status(201).json({ success: true, message: moderation.allowed ? 'تم نشر المنشور' : 'تم حجب المنشور تلقائياً لمخالفته قواعد الجدار', post: toClientPost(post) });
