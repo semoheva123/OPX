@@ -33,7 +33,7 @@ async function ensureOfficialCommunityAccount() {
       referralCode: OFFICIAL_REFERRAL_CODE,
       isOfficialPlatform: true,
       emailVerified: true,
-      socialBio: official.socialBio || OFFICIAL_BIO
+      socialBio: OFFICIAL_BIO
     });
   }
 
