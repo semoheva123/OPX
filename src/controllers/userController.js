@@ -18,42 +18,14 @@ const imgbbStorage = require('../services/imgbbStorage');
 
 async function getProfile(req, res) {
   try {
-    if (dataAccess.isSupabaseRuntime()) {
-      const user = await dataAccess.user.findById(req.user.id);
-      if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
-      const referralCode = user.referralCode?.trim().toUpperCase();
-      const referrals = referralCode ? await dataAccess.user.find({ referredBy: referralCode }, { select: 'referralCode' }) : [];
-      const secondLevel = referrals.length ? await dataAccess.user.find({ referredBy: { $in: referrals.map(item => item.referralCode).filter(Boolean) } }, { select: 'referralCode' }) : [];
-      const thirdLevel = secondLevel.length ? await dataAccess.user.find({ referredBy: { $in: secondLevel.map(item => item.referralCode).filter(Boolean) } }, { select: 'referralCode' }) : [];
-      const activeReferrals = referrals.filter(item => Number(item.wallet?.totalDeposits || 0) > 0 && !item.isBanned).length;
-      return res.status(200).json({ success: true, user: {
-        ...user,
-        password: undefined,
-        passwordHash: undefined,
-        resetOtp: undefined,
-        twoFactorCode: undefined,
-        teamStats: { l1: referrals.length, l2: secondLevel.length, l3: thirdLevel.length, total: referrals.length + secondLevel.length + thirdLevel.length, activeReferrals }
-      } });
-    }
-    const user = await User.findById(req.user.id).select('-password -resetOTP -twoFactorCode');
+    const user = await dataAccess.user.findById(req.user.id);
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
-    await syncGameCredits(user, null, req.app.locals.gameSettings);
-    await user.save();
-    const referrals = await User.find({ referredBy: user.referralCode?.trim().toUpperCase() }).select('referralCode');
-    const secondLevel = referrals.length
-      ? await User.find({ referredBy: { $in: referrals.map(referral => referral.referralCode).filter(Boolean) } }).select('referralCode')
-      : [];
-    const thirdLevel = secondLevel.length
-      ? await User.find({ referredBy: { $in: secondLevel.map(referral => referral.referralCode).filter(Boolean) } }).select('referralCode')
-      : [];
-    const teamStats = {
-      l1: referrals.length,
-      l2: secondLevel.length,
-      l3: thirdLevel.length,
-      activeReferrals: await User.countDocuments({ referredBy: user.referralCode?.trim().toUpperCase(), isBanned: false, 'wallet.totalDeposits': { $gt: 0 } })
-    };
-    teamStats.total = teamStats.l1 + teamStats.l2 + teamStats.l3;
-    res.status(200).json({ success: true, user: { ...user.toObject(), teamStats } });
+    const referralCode = user.referralCode?.trim().toUpperCase();
+    const referrals = referralCode ? await dataAccess.user.find({ referredBy: referralCode }, { select: 'referralCode' }) : [];
+    const secondLevel = referrals.length ? await dataAccess.user.find({ referredBy: { $in: referrals.map(item => item.referralCode).filter(Boolean) } }, { select: 'referralCode' }) : [];
+    const thirdLevel = secondLevel.length ? await dataAccess.user.find({ referredBy: { $in: secondLevel.map(item => item.referralCode).filter(Boolean) } }, { select: 'referralCode' }) : [];
+    const activeReferrals = referrals.filter(item => Number(item.wallet?.totalDeposits || 0) > 0 && !item.isBanned).length;
+    res.status(200).json({ success: true, user: { ...user, password: undefined, passwordHash: undefined, resetOtp: undefined, twoFactorCode: undefined, teamStats: { l1: referrals.length, l2: secondLevel.length, l3: thirdLevel.length, total: referrals.length + secondLevel.length + thirdLevel.length, activeReferrals } } });
   } catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
 }
 
