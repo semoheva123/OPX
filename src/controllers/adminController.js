@@ -1,17 +1,71 @@
 const realtimeService = require('../services/realtimeService');
 const kycStorage = require('../services/kycStorage');
 const dataAccess = require('../services/dataAccess');
-const User = dataAccess.user;
-const Transaction = dataAccess.transaction;
-const InvestmentVault = dataAccess.investmentVault;
-const InvestmentVaultContract = dataAccess.investmentVaultContract;
-const VipLevel = dataAccess.vipLevel;
-const AuditLog = dataAccess.auditLog;
-const SecurityEvent = dataAccess.securityEvent;
-const Broadcast = dataAccess.broadcast;
-const Notification = dataAccess.notification;
-const Session = dataAccess.session;
+const User = adminRepository(dataAccess.user);
+const Transaction = adminRepository(dataAccess.transaction);
+const InvestmentVault = adminRepository(dataAccess.investmentVault);
+const InvestmentVaultContract = adminRepository(dataAccess.investmentVaultContract);
+const VipLevel = adminRepository(dataAccess.vipLevel);
+const AuditLog = adminRepository(dataAccess.auditLog);
+const SecurityEvent = adminRepository(dataAccess.securityEvent);
+const Broadcast = adminRepository(dataAccess.broadcast);
+const Notification = adminRepository(dataAccess.notification);
+const Session = adminRepository(dataAccess.session);
 const { supabaseAdmin } = require('../config/supabase');
+
+function adminRepository(repo) {
+  function queryObject(operation, query) {
+    const options = {};
+    const builder = {
+      sort(value) { options.sort = value; return builder; },
+      skip(value) { options.skip = Number(value) || 0; return builder; },
+      limit(value) { options.limit = Number(value) || 0; return builder; },
+      select(value) { options.select = value; return builder; },
+      populate() { return builder; },
+      lean() { return builder; },
+      then(resolve, reject) { return operation(query, options).then(resolve, reject); },
+      catch(reject) { return operation(query, options).catch(reject); }
+    };
+    return builder;
+  }
+  function queryBuilder(query, single, changes, remove) {
+    return queryObject(async (filter, options) => {
+      if (remove) return repo.deleteOne(filter);
+      if (changes) {
+        const current = await repo.findOne(filter);
+        if (!current) return null;
+        return repo.updateOne({ id: current.id }, changes);
+      }
+      const rows = await repo.find(filter, options);
+      return single ? (rows[0] || null) : rows;
+    }, query);
+  }
+  return {
+    find(query = {}) { return queryBuilder(query, false); },
+    findOne(query = {}) { return queryBuilder(query, true); },
+    findById(id) { return queryBuilder({ id: String(id) }, true); },
+    findOneAndUpdate(query, changes) { return queryBuilder(query, true, changes); },
+    findOneAndDelete(query) { return queryBuilder(query, true, null, true); },
+    findByIdAndUpdate(id, changes) { return queryBuilder({ id: String(id) }, true, changes); },
+    findByIdAndDelete(id) { return queryBuilder({ id: String(id) }, true, null, true); },
+    async create(data) { return repo.create(data); },
+    async insertMany(rows) { return Promise.all(rows.map(row => repo.create(row))); },
+    async updateOne(query, changes) { return repo.updateOne(query, changes); },
+    async updateMany(query, changes) { return repo.updateMany(query, changes); },
+    async countDocuments(query = {}) { return repo.countDocuments(query); },
+    async aggregate() { return []; }
+  };
+}
+
+const AdminUser = adminRepository(User);
+const AdminTransaction = adminRepository(Transaction);
+const AdminVipLevel = adminRepository(VipLevel);
+const AdminInvestmentVault = adminRepository(InvestmentVault);
+const AdminInvestmentVaultContract = adminRepository(InvestmentVaultContract);
+const AdminAuditLog = adminRepository(AuditLog);
+const AdminSecurityEvent = adminRepository(SecurityEvent);
+const AdminNotification = adminRepository(Notification);
+const AdminSession = adminRepository(Session);
 const DEFAULT_VAULT_CONTRACTS = [90, 180, 365].map(durationDays => ({ durationDays, expectedReturnRate: 0, enabled: true, label: '' }));
 
 const DEFAULT_BADGE_COLOR = 'from-amber-500/20 to-amber-700/20 border-amber-500/40 text-amber-400';
