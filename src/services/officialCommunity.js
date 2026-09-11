@@ -43,21 +43,15 @@ async function ensureOfficialCommunityAccount() {
 async function followOfficialCommunityAccount(userId) {
   const official = await findOfficial();
   if (!official || String(userId) === String(official.id)) return;
-  const existing = await dataAccess.socialFollow.findOne({ followerId: userId, followingId: official.id });
-  if (!existing) {
-    try { await dataAccess.socialFollow.create({ followerId: userId, followingId: official.id }); } catch (error) {
-      if (error.code !== '23505') throw error;
-    }
-  }
+  await dataAccess.socialFollow.upsert({ followerId: userId, followingId: official.id }, { onConflict: 'follower_id,following_id' });
 }
 
 async function followOfficialForExistingUsers() {
   const official = await findOfficial();
   if (!official) return;
   const users = await dataAccess.user.find({ isBanned: false }, { limit: 10000 });
-  for (const user of users) {
-    if (String(user.id) !== String(official.id)) await followOfficialCommunityAccount(user.id);
-  }
+  const rows = users.filter(user => String(user.id) !== String(official.id)).map(user => ({ followerId: user.id, followingId: official.id }));
+  if (rows.length) await dataAccess.socialFollow.upsert(rows, { onConflict: 'follower_id,following_id' });
 }
 
 module.exports = { ensureOfficialCommunityAccount, followOfficialCommunityAccount, followOfficialForExistingUsers };
