@@ -245,6 +245,15 @@ async function supabaseUpdateMany(table, query, changes) {
   return { matchedCount: Number(count || 0), modifiedCount: Number(count || 0) };
 }
 
+async function supabaseDeleteOne(table, query) {
+  if (!supabaseAdmin) return null;
+  let req = supabaseAdmin.from(table).delete().select('*');
+  req = applySupabaseFilters(req, query);
+  const { data, error } = await req.limit(1);
+  if (error) throw error;
+  return normalizeSupabaseResult(data?.[0] || null);
+}
+
 async function callSupabaseRpc(functionName, args) {
   if (!supabaseAdmin) {
     assertSupabaseRuntimeReady();
@@ -332,6 +341,9 @@ const createRepository = (name) => {
       }
       return 0;
     },
+    async exists(query = {}) {
+      return (await this.countDocuments(query)) > 0;
+    },
     async updateOne(filter, update) {
       if (isSupabaseRuntime() && supabaseAdmin) {
         return supabaseUpdateOne(target.table, filter, update.$set || update);
@@ -343,6 +355,10 @@ const createRepository = (name) => {
         return supabaseUpdateMany(target.table, filter, update.$set || update);
       }
       return { modifiedCount: 0 };
+    },
+    async deleteOne(filter) {
+      if (isSupabaseRuntime() && supabaseAdmin) return supabaseDeleteOne(target.table, filter);
+      return null;
     },
     async aggregate(pipeline = []) {
       return [];
