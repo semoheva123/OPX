@@ -61,12 +61,11 @@ async function setWalletAddress(req, res) {
   try {
     const { walletAddress } = req.body;
     if (!walletAddress || typeof walletAddress !== 'string' || !walletAddress.trim()) return res.status(400).json({ error: 'يرجى إدخال عنوان محفظة صالح' });
-    const user = await User.findById(req.user.id);
+    const user = await dataAccess.user.findById(req.user.id);
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     if (user.walletAddress && user.walletAddress.trim()) return res.status(400).json({ error: 'عنوان المحفظة مثبت سابقاً، لا يمكنك تعديله إلا عن طريق التواصل مع الأدمن.' });
-    user.walletAddress = walletAddress.trim();
-    await user.save();
-    res.json({ success: true, message: 'تم حفظ وتثبيت عنوان المحفظة بنجاح', walletAddress: user.walletAddress });
+    const updated = await dataAccess.user.updateOne({ id: req.user.id, walletAddress: null }, { walletAddress: walletAddress.trim() });
+    res.json({ success: true, message: 'تم حفظ وتثبيت عنوان المحفظة بنجاح', walletAddress: updated?.walletAddress || walletAddress.trim() });
   } catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
 }
 
@@ -121,33 +120,33 @@ async function submitKyc(req, res) {
       return res.status(400).json({ error: 'رابط أو صورة الوثيقة غير صالحة' });
     }
 
-    const user = await User.findById(req.user.id);
+    const user = await dataAccess.user.findById(req.user.id);
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
 
-    user.kycFullName = safeFullName;
-    user.kycDocumentType = String(documentType);
-    user.kycDocumentNumber = safeDocumentNumber;
-    user.kycCountry = safeCountry;
-    user.kycDocumentUrl = normalizedDocumentUrl;
-    user.kycStatus = 'pending';
-    user.kycSubmittedAt = new Date();
-    user.kycReviewedAt = null;
-    user.kycNotes = '';
-    user.kycReason = '';
-
-    await user.save();
+    const updated = await dataAccess.user.updateOne({ id: req.user.id }, {
+      kycFullName: safeFullName,
+      kycDocumentType: String(documentType),
+      kycDocumentNumber: safeDocumentNumber,
+      kycCountry: safeCountry,
+      kycDocumentUrl: normalizedDocumentUrl,
+      kycStatus: 'pending',
+      kycSubmittedAt: new Date(),
+      kycReviewedAt: null,
+      kycNotes: '',
+      kycReason: ''
+    });
 
     res.json({
       success: true,
       message: 'تم إرسال طلب التوثيق بنجاح وسيتم مراجعته من الإدارة',
       user: {
-        kycFullName: user.kycFullName,
-        kycDocumentType: user.kycDocumentType,
-        kycDocumentNumber: user.kycDocumentNumber,
-        kycCountry: user.kycCountry,
-        kycDocumentUrl: user.kycDocumentUrl,
-        kycStatus: user.kycStatus,
-        kycSubmittedAt: user.kycSubmittedAt
+        kycFullName: updated.kycFullName,
+        kycDocumentType: updated.kycDocumentType,
+        kycDocumentNumber: updated.kycDocumentNumber,
+        kycCountry: updated.kycCountry,
+        kycDocumentUrl: updated.kycDocumentUrl,
+        kycStatus: updated.kycStatus,
+        kycSubmittedAt: updated.kycSubmittedAt
       }
     });
   } catch (err) {
@@ -168,7 +167,7 @@ async function updateProfileImage(req, res) {
       return res.status(400).json({ error: 'الصورة يجب أن تكون JPG أو PNG أو WebP أو أي صورة مدعومة وبحجم لا يتجاوز 2 ميجابايت' });
     }
     const imageUrl = await imgbbStorage.uploadDataUrl(profileImage);
-    const user = await User.findByIdAndUpdate(req.user.id, { profileImage: imageUrl }, { new: true }).select('profileImage');
+    const user = await dataAccess.user.updateOne({ id: req.user.id }, { profileImage: imageUrl });
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     res.json({ success: true, profileImage: user.profileImage, message: 'تم حفظ الصورة الشخصية بنجاح' });
   } catch (err) {
@@ -188,7 +187,7 @@ async function updateSocialProfile(req, res) {
     }
     const coverUrl = !coverImage ? '' : coverImage.startsWith('data:image/') ? await imgbbStorage.uploadDataUrl(coverImage) : imgbbStorage.validateUrl(coverImage);
     if (coverImage && !coverUrl) return res.status(400).json({ error: 'صورة الغلاف يجب أن تكون مرفوعة إلى ImgBB' });
-    const user = await User.findByIdAndUpdate(req.user.id, { socialBio, coverImage: coverUrl }, { new: true }).select('socialBio coverImage');
+    const user = await dataAccess.user.updateOne({ id: req.user.id }, { socialBio, coverImage: coverUrl });
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     res.json({ success: true, socialBio: user.socialBio, coverImage: user.coverImage, message: 'تم تحديث الملف الاجتماعي' });
   } catch (error) {
@@ -334,14 +333,12 @@ async function getHomeSummary(req, res) {
 async function sendTwoFactorCode(req, res) {
   try {
     const resend = req.app.locals.resend;
-    const user = await User.findById(req.user.id);
+    const user = await dataAccess.user.findById(req.user.id);
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     if (!user.twoFactorEnabled) return res.status(400).json({ error: 'فعّل المصادقة الثنائية أولاً من قسم حسابي' });
 
     const code = crypto.randomInt(100000, 1000000).toString();
-    user.twoFactorCode = code;
-    user.twoFactorExpire = Date.now() + 5 * 60 * 1000;
-    await user.save();
+    await dataAccess.user.updateOne({ id: req.user.id }, { twoFactorCode: code, twoFactorExpire: new Date(Date.now() + 5 * 60 * 1000) });
 
     if (resend) {
       try {
@@ -369,7 +366,7 @@ async function toggleTwoFactor(req, res) {
   try {
     if (typeof req.body.enabled !== 'boolean') return res.status(400).json({ error: 'حالة المصادقة غير صالحة' });
     if (req.body.enabled) return res.status(400).json({ error: 'استخدم إعداد Google Authenticator ثم أكد الرمز أولاً' });
-    const user = await User.findByIdAndUpdate(req.user.id, { twoFactorEnabled: req.body.enabled }, { new: true }).select('twoFactorEnabled');
+    const user = await dataAccess.user.updateOne({ id: req.user.id }, { twoFactorEnabled: req.body.enabled });
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     res.json({ success: true, enabled: user.twoFactorEnabled, message: user.twoFactorEnabled ? 'تم تفعيل المصادقة الثنائية' : 'تم تعطيل المصادقة الثنائية' });
   } catch (err) { res.status(500).json({ error: 'حدث خطأ في حفظ إعداد المصادقة' }); }
@@ -377,12 +374,11 @@ async function toggleTwoFactor(req, res) {
 
 async function setupTwoFactor(req, res) {
   try {
-    const user = await User.findById(req.user.id).select('+twoFactorSecret email');
+    const user = await dataAccess.user.findById(req.user.id);
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     if (user.twoFactorEnabled) return res.status(400).json({ error: 'المصادقة الثنائية مفعلة بالفعل' });
     const secret = generateSecret();
-    user.twoFactorSecret = secret;
-    await user.save();
+    await dataAccess.user.updateOne({ id: req.user.id }, { twoFactorSecret: secret });
     const otpauth = generateURI({ issuer: 'OPERIX', label: user.email, secret });
     res.json({ success: true, qrCode: await QRCode.toDataURL(otpauth), secret });
   } catch (err) { res.status(500).json({ error: 'تعذر إعداد Google Authenticator' }); }
@@ -390,11 +386,10 @@ async function setupTwoFactor(req, res) {
 
 async function confirmTwoFactor(req, res) {
   try {
-    const user = await User.findById(req.user.id).select('+twoFactorSecret');
+    const user = await dataAccess.user.findById(req.user.id);
     if (!user || !user.twoFactorSecret) return res.status(400).json({ error: 'ابدأ إعداد Google Authenticator أولاً' });
     if (!verifySync({ token: String(req.body.code || '').trim(), secret: user.twoFactorSecret }).valid) return res.status(400).json({ error: 'رمز Google Authenticator غير صحيح' });
-    user.twoFactorEnabled = true;
-    await user.save();
+    await dataAccess.user.updateOne({ id: req.user.id }, { twoFactorEnabled: true });
     res.json({ success: true, enabled: true, message: 'تم تفعيل Google Authenticator بنجاح' });
   } catch (err) { res.status(500).json({ error: 'تعذر تأكيد المصادقة الثنائية' }); }
 }
@@ -405,11 +400,11 @@ async function changePassword(req, res) {
     if (typeof currentPassword !== 'string' || typeof newPassword !== 'string' || newPassword.length < 8) {
       return res.status(400).json({ error: 'كلمة المرور الجديدة يجب أن لا تقل عن 8 أحرف وجميع الحقول مطلوبة' });
     }
-    const user = await User.findById(req.user.id);
+    const user = await dataAccess.user.findById(req.user.id);
     if (!user || !(await bcrypt.compare(currentPassword, user.password))) return res.status(400).json({ error: 'كلمة المرور الحالية غير صحيحة' });
-    user.password = await bcrypt.hash(newPassword, 12);
-    await user.save();
-    await Session.updateMany({ userId: user._id, revokedAt: null }, { revokedAt: new Date() });
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await dataAccess.user.updateOne({ id: req.user.id }, { passwordHash });
+    await dataAccess.session.updateMany({ userId: req.user.id, revokedAt: null }, { revokedAt: new Date() });
     res.json({ success: true, message: 'تم تغيير كلمة المرور بنجاح' });
   } catch (err) { res.status(500).json({ error: 'حدث خطأ أثناء تغيير كلمة المرور' }); }
 }
@@ -418,7 +413,7 @@ async function subscribePush(req, res) {
   try {
     const subscription = req.body;
     if (!subscription || !subscription.endpoint) return res.status(400).json({ error: 'بيانات الاشتراك غير صالحة' });
-    await User.findByIdAndUpdate(req.user.id, { pushSubscription: subscription });
+    await dataAccess.user.updateOne({ id: req.user.id }, { pushSubscription: subscription });
     res.status(201).json({ success: true, message: 'تم حفظ اشتراك الإشعارات بنجاح' });
   } catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
 }

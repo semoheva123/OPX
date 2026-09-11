@@ -528,7 +528,7 @@ async function initPushNotifications() {
                     userVisibleOnly: true,
                     applicationServerKey: 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qAYIHBQJN2XH7k8KJY'
                 });
-                await fetch('/api/push/subscribe', {
+                await fetch('/api/user/push/subscribe', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
