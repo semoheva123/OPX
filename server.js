@@ -1364,6 +1364,8 @@ async function initializeRuntime() {
       console.log('✅ تم تفعيل وضع Supabase فقط.');
       await seedVipLevels();
       await loadGameSettings();
+      await ensureOfficialCommunityAccount();
+      await followOfficialForExistingUsers();
       if (!isVercelRuntime) scheduleDailyTaskReset();
     } else {
       await seedVipLevels();
