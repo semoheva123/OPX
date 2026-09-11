@@ -1364,8 +1364,12 @@ async function initializeRuntime() {
       console.log('✅ تم تفعيل وضع Supabase فقط.');
       await seedVipLevels();
       await loadGameSettings();
-      await ensureOfficialCommunityAccount();
-      await followOfficialForExistingUsers();
+      try {
+        await ensureOfficialCommunityAccount();
+        await followOfficialForExistingUsers();
+      } catch (error) {
+        console.error('⚠️ تعذر تهيئة الحساب الرسمي للمجتمع، وسيستمر الخادم:', error.message);
+      }
       if (!isVercelRuntime) scheduleDailyTaskReset();
     } else {
       await seedVipLevels();
