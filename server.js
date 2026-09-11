@@ -108,9 +108,13 @@ async function seedVipLevels() {
 }
 
 async function loadGameSettings() {
-  let stored = await dataAccess.gameSetting.findOne({ key: 'default' });
-  if (!stored) stored = await dataAccess.gameSetting.create({ key: 'default', spinMin: gameSettings.spinMin, spinMax: gameSettings.spinMax, boxMin: gameSettings.boxMin, boxMax: gameSettings.boxMax, dailyGameRewardCap: gameSettings.dailyGameRewardCap });
-  Object.assign(gameSettings, { spinMin: stored.spinMin, spinMax: stored.spinMax, boxMin: stored.boxMin, boxMax: stored.boxMax, dailyGameRewardCap: stored.dailyGameRewardCap, referralsPerCycle: stored.referralsPerCycle || 25 });
+  try {
+    let stored = await dataAccess.gameSetting.findOne({ key: 'default' });
+    if (!stored) stored = await dataAccess.gameSetting.create({ key: 'default', spinMin: gameSettings.spinMin, spinMax: gameSettings.spinMax, boxMin: gameSettings.boxMin, boxMax: gameSettings.boxMax, dailyGameRewardCap: gameSettings.dailyGameRewardCap });
+    if (stored) Object.assign(gameSettings, { spinMin: stored.spinMin, spinMax: stored.spinMax, boxMin: stored.boxMin, boxMax: stored.boxMax, dailyGameRewardCap: stored.dailyGameRewardCap, referralsPerCycle: stored.referralsPerCycle || 25 });
+  } catch (error) {
+    console.error('⚠️ تعذر تحميل إعدادات الألعاب، سيتم استخدام الإعدادات الافتراضية:', error.message);
+  }
 }
 
 async function migrateLegacyReferralCodes() {
