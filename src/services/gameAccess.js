@@ -1,4 +1,5 @@
-const User = require('../models/User');
+const dataAccess = require('./dataAccess');
+const User = dataAccess.user;
 
 async function syncGameCredits(user, session, settings = {}) {
   let query = User.countDocuments({

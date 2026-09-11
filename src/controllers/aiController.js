@@ -1,6 +1,6 @@
 const Groq = require('groq-sdk');
-const User = require('../models/User');
 const dataAccess = require('../services/dataAccess');
+const User = dataAccess.user;
 
 function localReply(message, userName, userBalance, userTier) {
   const text = message.toLowerCase();

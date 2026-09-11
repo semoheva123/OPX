@@ -2,7 +2,7 @@
 
 ## Runtime
 
-`server.js` is the current composition root. It loads the environment, configures Express, registers routes, connects MongoDB, starts the daily UTC job, and starts the HTTP server.
+`server.js` is the current composition root. It loads the environment, configures Express, registers routes, connects to Supabase, starts the daily UTC job, and starts the HTTP server.
 
 The frontend entry point remains the root `app.js`; the Express application must therefore use `src/app.js` when the final runtime extraction is performed.
 
@@ -21,11 +21,7 @@ src/
 │   └── walletController.js
 ├── jobs/dailyTasksReset.js
 ├── middlewares/auth.js
-├── models/
-│   ├── Staking.js
-│   ├── Transaction.js
-│   ├── User.js
-│   └── VipLevel.js
+├── models/                 # Supabase dataAccess compatibility exports
 ├── routes/
 │   ├── activityRoutes.js
 │   ├── adminRoutes.js
@@ -47,10 +43,10 @@ src/
 - `aiRoutes`: the authenticated Groq advisor.
 - `adminRoutes`: administration and financial review operations.
 
-## Final extraction order
+## Runtime boundary
 
-1. Move Express middleware setup and route registration from `server.js` into `src/app.js`.
-2. Export the Express instance from `src/app.js`.
-3. Keep `server.js` limited to `dotenv`, database connection, jobs, `app.listen`, and graceful shutdown.
-4. Preserve the root `app.js` as the browser client.
-5. Run syntax checks and endpoint smoke tests before removing the compatibility code from `server.js`.
+1. Keep Express middleware and route registration in `src/app.js`.
+2. Keep `server.js` limited to environment loading, Supabase connection, jobs, `app.listen`, and graceful shutdown.
+3. Keep the root `app.js` as the browser client.
+4. Route all persistence through `src/services/dataAccess.js` and the public Supabase RPC functions.
+5. Run syntax checks and endpoint smoke tests before deployment.

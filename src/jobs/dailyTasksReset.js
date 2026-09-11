@@ -1,5 +1,6 @@
 const cron = require('node-cron');
-const User = require('../models/User');
+const dataAccess = require('../services/dataAccess');
+const User = dataAccess.user;
 
 async function resetDailyTasks() {
   try {

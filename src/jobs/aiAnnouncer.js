@@ -1,6 +1,7 @@
-const SocialPost = require('../models/SocialPost');
-const AuditLog = require('../models/AuditLog');
 const { moderateText } = require('../services/socialSafetyBot');
+const dataAccess = require('../services/dataAccess');
+const SocialPost = dataAccess.socialPost;
+const AuditLog = dataAccess.auditLog;
 
 const topics = [
   'أمان المحافظ الرقمية والمصادقة الثنائية',

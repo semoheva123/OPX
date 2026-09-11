@@ -1,7 +1,8 @@
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
-const User = require('../models/User');
-const SocialFollow = require('../models/SocialFollow');
+const dataAccess = require('./dataAccess');
+const User = dataAccess.user;
+const SocialFollow = dataAccess.socialFollow;
 
 const OFFICIAL_EMAIL = String(process.env.OFFICIAL_PLATFORM_EMAIL || 'official@operix.website').trim().toLowerCase();
 const OFFICIAL_REFERRAL_CODE = 'OPERIXOFFICIAL';

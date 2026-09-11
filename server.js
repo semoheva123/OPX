@@ -16,13 +16,13 @@ const webpush = require('web-push');
 const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 const createApp = require('./src/app');
-const User = require('./src/models/User');
-const Transaction = require('./src/models/Transaction');
-const Staking = require('./src/models/Staking');
-const VipLevel = require('./src/models/VipLevel');
-const GameSetting = require('./src/models/GameSetting');
 const { connectDatabase, closeDatabase, getDatabaseMode } = require('./src/config/database');
 const dataAccess = require('./src/services/dataAccess');
+const User = dataAccess.user;
+const Transaction = dataAccess.transaction;
+const Staking = dataAccess.staking;
+const VipLevel = dataAccess.vipLevel;
+const GameSetting = dataAccess.gameSetting;
 const { resetDailyTasks, scheduleDailyTaskReset } = require('./src/jobs/dailyTasksReset');
 const { generateOfficialAiPost } = require('./src/jobs/aiAnnouncer');
 const { ensureOfficialCommunityAccount, followOfficialForExistingUsers } = require('./src/services/officialCommunity');
@@ -239,7 +239,7 @@ app.post('/api/ai/chat', verifyToken, async (req, res) => {
 /*
 // 🚀 مسار ترقية المستوى (تحديث الخصم الآمن من الرصيد المُودع ثم الأرباح)
 app.post('/api/user/upgrade', verifyToken, async (req, res) => {
-  const session = await mongoose.startSession();
+  const session = null;
   try {
     session.startTransaction();
     const { targetTier } = req.body;
@@ -785,7 +785,7 @@ app.get('/api/user/profile', verifyToken, async (req, res) => {
 /*
 // ✅ إكمال المهام وتحديث الأرباح (محمية ضد Race Conditions)
 app.post('/api/tasks/complete', verifyToken, async (req, res) => {
-  const session = await mongoose.startSession();
+  const session = null;
   try {
     session.startTransaction();
     const user = await User.findById(req.user.id).session(session);
@@ -839,7 +839,7 @@ app.post('/api/tasks/complete', verifyToken, async (req, res) => {
 /*
 // 🎡 عجلة الحظ
 app.post('/api/spin/wheel', verifyToken, async (req, res) => {
-  const session = await mongoose.startSession();
+  const session = null;
   try {
     session.startTransaction();
     const min = gameSettings.spinMin ?? 1;
@@ -885,7 +885,7 @@ app.post('/api/spin/wheel', verifyToken, async (req, res) => {
 
 // 🎁 الصندوق الغامض
 app.post('/api/spin/mystery-box', verifyToken, async (req, res) => {
-  const session = await mongoose.startSession();
+  const session = null;
   try {
     session.startTransaction();
     const min = gameSettings.boxMin ?? 5;
@@ -932,7 +932,7 @@ app.post('/api/spin/mystery-box', verifyToken, async (req, res) => {
 /*
 // 💸 طلب السحب (معدّل للتحقق والخصم من رصيد الأرباح فقط)
 app.post('/api/wallet/withdraw', verifyToken, async (req, res) => {
-  const session = await mongoose.startSession();
+  const session = null;
   try {
     session.startTransaction();
     const { amount, walletAddress, twoFactorCode } = req.body;
@@ -1188,7 +1188,7 @@ app.get('/api/admin/withdrawals', verifyAdmin, async (req, res) => {
 
 // ⚙️ الموافقة أو رفض طلب بـ ACID Transactions
 app.post('/api/admin/withdrawals/action', verifyAdmin, async (req, res) => {
-  const session = await mongoose.startSession();
+  const session = null;
   try {
     session.startTransaction();
     const { transactionId, action } = req.body;
@@ -1361,7 +1361,7 @@ async function initializeRuntime() {
 
     const runtimeMode = getDatabaseMode();
     if (runtimeMode === 'supabase') {
-      console.log('✅ تم تفعيل وضع Supabase فقط. تم إيقاف التهيئة القديمة للـ MongoDB بنجاح.');
+      console.log('✅ تم تفعيل وضع Supabase فقط.');
       await seedVipLevels();
       await loadGameSettings();
       if (!isVercelRuntime) scheduleDailyTaskReset();

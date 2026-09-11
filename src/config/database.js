@@ -1,9 +1,5 @@
 function getDatabaseMode() {
   const explicitMode = (process.env.DATABASE_MODE || '').trim().toLowerCase();
-  if (explicitMode === 'mongo') {
-    console.warn('⚠️ MongoDB mode is disabled in production. The platform now requires Supabase only.');
-    return 'supabase';
-  }
   if (explicitMode === 'supabase' || explicitMode === '') {
     return 'supabase';
   }
@@ -20,16 +16,12 @@ function assertSupabaseRuntimeReady() {
 
 function getRuntimeDatabaseInfo() {
   const mode = getDatabaseMode();
-  const mongoConfigured = false;
   const supabaseConfigured = isSupabaseEnabled();
 
   return {
     mode,
-    mongoConfigured,
     supabaseConfigured,
     shouldUseSupabase: true,
-    shouldUseMongo: false,
-    canFallbackToMongo: false,
     safeCutoverReady: mode === 'supabase' && supabaseConfigured
   };
 }
@@ -48,8 +40,8 @@ async function connectDatabase() {
 
   assertSupabaseRuntimeReady();
 
-  console.log('✅ Production runtime is locked to Supabase. MongoDB is fully disabled.');
-  return { mode, connected: true, legacyMongo: false, ...runtimeInfo };
+  console.log('✅ Production runtime is locked to Supabase.');
+  return { mode, connected: true, ...runtimeInfo };
 }
 
 async function closeDatabase() {

@@ -1,6 +1,3 @@
-const SocialFollow = require('../models/SocialFollow');
-const User = require('../models/User');
-const SocialPost = require('../models/SocialPost');
 const dataAccess = require('../services/dataAccess');
 
 async function toggleFollow(req, res) {

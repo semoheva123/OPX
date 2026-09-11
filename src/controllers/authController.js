@@ -1,16 +1,16 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const User = require('../models/User');
-const Session = require('../models/Session');
-const SecurityEvent = require('../models/SecurityEvent');
-const Notification = require('../models/Notification');
 const realtimeService = require('../services/realtimeService');
 const { authenticator } = require('otplib');
 const QRCode = require('qrcode');
 const { emailVerificationTemplate, passwordResetTemplate, adminInviteTemplate } = require('../services/emailTemplates');
 const { followOfficialCommunityAccount } = require('../services/officialCommunity');
 const dataAccess = require('../services/dataAccess');
+const User = dataAccess.user;
+const Session = dataAccess.session;
+const SecurityEvent = dataAccess.securityEvent;
+const Notification = dataAccess.notification;
 
 const verifySync = ({ token, secret }) => ({ valid: authenticator.check(token, secret) });
 const generateSecret = () => authenticator.generateSecret();

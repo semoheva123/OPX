@@ -1,17 +1,16 @@
-const mongoose = require('mongoose');
-const User = require('../models/User');
-const Transaction = require('../models/Transaction');
-const InvestmentVault = require('../models/InvestmentVault');
-const InvestmentVaultContract = require('../models/InvestmentVaultContract');
-const VipLevel = require('../models/VipLevel');
-const AuditLog = require('../models/AuditLog');
-const SecurityEvent = require('../models/SecurityEvent');
-const Broadcast = require('../models/Broadcast');
-const Notification = require('../models/Notification');
-const Session = require('../models/Session');
 const realtimeService = require('../services/realtimeService');
 const kycStorage = require('../services/kycStorage');
 const dataAccess = require('../services/dataAccess');
+const User = dataAccess.user;
+const Transaction = dataAccess.transaction;
+const InvestmentVault = dataAccess.investmentVault;
+const InvestmentVaultContract = dataAccess.investmentVaultContract;
+const VipLevel = dataAccess.vipLevel;
+const AuditLog = dataAccess.auditLog;
+const SecurityEvent = dataAccess.securityEvent;
+const Broadcast = dataAccess.broadcast;
+const Notification = dataAccess.notification;
+const Session = dataAccess.session;
 const { supabaseAdmin } = require('../config/supabase');
 const DEFAULT_VAULT_CONTRACTS = [90, 180, 365].map(durationDays => ({ durationDays, expectedReturnRate: 0, enabled: true, label: '' }));
 
@@ -301,45 +300,7 @@ async function listInvestmentVaults(req, res) {
 }
 
 async function emergencyReleaseInvestmentVault(req, res) {
-  if (dataAccess.isSupabaseRuntime()) return res.status(503).json({ error: 'الفتح الاضطراري للخزنة غير متاح حتى تطبيق RPC الإدارة الذرية في Supabase' });
-  const ownerId = String(process.env.VAULT_OWNER_USER_ID || '').trim();
-  if (!mongoose.isValidObjectId(ownerId)) return res.status(503).json({ error: 'حساب مالك الخزنة غير مهيأ، تم رفض الفتح الاضطراري' });
-  const session = await mongoose.startSession();
-  try {
-    let vault;
-    let user;
-    let owner;
-    await session.withTransaction(async () => {
-      vault = await InvestmentVault.findOne({ _id: req.params.vaultId, status: 'active' }).session(session);
-      if (!vault) throw Object.assign(new Error('VAULT_NOT_FOUND'), { statusCode: 404 });
-      user = await User.findById(vault.userId).session(session);
-      owner = await User.findById(ownerId).session(session);
-      if (!user || !owner) throw Object.assign(new Error('ACCOUNT_NOT_FOUND'), { statusCode: 404 });
-      const penaltyAmount = Number((vault.amount * 0.30).toFixed(4));
-      const releaseAmount = Number((vault.amount - penaltyAmount).toFixed(4));
-      user.USDT_balance = Number((Number(user.USDT_balance || 0) + releaseAmount).toFixed(4));
-      owner.USDT_balance = Number((Number(owner.USDT_balance || 0) + penaltyAmount).toFixed(4));
-      user.wallet.profitBalance = Number((Number(user.wallet.profitBalance || 0) + releaseAmount).toFixed(4));
-      user.wallet.balance = Number((Number(user.wallet.depositBalance || 0) + user.wallet.profitBalance).toFixed(2));
-      owner.wallet.profitBalance = Number((Number(owner.wallet.profitBalance || 0) + penaltyAmount).toFixed(4));
-      owner.wallet.balance = Number((Number(owner.wallet.depositBalance || 0) + owner.wallet.profitBalance).toFixed(2));
-      vault.penaltyAmount = penaltyAmount;
-      vault.status = 'emergency_released';
-      await Promise.all([user.save({ session }), owner.save({ session }), vault.save({ session })]);
-      await new Transaction({ userId: user._id, type: 'vault_early_release', amount: releaseAmount, grossAmount: vault.amount, usdtAmount: releaseAmount, walletAddress: `Emergency release ${vault._id}`, status: 'approved' }).save({ session });
-      await new Transaction({ userId: owner._id, type: 'vault_penalty', amount: penaltyAmount, grossAmount: penaltyAmount, usdtAmount: penaltyAmount, walletAddress: `Early release penalty ${vault._id}`, status: 'approved' }).save({ session });
-      await createAudit(req, 'emergency_release_investment_vault', vault._id.toString(), { userId: user._id.toString(), ownerId: owner._id.toString(), principal: vault.amount, penaltyAmount, releaseAmount }, session);
-    });
-    await realtimeService.publish('user_data_changed', { reason: 'vault_emergency_released', timestamp: new Date().toISOString() }, { userId: user._id });
-    await realtimeService.publish('admin_transaction_created', { type: 'vault_early_release', userId: user._id, vaultId: vault._id }, { scope: 'admin' });
-    res.json({ success: true, message: 'تم تنفيذ الفتح الاضطراري بخصم غرامة 30% من أصل الخزنة وتحويلها إلى حساب المالك', vault, releasedAmount: Number((vault.amount - vault.penaltyAmount).toFixed(4)), penaltyAmount: vault.penaltyAmount });
-  } catch (error) {
-    if (session.inTransaction()) await session.abortTransaction();
-    if (error.statusCode === 404) return res.status(404).json({ error: 'الخزنة أو الحساب المرتبط غير موجود' });
-    if (error.message === 'VAULT_NOT_FOUND') return res.status(404).json({ error: 'الخزنة غير موجودة أو تم استردادها مسبقًا' });
-    console.error('Error during emergency vault release:', error);
-    res.status(500).json({ error: 'تعذر تنفيذ الفتح الاضطراري للخزنة' });
-  } finally { await session.endSession(); }
+  return res.status(503).json({ error: 'الفتح الاضطراري للخزنة غير متاح حتى تطبيق RPC الإدارة الذرية في Supabase' });
 }
 
 async function riskSummary(req, res) {
@@ -391,8 +352,8 @@ async function streamKycDocument(req, res) {
     const user = await User.findById(req.params.userId).select('kycDocumentUrl');
     const reference = String(user?.kycDocumentUrl || '');
     if (/^https:\/\/(?:i\.)?ibb\.co\//i.test(reference) || /^https:\/\/(?:www\.)?imgbb\.com\//i.test(reference)) return res.redirect(reference);
-    if (!/^private:\/\/|^gridfs:\/\//.test(reference)) return res.status(404).json({ error: 'وثيقة KYC غير موجودة أو قديمة' });
-    await createAudit(req, 'view_kyc_document', user._id.toString(), { referenceType: reference.startsWith('gridfs://') ? 'gridfs' : 'private' });
+    if (!/^private:\/\//.test(reference)) return res.status(404).json({ error: 'وثيقة KYC غير موجودة أو قديمة' });
+    await createAudit(req, 'view_kyc_document', user._id.toString(), { referenceType: 'private' });
     res.set({ 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' });
     if (!kycStorage.stream(reference, res)) return res.status(404).json({ error: 'ملف الوثيقة غير موجود' });
   } catch (error) {
@@ -547,43 +508,17 @@ async function updateUser(req, res) {
     for (const value of [depositBalance, profitBalance, balance]) {
       if (value !== undefined && (!Number.isFinite(Number(value)) || Number(value) < 0)) return res.status(400).json({ error: 'قيمة الرصيد غير صالحة' });
     }
-    if (dataAccess.isSupabaseRuntime()) {
-      const result = await dataAccess.callSupabaseRpc('operix_admin_adjust_balance_atomic', {
-        p_user_id: userId,
-        p_deposit_balance: depositBalance === undefined ? null : Number(depositBalance),
-        p_profit_balance: profitBalance === undefined ? null : Number(profitBalance),
-        p_balance: balance === undefined ? null : Number(balance),
-        p_admin_user_id: req.user?.id || null,
-        p_reason: 'admin_adjustment'
-      });
-      await createAudit(req, 'update_user_balance', String(userId), { newValue: { balance: result?.wallet?.balance ?? null }, depositBalance, profitBalance });
-      await emitUserDataChanged(userId, 'balance_updated');
-      return res.json({ success: true, message: 'تم تعديل بيانات المستخدم بنجاح', user: result?.user || null, wallet: result?.wallet || null });
-    }
-    let session;
-    try {
-      session = await mongoose.startSession();
-      let safeUser;
-      await session.withTransaction(async () => {
-        const user = await User.findById(userId).session(session);
-        if (!user) throw Object.assign(new Error('USER_NOT_FOUND'), { statusCode: 404 });
-        const beforeBalance = Number(user.wallet?.balance || 0);
-        if (depositBalance !== undefined) user.wallet.depositBalance = Number(depositBalance);
-        if (profitBalance !== undefined) user.wallet.profitBalance = Number(profitBalance);
-        if (balance !== undefined && depositBalance === undefined && profitBalance === undefined) {
-          user.wallet.balance = Number(balance);
-          user.wallet.profitBalance = Math.max(0, user.wallet.balance - Number(user.wallet.depositBalance || 0));
-        }
-        user.wallet.balance = user.wallet.depositBalance + user.wallet.profitBalance;
-        await user.save({ session });
-        await createAudit(req, 'update_user_balance', user._id.toString(), { oldValue: { balance: beforeBalance }, newValue: { balance: user.wallet.balance }, depositBalance, profitBalance }, session);
-        if (user.wallet.balance !== beforeBalance) await Transaction.create([{ userId: user._id, type: 'admin_adjustment', amount: user.wallet.balance - beforeBalance, walletAddress: 'ADMIN_ADJUSTMENT', status: 'approved' }], { session });
-        safeUser = user.toObject(); delete safeUser.password; delete safeUser.resetOTP; delete safeUser.twoFactorCode;
-      });
-      await session.endSession(); session = null;
-      await emitUserDataChanged(userId, 'balance_updated');
-      res.json({ success: true, message: 'تم تعديل بيانات المستخدم بنجاح', user: safeUser });
-    } catch (err) { if (session) { if (session.inTransaction()) await session.abortTransaction(); await session.endSession(); } if (err.statusCode === 404) return res.status(404).json({ error: 'المستخدم غير موجود' }); res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
+    const result = await dataAccess.callSupabaseRpc('operix_admin_adjust_balance_atomic', {
+      p_user_id: userId,
+      p_deposit_balance: depositBalance === undefined ? null : Number(depositBalance),
+      p_profit_balance: profitBalance === undefined ? null : Number(profitBalance),
+      p_balance: balance === undefined ? null : Number(balance),
+      p_admin_user_id: req.user?.id || null,
+      p_reason: 'admin_adjustment'
+    });
+    await createAudit(req, 'update_user_balance', String(userId), { newValue: { balance: result?.wallet?.balance ?? null }, depositBalance, profitBalance });
+    await emitUserDataChanged(userId, 'balance_updated');
+    return res.json({ success: true, message: 'تم تعديل بيانات المستخدم بنجاح', user: result?.user || null, wallet: result?.wallet || null });
   } catch (err) {
     return res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' });
   }
@@ -593,14 +528,16 @@ async function updateUserTier(req, res) {
   try {
     const { userId, tierCode } = req.body;
     const normalizedTier = String(tierCode || '').trim().toUpperCase();
-    const [user, validTier] = await Promise.all([User.findById(userId), VipLevel.findOne({ code: normalizedTier })]);
+    const [user, validTier] = await Promise.all([
+      dataAccess.user.findById(userId),
+      dataAccess.vipLevel.findOne({ code: normalizedTier })
+    ]);
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     if (!validTier) return res.status(400).json({ error: 'المستوى المحدد غير موجود' });
     const oldTier = user.tierCode;
-    user.tierCode = normalizedTier;
-    await user.save();
-    await createAudit(req, 'update_user_tier', user._id.toString(), { oldValue: oldTier, newValue: normalizedTier });
-    await emitUserDataChanged(user._id, 'tier_updated');
+    await dataAccess.user.updateOne({ id: user.id || user._id }, { $set: { tierCode: normalizedTier } });
+    await createAudit(req, 'update_user_tier', String(user.id || user._id), { oldValue: oldTier, newValue: normalizedTier });
+    await emitUserDataChanged(user.id || user._id, 'tier_updated');
     res.json({ success: true, message: 'تم تحديث مستوى المستخدم' });
   } catch (err) { res.status(500).json({ error: 'تعذر تحديث مستوى المستخدم' }); }
 }
@@ -608,19 +545,20 @@ async function updateUserTier(req, res) {
 async function updateUserAccount(req, res) {
   try {
     const { userId, password, walletAddress } = req.body;
-    const user = await User.findById(userId);
+    const user = await dataAccess.user.findById(userId);
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     const oldValue = { walletAddress: user.walletAddress, passwordChanged: false };
+    const updatePayload = {};
     if (password !== undefined && password !== '') {
       if (String(password).length < 8) return res.status(400).json({ error: 'كلمة المرور يجب أن لا تقل عن 8 أحرف' });
-      user.password = await require('bcryptjs').hash(String(password), 12); oldValue.passwordChanged = true;
-      await Session.updateMany({ userId: user._id, revokedAt: null }, { revokedAt: new Date() });
+      updatePayload.password = await require('bcryptjs').hash(String(password), 12);
+      oldValue.passwordChanged = true;
     }
-    if (walletAddress !== undefined) user.walletAddress = String(walletAddress).trim();
-    await user.save();
-    await createAudit(req, 'update_user_account', user._id.toString(), { oldValue, newValue: { walletAddress: user.walletAddress, passwordChanged: oldValue.passwordChanged } });
-    await emitUserDataChanged(user._id, 'account_updated');
-    res.json({ success: true, message: 'تم تحديث بيانات الحساب بنجاح' });
+    if (walletAddress !== undefined) updatePayload.walletAddress = String(walletAddress).trim();
+    if (Object.keys(updatePayload).length) await dataAccess.user.updateOne({ id: user.id || user._id }, { $set: updatePayload });
+    await createAudit(req, 'update_user_account', String(user.id || user._id), { oldValue, newValue: { walletAddress: updatePayload.walletAddress ?? user.walletAddress, passwordChanged: oldValue.passwordChanged } });
+    await emitUserDataChanged(user.id || user._id, 'account_updated');
+    res.json({ success: true, message: 'تم تحديث بيانات الحساب بنجاح', user: { id: user.id || user._id, email: user.email, walletAddress: updatePayload.walletAddress ?? user.walletAddress } });
   } catch (err) { res.status(500).json({ error: 'تعذر تحديث بيانات الحساب' }); }
 }
 
@@ -772,45 +710,7 @@ async function applyWithdrawalAction(transactionId, action, req) {
       p_note: String(req.body?.note || '')
     });
   }
-  const session = await mongoose.startSession();
-  try {
-    let tx;
-    await session.withTransaction(async () => {
-      tx = await Transaction.findById(transactionId).populate('userId').session(session);
-      if (!tx) throw Object.assign(new Error('NOT_FOUND'), { statusCode: 404 });
-      if (tx.status !== 'pending') throw Object.assign(new Error('PROCESSED'), { statusCode: 400 });
-      if (action !== 'approve' && action !== 'reject') throw Object.assign(new Error('INVALID_ACTION'), { statusCode: 400 });
-      tx.status = action === 'approve' ? 'approved' : 'rejected';
-      if (action === 'approve' && tx.type === 'deposit') {
-        const user = await User.findById(tx.userId._id).session(session);
-        if (!user) throw Object.assign(new Error('USER_NOT_FOUND'), { statusCode: 404 });
-        user.wallet = user.wallet || { balance: 0, depositBalance: 0, profitBalance: 0, totalDeposits: 0, totalWithdrawn: 0 };
-        user.wallet.depositBalance = Number((Number(user.wallet.depositBalance || 0) + Number(tx.amount || 0)).toFixed(2));
-        user.wallet.totalDeposits = Number((Number(user.wallet.totalDeposits || 0) + Number(tx.amount || 0)).toFixed(2));
-        user.syncWallet();
-        await user.save({ session });
-      }
-      if (action === 'reject' && tx.type === 'withdraw') {
-        const user = await User.findById(tx.userId._id).session(session);
-        if (!user) throw Object.assign(new Error('USER_NOT_FOUND'), { statusCode: 404 });
-        user.wallet = user.wallet || { balance: 0, depositBalance: 0, profitBalance: 0, totalDeposits: 0, totalWithdrawn: 0 };
-        user.wallet.profitBalance = Number((Number(user.wallet.profitBalance || 0) + Number(tx.amount || 0)).toFixed(2));
-        user.wallet.totalWithdrawn = Number(Math.max(0, Number(user.wallet.totalWithdrawn || 0) - Number(tx.amount || 0)).toFixed(2));
-        user.syncWallet();
-        await user.save({ session });
-      }
-      await tx.save({ session });
-      await createAudit(req, `transaction_${action}`, tx._id.toString(), { type: tx.type, amount: tx.amount, newValue: action }, session);
-    });
-    if (tx?.userId?._id) {
-      await emitUserDataChanged(tx.userId._id, 'transaction_updated');
-      await realtimeService.publish('admin_transaction_updated', { transactionId: tx._id, action, userId: tx.userId._id }, { scope: 'admin' });
-    }
-    return tx;
-  } catch (err) {
-    if (session.inTransaction()) await session.abortTransaction();
-    throw err;
-  } finally { await session.endSession(); }
+  throw Object.assign(new Error('ADMIN_FINANCE_RPC_REQUIRED'), { statusCode: 503 });
 }
 
 function transactionErrorResponse(res, err) {
@@ -844,7 +744,7 @@ async function updateGameSettings(req, res) {
     const settings = req.app.locals.gameSettings;
     ['spinMin', 'spinMax', 'boxMin', 'boxMax', 'dailyGameRewardCap', 'referralsPerCycle'].forEach(key => { if (req.body[key] !== undefined) settings[key] = Number(req.body[key]); });
     if ([settings.spinMin, settings.spinMax, settings.boxMin, settings.boxMax, settings.dailyGameRewardCap].some(value => !Number.isFinite(value) || value < 0) || !Number.isInteger(settings.referralsPerCycle) || settings.referralsPerCycle < 1 || settings.spinMin > settings.spinMax || settings.boxMin > settings.boxMax || settings.dailyGameRewardCap < Math.max(settings.spinMax, settings.boxMax)) return res.status(400).json({ success: false, error: 'إعدادات المكافآت غير صالحة أو السقف اليومي أقل من أعلى مكافأة ممكنة' });
-    const GameSetting = require('../models/GameSetting');
+    const GameSetting = dataAccess.gameSetting;
     await GameSetting.findOneAndUpdate({ key: 'default' }, settings, { upsert: true, new: true, runValidators: true });
     await createAudit(req, 'update_game_settings', null, { newValue: { ...settings } });
     await emitPlatformDataChanged('game_settings_updated');

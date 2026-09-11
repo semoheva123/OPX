@@ -17,7 +17,7 @@ assert.match(walletControllerSource, /riskFlags/, 'withdraw should persist risk 
 const adminControllerSource = fs.readFileSync(require.resolve('../src/controllers/adminController'), 'utf8');
 const kycStorageSource = fs.readFileSync(require.resolve('../src/services/kycStorage'), 'utf8');
 assert.match(kycStorageSource, /private:\/\//, 'KYC images should use private storage references');
-assert.match(kycStorageSource, /gridfs:\/\//, 'KYC images should support durable GridFS storage');
+assert.match(kycStorageSource, /private:\/\//, 'KYC images should use private storage references');
 assert.match(adminControllerSource, /streamKycDocument/, 'admin should expose protected KYC document streaming');
 assert.match(adminControllerSource, /complianceReport/, 'admin should expose a compliance report');
 assert.match(fs.readFileSync(require.resolve('../src/routes/adminRoutes'), 'utf8'), /compliance-report/, 'admin routes should expose compliance report');

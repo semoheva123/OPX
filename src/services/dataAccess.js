@@ -1,45 +1,28 @@
-const mongoose = require('mongoose');
 const crypto = require('crypto');
-const User = require('../models/User');
-const Session = require('../models/Session');
-const SecurityEvent = require('../models/SecurityEvent');
-const Transaction = require('../models/Transaction');
-const FinancialLedger = require('../models/FinancialLedger');
-const VipLevel = require('../models/VipLevel');
-const GameSetting = require('../models/GameSetting');
-const Notification = require('../models/Notification');
-const SupportTicket = require('../models/SupportTicket');
-const SocialFollow = require('../models/SocialFollow');
-const SocialPost = require('../models/SocialPost');
-const Message = require('../models/Message');
-const Broadcast = require('../models/Broadcast');
-const Coupon = require('../models/Coupon');
-const CpaLeadConversion = require('../models/CpaLeadConversion');
-const InvestmentVault = require('../models/InvestmentVault');
-const InvestmentVaultContract = require('../models/InvestmentVaultContract');
-const Staking = require('../models/Staking');
 const { supabaseAdmin } = require('../config/supabase');
 const { getDatabaseMode, assertSupabaseRuntimeReady } = require('../config/database');
 
 const modelMap = {
-  User: { model: User, table: 'users' },
-  Session: { model: Session, table: 'sessions' },
-  SecurityEvent: { model: SecurityEvent, table: 'security_events' },
-  Transaction: { model: Transaction, table: 'transactions' },
-  FinancialLedger: { model: FinancialLedger, table: 'financial_ledger' },
-  VipLevel: { model: VipLevel, table: 'vip_levels' },
-  GameSetting: { model: GameSetting, table: 'game_settings' },
-  Notification: { model: Notification, table: 'notifications' },
-  SupportTicket: { model: SupportTicket, table: 'support_tickets' },
-  SocialFollow: { model: SocialFollow, table: 'social_follows' },
-  SocialPost: { model: SocialPost, table: 'social_posts' },
-  Message: { model: Message, table: 'messages' }
-  ,Broadcast: { model: Broadcast, table: 'broadcasts' }
-  ,Coupon: { model: Coupon, table: 'coupons' }
-  ,CpaLeadConversion: { model: CpaLeadConversion, table: 'cpa_lead_conversions' }
-  ,InvestmentVault: { model: InvestmentVault, table: 'investment_vault' }
-  ,InvestmentVaultContract: { model: InvestmentVaultContract, table: 'investment_vault_contracts' }
-  ,Staking: { model: Staking, table: 'stakings' }
+  User: { table: 'users' },
+  Session: { table: 'sessions' },
+  SecurityEvent: { table: 'security_events' },
+  Transaction: { table: 'transactions' },
+  FinancialLedger: { table: 'financial_ledger' },
+  VipLevel: { table: 'vip_levels' },
+  GameSetting: { table: 'game_settings' },
+  GeneralSetting: { table: 'general_settings' },
+  Notification: { table: 'notifications' },
+  SupportTicket: { table: 'support_tickets' },
+  SocialFollow: { table: 'social_follows' },
+  SocialPost: { table: 'social_posts' },
+  Message: { table: 'messages' },
+  Broadcast: { table: 'broadcasts' },
+  Coupon: { table: 'coupons' },
+  CpaLeadConversion: { table: 'cpa_lead_conversions' },
+  InvestmentVault: { table: 'investment_vault' },
+  InvestmentVaultContract: { table: 'investment_vault_contracts' },
+  Staking: { table: 'stakings' },
+  AuditLog: { table: 'audit_logs' }
 };
 
 function isSupabaseRuntime() {
@@ -329,47 +312,40 @@ const createRepository = (name) => {
       if (isSupabaseRuntime() && supabaseAdmin) {
         return supabaseFindOne(target.table, query);
       }
-      return target.model.findOne(query);
+      return null;
     },
     async find(query = {}, options = {}) {
       if (isSupabaseRuntime() && supabaseAdmin) {
         return supabaseFind(target.table, query, options);
       }
-      let request = target.model.find(query);
-      if (options.select) request = request.select(options.select);
-      if (options.sort) request = request.sort(options.sort);
-      if (Number.isFinite(Number(options.limit))) request = request.limit(Number(options.limit));
-      return request;
+      return [];
     },
     async create(data) {
       if (isSupabaseRuntime() && supabaseAdmin) {
         return supabaseInsert(target.table, normalizeSupabaseDoc(data));
       }
-      return target.model.create(data);
+      return data;
     },
     async countDocuments(query = {}) {
       if (isSupabaseRuntime() && supabaseAdmin) {
         return supabaseCountDocuments(target.table, query);
       }
-      return target.model.countDocuments(query);
+      return 0;
     },
     async updateOne(filter, update) {
       if (isSupabaseRuntime() && supabaseAdmin) {
         return supabaseUpdateOne(target.table, filter, update.$set || update);
       }
-      return target.model.updateOne(filter, update);
+      return { modifiedCount: 0 };
     },
     async updateMany(filter, update) {
       if (isSupabaseRuntime() && supabaseAdmin) {
         return supabaseUpdateMany(target.table, filter, update.$set || update);
       }
-      return target.model.updateMany(filter, update);
+      return { modifiedCount: 0 };
     },
     async aggregate(pipeline = []) {
-      if (isSupabaseRuntime() && supabaseAdmin) {
-        return [];
-      }
-      return target.model.aggregate(pipeline);
+      return [];
     }
   };
 };
@@ -382,27 +358,23 @@ const dataAccess = {
       if (isSupabaseRuntime() && supabaseAdmin) {
         return supabaseFindOne('users', { email: String(email).trim().toLowerCase() });
       }
-      return User.findOne({ email: String(email).trim().toLowerCase() });
+      return null;
     },
     async findById(id) {
       if (isSupabaseRuntime() && supabaseAdmin) {
         return supabaseFindOne('users', { id: String(id) });
       }
-      return User.findById(id);
+      return null;
     },
     async findOne(query = {}) {
       if (isSupabaseRuntime() && supabaseAdmin) {
         return supabaseFindOne('users', query);
       }
-      return User.findOne(query);
+      return null;
     },
     async find(query = {}, options = {}) {
       if (isSupabaseRuntime() && supabaseAdmin) return supabaseFind('users', query, options);
-      let request = User.find(query);
-      if (options.select) request = request.select(options.select);
-      if (options.sort) request = request.sort(options.sort);
-      if (Number.isFinite(Number(options.limit))) request = request.limit(Number(options.limit));
-      return request;
+      return [];
     },
     async create(data) {
       if (isSupabaseRuntime()) {
@@ -426,17 +398,17 @@ const dataAccess = {
         }
         return user;
       }
-      return User.create(data);
+      return null;
     },
     async updateOne(filter, update) {
       if (isSupabaseRuntime() && supabaseAdmin) return supabaseUpdateUser(filter, update.$set || update);
-      return User.updateOne(filter, update);
+      return { modifiedCount: 0 };
     },
     async countDocuments(query = {}) {
       if (isSupabaseRuntime() && supabaseAdmin) {
         return supabaseCountDocuments('users', query);
       }
-      return User.countDocuments(query);
+      return 0;
     }
   },
   session: {
@@ -454,31 +426,27 @@ const dataAccess = {
           created_at: data.createdAt || new Date()
         }));
       }
-      return Session.create(data);
+      return null;
     },
     async updateMany(filter, update) {
       if (isSupabaseRuntime() && supabaseAdmin) {
         return supabaseUpdateMany('sessions', filter, update.$set || update);
       }
-      return Session.updateMany(filter, update);
+      return { modifiedCount: 0 };
     },
     async findOne(query = {}) {
       if (isSupabaseRuntime() && supabaseAdmin) {
         return supabaseFindOne('sessions', query);
       }
-      return Session.findOne(query);
+      return null;
     },
     async find(query = {}, options = {}) {
       if (isSupabaseRuntime() && supabaseAdmin) return supabaseFind('sessions', query, options);
-      let request = Session.find(query);
-      if (options.select) request = request.select(options.select);
-      if (options.sort) request = request.sort(options.sort);
-      if (Number.isFinite(Number(options.limit))) request = request.limit(Number(options.limit));
-      return request;
+      return [];
     },
     async updateOne(filter, update) {
       if (isSupabaseRuntime() && supabaseAdmin) return supabaseUpdateOne('sessions', filter, update.$set || update);
-      return Session.updateOne(filter, update);
+      return { modifiedCount: 0 };
     }
   },
   securityEvent: {
@@ -494,17 +462,18 @@ const dataAccess = {
           created_at: data.createdAt || new Date()
         }));
       }
-      return SecurityEvent.create(data);
+      return null;
     },
     async countDocuments(query = {}) {
       if (isSupabaseRuntime() && supabaseAdmin) {
         return supabaseCountDocuments('security_events', query);
       }
-      return SecurityEvent.countDocuments(query);
+      return 0;
     }
   },
   vipLevel: createRepository('VipLevel'),
   gameSetting: createRepository('GameSetting'),
+  generalSetting: createRepository('GeneralSetting'),
   notification: createRepository('Notification'),
   supportTicket: createRepository('SupportTicket'),
   socialFollow: createRepository('SocialFollow'),
@@ -516,6 +485,7 @@ const dataAccess = {
   investmentVault: createRepository('InvestmentVault'),
   investmentVaultContract: createRepository('InvestmentVaultContract'),
   staking: createRepository('Staking'),
+  auditLog: createRepository('AuditLog'),
   transaction: {
     async create(data) {
       if (isSupabaseRuntime() && supabaseAdmin) {
@@ -542,31 +512,24 @@ const dataAccess = {
         });
         return supabaseInsert('transactions', payload);
       }
-      return Transaction.create(data);
+      return null;
     },
     async findOne(query = {}) {
       if (isSupabaseRuntime() && supabaseAdmin) {
         return supabaseFindOne('transactions', query);
       }
-      return Transaction.findOne(query);
+      return null;
     },
     async find(query = {}, options = {}) {
       if (isSupabaseRuntime() && supabaseAdmin) return supabaseFind('transactions', query, options);
-      let request = Transaction.find(query);
-      if (options.select) request = request.select(options.select);
-      if (options.sort) request = request.sort(options.sort);
-      if (Number.isFinite(Number(options.limit))) request = request.limit(Number(options.limit));
-      return request;
+      return [];
     },
     async countDocuments(query = {}) {
       if (isSupabaseRuntime() && supabaseAdmin) return supabaseCountDocuments('transactions', query);
-      return Transaction.countDocuments(query);
+      return 0;
     },
     async aggregate(pipeline = []) {
-      if (isSupabaseRuntime() && supabaseAdmin) {
-        return [];
-      }
-      return Transaction.aggregate(pipeline);
+      return [];
     }
   },
   financialLedger: {
@@ -591,7 +554,7 @@ const dataAccess = {
         });
         return supabaseInsert('financial_ledger', payload);
       }
-      return FinancialLedger.create(data);
+      return null;
     }
   }
 };

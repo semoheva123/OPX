@@ -1,6 +1,7 @@
 const crypto = require('node:crypto');
 const { createClient } = require('@supabase/supabase-js');
 const { getDatabaseMode } = require('../config/database');
+const dataAccess = require('./dataAccess');
 
 async function resolveSupabaseUserIdFromMongoUser(mongoUserId, fallbackEmail) {
   const client = getSupabaseAdminClient();
@@ -9,8 +10,7 @@ async function resolveSupabaseUserIdFromMongoUser(mongoUserId, fallbackEmail) {
   let email = fallbackEmail;
   if (!email && mongoUserId) {
     try {
-      const User = require('../models/User');
-      const user = await User.findById(mongoUserId).select('email').lean();
+      const user = await dataAccess.user.findById(mongoUserId);
       email = user?.email || null;
     } catch (error) {
       console.warn('Unable to resolve Mongo user email for Supabase mirror:', error.message);

@@ -1,8 +1,5 @@
-const SocialPost = require('../models/SocialPost');
-const User = require('../models/User');
 const { moderateText } = require('../services/socialSafetyBot');
 const realtimeService = require('../services/realtimeService');
-const SocialFollow = require('../models/SocialFollow');
 const dataAccess = require('../services/dataAccess');
 
 const MAX_IMAGE_DATA_LENGTH = 2 * 1024 * 1024;
@@ -96,9 +93,9 @@ async function createPost(req, res) {
     const user = await User.findById(req.user.id).select('email referralCode isOfficialPlatform');
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     const authorLabel = user.isOfficialPlatform ? 'OPERIX Official' : user.referralCode ? `عضو ${user.referralCode}` : `عضو ${String(user.email).slice(0, 2)}•••`;
-    const post = await SocialPost.create({ authorId: user._id, authorLabel, content, hashtags, image_url, isOfficialAi: false, source: 'user', status: moderation.status, moderationReason: moderation.matchedWord ? 'banned_word' : '' });
-    await realtimeService.publish('social_post_created', { postId: post._id, status: post.status }, { scope: 'user' });
-    res.status(201).json({ success: true, message: moderation.allowed ? 'تم نشر المنشور' : 'تم حجب المنشور تلقائياً لمخالفته قواعد الجدار', post: post.toObject() });
+    const post = await dataAccess.socialPost.create({ authorId: user.id || user._id, authorLabel, content, hashtags, image_url, isOfficialAi: false, source: 'user', status: moderation.status, moderationReason: moderation.matchedWord ? 'banned_word' : '' });
+    await realtimeService.publish('social_post_created', { postId: post.id || post._id, status: post.status }, { scope: 'user' });
+    res.status(201).json({ success: true, message: moderation.allowed ? 'تم نشر المنشور' : 'تم حجب المنشور تلقائياً لمخالفته قواعد الجدار', post: post });
   } catch (error) {
     if (error.statusCode === 400) return res.status(400).json({ error: 'رابط الصورة يجب أن يكون HTTPS من ImgBB فقط' });
     res.status(500).json({ error: 'تعذر نشر المحتوى حالياً' });

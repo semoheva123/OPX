@@ -1,5 +1,6 @@
-const GeneralSetting = require('../models/GeneralSetting');
 const { supabaseAdmin } = require('../config/supabase');
+const dataAccess = require('../services/dataAccess');
+const GeneralSetting = dataAccess.generalSetting;
 
 const defaultSettings = { platformName: 'OPERIX', supportUrl: '', maintenanceMode: false, maintenanceMessage: 'الخدمة متاحة حاليًا' };
 

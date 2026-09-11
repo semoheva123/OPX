@@ -19,7 +19,6 @@
     "groq-sdk": "^0.3.0",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.3.1",
     "node-cron": "^4.2.1",
     "nodemailer": "^9.1.1",
     "otplib": "12.0.1",
@@ -33,9 +32,9 @@
     "node": "24.x"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "baseline-browser-mapping": "^2.11.20",
     "browserslist": "^4.28.8",
-    "caniuse-lite": "^1.0.30001810",
-    "mongodb-memory-server": "^11.2.0"
+    "caniuse-lite": "^1.0.30001810"
   }
 }

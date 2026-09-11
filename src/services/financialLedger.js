@@ -1,5 +1,6 @@
-const FinancialLedger = require('../models/FinancialLedger');
 const { maybeMirrorDocument } = require('./supabaseWriteMirror');
+const dataAccess = require('./dataAccess');
+const FinancialLedger = dataAccess.financialLedger;
 
 async function recordLedgerEntry({ userId, type, amount, feeAmount = 0, netAmount = 0, currency = 'USDT', status = 'approved', source = 'system', referenceId = null, notes = '', metadata = {}, balanceBefore = 0, balanceAfter = 0 }, session = null) {
   const payload = {

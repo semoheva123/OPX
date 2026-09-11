@@ -1,5 +1,4 @@
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
 const helmet = require('helmet');
@@ -22,11 +21,11 @@ const messageRoutes = require('./routes/messageRoutes');
 const cpaLeadRoutes = require('./routes/cpaLeadRoutes');
 const { verifyAdmin } = require('./middlewares/auth');
 const jwt = require('jsonwebtoken');
-const Session = require('./models/Session');
-const User = require('./models/User');
 const realtimeService = require('./services/realtimeService');
 const { checkSupabaseConnection } = require('./config/supabase');
 const dataAccess = require('./services/dataAccess');
+const Session = dataAccess.session;
+const User = dataAccess.user;
 const { getDatabaseMode } = require('./config/database');
 
 function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
@@ -61,10 +60,8 @@ function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
   app.get('/api/health', async (req, res) => {
     const runtimeMode = getDatabaseMode();
     const supabase = await checkSupabaseConnection().catch(error => ({ configured: true, reachable: false, error: error.message }));
-    const mongoReady = mongoose.connection.readyState === 1;
-    const databaseReady = runtimeMode === 'supabase' ? Boolean(supabase?.reachable) : mongoReady;
-    const databaseName = runtimeMode === 'supabase' ? 'supabase' : (mongoReady ? 'mongo' : 'disconnected');
-    res.status(databaseReady ? 200 : 503).json({ success: databaseReady, status: databaseReady ? 'ok' : 'degraded', database: databaseReady ? databaseName : 'disconnected', supabase, migrationMode: runtimeMode, deploymentVersion: req.app.locals.deploymentVersion, uptime: Math.floor(process.uptime()), timestamp: new Date().toISOString() });
+    const databaseReady = Boolean(supabase?.reachable);
+    res.status(databaseReady ? 200 : 503).json({ success: databaseReady, status: databaseReady ? 'ok' : 'degraded', database: databaseReady ? 'supabase' : 'disconnected', supabase, migrationMode: runtimeMode, deploymentVersion: req.app.locals.deploymentVersion, uptime: Math.floor(process.uptime()), timestamp: new Date().toISOString() });
   });
 
   const runCronJob = async (req, res) => {

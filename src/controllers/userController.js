@@ -1,6 +1,3 @@
-const User = require('../models/User');
-const Transaction = require('../models/Transaction');
-const VipLevel = require('../models/VipLevel');
 const bcrypt = require('bcryptjs');
 const { authenticator } = require('otplib');
 const QRCode = require('qrcode');
@@ -10,9 +7,12 @@ const generateSecret = () => authenticator.generateSecret();
 const generateURI = ({ issuer, label, secret }) => authenticator.keyuri(label, issuer, secret);
 const verifySync = ({ token, secret }) => ({ valid: authenticator.check(token, secret) });
 const crypto = require('crypto');
-const Session = require('../models/Session');
 const { syncGameCredits } = require('../services/gameAccess');
 const dataAccess = require('../services/dataAccess');
+const User = dataAccess.user;
+const Transaction = dataAccess.transaction;
+const VipLevel = dataAccess.vipLevel;
+const Session = dataAccess.session;
 const emailFrom = String(process.env.EMAIL_FROM || '').trim();
 const imgbbStorage = require('../services/imgbbStorage');
 
