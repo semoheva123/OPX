@@ -395,8 +395,8 @@ async function userDetails(req, res) {
     if (dataAccess.isSupabaseRuntime()) {
       const userRecord = await dataAccess.user.findById(req.params.userId);
       if (!userRecord) return res.status(404).json({ error: 'المستخدم غير موجود' });
-      const user = { ...userRecord };
-      ['password', 'passwordHash', 'resetOTP', 'resetOTPExpire', 'resetOTPAttempts', 'twoFactorCode', 'twoFactorExpire', 'twoFactorSecret', 'adminTwoFactorSecret', 'adminInviteToken'].forEach(key => delete user[key]);
+      const safeUserFields = ['id', '_id', 'email', 'role', 'emailVerified', 'isBanned', 'tierCode', 'referralCode', 'referredBy', 'walletAddress', 'kycStatus', 'adminTwoFactorEnabled', 'assetWallet', 'createdAt', 'updatedAt', 'lastLoginAt', 'metadata', 'profileImage', 'coverImage', 'socialBio', 'kycFullName', 'kycDocumentType', 'kycDocumentNumber', 'kycDocumentUrl', 'kycCountry', 'kycSubmittedAt', 'kycReviewedAt', 'kycReviewedBy', 'kycNotes', 'kycReason', 'wallet'];
+      const user = Object.fromEntries(safeUserFields.filter(key => userRecord[key] !== undefined).map(key => [key, userRecord[key]]));
       const userId = user.id || user._id;
       const [transactions, auditLogs, sessions] = await Promise.all([
         dataAccess.transaction.find({ userId }, { sort: { createdAt: -1 }, limit: 50 }).catch(() => []),
