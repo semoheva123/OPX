@@ -617,6 +617,9 @@ async function updateUser(req, res) {
     await emitUserDataChanged(userId, 'balance_updated');
     return res.json({ success: true, message: 'تم تعديل بيانات المستخدم بنجاح', user: result?.user || null, wallet: result?.wallet || null });
   } catch (err) {
+    const errorCode = err.code || err.details?.code;
+    if (err.message === 'USER_NOT_FOUND' || errorCode === 'P0002') return res.status(404).json({ error: 'المستخدم غير موجود' });
+    if (err.message === 'USER_WALLET_NOT_FOUND') return res.status(409).json({ error: 'محفظة المستخدم غير موجودة' });
     return res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' });
   }
 }
