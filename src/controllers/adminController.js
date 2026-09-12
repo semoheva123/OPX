@@ -722,7 +722,7 @@ async function listReferrals(req, res) {
     const filter = { referredBy: { $exists: true, $ne: null } };
     if (req.query.search) filter.email = { $regex: String(req.query.search).trim(), $options: 'i' };
     const [referrals, total] = await Promise.all([
-      User.find(filter).select('email referralCode referredBy tierCode isBanned wallet.totalDeposits createdAt').sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit),
+      User.find(filter).select('email referralCode referredBy tierCode isBanned createdAt').sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit),
       User.countDocuments(filter)
     ]);
     res.json({ success: true, referrals, page, totalPages: Math.max(1, Math.ceil(total / limit)), total });
@@ -731,9 +731,9 @@ async function listReferrals(req, res) {
 
 async function referralTree(req, res) {
   try {
-    const root = await User.findById(req.params.userId).select('email referralCode referredBy tierCode isBanned wallet.totalDeposits createdAt');
+    const root = await User.findById(req.params.userId).select('email referralCode referredBy tierCode isBanned createdAt');
     if (!root) return res.status(404).json({ error: 'المستخدم غير موجود' });
-    const users = await User.find({ referredBy: { $exists: true, $ne: null } }).select('email referralCode referredBy tierCode isBanned wallet.totalDeposits createdAt').lean();
+    const users = await User.find({ referredBy: { $exists: true, $ne: null } }).select('email referralCode referredBy tierCode isBanned createdAt').lean();
     const childrenByReferrer = new Map();
     for (const user of users) {
       const children = childrenByReferrer.get(user.referredBy) || [];

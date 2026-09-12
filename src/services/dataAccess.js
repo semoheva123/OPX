@@ -497,6 +497,10 @@ const dataAccess = {
         return supabaseCountDocuments('security_events', query);
       }
       return 0;
+    },
+    async find(query = {}, options = {}) {
+      if (isSupabaseRuntime() && supabaseAdmin) return supabaseFind('security_events', query, options);
+      return [];
     }
   },
   vipLevel: createRepository('VipLevel'),
