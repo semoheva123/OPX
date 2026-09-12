@@ -8,16 +8,23 @@
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-image: url('https://images.unsplash.com/photo-1641897037078-e91a4afcce94?auto=format&q=80&w=1800');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
   z-index: 0;
   opacity: 0.22;
   pointer-events: none;
+  overflow: hidden;
   will-change: transform;
   animation: scrollTechBg linear both;
   animation-timeline: scroll(root);
+}
+
+.tech-grid-bg-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.78;
+  filter: saturate(1.1) contrast(1.08) brightness(0.82);
 }
 
 @keyframes scrollTechBg {
@@ -27,4 +34,35 @@
   to {
     transform: scale(1.15) translateY(30px) rotate(3deg);
   }
-} 
+}
+
+/* FAQ visibility guard for the public landing page */
+#landing-faq details {
+  display: block;
+}
+
+#landing-faq details > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  list-style: none;
+  cursor: pointer;
+}
+
+#landing-faq details > summary::-webkit-details-marker {
+  display: none;
+}
+
+#landing-faq details > summary::marker {
+  display: none;
+}
+
+#landing-faq details > p {
+  display: block;
+}
+
+#landing-faq details:not([open]) > p {
+  display: block;
+}
+
