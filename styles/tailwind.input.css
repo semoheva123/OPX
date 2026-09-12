@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+body {
+  background-color: #020617;
+}
+
 .tech-grid-bg {
   position: fixed;
   top: 0;
@@ -13,6 +17,11 @@
   pointer-events: none;
   overflow: hidden;
   will-change: transform;
+  background-image: url('https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&q=80&w=1800');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: saturate(1.15) contrast(1.1) brightness(0.95);
   animation: scrollTechBg linear both;
   animation-timeline: scroll(root);
 }
