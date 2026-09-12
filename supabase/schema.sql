@@ -698,4 +698,79 @@ begin
 end;
 $$;
 
+create or replace function public.operix_admin_emergency_vault_release_atomic(
+  p_vault_id uuid,
+  p_admin_user_id uuid,
+  p_owner_user_id uuid,
+  p_penalty_rate numeric default 0.30
+) returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  vault_row investment_vault%rowtype;
+  user_wallet wallet_balances%rowtype;
+  owner_wallet wallet_balances%rowtype;
+  user_amount_value numeric;
+  penalty_amount_value numeric;
+  user_before numeric;
+  owner_before numeric;
+  release_tx_id uuid;
+  penalty_tx_id uuid;
+begin
+  if p_penalty_rate is null or p_penalty_rate <= 0 or p_penalty_rate >= 1 then
+    raise exception using errcode = 'P0001', message = 'INVALID_PENALTY_RATE';
+  end if;
+  if p_owner_user_id is null then
+    raise exception using errcode = 'P0001', message = 'VAULT_OWNER_NOT_CONFIGURED';
+  end if;
+
+  select * into vault_row from investment_vault where id = p_vault_id for update;
+  if vault_row.id is null then raise exception using errcode = 'P0002', message = 'VAULT_NOT_FOUND'; end if;
+  if vault_row.status <> 'active' then raise exception using errcode = 'P0001', message = 'VAULT_ALREADY_RELEASED'; end if;
+  if vault_row.user_id = p_owner_user_id then raise exception using errcode = 'P0001', message = 'VAULT_OWNER_SAME_AS_USER'; end if;
+
+  select * into user_wallet from wallet_balances where user_id = vault_row.user_id for update;
+  if user_wallet.id is null then raise exception using errcode = 'P0002', message = 'USER_WALLET_NOT_FOUND'; end if;
+  select * into owner_wallet from wallet_balances where user_id = p_owner_user_id for update;
+  if owner_wallet.id is null then raise exception using errcode = 'P0002', message = 'OWNER_WALLET_NOT_FOUND'; end if;
+
+  penalty_amount_value := round(vault_row.amount * p_penalty_rate, 4);
+  user_amount_value := round(vault_row.amount - penalty_amount_value, 4);
+  user_before := user_wallet.balance;
+  owner_before := owner_wallet.balance;
+
+  update wallet_balances set
+    profit_balance = profit_balance + user_amount_value,
+    usdt_balance = usdt_balance + user_amount_value,
+    balance = deposit_balance + profit_balance + user_amount_value,
+    updated_at = now()
+  where user_id = vault_row.user_id;
+
+  update wallet_balances set
+    profit_balance = profit_balance + penalty_amount_value,
+    usdt_balance = usdt_balance + penalty_amount_value,
+    balance = deposit_balance + profit_balance + penalty_amount_value,
+    updated_at = now()
+  where user_id = p_owner_user_id;
+
+  update investment_vault set status = 'emergency_released', penalty_amount = penalty_amount_value, updated_at = now() where id = p_vault_id;
+
+  insert into transactions(user_id, type, status, amount, gross_amount, usdt_amount, wallet_address)
+  values(vault_row.user_id, 'vault_early_release', 'approved', user_amount_value, vault_row.amount, user_amount_value, 'Emergency vault release') returning id into release_tx_id;
+  insert into transactions(user_id, type, status, amount, gross_amount, usdt_amount, wallet_address)
+  values(p_owner_user_id, 'vault_penalty', 'approved', penalty_amount_value, penalty_amount_value, penalty_amount_value, 'Vault emergency release penalty') returning id into penalty_tx_id;
+
+  insert into financial_ledger(user_id, type, currency, amount, net_amount, balance_before, balance_after, status, source, reference_id, metadata)
+  values(vault_row.user_id, 'vault_early_release', 'USDT', user_amount_value, user_amount_value, user_before, user_before + user_amount_value, 'approved', 'admin_emergency_vault_release', release_tx_id::text, jsonb_build_object('vaultId', p_vault_id, 'penaltyAmount', penalty_amount_value, 'adminUserId', p_admin_user_id));
+  insert into financial_ledger(user_id, type, currency, amount, net_amount, balance_before, balance_after, status, source, reference_id, metadata)
+  values(p_owner_user_id, 'vault_penalty', 'USDT', penalty_amount_value, penalty_amount_value, owner_before, owner_before + penalty_amount_value, 'approved', 'admin_emergency_vault_release', penalty_tx_id::text, jsonb_build_object('vaultId', p_vault_id, 'beneficiaryUserId', vault_row.user_id, 'adminUserId', p_admin_user_id));
+  insert into audit_logs(action, entity, actor_id, metadata, created_at)
+  values('vault_emergency_release', p_vault_id::text, p_admin_user_id, jsonb_build_object('userId', vault_row.user_id, 'ownerUserId', p_owner_user_id, 'returnedAmount', user_amount_value, 'penaltyAmount', penalty_amount_value), now());
+
+  return jsonb_build_object('vault', (select row_to_json(v) from investment_vault v where v.id = p_vault_id), 'userAmount', user_amount_value, 'penaltyAmount', penalty_amount_value);
+end;
+$$;
+
 select table_name from information_schema.tables where table_schema = 'public' order by table_name;

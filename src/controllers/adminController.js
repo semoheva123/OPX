@@ -363,7 +363,29 @@ async function listInvestmentVaults(req, res) {
 }
 
 async function emergencyReleaseInvestmentVault(req, res) {
-  return res.status(503).json({ error: 'الفتح الاضطراري للخزنة غير متاح حتى تطبيق RPC الإدارة الذرية في Supabase' });
+  try {
+    if (!dataAccess.isSupabaseRuntime()) return res.status(503).json({ error: 'الفتح الاضطراري متاح فقط في وضع Supabase' });
+    const ownerUserId = String(process.env.VAULT_OWNER_USER_ID || '').trim();
+    if (!ownerUserId) return res.status(503).json({ error: 'لم يتم ضبط حساب مالك الخزنة في إعدادات الإنتاج' });
+    const result = await dataAccess.callSupabaseRpc('operix_admin_emergency_vault_release_atomic', {
+      p_vault_id: req.params.vaultId,
+      p_admin_user_id: req.user?.id || req.user?._id || null,
+      p_owner_user_id: ownerUserId,
+      p_penalty_rate: 0.30
+    });
+    const vaultUserId = result?.vault?.userId || result?.vault?.user_id;
+    await emitUserDataChanged(vaultUserId, 'vault_emergency_released');
+    await emitUserDataChanged(ownerUserId, 'vault_penalty_received');
+    return res.json({ success: true, message: 'تم تنفيذ الفتح الاضطراري وتسجيل توزيع 70/30', result });
+  } catch (error) {
+    const code = error.code || error.details?.code;
+    if (error.message === 'VAULT_OWNER_NOT_CONFIGURED') return res.status(503).json({ error: 'لم يتم ضبط حساب مالك الخزنة في إعدادات الإنتاج' });
+    if (error.message === 'VAULT_NOT_FOUND' || code === 'P0002') return res.status(404).json({ error: 'الخزنة غير موجودة' });
+    if (error.message === 'VAULT_ALREADY_RELEASED') return res.status(409).json({ error: 'تمت معالجة هذه الخزنة سابقًا' });
+    if (error.message === 'OWNER_WALLET_NOT_FOUND') return res.status(409).json({ error: 'محفظة مالك الخزنة غير موجودة' });
+    console.error('Emergency vault release error:', error.message);
+    return res.status(500).json({ error: 'تعذر تنفيذ الفتح الاضطراري للخزنة' });
+  }
 }
 
 async function riskSummary(req, res) {
