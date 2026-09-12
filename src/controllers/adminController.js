@@ -396,7 +396,7 @@ async function userDetails(req, res) {
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     const [transactions, auditLogs, sessions] = await Promise.all([
       Transaction.find({ userId: user._id }).sort({ createdAt: -1 }).limit(50).lean(),
-      AuditLog.find({ targetId: user._id.toString() }).populate('adminId', 'email').sort({ createdAt: -1 }).limit(50).lean(),
+      AuditLog.find({ entity: user._id.toString() }).populate('adminId', 'email').sort({ createdAt: -1 }).limit(50).lean(),
       Session.find({ userId: user._id, revokedAt: null, expiresAt: { $gt: new Date() } }).select('-jti').sort({ lastSeenAt: -1 }).lean()
     ]);
     res.json({ success: true, user, transactions, auditLogs, sessions });
@@ -674,7 +674,7 @@ async function transactionDetails(req, res) {
   try {
     const transaction = await Transaction.findById(req.params.transactionId).populate('userId', 'email tierCode wallet walletAddress').lean();
     if (!transaction) return res.status(404).json({ error: 'المعاملة غير موجودة' });
-    const auditLogs = await AuditLog.find({ targetId: transaction._id.toString() }).populate('adminId', 'email').sort({ createdAt: -1 }).limit(20).lean();
+    const auditLogs = await AuditLog.find({ entity: transaction._id.toString() }).populate('adminId', 'email').sort({ createdAt: -1 }).limit(20).lean();
     res.json({ success: true, transaction, auditLogs });
   } catch (error) { res.status(500).json({ error: 'تعذر تحميل تفاصيل المعاملة' }); }
 }
@@ -707,7 +707,7 @@ async function listAuditLogs(req, res) {
     const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
     const filter = {};
     if (req.query.action && req.query.action !== 'all') filter.action = String(req.query.action).slice(0, 80);
-    if (req.query.search) filter.$or = [{ action: { $regex: String(req.query.search).slice(0, 80), $options: 'i' } }, { targetId: { $regex: String(req.query.search).slice(0, 120), $options: 'i' } }];
+    if (req.query.search) filter.$or = [{ action: { $regex: String(req.query.search).slice(0, 80), $options: 'i' } }, { entity: { $regex: String(req.query.search).slice(0, 120), $options: 'i' } }];
     if (req.query.date) { const start = new Date(`${req.query.date}T00:00:00.000Z`); const end = new Date(start); end.setUTCDate(end.getUTCDate() + 1); if (!Number.isNaN(start.valueOf())) filter.createdAt = { $gte: start, $lt: end }; }
     const [logs, total] = await Promise.all([
       AuditLog.find(filter).populate('adminId', 'email').sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit),
