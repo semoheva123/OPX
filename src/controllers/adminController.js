@@ -957,12 +957,13 @@ async function bulkWithdrawalAction(req, res) {
 function gameSettings(req, res) { res.json({ success: true, settings: req.app.locals.gameSettings }); }
 async function updateGameSettings(req, res) {
   try {
-    const settings = req.app.locals.gameSettings;
+    const settings = { ...req.app.locals.gameSettings };
     ['spinMin', 'spinMax', 'boxMin', 'boxMax', 'dailyGameRewardCap', 'referralsPerCycle'].forEach(key => { if (req.body[key] !== undefined) settings[key] = Number(req.body[key]); });
     if ([settings.spinMin, settings.spinMax, settings.boxMin, settings.boxMax, settings.dailyGameRewardCap].some(value => !Number.isFinite(value) || value < 0) || !Number.isInteger(settings.referralsPerCycle) || settings.referralsPerCycle < 1 || settings.spinMin > settings.spinMax || settings.boxMin > settings.boxMax || settings.dailyGameRewardCap < Math.max(settings.spinMax, settings.boxMax)) return res.status(400).json({ success: false, error: 'إعدادات المكافآت غير صالحة أو السقف اليومي أقل من أعلى مكافأة ممكنة' });
     const existing = await dataAccess.gameSetting.findOne({ key: 'default' });
     if (existing) await dataAccess.gameSetting.updateOne({ id: existing.id }, settings);
     else await dataAccess.gameSetting.create({ key: 'default', ...settings });
+    req.app.locals.gameSettings = settings;
     await createAudit(req, 'update_game_settings', null, { newValue: { ...settings } });
     await emitPlatformDataChanged('game_settings_updated');
     res.json({ success: true, message: 'تم حفظ إعدادات الألعاب بنجاح', settings });
