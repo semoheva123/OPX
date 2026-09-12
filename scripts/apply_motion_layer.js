@@ -13,7 +13,14 @@ const files = fs.readdirSync(root)
 for (const file of files) {
   const full = path.join(root, file);
   let html = fs.readFileSync(full, 'utf8');
-  if (html.includes('Safe scroll-driven motion layer for OPERIX')) continue;
+
+  const marker = '/* ===== Safe scroll-driven motion layer for OPERIX ===== */';
+  const markerStart = html.indexOf(marker);
+  const oldStyleClose = html.lastIndexOf('</style>');
+
+  if (markerStart >= 0 && oldStyleClose >= 0) {
+    html = html.slice(0, markerStart) + html.slice(oldStyleClose);
+  }
 
   const styleClose = html.lastIndexOf('</style>');
   if (styleClose >= 0) {
