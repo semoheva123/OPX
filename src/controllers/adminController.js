@@ -393,13 +393,15 @@ async function listUsers(req, res) {
 async function userDetails(req, res) {
   try {
     if (dataAccess.isSupabaseRuntime()) {
-      const user = await dataAccess.user.findById(req.params.userId);
-      if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
+      const userRecord = await dataAccess.user.findById(req.params.userId);
+      if (!userRecord) return res.status(404).json({ error: 'المستخدم غير موجود' });
+      const user = { ...userRecord };
+      ['password', 'passwordHash', 'resetOTP', 'resetOTPExpire', 'resetOTPAttempts', 'twoFactorCode', 'twoFactorExpire', 'twoFactorSecret', 'adminTwoFactorSecret', 'adminInviteToken'].forEach(key => delete user[key]);
       const userId = user.id || user._id;
       const [transactions, auditLogs, sessions] = await Promise.all([
-        dataAccess.transaction.find({ userId }, { sort: { createdAt: -1 }, limit: 50 }),
-        dataAccess.auditLog.find({ entity: String(userId) }, { sort: { createdAt: -1 }, limit: 50 }),
-        dataAccess.session.find({ userId, revokedAt: null, expiresAt: { $gt: new Date() } }, { sort: { createdAt: -1 }, limit: 50 })
+        dataAccess.transaction.find({ userId }, { sort: { createdAt: -1 }, limit: 50 }).catch(() => []),
+        dataAccess.auditLog.find({ entity: String(userId) }, { sort: { createdAt: -1 }, limit: 50 }).catch(() => []),
+        dataAccess.session.find({ userId, revokedAt: null, expiresAt: { $gt: new Date() } }, { sort: { createdAt: -1 }, limit: 50 }).catch(() => [])
       ]);
       return res.json({ success: true, user, transactions, auditLogs, sessions: sessions.map(session => { const safe = { ...session }; delete safe.jti; return safe; }) });
     }
