@@ -9,6 +9,7 @@
           "*.html",
           "app.js",
           "*.svg",
+          "*.mp4",
           "dist/**",
           "styles/**",
           "sw.js",
