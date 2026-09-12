@@ -705,26 +705,34 @@ async function updateUserRole(req, res) {
   } catch (err) { res.status(500).json({ error: 'تعذر تحديث صلاحيات المستخدم' }); }
 }
 
+async function findAdminFinancialTransactions(query = {}) {
+  const financialTypes = ['withdraw', 'deposit', 'vault_lock', 'vault_release', 'vault_early_release', 'vault_penalty', 'token_burn'];
+  const filter = { type: { $in: financialTypes } };
+  if (query.status && query.status !== 'all') filter.status = query.status;
+  if (query.type && query.type !== 'all' && financialTypes.includes(query.type)) filter.type = query.type;
+  if (query.network && ['TRC20', 'BEP20'].includes(query.network)) filter.network = query.network;
+  if (query.from || query.to) {
+    filter.createdAt = {};
+    if (query.from) filter.createdAt.$gte = new Date(`${query.from}T00:00:00.000Z`);
+    if (query.to) { const end = new Date(`${query.to}T00:00:00.000Z`); end.setUTCDate(end.getUTCDate() + 1); filter.createdAt.$lt = end; }
+  }
+  let transactions = await dataAccess.transaction.find(filter, { sort: { createdAt: -1 }, limit: 10000 });
+  const search = String(query.search || '').trim().toLowerCase().slice(0, 120);
+  if (search) {
+    const users = await dataAccess.user.find({}, { limit: 10000 });
+    const matchingUserIds = new Set(users.filter(user => String(user.email || '').toLowerCase().includes(search)).map(user => String(user.id || user._id)));
+    transactions = transactions.filter(transaction => String(transaction.txHash || '').toLowerCase().includes(search) || String(transaction.walletAddress || '').toLowerCase().includes(search) || matchingUserIds.has(String(transaction.userId)));
+  }
+  const users = await dataAccess.user.find({}, { limit: 10000 });
+  const usersById = new Map(users.map(user => [String(user.id || user._id), user]));
+  return transactions.map(transaction => ({ ...transaction, userId: usersById.get(String(transaction.userId)) || transaction.userId }));
+}
+
 async function listWithdrawals(req, res) {
   try {
     const page = Math.max(1, Number(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 10));
-    const financialTypes = ['withdraw', 'deposit', 'vault_lock', 'vault_release', 'vault_early_release', 'vault_penalty', 'token_burn'];
-    const filter = { type: { $in: financialTypes } };
-    if (req.query.status && req.query.status !== 'all') filter.status = req.query.status;
-    if (req.query.type && req.query.type !== 'all' && financialTypes.includes(req.query.type)) filter.type = req.query.type;
-    if (req.query.network && ['TRC20', 'BEP20'].includes(req.query.network)) filter.network = req.query.network;
-    if (req.query.search) {
-      const search = String(req.query.search).trim().slice(0, 120);
-      const users = await User.find({ email: { $regex: search, $options: 'i' } }).select('_id').lean();
-      filter.$or = [{ txHash: { $regex: search, $options: 'i' } }, { walletAddress: { $regex: search, $options: 'i' } }, { userId: { $in: users.map(user => user._id) } }];
-    }
-    if (req.query.from || req.query.to) {
-      filter.createdAt = {};
-      if (req.query.from) filter.createdAt.$gte = new Date(`${req.query.from}T00:00:00.000Z`);
-      if (req.query.to) { const end = new Date(`${req.query.to}T00:00:00.000Z`); end.setUTCDate(end.getUTCDate() + 1); filter.createdAt.$lt = end; }
-    }
-    const allTransactions = await dataAccess.transaction.find(filter, { sort: { createdAt: -1 }, limit: 10000 });
+    const allTransactions = await findAdminFinancialTransactions(req.query);
     const total = allTransactions.length;
     const withdrawals = allTransactions.slice((page - 1) * limit, page * limit);
     res.json({ success: true, withdrawals, page, totalPages: Math.max(1, Math.ceil(total / limit)), total });
@@ -743,22 +751,7 @@ async function transactionDetails(req, res) {
 
 async function exportTransactions(req, res) {
   try {
-    const financialTypes = ['withdraw', 'deposit', 'vault_lock', 'vault_release', 'vault_early_release', 'vault_penalty', 'token_burn'];
-    const filter = { type: { $in: financialTypes } };
-    if (req.query.status && req.query.status !== 'all') filter.status = req.query.status;
-    if (req.query.type && req.query.type !== 'all' && financialTypes.includes(req.query.type)) filter.type = req.query.type;
-    if (req.query.network && ['TRC20', 'BEP20'].includes(req.query.network)) filter.network = req.query.network;
-    if (req.query.search) {
-      const search = String(req.query.search).trim().slice(0, 120);
-      const users = await User.find({ email: { $regex: search, $options: 'i' } }).select('_id').lean();
-      filter.$or = [{ txHash: { $regex: search, $options: 'i' } }, { walletAddress: { $regex: search, $options: 'i' } }, { userId: { $in: users.map(user => user._id) } }];
-    }
-    if (req.query.from || req.query.to) {
-      filter.createdAt = {};
-      if (req.query.from) filter.createdAt.$gte = new Date(`${req.query.from}T00:00:00.000Z`);
-      if (req.query.to) { const end = new Date(`${req.query.to}T00:00:00.000Z`); end.setUTCDate(end.getUTCDate() + 1); filter.createdAt.$lt = end; }
-    }
-    const transactions = await Transaction.find(filter).populate('userId', 'email tierCode').sort({ createdAt: -1 }).limit(10000).lean();
+    const transactions = await findAdminFinancialTransactions(req.query);
     res.json({ success: true, transactions });
   } catch (error) { res.status(500).json({ error: 'تعذر تصدير المعاملات' }); }
 }
