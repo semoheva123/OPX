@@ -584,6 +584,7 @@ as $$
 declare
   user_row users%rowtype;
   wallet_row wallet_balances%rowtype;
+  before_balance numeric;
   delta_amount numeric := 0;
   tx_id uuid;
 begin
@@ -592,6 +593,8 @@ begin
 
   select * into wallet_row from wallet_balances where user_id = p_user_id for update;
   if wallet_row.id is null then raise exception using errcode = 'P0002', message = 'USER_WALLET_NOT_FOUND'; end if;
+
+  before_balance := wallet_row.balance;
 
   if p_deposit_balance is not null then
     wallet_row.deposit_balance := p_deposit_balance;
@@ -617,13 +620,13 @@ begin
         updated_at = now()
     where user_id = p_user_id;
 
-  delta_amount := wallet_row.balance - (coalesce(wallet_row.balance, 0) - wallet_row.balance);
+  delta_amount := wallet_row.balance - before_balance;
   insert into transactions(user_id, type, status, amount, gross_amount, usdt_amount, wallet_address, created_at)
   values(p_user_id, 'admin_adjustment', 'approved', abs(delta_amount), abs(delta_amount), abs(delta_amount), 'ADMIN_ADJUSTMENT', now())
   returning id into tx_id;
 
   insert into financial_ledger(user_id, type, currency, amount, net_amount, balance_before, balance_after, status, source, reference_id, metadata)
-  values(p_user_id, 'admin_adjustment', 'USDT', abs(delta_amount), abs(delta_amount), wallet_row.balance, wallet_row.balance, 'approved', 'admin_balance_adjustment', tx_id::text, jsonb_build_object('reason', coalesce(p_reason, 'admin_adjustment'), 'adminUserId', p_admin_user_id));
+  values(p_user_id, 'admin_adjustment', 'USDT', abs(delta_amount), delta_amount, before_balance, wallet_row.balance, 'approved', 'admin_balance_adjustment', tx_id::text, jsonb_build_object('reason', coalesce(p_reason, 'admin_adjustment'), 'adminUserId', p_admin_user_id));
 
   return jsonb_build_object(
     'user', (select row_to_json(u) from users u where u.id = p_user_id),

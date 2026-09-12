@@ -52,6 +52,16 @@
             color: #f3f4f6;
         }
         .hide { display: none !important; }
+        .modal-shell { opacity: 1; visibility: visible; transition: opacity .22s ease, visibility .22s ease; }
+        .modal-shell.hide { display: flex !important; opacity: 0; visibility: hidden; pointer-events: none; }
+        .modal-shell > div { transform: translateY(0) scale(1); transition: transform .24s cubic-bezier(.22,1,.36,1), opacity .22s ease; }
+        .modal-shell.hide > div { transform: translateY(10px) scale(.98); opacity: 0; }
+        .skeleton { position: relative; overflow: hidden; background: rgba(148,163,184,.12); border-radius: .75rem; color: transparent !important; }
+        .skeleton::after { content: ''; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, rgba(255,255,255,.1), transparent); animation: skeletonShimmer 1.35s ease-in-out infinite; }
+        @keyframes skeletonShimmer { to { transform: translateX(100%); } }
+        input:focus, select:focus, textarea:focus { border-color: rgba(247,185,85,.72) !important; box-shadow: 0 0 0 3px rgba(247,185,85,.11), 0 0 24px rgba(247,185,85,.08); }
+        button:active { transform: translateY(0) scale(.98) !important; }
+        @media (max-width: 640px) { .modal-shell { align-items: flex-end !important; padding: .75rem !important; } .modal-shell > div { max-height: calc(100dvh - 1.5rem); overflow-y: auto; border-radius: 1.5rem 1.5rem 1rem 1rem; } table { display: block; overflow-x: auto; white-space: nowrap; } }
         
         /* Glassmorphism Classes */
         .glass-card {

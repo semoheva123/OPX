@@ -47,6 +47,12 @@
         table tbody tr { transition: background-color .2s ease; }
         table tbody tr:hover { background: rgba(247,185,85,.045); }
         input, select, textarea { box-shadow: inset 0 1px 2px rgba(0,0,0,.18); }
+        input:focus, select:focus, textarea:focus { border-color: rgba(247,185,85,.72) !important; box-shadow: 0 0 0 3px rgba(247,185,85,.11), 0 0 24px rgba(247,185,85,.08); outline: none; }
+        button:active { transform: translateY(0) scale(.98); }
+        .skeleton { position: relative; overflow: hidden; background: rgba(148,163,184,.12); border-radius: .75rem; color: transparent !important; }
+        .skeleton::after { content: ''; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, rgba(255,255,255,.1), transparent); animation: adminSkeletonShimmer 1.35s ease-in-out infinite; }
+        @keyframes adminSkeletonShimmer { to { transform: translateX(100%); } }
+        @media (max-width: 767px) { main { padding: 1rem !important; } table { display: block; overflow-x: auto; white-space: nowrap; } #adminConfirmModal > .glass-card { max-height: calc(100dvh - 2rem); overflow-y: auto; } }
         #adminConfirmModal .glass-card { animation: operixModalReveal .2s ease both; }
         #adminConfirmModal { position: fixed !important; inset: 0 !important; z-index: 2147483647 !important; background: rgba(2, 8, 18, .9); }
         #adminConfirmModal[aria-hidden="false"] { display: flex !important; }

@@ -56,6 +56,7 @@ const tierLimits = { 'A1': 33, 'A2': 35, 'A3': 40, 'A4': 45, 'A5': 50 };
 
 // تهيئة التطبيق عند اكتمال تحميل عناصر الصفحة
 document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('[role="dialog"], [id$="Modal"]').forEach(modal => modal.classList.add('modal-shell'));
     loadPlatformSupportSettings();
     const urlParams = new URLSearchParams(window.location.search);
     const refCode = urlParams.get('ref');
@@ -240,7 +241,7 @@ function renderLiveTickerEvent() {
 
 async function loadTiers() {
     const container = document.getElementById('tiersListContainer');
-    if (container) container.innerHTML = '<div class="glass-card p-5 rounded-3xl text-center text-xs text-slate-400">جارٍ تحميل المستويات من الخادم...</div>';
+    if (container) container.innerHTML = '<div class="glass-card p-5 rounded-3xl space-y-3" aria-busy="true"><div class="skeleton h-4 w-2/5"></div><div class="skeleton h-12 w-full"></div><div class="skeleton h-12 w-full"></div><div class="skeleton h-12 w-4/5"></div></div>';
     try {
         const response = await fetch('/api/vip-levels');
         if (!response.ok) throw new Error('Failed to load tiers');
