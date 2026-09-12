@@ -397,7 +397,7 @@ async function userDetails(req, res) {
     const [transactions, auditLogs, sessions] = await Promise.all([
       Transaction.find({ userId: user._id }).sort({ createdAt: -1 }).limit(50).lean(),
       AuditLog.find({ entity: user._id.toString() }).populate('adminId', 'email').sort({ createdAt: -1 }).limit(50).lean(),
-      Session.find({ userId: user._id, revokedAt: null, expiresAt: { $gt: new Date() } }).select('-jti').sort({ lastSeenAt: -1 }).lean()
+      Session.find({ userId: user._id, revokedAt: null, expiresAt: { $gt: new Date() } }).select('-jti').sort({ createdAt: -1 }).lean()
     ]);
     res.json({ success: true, user, transactions, auditLogs, sessions });
   } catch (error) { res.status(500).json({ error: 'تعذر تحميل تفاصيل المستخدم' }); }
