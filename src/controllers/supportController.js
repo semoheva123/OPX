@@ -41,18 +41,38 @@ async function updateAdmin(req, res) {
   try {
     const ticket = await dataAccess.supportTicket.findOne({ id: req.params.id });
     if (!ticket) return res.status(404).json({ error: 'التذكرة غير موجودة' });
+
     const status = ['open', 'in_progress', 'resolved', 'closed'].includes(req.body.status) ? req.body.status : ticket.status;
     const reply = String(req.body.reply || '').trim();
     const update = { status };
-    if (reply) {
+    const hasReply = Boolean(reply);
+    const statusChanged = status !== ticket.status;
+
+    if (hasReply) {
       update.adminReply = reply;
       update.repliedAt = new Date();
-      const notification = await dataAccess.notification.create({ userId: ticket.userId, title: 'تم تحديث تذكرة الدعم', body: reply, type: 'support' });
-      realtimeService.emit('notification_created', { notificationId: notification.id || notification._id, title: notification.title, type: notification.type }, { userId: ticket.userId });
     }
+
+    if (hasReply || statusChanged) {
+      const notificationBody = hasReply ? reply : `تم تحديث تذكرة الدعم إلى ${status}`;
+      const notification = await dataAccess.notification.create({
+        userId: ticket.userId,
+        title: 'تم تحديث تذكرة الدعم',
+        body: notificationBody,
+        type: 'support'
+      });
+      realtimeService.emit(
+        'notification_created',
+        { notificationId: notification.id || notification._id, title: notification.title, type: notification.type },
+        { userId: ticket.userId }
+      );
+    }
+
     const saved = await dataAccess.supportTicket.updateOne({ id: req.params.id }, { $set: update });
     res.json({ success: true, ticket: saved || ticket });
-  } catch (error) { res.status(500).json({ error: 'تعذر تحديث التذكرة' }); }
+  } catch (error) {
+    res.status(500).json({ error: 'تعذر تحديث التذكرة' });
+  }
 }
 
 module.exports = { list, create, reply, listAdmin, updateAdmin };
