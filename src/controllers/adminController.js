@@ -539,6 +539,14 @@ async function bulkToggleBan(req, res) {
     const isBanned = Boolean(req.body.isBanned);
     if (!userIds.length) return res.status(400).json({ error: 'لم يتم تحديد مستخدمين' });
     const protectedRoles = ['admin', 'financial_admin', 'support_admin', 'monitor'];
+    if (dataAccess.isSupabaseRuntime()) {
+      const protectedUsers = await dataAccess.user.countDocuments({ id: { $in: userIds }, role: { $in: protectedRoles } });
+      if (isBanned && protectedUsers > 0) return res.status(400).json({ error: 'لا يمكن حظر حسابات الإدارة أو المراقبة' });
+      const result = await dataAccess.user.updateMany({ id: { $in: userIds }, role: { $nin: protectedRoles } }, { $set: { isBanned } });
+      await createAudit(req, isBanned ? 'bulk_ban_users' : 'bulk_unban_users', null, { userIds, modifiedCount: result.modifiedCount });
+      for (const userId of userIds) await emitUserDataChanged(userId, isBanned ? 'user_banned' : 'user_unbanned');
+      return res.json({ success: true, modifiedCount: result.modifiedCount });
+    }
     const protectedUsers = await User.countDocuments({ _id: { $in: userIds }, role: { $in: protectedRoles } });
     if (isBanned && protectedUsers > 0) return res.status(400).json({ error: 'لا يمكن حظر حسابات الإدارة أو المراقبة' });
     const result = await User.updateMany({ _id: { $in: userIds }, role: { $nin: protectedRoles } }, { $set: { isBanned } });
@@ -570,6 +578,15 @@ async function revokeUserSessions(req, res) {
 
 async function verifyUserEmail(req, res) {
   try {
+    if (dataAccess.isSupabaseRuntime()) {
+      const user = await dataAccess.user.findById(req.params.userId);
+      if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
+      const userId = user.id || user._id;
+      await dataAccess.user.updateOne({ id: userId }, { $set: { emailVerified: true, emailVerificationToken: null, emailVerificationExpire: null } });
+      await createAudit(req, 'verify_user_email', String(userId));
+      await emitUserDataChanged(userId, 'email_verified');
+      return res.json({ success: true, message: 'تم توثيق البريد الإلكتروني', user: { id: userId, email: user.email, emailVerified: true } });
+    }
     const user = await User.findByIdAndUpdate(req.params.userId, { $set: { emailVerified: true, emailVerificationToken: null, emailVerificationExpire: null } }, { new: true }).select('email emailVerified');
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     await createAudit(req, 'verify_user_email', user._id.toString());
@@ -580,6 +597,15 @@ async function verifyUserEmail(req, res) {
 
 async function disableUserTwoFactor(req, res) {
   try {
+    if (dataAccess.isSupabaseRuntime()) {
+      const user = await dataAccess.user.findById(req.params.userId);
+      if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
+      const userId = user.id || user._id;
+      await dataAccess.user.updateOne({ id: userId }, { $set: { twoFactorEnabled: false, twoFactorSecret: null, twoFactorCode: null, twoFactorExpire: null } });
+      await createAudit(req, 'disable_user_2fa', String(userId));
+      await emitUserDataChanged(userId, 'two_factor_updated');
+      return res.json({ success: true, message: 'تم تعطيل المصادقة الثنائية للمستخدم', user: { id: userId, email: user.email, twoFactorEnabled: false } });
+    }
     const user = await User.findByIdAndUpdate(req.params.userId, { $set: { twoFactorEnabled: false, twoFactorSecret: null, twoFactorCode: null, twoFactorExpire: null } }, { new: true }).select('email twoFactorEnabled');
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     await createAudit(req, 'disable_user_2fa', user._id.toString());
@@ -596,6 +622,15 @@ async function resetDailyTasks(req, res) {
 async function toggleBan(req, res) {
   try {
     const { userId, isBanned } = req.body;
+    if (dataAccess.isSupabaseRuntime()) {
+      const existingUser = await dataAccess.user.findById(userId);
+      if (!existingUser) return res.status(404).json({ error: 'المستخدم غير موجود' });
+      if (isBanned && ['admin', 'financial_admin', 'support_admin', 'monitor'].includes(existingUser.role)) return res.status(400).json({ error: 'لا يمكن حظر حسابات الإدارة أو المراقبة' });
+      await dataAccess.user.updateOne({ id: userId }, { $set: { isBanned: Boolean(isBanned) } });
+      await createAudit(req, isBanned ? 'ban_user' : 'unban_user', String(userId), { newValue: Boolean(isBanned) });
+      await emitUserDataChanged(userId, isBanned ? 'user_banned' : 'user_unbanned');
+      return res.json({ success: true, message: isBanned ? 'تم حظر المستخدم بنجاح' : 'تم إلغاء حظر المستخدم بنجاح' });
+    }
     const existingUser = await User.findById(userId).select('role');
     if (!existingUser) return res.status(404).json({ error: 'المستخدم غير موجود' });
     if (isBanned && ['admin', 'financial_admin', 'support_admin', 'monitor'].includes(existingUser.role)) return res.status(400).json({ error: 'لا يمكن حظر حسابات الإدارة أو المراقبة' });
@@ -742,6 +777,13 @@ async function listWithdrawals(req, res) {
 
 async function transactionDetails(req, res) {
   try {
+    if (dataAccess.isSupabaseRuntime()) {
+      const transaction = await dataAccess.transaction.findOne({ id: req.params.transactionId });
+      if (!transaction) return res.status(404).json({ error: 'المعاملة غير موجودة' });
+      const user = transaction.userId ? await dataAccess.user.findById(transaction.userId) : null;
+      const auditLogs = await dataAccess.auditLog.find({ entity: String(transaction.id || transaction._id) }, { sort: { createdAt: -1 }, limit: 20 });
+      return res.json({ success: true, transaction: { ...transaction, userId: user ? { id: user.id || user._id, email: user.email, tierCode: user.tierCode, walletAddress: user.walletAddress } : transaction.userId }, auditLogs });
+    }
     const transaction = await Transaction.findById(req.params.transactionId).populate('userId', 'email tierCode wallet walletAddress').lean();
     if (!transaction) return res.status(404).json({ error: 'المعاملة غير موجودة' });
     const auditLogs = await AuditLog.find({ entity: transaction._id.toString() }).populate('adminId', 'email').sort({ createdAt: -1 }).limit(20).lean();
@@ -760,6 +802,19 @@ async function listAuditLogs(req, res) {
   try {
     const page = Math.max(1, Number(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
+    if (dataAccess.isSupabaseRuntime()) {
+      let logs = await dataAccess.auditLog.find({}, { sort: { createdAt: -1 }, limit: 10000 });
+      if (req.query.action && req.query.action !== 'all') logs = logs.filter(log => log.action === String(req.query.action).slice(0, 80));
+      const search = String(req.query.search || '').trim().toLowerCase().slice(0, 120);
+      if (search) logs = logs.filter(log => String(log.action || '').toLowerCase().includes(search) || String(log.entity || '').toLowerCase().includes(search));
+      if (req.query.date) logs = logs.filter(log => String(log.createdAt || '').slice(0, 10) === req.query.date);
+      const total = logs.length;
+      const pageLogs = logs.slice((page - 1) * limit, page * limit);
+      const actorIds = [...new Set(pageLogs.map(log => log.actorId).filter(Boolean))];
+      const actors = actorIds.length ? await dataAccess.user.find({ id: { $in: actorIds } }, { limit: actorIds.length }) : [];
+      const actorMap = new Map(actors.map(actor => [String(actor.id || actor._id), actor]));
+      return res.json({ success: true, logs: pageLogs.map(log => ({ ...log, adminId: actorMap.get(String(log.actorId)) ? { email: actorMap.get(String(log.actorId)).email } : null })), page, limit, totalPages: Math.max(1, Math.ceil(total / limit)), total });
+    }
     const filter = {};
     if (req.query.action && req.query.action !== 'all') filter.action = String(req.query.action).slice(0, 80);
     if (req.query.search) filter.$or = [{ action: { $regex: String(req.query.search).slice(0, 80), $options: 'i' } }, { entity: { $regex: String(req.query.search).slice(0, 120), $options: 'i' } }];
