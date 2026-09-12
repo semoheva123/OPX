@@ -17,16 +17,6 @@
   animation-timeline: scroll(root);
 }
 
-.tech-grid-bg-video {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  opacity: 0.78;
-  filter: saturate(1.1) contrast(1.08) brightness(0.82);
-}
-
 @keyframes scrollTechBg {
   from {
     transform: scale(1) translateY(0px) rotate(0deg);
