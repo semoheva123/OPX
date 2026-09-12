@@ -552,6 +552,14 @@ async function bulkToggleBan(req, res) {
 
 async function revokeUserSessions(req, res) {
   try {
+    if (dataAccess.isSupabaseRuntime()) {
+      const user = await dataAccess.user.findById(req.params.userId || req.body.userId);
+      if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
+      const userId = user.id || user._id;
+      const result = await dataAccess.session.updateMany({ userId, scope: 'user', revokedAt: null }, { $set: { revokedAt: new Date() } });
+      await createAudit(req, 'revoke_user_sessions', String(userId), { modifiedCount: result.modifiedCount });
+      return res.json({ success: true, modifiedCount: result.modifiedCount, message: 'تم إنهاء جلسات المستخدم' });
+    }
     const user = await User.findById(req.params.userId || req.body.userId).select('email');
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     const result = await Session.updateMany({ userId: user._id, scope: 'user', revokedAt: null }, { $set: { revokedAt: new Date() } });
