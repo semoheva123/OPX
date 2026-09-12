@@ -217,11 +217,13 @@ async function kycSummary(req, res) {
 async function analytics(req, res) {
   try {
     const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const [transactions, users, securityEvents] = await Promise.all([
+    const [transactions, users] = await Promise.all([
       dataAccess.transaction.find({ createdAt: { $gte: since } }, { limit: 10000 }),
-      dataAccess.user.find({}, { limit: 10000 }),
-      dataAccess.securityEvent.find({ createdAt: { $gte: since } }, { limit: 10000 })
+      dataAccess.user.find({}, { limit: 10000 })
     ]);
+    const securityEvents = typeof dataAccess.securityEvent.find === 'function'
+      ? await dataAccess.securityEvent.find({ createdAt: { $gte: since } }, { limit: 10000 }).catch(() => [])
+      : [];
     const dailyMap = new Map();
     transactions.forEach(transaction => { const day = new Date(transaction.createdAt).toISOString().slice(0, 10); const key = `${day}:${transaction.type}`; const item = dailyMap.get(key) || { _id: { day, type: transaction.type }, total: 0, count: 0 }; item.total += Number(transaction.amount || 0); item.count += 1; dailyMap.set(key, item); });
     const roleMap = new Map();
@@ -719,12 +721,11 @@ async function listReferrals(req, res) {
   try {
     const page = Math.max(1, Number(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
-    const filter = { referredBy: { $exists: true, $ne: null } };
-    if (req.query.search) filter.email = { $regex: String(req.query.search).trim(), $options: 'i' };
-    const [referrals, total] = await Promise.all([
-      User.find(filter).select('email referralCode referredBy tierCode isBanned createdAt').sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit),
-      User.countDocuments(filter)
-    ]);
+    const allUsers = await dataAccess.user.find({}, { sort: { createdAt: -1 }, limit: 10000 });
+    const search = String(req.query.search || '').trim().toLowerCase();
+    const filtered = allUsers.filter(user => user.referredBy && (!search || String(user.email || '').toLowerCase().includes(search)));
+    const total = filtered.length;
+    const referrals = filtered.slice((page - 1) * limit, page * limit);
     res.json({ success: true, referrals, page, totalPages: Math.max(1, Math.ceil(total / limit)), total });
   } catch (err) { res.status(500).json({ error: 'تعذر تحميل الإحالات' }); }
 }
