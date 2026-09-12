@@ -146,8 +146,19 @@ function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
     if (/^\/(?:private|\.)(?:\/|$)/i.test(req.path) || /^\/(?:package-lock\.json|package\.json)$/i.test(req.path)) return res.status(404).end();
     next();
   });
+
+  const staticRoot = path.join(__dirname, '..');
+  const sendNoStoreStatic = (req, res, file) => res.sendFile(path.join(staticRoot, file), {
+    headers: { 'Cache-Control': 'no-store, max-age=0, must-revalidate', 'X-Content-Type-Options': 'nosniff' }
+  });
+
+  app.get('/', (req, res) => sendNoStoreStatic(req, res, 'index.html'));
+  app.get('/index.html', (req, res) => sendNoStoreStatic(req, res, 'index.html'));
+  app.get('/app.js', (req, res) => sendNoStoreStatic(req, res, 'app.js'));
+  app.get('/sw.js', (req, res) => sendNoStoreStatic(req, res, 'sw.js'));
+
   app.get('/admin.html', (req, res) => res.sendFile(path.join(__dirname, '..', 'admin.html')));
-  app.use(express.static(path.join(__dirname, '..'), { dotfiles: 'deny' }));
+  app.use(express.static(staticRoot, { dotfiles: 'deny', index: false, maxAge: 0 }));
 
   app.use('/api/user', userRoutes);
   app.use('/api', activityRoutes);
