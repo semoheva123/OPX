@@ -392,6 +392,17 @@ async function listUsers(req, res) {
 
 async function userDetails(req, res) {
   try {
+    if (dataAccess.isSupabaseRuntime()) {
+      const user = await dataAccess.user.findById(req.params.userId);
+      if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
+      const userId = user.id || user._id;
+      const [transactions, auditLogs, sessions] = await Promise.all([
+        dataAccess.transaction.find({ userId }, { sort: { createdAt: -1 }, limit: 50 }),
+        dataAccess.auditLog.find({ entity: String(userId) }, { sort: { createdAt: -1 }, limit: 50 }),
+        dataAccess.session.find({ userId, revokedAt: null, expiresAt: { $gt: new Date() } }, { sort: { createdAt: -1 }, limit: 50 })
+      ]);
+      return res.json({ success: true, user, transactions, auditLogs, sessions: sessions.map(session => { const safe = { ...session }; delete safe.jti; return safe; }) });
+    }
     const user = await User.findById(req.params.userId).select('-password -resetOTP -twoFactorCode -twoFactorSecret -adminTwoFactorSecret');
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     const [transactions, auditLogs, sessions] = await Promise.all([
