@@ -17,7 +17,8 @@
           "manifest.json",
           "admin-manifest.json",
           "robots.txt",
-          "sitemap.xml"
+          "sitemap.xml",
+          "*.mp4"
         ]
       }
     }
