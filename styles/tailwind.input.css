@@ -11,8 +11,10 @@
   background-image: url('https://images.unsplash.com/photo-1641897037078-e91a4afcce94?auto=format&q=80&w=1800');
   background-size: cover;
   background-position: center;
-  z-index: -1;
+  background-repeat: no-repeat;
+  z-index: 0;
   opacity: 0.22;
+  pointer-events: none;
   will-change: transform;
   animation: scrollTechBg linear both;
   animation-timeline: scroll(root);
