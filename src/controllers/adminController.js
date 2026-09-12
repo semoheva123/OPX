@@ -481,6 +481,29 @@ async function reviewUserKyc(req, res) {
     const validStatuses = ['not_started', 'pending', 'verified', 'rejected'];
     if (!validStatuses.includes(status)) return res.status(400).json({ error: 'حالة KYC غير صالحة' });
 
+    if (dataAccess.isSupabaseRuntime()) {
+      const user = await dataAccess.user.findById(req.params.userId);
+      if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
+      const userId = user.id || user._id;
+      const reviewNotes = String(notes || '').trim().slice(0, 500);
+      const kycReason = status === 'rejected' ? (reviewNotes.slice(0, 200) || 'الوثيقة غير مكتملة أو غير واضحة') : '';
+      const updates = {
+        kycStatus: status,
+        kycReviewedAt: new Date(),
+        kycReviewedBy: req.user?.id || req.user?._id || null,
+        kycNotes: reviewNotes,
+        kycReason
+      };
+      if (status === 'pending' && !user.kycSubmittedAt) updates.kycSubmittedAt = new Date();
+      const updatedUser = await dataAccess.user.updateOne({ id: userId }, { $set: updates });
+      const title = status === 'verified' ? 'تم اعتماد توثيق هويتك' : status === 'rejected' ? 'تحتاج وثائق KYC إلى تحديث' : 'تم تحديث حالة توثيق هويتك';
+      const body = status === 'verified' ? 'تمت الموافقة على مستندات التحقق الخاصة بك.' : status === 'rejected' ? (kycReason || 'يرجى مراجعة الملاحظات وإرسال وثائق واضحة مجدداً.') : 'تم تحديث حالة طلب التحقق الخاص بك.';
+      const notification = await dataAccess.notification.create({ userId, title, body, type: 'system' });
+      await createAudit(req, 'review_user_kyc', String(userId), { oldStatus: user.kycStatus, newStatus: status, notes: reviewNotes });
+      await emitUserDataChanged(userId, 'kyc_reviewed');
+      return res.json({ success: true, message: status === 'verified' ? 'تم اعتماد KYC بنجاح' : status === 'rejected' ? 'تم رفض KYC بنجاح' : 'تم تحديث حالة KYC', user: sanitizeAdminUserDetail(updatedUser || { ...user, ...updates }), notificationId: notification?.id || notification?._id || null });
+    }
+
     const user = await User.findById(req.params.userId);
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
 
