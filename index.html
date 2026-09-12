@@ -807,19 +807,20 @@ body::before{content:'';position:fixed;inset:-12%;z-index:-1;pointer-events:none
         <div id="view-feed" class="twitter-shell space-y-4 hide pb-28">
             <button type="button" onclick="document.getElementById('socialPostContent')?.focus()" class="social-floating-compose" aria-label="إنشاء منشور"><i class="fa-solid fa-feather-pointed"></i></button>
             <div class="social-feed-tabs" role="tablist" aria-label="مصدر منشورات المجتمع"><button type="button" data-social-feed-mode="all" onclick="setSocialFeedMode('all')" class="social-feed-tab social-feed-mode-active">كل المنشورات</button><button type="button" data-social-feed-mode="following" onclick="setSocialFeedMode('following')" class="social-feed-tab">أتابعهم</button></div>
-            <section class="glass-card rounded-3xl border border-slate-800 p-4 space-y-3">
-                <div class="flex items-center justify-between"><div><span class="text-[10px] font-black text-cyan-300">إحصاءات المجتمع</span><h3 class="mt-1 text-sm font-black text-white">نظرة سريعة</h3></div><i class="fa-solid fa-chart-pie text-cyan-300"></i></div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div class="rounded-2xl border border-slate-800 bg-slate-950/50 p-3"><span class="block text-[10px] text-slate-500">منشورات اليوم</span><b id="socialStatPosts" class="block mt-1 text-sm text-white">0</b></div>
-                    <div class="rounded-2xl border border-slate-800 bg-slate-950/50 p-3"><span class="block text-[10px] text-slate-500">أعضاء المجتمع</span><b id="socialStatMembers" class="block mt-1 text-sm text-white">0</b></div>
-                    <div class="rounded-2xl border border-slate-800 bg-slate-950/50 p-3"><span class="block text-[10px] text-slate-500">متابعون نشطون</span><b id="socialStatFollowers" class="block mt-1 text-sm text-emerald-300">0</b></div>
-                    <div class="rounded-2xl border border-slate-800 bg-slate-950/50 p-3"><span class="block text-[10px] text-slate-500">تفاعلات</span><b id="socialStatEngagement" class="block mt-1 text-sm text-amber-300">0</b></div>
+            <section class="glass-card rounded-3xl border border-slate-800 p-3">
+                <div class="flex items-center justify-between gap-3"><div class="flex items-center gap-2"><i class="fa-solid fa-chart-pie text-cyan-300"></i><span class="text-[10px] font-black text-cyan-300">إحصاءات المجتمع</span></div><span id="communityPulseDate" class="text-[10px] text-slate-500">اليوم</span></div>
+                <div class="mt-2 grid grid-cols-4 gap-2">
+                    <div class="rounded-xl border border-slate-800 bg-slate-950/50 px-2 py-2 text-center"><span class="block text-[9px] text-slate-500">منشورات</span><b id="socialStatPosts" class="block mt-1 text-[11px] text-white">0</b></div>
+                    <div class="rounded-xl border border-slate-800 bg-slate-950/50 px-2 py-2 text-center"><span class="block text-[9px] text-slate-500">أعضاء</span><b id="socialStatMembers" class="block mt-1 text-[11px] text-white">0</b></div>
+                    <div class="rounded-xl border border-slate-800 bg-slate-950/50 px-2 py-2 text-center"><span class="block text-[9px] text-slate-500">متابعين</span><b id="socialStatFollowers" class="block mt-1 text-[11px] text-emerald-300">0</b></div>
+                    <div class="rounded-xl border border-slate-800 bg-slate-950/50 px-2 py-2 text-center"><span class="block text-[9px] text-slate-500">تفاعلات</span><b id="socialStatEngagement" class="block mt-1 text-[11px] text-amber-300">0</b></div>
                 </div>
-                <div class="rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-3">
-                    <div class="flex items-center justify-between gap-3"><span id="communityPulseState" class="text-[10px] font-black text-cyan-300">نشرة المجتمع</span><span id="communityPulseDate" class="text-[10px] text-slate-500">اليوم</span></div>
-                    <p id="communityPulseTitle" class="mt-2 text-[11px] leading-6 text-slate-300">المنصة تفتح مساحة تواصل يومية للأعضاء.</p>
-                    <div class="mt-2 flex items-center justify-between"><span id="communityPulseMeta" class="text-[10px] text-slate-500">نشاط جديد · خبر اليوم</span><button type="button" onclick="loadSocialFeed(true)" class="rounded-xl border border-cyan-400/30 px-3 py-2 text-[10px] font-bold text-cyan-300">تحديث</button></div>
+                <div class="mt-2 flex items-center justify-between gap-3 rounded-xl border border-cyan-500/20 bg-cyan-500/5 px-3 py-2">
+                    <span id="communityPulseState" class="text-[10px] font-black text-cyan-300">نشرة المجتمع</span>
+                    <span id="communityPulseTitle" class="text-[10px] leading-5 text-slate-300">المنصة تفتح مساحة تواصل يومية للأعضاء.</span>
+                    <button type="button" onclick="loadSocialFeed(true)" class="rounded-lg border border-cyan-400/30 px-2 py-1 text-[9px] font-bold text-cyan-300">تحديث</button>
                 </div>
+                <span id="communityPulseMeta" class="block mt-2 text-[9px] text-slate-500">نشاط جديد · خبر اليوم</span>
             </section>
             <section class="glass-card rounded-3xl border border-slate-800 p-4"><div class="mb-2 flex items-center justify-between"><div><h3 class="text-sm font-black text-white">أعضاء المجتمع</h3><p class="mt-1 text-[10px] text-slate-500">تابع الأعضاء لتخصيص تجربتك داخل المجتمع.</p></div><i class="fa-solid fa-user-group text-cyan-300"></i></div><div id="socialCommunityList"><p class="text-xs text-slate-500">جارٍ تحميل الأعضاء...</p></div></section>
             <section class="glass-card rounded-3xl p-5 space-y-3 border border-cyan-500/20">
