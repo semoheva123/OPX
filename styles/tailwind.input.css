@@ -17,7 +17,7 @@ body {
   pointer-events: none;
   overflow: hidden;
   will-change: transform;
-  background-image: url('https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&q=80&w=1800');
+  background-image: url('/assets/sf.jpg');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
