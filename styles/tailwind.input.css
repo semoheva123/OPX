@@ -1,3 +1,28 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.tech-grid-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-image: url('https://images.unsplash.com/photo-1641897037078-e91a4afcce94?auto=format&q=80&w=1800');
+  background-size: cover;
+  background-position: center;
+  z-index: -1;
+  opacity: 0.22;
+  will-change: transform;
+  animation: scrollTechBg linear both;
+  animation-timeline: scroll(root);
+}
+
+@keyframes scrollTechBg {
+  from {
+    transform: scale(1) translateY(0px) rotate(0deg);
+  }
+  to {
+    transform: scale(1.15) translateY(30px) rotate(3deg);
+  }
+} 
