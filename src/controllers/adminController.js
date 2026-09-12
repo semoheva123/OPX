@@ -13,6 +13,12 @@ const Notification = adminRepository(dataAccess.notification);
 const Session = adminRepository(dataAccess.session);
 const { supabaseAdmin } = require('../config/supabase');
 
+const ADMIN_USER_DETAIL_FIELDS = new Set(['id', '_id', 'email', 'role', 'emailVerified', 'isBanned', 'tierCode', 'referralCode', 'referredBy', 'walletAddress', 'kycStatus', 'adminTwoFactorEnabled', 'assetWallet', 'createdAt', 'updatedAt', 'lastLoginAt', 'metadata', 'profileImage', 'coverImage', 'socialBio', 'kycFullName', 'kycDocumentType', 'kycDocumentNumber', 'kycDocumentUrl', 'kycCountry', 'kycSubmittedAt', 'kycReviewedAt', 'kycReviewedBy', 'kycNotes', 'kycReason', 'wallet']);
+
+function sanitizeAdminUserDetail(user) {
+  return Object.fromEntries(Object.entries(user?.toObject?.() || user || {}).filter(([key]) => ADMIN_USER_DETAIL_FIELDS.has(key)));
+}
+
 function adminRepository(repo) {
   function queryObject(operation, query) {
     const options = {};
@@ -395,8 +401,7 @@ async function userDetails(req, res) {
     if (dataAccess.isSupabaseRuntime()) {
       const userRecord = await dataAccess.user.findById(req.params.userId);
       if (!userRecord) return res.status(404).json({ error: 'المستخدم غير موجود' });
-      const safeUserFields = ['id', '_id', 'email', 'role', 'emailVerified', 'isBanned', 'tierCode', 'referralCode', 'referredBy', 'walletAddress', 'kycStatus', 'adminTwoFactorEnabled', 'assetWallet', 'createdAt', 'updatedAt', 'lastLoginAt', 'metadata', 'profileImage', 'coverImage', 'socialBio', 'kycFullName', 'kycDocumentType', 'kycDocumentNumber', 'kycDocumentUrl', 'kycCountry', 'kycSubmittedAt', 'kycReviewedAt', 'kycReviewedBy', 'kycNotes', 'kycReason', 'wallet'];
-      const user = Object.fromEntries(safeUserFields.filter(key => userRecord[key] !== undefined).map(key => [key, userRecord[key]]));
+      const user = sanitizeAdminUserDetail(userRecord);
       const userId = user.id || user._id;
       const [transactions, auditLogs, sessions] = await Promise.all([
         dataAccess.transaction.find({ userId }, { sort: { createdAt: -1 }, limit: 50 }).catch(() => []),
@@ -412,7 +417,7 @@ async function userDetails(req, res) {
       AuditLog.find({ entity: user._id.toString() }).populate('adminId', 'email').sort({ createdAt: -1 }).limit(50).lean(),
       Session.find({ userId: user._id, revokedAt: null, expiresAt: { $gt: new Date() } }).select('-jti').sort({ createdAt: -1 }).lean()
     ]);
-    res.json({ success: true, user, transactions, auditLogs, sessions });
+    res.json({ success: true, user: sanitizeAdminUserDetail(user), transactions, auditLogs, sessions });
   } catch (error) { res.status(500).json({ error: 'تعذر تحميل تفاصيل المستخدم' }); }
 }
 
