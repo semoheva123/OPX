@@ -441,6 +441,31 @@ function csvCell(value) {
 
 async function complianceReport(req, res) {
   try {
+    if (dataAccess.isSupabaseRuntime()) {
+      const filter = {};
+      if (['not_started', 'pending', 'verified', 'rejected'].includes(req.query.kycStatus)) filter.kycStatus = req.query.kycStatus;
+      const since = req.query.from ? new Date(`${req.query.from}T00:00:00.000Z`) : null;
+      const until = req.query.to ? new Date(`${req.query.to}T00:00:00.000Z`) : null;
+      if (until && !Number.isNaN(until.valueOf())) until.setUTCDate(until.getUTCDate() + 1);
+      if (since || until) filter.updatedAt = { ...(since && !Number.isNaN(since.valueOf()) ? { $gte: since } : {}), ...(until && !Number.isNaN(until.valueOf()) ? { $lt: until } : {}) };
+      const users = await dataAccess.user.find(filter, { sort: { updatedAt: -1 }, limit: 10000 });
+      const userIds = users.map(user => user.id || user._id);
+      const transactions = userIds.length ? await dataAccess.transaction.find({ userId: { $in: userIds }, type: 'withdraw', riskScore: { $gt: 0 } }, { limit: 10000 }) : [];
+      const riskByUser = new Map();
+      transactions.forEach(transaction => {
+        const key = String(transaction.userId);
+        const current = riskByUser.get(key) || { maxRiskScore: 0, highRiskCount: 0 };
+        current.maxRiskScore = Math.max(current.maxRiskScore, Number(transaction.riskScore || 0));
+        if (transaction.riskLevel === 'high') current.highRiskCount += 1;
+        riskByUser.set(key, current);
+      });
+      const rows = [['البريد', 'حالة KYC', 'الدولة', 'نوع الوثيقة', 'تاريخ الإرسال', 'آخر مراجعة', 'راجع بواسطة', 'سبب الرفض', 'أعلى درجة خطر', 'سحوبات عالية الخطورة', 'محظور']];
+      users.forEach(user => { const risk = riskByUser.get(String(user.id || user._id)) || {}; rows.push([user.email, user.kycStatus || 'not_started', user.kycCountry || '', user.kycDocumentType || '', user.kycSubmittedAt || '', user.kycReviewedAt || '', user.kycReviewedBy || '', user.kycReason || '', risk.maxRiskScore || 0, risk.highRiskCount || 0, user.isBanned ? 'نعم' : 'لا']); });
+      const csv = rows.map(row => row.map(csvCell).join(',')).join('\r\n');
+      res.set({ 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="operix-compliance-${new Date().toISOString().slice(0, 10)}.csv"`, 'Cache-Control': 'no-store' });
+      await createAudit(req, 'export_compliance_report', null, { count: users.length, kycStatus: req.query.kycStatus || 'all' });
+      return res.send(`\ufeff${csv}`);
+    }
     const filter = {};
     if (['not_started', 'pending', 'verified', 'rejected'].includes(req.query.kycStatus)) filter.kycStatus = req.query.kycStatus;
     const since = req.query.from ? new Date(`${req.query.from}T00:00:00.000Z`) : null;
@@ -962,7 +987,16 @@ async function deliverBroadcast(campaign, webpush) {
 }
 
 async function listBroadcasts(req, res) {
-  try { const campaigns = await Broadcast.find().sort({ createdAt: -1 }).limit(50).lean(); const readCounts = await Notification.aggregate([{ $match: { broadcastId: { $in: campaigns.map(item => item._id) }, readAt: { $ne: null } } }, { $group: { _id: '$broadcastId', count: { $sum: 1 } } }]); const reads = Object.fromEntries(readCounts.map(item => [String(item._id), item.count])); res.json({ success: true, campaigns: campaigns.map(item => ({ ...item, readCount: reads[String(item._id)] || 0 })) }); }
+  try {
+    if (dataAccess.isSupabaseRuntime()) {
+      const campaigns = await dataAccess.broadcast.find({}, { sort: { createdAt: -1 }, limit: 50 });
+      const ids = campaigns.map(item => item.id || item._id).filter(Boolean);
+      const notifications = ids.length ? await dataAccess.notification.find({ broadcastId: { $in: ids }, readAt: { $ne: null } }, { limit: 10000 }) : [];
+      const reads = notifications.reduce((counts, notification) => { const key = String(notification.broadcastId); counts[key] = (counts[key] || 0) + 1; return counts; }, {});
+      return res.json({ success: true, campaigns: campaigns.map(item => ({ ...item, readCount: reads[String(item.id || item._id)] || 0 })) });
+    }
+    const campaigns = await Broadcast.find().sort({ createdAt: -1 }).limit(50).lean(); const readCounts = await Notification.aggregate([{ $match: { broadcastId: { $in: campaigns.map(item => item._id) }, readAt: { $ne: null } } }, { $group: { _id: '$broadcastId', count: { $sum: 1 } } }]); const reads = Object.fromEntries(readCounts.map(item => [String(item._id), item.count])); res.json({ success: true, campaigns: campaigns.map(item => ({ ...item, readCount: reads[String(item._id)] || 0 })) });
+  }
   catch (err) { res.status(500).json({ error: 'تعذر تحميل حملات البث' }); }
 }
 
