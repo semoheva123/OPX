@@ -857,6 +857,16 @@ body::before{content:'';position:fixed;inset:-12%;z-index:-1;pointer-events:none
             <section class="glass-card rounded-3xl p-4 space-y-4">
                 <div class="flex items-center justify-between gap-3"><div><h3 class="text-sm font-black text-white">لوحة المهام</h3><p class="mt-1 text-[10px] text-slate-500">اختر خطوة وابدأ بإجراء قابل للمتابعة.</p></div><i class="fa-solid fa-list-check text-cyan-300"></i></div>
                 <div class="grid grid-cols-3 gap-1.5"><button id="taskFilterAll" onclick="setTaskFilter('all')" class="task-filter-active rounded-xl border py-2 text-[10px] font-bold">الكل</button><button id="taskFilterPriority" onclick="setTaskFilter('priority')" class="rounded-xl border border-slate-800 py-2 text-[10px] font-bold text-slate-400">الأولوية</button><button id="taskFilterOperations" onclick="setTaskFilter('operations')" class="rounded-xl border border-slate-800 py-2 text-[10px] font-bold text-slate-400">تشغيلية</button></div>
+                <div class="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-3 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10px] font-black text-amber-300">استراتيجية الإنجاز</span>
+                        <span id="taskStrategyState" class="text-[10px] text-slate-500">الخطة مفتوحة</span>
+                    </div>
+                    <div class="flex items-center justify-between gap-3">
+                        <span id="taskStrategyTitle" class="text-[11px] font-black text-white">أكمل خطوة التحقق أولًا</span>
+                        <span id="taskStrategyMeta" class="text-[10px] text-slate-500">1 / 4 خطوات</span>
+                    </div>
+                </div>
                 <div id="taskBoard" class="space-y-2"></div>
                 <section id="cpaleadOfferwallSection" class="hidden rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-3 space-y-3">
                     <div class="flex items-center justify-between gap-3"><div><h3 class="text-sm font-black text-white">جدار العروض</h3><p class="mt-1 text-[10px] leading-5 text-slate-400">أكمل عرضًا مؤهلًا، وسيتم اعتماد المكافأة تلقائيًا بعد تأكيد CPAlead.</p></div><i class="fa-solid fa-gift text-emerald-300"></i></div>
