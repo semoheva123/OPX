@@ -215,6 +215,16 @@ function adminSession(req, res) {
 async function adminSetupTwoFactor(req, res) {
   try {
     const { email, password } = req.body;
+    if (dataAccess.isSupabaseRuntime()) {
+      const user = await dataAccess.user.findOne({ email: String(email || '').trim().toLowerCase() });
+      const allowedRoles = ['admin', 'financial_admin', 'support_admin', 'monitor'];
+      if (!user || !allowedRoles.includes(user.role) || !(await bcrypt.compare(String(password || ''), user.password))) return res.status(401).json({ error: 'بيانات المدير غير صحيحة' });
+      if (user.adminTwoFactorEnabled && user.adminTwoFactorSecret) return res.status(400).json({ error: 'مصادقة الإدارة مفعلة بالفعل' });
+      const secret = generateSecret();
+      await dataAccess.user.updateOne({ id: user.id || user._id }, { $set: { adminTwoFactorSecret: secret } });
+      const otpauth = generateURI({ issuer: 'OPERIX Admin', label: user.email, secret });
+      return res.json({ success: true, secret, qrCode: await QRCode.toDataURL(otpauth), message: 'امسح QR ثم أدخل الرمز للتأكيد' });
+    }
     const allowedRoles = ['admin', 'financial_admin', 'support_admin', 'monitor'];
     const user = await User.findOne({ email: String(email || '').trim().toLowerCase() }).select('+adminTwoFactorSecret');
     if (!user || !allowedRoles.includes(user.role) || !(await bcrypt.compare(String(password || ''), user.password))) return res.status(401).json({ error: 'بيانات المدير غير صحيحة' });
@@ -230,6 +240,14 @@ async function adminSetupTwoFactor(req, res) {
 async function adminConfirmTwoFactor(req, res) {
   try {
     const { email, password, code } = req.body;
+    if (dataAccess.isSupabaseRuntime()) {
+      const user = await dataAccess.user.findOne({ email: String(email || '').trim().toLowerCase() });
+      if (!user || !(await bcrypt.compare(String(password || ''), user.password)) || !user.adminTwoFactorSecret) return res.status(400).json({ error: 'بيانات الإعداد غير صالحة' });
+      if (!/^[0-9]{6}$/.test(String(code || '').trim()) || !verifySync({ token: String(code).trim(), secret: user.adminTwoFactorSecret }).valid) return res.status(400).json({ error: 'رمز المصادقة غير صحيح' });
+      await dataAccess.user.updateOne({ id: user.id || user._id }, { $set: { adminTwoFactorEnabled: true } });
+      await dataAccess.securityEvent.create({ userId: user.id || user._id, email: user.email, event: 'login_success', ip: req.ip, userAgent: req.get('user-agent') || 'unknown', metadata: { action: 'admin_2fa_enabled' } });
+      return res.json({ success: true, message: 'تم تفعيل مصادقة الإدارة. يمكنك الدخول الآن.' });
+    }
     const user = await User.findOne({ email: String(email || '').trim().toLowerCase() }).select('+adminTwoFactorSecret');
     if (!user || !(await bcrypt.compare(String(password || ''), user.password)) || !user.adminTwoFactorSecret) return res.status(400).json({ error: 'بيانات الإعداد غير صالحة' });
     if (!/^[0-9]{6}$/.test(String(code || '').trim()) || !verifySync({ token: String(code).trim(), secret: user.adminTwoFactorSecret }).valid) return res.status(400).json({ error: 'رمز المصادقة غير صحيح' });
