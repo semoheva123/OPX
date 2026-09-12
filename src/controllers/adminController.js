@@ -786,10 +786,11 @@ async function applyWithdrawalAction(transactionId, action, req) {
 }
 
 function transactionErrorResponse(res, err) {
+  const errorCode = err.code || err.details?.code;
   if (err.message === 'ADMIN_FINANCE_RPC_REQUIRED') return res.status(503).json({ error: 'معالجة المعاملات الإدارية متوقفة حتى تطبيق RPC الإدارة الذرية في Supabase' });
-  if (err.message === 'TRANSACTION_NOT_FOUND') return res.status(404).json({ error: 'المعاملة غير موجودة أو تمت إزالتها' });
+  if (err.message === 'TRANSACTION_NOT_FOUND' || errorCode === 'P0002') return res.status(404).json({ error: 'المعاملة غير موجودة أو تمت إزالتها' });
   if (err.message === 'PROCESSED') return res.status(409).json({ error: 'تمت معالجة هذه المعاملة سابقًا' });
-  if (err.message === 'INVALID_ACTION') return res.status(400).json({ error: 'الإجراء المطلوب غير صالح' });
+  if (err.message === 'INVALID_ACTION' || errorCode === 'P0001') return res.status(400).json({ error: 'الإجراء المطلوب غير صالح أو لا يمكن تنفيذه على هذه المعاملة' });
   if (err.message === 'USER_WALLET_NOT_FOUND') return res.status(409).json({ error: 'محفظة المستخدم غير موجودة ولا يمكن اعتماد المعاملة' });
   if (err.statusCode) return res.status(err.statusCode).json({ error: err.message === 'NOT_FOUND' ? 'المعاملة غير موجودة' : err.message === 'PROCESSED' ? 'تمت معالجة هذه المعاملة سابقاً' : 'الإجراء المطلوب غير صالح' });
   return res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' });
