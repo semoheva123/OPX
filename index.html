@@ -130,6 +130,8 @@
         .operix-app-header { background: linear-gradient(105deg, rgba(16,35,54,.92), rgba(8,18,31,.86)); border-color: rgba(247,185,85,.18); box-shadow: 0 16px 45px rgba(0,0,0,.2); }
         .operix-wallet { background-image: radial-gradient(circle at 100% 0%, rgba(247,185,85,.2), transparent 18rem), linear-gradient(135deg, rgba(247,185,85,.13), rgba(8,18,31,.94) 58%); }
         .operix-wallet .bg-slate-950\/60 { background: rgba(3,10,19,.46); border-color: rgba(255,255,255,.09); }
+        .operix-wallet .wallet-summary-surface { position: relative; isolation: isolate; }
+        .operix-wallet .wallet-summary-surface::before { content: ''; position: absolute; inset: -1px; border-radius: 24px; background: linear-gradient(135deg, transparent, rgba(247,185,85,.08), transparent); filter: blur(24px); opacity: .8; z-index: -1; }
         #appNavBar button { min-height: 48px; }
         .profile-section > summary { list-style: none; cursor: pointer; }
         .profile-section > summary::-webkit-details-marker { display: none; }
@@ -201,8 +203,27 @@
         #view-home > .operix-wallet > :nth-child(7) { margin-top: 8px; }
         #view-home > .operix-wallet > :nth-child(8) { margin-top: 12px; }
         #view-home > .operix-wallet > :nth-child(9) { margin-top: 12px; }
+        .balance-summary-grid { display: grid; grid-template-columns: repeat(4, minmax(145px, 1fr)); gap: 10px; margin-top: 12px; }
+        .balance-summary-card { position: relative; overflow: hidden; padding: 12px; border-radius: 16px; border: 1px solid rgba(148,163,184,.14); background: rgba(15,23,42,.52); min-height: 92px; transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease; }
+        .balance-summary-card::after { content: ''; position: absolute; width: 90px; height: 90px; border-radius: 50%; filter: blur(44px); opacity: .68; left: -26px; top: -30px; background: currentColor; }
+        .balance-summary-card:hover { transform: translateY(-2px); border-color: rgba(247,185,85,.45); box-shadow: 0 16px 32px rgba(0,0,0,.18); }
+        .balance-summary-card .balance-card-head { position: relative; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 10px; color: #cbd5e1; }
+        .balance-summary-card .balance-card-head i { font-size: 12px; }
+        .balance-summary-card .balance-card-value { position: relative; z-index: 2; display: block; margin-top: 8px; color: #fff; font-size: 23px; font-weight: 900; line-height: 1.4; }
+        .balance-summary-card .balance-card-value small { color: #e2e8f0; font-size: 10px; font-weight: 700; }
+        .balance-summary-card .balance-card-note { position: relative; z-index: 2; display: block; margin-top: 5px; color: #94a3b8; font-size: 9px; }
+        .balance-summary-card.balance-usdt { color: #f7b955; border-color: rgba(247,185,85,.22); background: linear-gradient(135deg, rgba(247,185,85,.14), rgba(15,23,42,.96)); }
+        .balance-summary-card.balance-deposit { color: #86efac; border-color: rgba(34,197,94,.22); background: linear-gradient(135deg, rgba(34,197,94,.11), rgba(15,23,42,.96)); }
+        .balance-summary-card.balance-profit { color: #86efac; border-color: rgba(16,185,129,.22); background: linear-gradient(135deg, rgba(16,185,129,.11), rgba(15,23,42,.96)); }
+        .balance-summary-card.balance-opx { color: #67e8f9; border-color: rgba(34,211,238,.22); background: linear-gradient(135deg, rgba(34,211,238,.11), rgba(15,23,42,.96)); }
+        .profile-summary-grid { display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr)); gap: 10px; }
+        .balance-summary-card.balance-usdt .balance-card-head span:first-child, .balance-summary-card.balance-usdt .balance-card-value { color: #ffe9b5; }
+        .balance-summary-card.balance-deposit .balance-card-head span:first-child, .balance-summary-card.balance-deposit .balance-card-value { color: #b8ffd3; }
+        .balance-summary-card.balance-profit .balance-card-head span:first-child, .balance-summary-card.balance-profit .balance-card-value { color: #b8ffd3; }
+        .balance-summary-card.balance-opx .balance-card-head span:first-child, .balance-summary-card.balance-opx .balance-card-value { color: #bdfafc; }
         @media (min-width: 768px) { #view-home > .operix-wallet { display: block; } }
         @media (min-width: 768px) { #view-home > .operix-wallet { grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); } #view-home > .operix-wallet > :first-child, #view-home > .operix-wallet > :nth-child(2), #view-home > .operix-wallet > :nth-child(3), #view-home > .operix-wallet > :nth-child(6), #view-home > .operix-wallet > :nth-child(7), #view-home > .operix-wallet > :nth-child(8), #view-home > .operix-wallet > :nth-child(9) { grid-column: 1 / -1; } #view-home > .operix-wallet > :nth-child(4), #view-home > .operix-wallet > :nth-child(5) { grid-column: auto; } }
+        @media (max-width: 900px) { .balance-summary-grid { grid-template-columns: repeat(2, minmax(150px, 1fr)); } }
         @media (max-width: 480px) {
             #appNavBar { justify-content: flex-start; overflow-x: auto; scrollbar-width: none; padding-left: 8px; padding-right: 8px; }
             #appNavBar::-webkit-scrollbar { display: none; }
@@ -675,7 +696,29 @@ body::before{content:'';position:fixed;inset:-12%;z-index:-1;pointer-events:none
                     <span class="text-amber-400 font-bold text-sm">USDT</span>
                 </div>
 
-                <!-- [تعديل 1]: إضافة المعرفات المباشرة lblDepositBalance و lblProfitBalance -->
+                <div class="balance-summary-grid">
+                    <div class="balance-summary-card balance-usdt">
+                        <div class="balance-card-head"><span><i class="fa-solid fa-wallet"></i> الرصيد الحالي</span><span class="text-[10px]">USDT</span></div>
+                        <span class="balance-card-value"><span id="lblWalletBalanceMini">0.00</span> <small>USDT</small></span>
+                        <span class="balance-card-note">الرصيد المتاح</span>
+                    </div>
+                    <div class="balance-summary-card balance-deposit">
+                        <div class="balance-card-head"><span><i class="fa-solid fa-piggy-bank"></i> الإيداع</span><span class="text-[10px]">USDT</span></div>
+                        <span class="balance-card-value"><span id="lblDepositBalanceMini">0.00</span> <small>USDT</small></span>
+                        <span class="balance-card-note">إيداعك</span>
+                    </div>
+                    <div class="balance-summary-card balance-profit">
+                        <div class="balance-card-head"><span><i class="fa-solid fa-sack-dollar"></i> الأرباح</span><span class="text-[10px]">USDT</span></div>
+                        <span class="balance-card-value"><span id="lblProfitBalanceMini">0.00</span> <small>USDT</small></span>
+                        <span class="balance-card-note">قابل للسحب</span>
+                    </div>
+                    <div class="balance-summary-card balance-opx">
+                        <div class="balance-card-head"><span><i class="fa-solid fa-coins"></i> OPX</span><span class="text-[10px]">العملة</span></div>
+                        <span class="balance-card-value"><span id="lblOPXBalanceMini">0.0000</span> <small>OPX</small></span>
+                        <span class="balance-card-note">العائد الداخلي</span>
+                    </div>
+                </div>
+
                 <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800/80">
                     <div class="bg-slate-950/60 p-2.5 rounded-2xl border border-slate-800">
                         <span class="text-slate-400 block text-[10px] mb-0.5"><i class="fa-solid fa-piggy-bank text-amber-400 mr-1"></i> رصيد الإيداع</span>
@@ -1011,9 +1054,27 @@ body::before{content:'';position:fixed;inset:-12%;z-index:-1;pointer-events:none
                     </span>
                 </div>
             </div>
-            <div class="grid grid-cols-2 gap-2 text-xs">
-                <div class="bg-slate-900/90 p-3.5 rounded-2xl border border-slate-800 text-center"><span class="text-slate-400 block text-[10px] mb-0.5">إجمالي الأرباح المكتسبة</span><b id="lblProfileTotalEarnings" class="text-emerald-400 font-black text-sm">$0.00</b></div>
-                <div class="bg-slate-900/90 p-3.5 rounded-2xl border border-slate-800 text-center"><span class="text-slate-400 block text-[10px] mb-0.5">السحوبات الناجحة</span><b id="lblProfileTotalWithdrawn" class="text-amber-400 font-black text-sm">$0.00</b></div>
+            <div class="profile-summary-grid">
+                <div class="balance-summary-card balance-profit">
+                    <div class="balance-card-head"><span><i class="fa-solid fa-sack-dollar"></i> الأرباح</span><span class="text-[10px]">USDT</span></div>
+                    <span class="balance-card-value"><span id="lblProfileTotalEarnings">0.00</span> <small>USDT</small></span>
+                    <span class="balance-card-note">إجمالي الأرباح المكتسبة</span>
+                </div>
+                <div class="balance-summary-card balance-deposit">
+                    <div class="balance-card-head"><span><i class="fa-solid fa-piggy-bank"></i> الإيداع</span><span class="text-[10px]">USDT</span></div>
+                    <span class="balance-card-value"><span id="lblProfileTotalDeposits">0.00</span> <small>USDT</small></span>
+                    <span class="balance-card-note">إجمالي الإيداعات</span>
+                </div>
+                <div class="balance-summary-card balance-usdt">
+                    <div class="balance-card-head"><span><i class="fa-solid fa-wallet"></i> السحوبات</span><span class="text-[10px]">USDT</span></div>
+                    <span class="balance-card-value"><span id="lblProfileTotalWithdrawn">0.00</span> <small>USDT</small></span>
+                    <span class="balance-card-note">السحوبات الناجحة</span>
+                </div>
+                <div class="balance-summary-card balance-opx">
+                    <div class="balance-card-head"><span><i class="fa-solid fa-coins"></i> OPX</span><span class="text-[10px]">العملة</span></div>
+                    <span class="balance-card-value"><span id="lblProfileOPXBalance">0.0000</span> <small>OPX</small></span>
+                    <span class="balance-card-note">رصيد OPX الداخلي</span>
+                </div>
             </div>
 
             <section id="socialProfileSection" class="glass-card rounded-3xl border border-cyan-500/20 p-4 space-y-3">

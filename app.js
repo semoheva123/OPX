@@ -924,6 +924,11 @@ function updateWalletData(wallet) {
     const lblDeposits = document.getElementById('lblTotalDeposits');
     const lblWithdrawn = document.getElementById('lblTotalWithdrawn');
 
+    const lblBalanceMini = document.getElementById('lblWalletBalanceMini');
+    const lblDepBalanceMini = document.getElementById('lblDepositBalanceMini');
+    const lblProfBalanceMini = document.getElementById('lblProfitBalanceMini');
+    const lblOPXBalanceMini = document.getElementById('lblOPXBalanceMini');
+
     if (lblBalance) lblBalance.innerText = balance;
     if (lblDepBalance) lblDepBalance.innerText = `${depositBal} USDT`;
     if (lblProfBalance) lblProfBalance.innerText = `${profitBal} USDT`;
@@ -931,12 +936,21 @@ function updateWalletData(wallet) {
     if (lblDeposits) lblDeposits.innerText = `${deposits} USDT`;
     if (lblWithdrawn) lblWithdrawn.innerText = `${withdrawn} USDT`;
 
+    if (lblBalanceMini) lblBalanceMini.innerText = balance;
+    if (lblDepBalanceMini) lblDepBalanceMini.innerText = depositBal;
+    if (lblProfBalanceMini) lblProfBalanceMini.innerText = profitBal;
+    if (lblOPXBalanceMini) lblOPXBalanceMini.innerText = Number(opxBalanceVal || 0).toFixed(4);
+
     // عناصر الواجهة في الملف الشخصي (Profile)
     const lblProfileEarned = document.getElementById('lblProfileTotalEarnings');
     const lblProfileWithdrawn = document.getElementById('lblProfileTotalWithdrawn');
+    const lblProfileDeposits = document.getElementById('lblProfileTotalDeposits');
+    const lblProfileOPXBalance = document.getElementById('lblProfileOPXBalance');
 
-    if (lblProfileEarned) lblProfileEarned.innerText = `$${balance}`;
-    if (lblProfileWithdrawn) lblProfileWithdrawn.innerText = `$${withdrawn}`;
+    if (lblProfileEarned) lblProfileEarned.innerText = profitBal;
+    if (lblProfileWithdrawn) lblProfileWithdrawn.innerText = withdrawn;
+    if (lblProfileDeposits) lblProfileDeposits.innerText = depositBal;
+    if (lblProfileOPXBalance) lblProfileOPXBalance.innerText = Number(opxBalanceVal || 0).toFixed(4);
 }
 
 function drawOpxProjectionChart() {
