@@ -674,7 +674,17 @@ async function updateUserRole(req, res) {
     const { userId, role } = req.body;
     const allowedRoles = ['user', 'admin', 'financial_admin', 'support_admin', 'monitor'];
     if (!allowedRoles.includes(role)) return res.status(400).json({ error: 'الدور المحدد غير صالح' });
-    if (String(userId) === String(req.user._id)) return res.status(400).json({ error: 'لا يمكنك تغيير دور حسابك بنفسك' });
+    if (String(userId) === String(req.user.id || req.user._id)) return res.status(400).json({ error: 'لا يمكنك تغيير دور حسابك بنفسك' });
+    if (dataAccess.isSupabaseRuntime()) {
+      const user = await dataAccess.user.findById(userId);
+      if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
+      if (user.role === 'admin' && role !== 'admin' && await dataAccess.user.countDocuments({ role: 'admin', isBanned: false }) <= 1) return res.status(400).json({ error: 'لا يمكن إزالة آخر مدير كامل' });
+      const oldRole = user.role;
+      await dataAccess.user.updateOne({ id: user.id || user._id }, { $set: { role } });
+      await createAudit(req, 'update_user_role', String(user.id || user._id), { oldRole, newRole: role });
+      await emitUserDataChanged(user.id || user._id, 'role_updated');
+      return res.json({ success: true, message: 'تم تحديث صلاحيات المستخدم', role });
+    }
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     if (user.role === 'admin' && role !== 'admin' && await User.countDocuments({ role: 'admin', isBanned: false }) <= 1) return res.status(400).json({ error: 'لا يمكن إزالة آخر مدير كامل' });
