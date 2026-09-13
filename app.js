@@ -3,6 +3,7 @@
    ========================================================================== */
 
 let currentUserTier = 'A1';
+let currentUserTierActive = false;
 let soundEnabled = true;
 let currentUserData = null; // الاحتفاظ ببيانات المستخدم محلياً لسهولة الوصول
 let hasPendingDeposit = false; // متغير لتتبع وجود طلب إيداع معلق
@@ -334,11 +335,12 @@ function updateTierDisplay() {
     const userTierBadge = document.getElementById('lblUserTierBadge');
     const profileTierBadge = document.getElementById('lblProfileTierBadge');
     const isEnglish = localStorage.getItem('ag_language') === 'en';
-    if(cardTierName) cardTierName.innerText = isEnglish ? `Tier ${currentUserTier}` : `المستوى ${currentUserTier}`;
-    if(userTierBadge) userTierBadge.innerText = isEnglish ? `Tier ${currentUserTier}` : `المستوى ${currentUserTier}`;
+    const tierLabel = currentUserTierActive ? (isEnglish ? `Tier ${currentUserTier}` : `المستوى ${currentUserTier}`) : (isEnglish ? 'Not activated' : 'المستوى غير مفعّل');
+    if(cardTierName) cardTierName.innerText = tierLabel;
+    if(userTierBadge) userTierBadge.innerText = tierLabel;
     if(profileTierBadge) {
         const icon = profileTierBadge.querySelector('i');
-        profileTierBadge.innerHTML = `${icon ? icon.outerHTML : ''} ${isEnglish ? `Tier ${currentUserTier}` : `مستوى ${currentUserTier}`}`;
+        profileTierBadge.innerHTML = `${icon ? icon.outerHTML : ''} ${currentUserTierActive ? (isEnglish ? `Tier ${currentUserTier}` : `مستوى ${currentUserTier}`) : (isEnglish ? 'Not activated' : 'المستوى غير مفعّل')}`;
     }
     updateNextTierPanel();
 }
@@ -1630,6 +1632,7 @@ async function loadUserProfile() {
             }
 
             currentUserTier = data.user.tierCode || 'A1';
+            currentUserTierActive = Boolean(data.user.isTierActivated || Number(data.user.wallet?.totalDeposits || 0) > 0);
             updateWalletData(data.user.wallet || data.user);
             updateProfileUI();
 
@@ -1813,6 +1816,32 @@ function updateTaskAvailability(completed, maximum) {
     renderTaskBoard(completed, maximum);
 }
 
+function getActiveTaskTier() {
+    return tiersData.find(tier => tier.code === currentUserTier) || tiersData[0];
+}
+
+function updateTaskLevelPanel(tier) {
+    const activeTier = tier || getActiveTaskTier();
+    const title = document.getElementById('taskLevelTitle');
+    const code = document.getElementById('taskLevelCode');
+    const description = document.getElementById('taskLevelDescription');
+    const limit = document.getElementById('taskLevelLimit');
+    const reward = document.getElementById('taskLevelReward');
+    if (!currentUserTierActive) {
+        if (title) title.innerText = 'المستوى غير مفعّل';
+        if (code) code.innerText = '—';
+        if (description) description.innerText = 'أكمل إيداع المستوى الأول لتفعيل المهام اليومية.';
+        if (limit) limit.innerText = 'يتطلب التفعيل';
+        if (reward) reward.innerText = '—';
+        return;
+    }
+    if (title) title.innerText = activeTier.name || `المستوى ${activeTier.code}`;
+    if (code) code.innerText = activeTier.code;
+    if (description) description.innerText = `خطة ${activeTier.code}: ${activeTier.tasks || tierLimits[activeTier.code] || 33} مهمة يومية حسب المستوى المفعّل.`;
+    if (limit) limit.innerText = `${activeTier.tasks || tierLimits[activeTier.code] || 33} مهمة`;
+    if (reward) reward.innerText = `$${Number(activeTier.dailyProfit || 0).toFixed(2)}`;
+}
+
 async function loadCpaLeadOfferwall() {
     const section = document.getElementById('cpaleadOfferwallSection');
     const frame = document.getElementById('cpaleadOfferwallFrame');
@@ -1850,22 +1879,44 @@ function setTaskFilter(filter) {
 function renderTaskBoard(completed, maximum) {
     const board = document.getElementById('taskBoard');
     if (!board) return;
+    const activeTier = getActiveTaskTier();
+    updateTaskLevelPanel(activeTier);
+    if (!currentUserTierActive) {
+        board.innerHTML = '<p class="rounded-xl border border-amber-500/15 bg-amber-500/5 p-3 text-center text-[10px] text-amber-300">فعّل المستوى الأول بالإيداع لعرض مهامك اليومية.</p>';
+        const strategyTitle = document.getElementById('taskStrategyTitle');
+        const strategyMeta = document.getElementById('taskStrategyMeta');
+        const strategyState = document.getElementById('taskStrategyState');
+        if (strategyTitle) strategyTitle.innerText = 'المستوى غير مفعّل';
+        if (strategyMeta) strategyMeta.innerText = 'يتطلب إيداعًا';
+        if (strategyState) strategyState.innerText = 'بانتظار التفعيل';
+        return;
+    }
+    const tierTask = {
+        A1: { title: 'نفّذ مهمة المستوى A1', description: 'أكمل المهمة اليومية الأساسية ضمن خطة المستوى المفعّل.' },
+        A2: { title: 'نفّذ مهمة المستوى A2', description: 'أكمل مهمة اليوم ضمن خطة المستوى المتقدم المفعّل.' },
+        A3: { title: 'نفّذ مهمة المستوى A3', description: 'أكمل مهمة اليوم ضمن خطة المستوى الخبير المفعّل.' },
+        A4: { title: 'نفّذ مهمة المستوى A4', description: 'أكمل مهمة اليوم ضمن خطة المستوى المحترف المفعّل.' },
+        A5: { title: 'نفّذ مهمة المستوى A5', description: 'أكمل مهمة اليوم ضمن خطة المستوى VIP المفعّل.' }
+    }[activeTier.code] || { title: `نفّذ مهمة المستوى ${activeTier.code}`, description: 'أكمل المهمة اليومية ضمن خطة المستوى المفعّل.' };
     const tasks = [
         { id: 'email', category: 'priority', icon: 'fa-envelope-circle-check', title: 'أكد بريدك الإلكتروني', description: 'ارفع جاهزية الحساب واستقبل تنبيهات العمليات المهمة.', done: Boolean(currentUserData?.emailVerified), action: "switchTab('profile'); document.getElementById('btnVerifyEmailProfile')?.click()", status: 'أولوية' },
         { id: 'twoFactor', category: 'priority', icon: 'fa-shield-halved', title: 'فعّل المصادقة الثنائية', description: 'أضف طبقة حماية قبل السحب والعمليات الحساسة.', done: Boolean(currentUserData?.twoFactorEnabled), action: "switchTab('profile'); document.getElementById('toggle2FA')?.focus()", status: 'أولوية' },
         { id: 'wallet', category: 'priority', icon: 'fa-wallet', title: 'ثبّت محفظة السحب', description: 'أدخل عنوانًا صحيحًا لتجهيز مسار السحب الآمن.', done: Boolean((currentUserData?.walletAddress || currentUserData?.withdrawWallet || '').trim()), action: "switchTab('profile'); document.getElementById('profileWalletAddress')?.focus()", status: 'أولوية' },
         { id: 'kyc', category: 'priority', icon: 'fa-id-card', title: 'أكمل توثيق الهوية', description: 'أرسل بيانات KYC لرفع جاهزية الحساب للعمليات الحساسة.', done: currentUserData?.kycStatus === 'verified', action: "switchTab('profile'); document.getElementById('kycFullNameInput')?.focus()", status: 'أولوية' },
-        { id: 'daily', category: 'operations', icon: 'fa-bolt', title: 'نفّذ المهمة اليومية التالية', description: 'أنجز خطوة تشغيلية واحدة وسجّل تقدمك في خطة اليوم.', done: completed >= maximum, action: 'completeTask()', status: 'تشغيلية' },
+        { id: 'daily', category: 'operations', icon: 'fa-bolt', title: tierTask.title, description: `${tierTask.description} الحد اليومي: ${maximum} مهمة.`, done: completed >= maximum, action: 'completeTask()', status: 'تشغيلية' },
     ];
-    const visibleTasks = tasks.filter(task => taskBoardFilter === 'all' || task.category === taskBoardFilter);
-    board.innerHTML = visibleTasks.map(task => `<article class="task-card rounded-2xl p-3 transition-all"><div class="flex items-start gap-3"><span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${task.done ? 'bg-emerald-400/15 text-emerald-300' : 'bg-amber-400/12 text-amber-300'}"><i class="fa-solid ${task.icon} text-sm"></i></span><div class="min-w-0 flex-1"><div class="flex items-start justify-between gap-2"><div><h4 class="text-xs font-bold text-white">${task.title}</h4><p class="mt-1 text-[10px] leading-5 text-slate-500">${task.description}</p></div><span class="shrink-0 text-[10px] font-bold ${task.done ? 'text-emerald-300' : 'text-amber-300'}">${task.done ? 'مكتملة' : task.status}</span></div><div class="mt-2 flex items-center justify-between gap-2"><span class="text-[9px] ${task.done ? 'text-emerald-300' : 'text-slate-500'}">${task.done ? 'تم التحقق' : 'قيد الانتظار'}</span><button ${task.id === 'daily' ? 'id="btnCompleteTask"' : ''} ${task.done ? 'disabled' : `onclick="${task.action}"`} class="mt-0 rounded-xl border px-3 py-2 text-[10px] font-bold ${task.done ? 'cursor-not-allowed border-emerald-500/15 bg-emerald-500/5 text-emerald-300' : 'border-amber-500/25 bg-amber-500/10 text-amber-300 hover:border-amber-400/50'}">${task.done ? 'تم التحقق من الخطوة' : task.id === 'daily' ? 'بدء المهمة' : 'فتح الإجراء'} <i class="fa-solid ${task.done ? 'fa-check' : 'fa-arrow-left'} mr-1"></i></button></div></div></div></article>`).join('');
+    const pendingTasks = tasks.filter(task => !task.done);
+    const visibleTasks = pendingTasks.filter(task => taskBoardFilter === 'all' || task.category === taskBoardFilter);
+    board.innerHTML = visibleTasks.length
+        ? visibleTasks.map(task => `<article class="task-card rounded-2xl p-3 transition-all"><div class="flex items-start gap-3"><span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-400/12 text-amber-300"><i class="fa-solid ${task.icon} text-sm"></i></span><div class="min-w-0 flex-1"><div class="flex items-start justify-between gap-2"><div><h4 class="text-xs font-bold text-white">${task.title}</h4><p class="mt-1 text-[10px] leading-5 text-slate-500">${task.description}</p></div><span class="shrink-0 text-[10px] font-bold text-amber-300">${task.status}</span></div><div class="mt-2 flex items-center justify-between gap-2"><span class="text-[9px] text-slate-500">قيد الانتظار</span><button ${task.id === 'daily' ? 'id="btnCompleteTask"' : ''} onclick="${task.action}" class="mt-0 rounded-xl border px-3 py-2 text-[10px] font-bold border-amber-500/25 bg-amber-500/10 text-amber-300 hover:border-amber-400/50">${task.id === 'daily' ? 'بدء المهمة' : 'فتح الإجراء'} <i class="fa-solid fa-arrow-left mr-1"></i></button></div></div></div></article>`).join('')
+        : '<p class="rounded-xl border border-emerald-500/15 bg-emerald-500/5 p-3 text-center text-[10px] text-emerald-300">لا توجد مهام معلقة في هذا التصنيف.</p>';
 
-    const nextTask = tasks.find(task => !task.done) || tasks[0];
+    const nextTask = pendingTasks[0];
     const strategyTitle = document.getElementById('taskStrategyTitle');
     const strategyMeta = document.getElementById('taskStrategyMeta');
     const strategyState = document.getElementById('taskStrategyState');
     if (strategyTitle) strategyTitle.innerText = nextTask ? nextTask.title : 'الخطة مكتملة اليوم';
-    if (strategyMeta) strategyMeta.innerText = `${Math.max(0, tasks.length - tasks.filter(t => t.done).length)} / ${tasks.length} خطوات`;
+    if (strategyMeta) strategyMeta.innerText = `${pendingTasks.length} / ${tasks.length} خطوات متبقية`;
     if (strategyState) strategyState.innerText = completed >= maximum ? 'مكتمل اليوم' : 'الخطة مفتوحة';
 }
 
