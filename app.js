@@ -1134,7 +1134,7 @@ async function loadInvestmentVaults() {
     if (!list || !token) return;
     const available = Number(currentUserData?.USDT_balance || 0);
     const availableElement = document.getElementById('vaultAvailableBalance');
-    if (availableElement) availableElement.innerText = `${available.toFixed(4)} USDT`;
+    if (availableElement) availableElement.innerText = `${available.toFixed(2)} USDT`;
     try {
         const response = await fetch('/api/investment-vault/my', { headers: { Authorization: `Bearer ${token}` } });
         const data = await response.json();
@@ -1144,7 +1144,7 @@ async function loadInvestmentVaults() {
             const matured = ['matured'].includes(vault.status);
             const status = vault.status === 'active' ? `مجمّدة حتى ${maturity.toLocaleDateString('ar')}` : vault.status === 'matured' ? 'مستحقة للاسترداد' : vault.status === 'claimed' ? 'تم الاسترداد' : 'فتح اضطراري';
             const action = matured ? `<button type="button" onclick="claimInvestmentVault('${vault._id}')" class="rounded-lg bg-emerald-500/15 px-3 py-2 text-[10px] font-bold text-emerald-300">استرداد</button>` : '';
-            return `<div class="flex items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-950/60 p-3"><div><b class="block text-sm text-white">${Number(vault.amount || 0).toFixed(4)} USDT</b><span class="text-[10px] text-slate-500">${vault.durationDays} يومًا · ${status}</span><small class="block text-[10px] text-amber-300">حافز مضمون وفق العقد: ${Number(vault.expectedReturnRate || 0).toFixed(2)}% (${Number(vault.expectedProfit || 0).toFixed(4)} USDT عند الاستحقاق)</small>${vault.penaltyAmount ? `<small class="block text-[10px] text-rose-300">غرامة: ${Number(vault.penaltyAmount).toFixed(4)} USDT</small>` : ''}</div>${action}</div>`;
+            return `<div class="flex items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-950/60 p-3"><div><b class="block text-sm text-white">${Number(vault.amount || 0).toFixed(2)} USDT</b><span class="text-[10px] text-slate-500">${vault.durationDays} يومًا · ${status}</span><small class="block text-[10px] text-amber-300">حافز مضمون وفق العقد: ${Number(vault.expectedReturnRate || 0).toFixed(2)}% (${Number(vault.expectedProfit || 0).toFixed(2)} USDT عند الاستحقاق)</small>${vault.penaltyAmount ? `<small class="block text-[10px] text-rose-300">غرامة: ${Number(vault.penaltyAmount).toFixed(2)} USDT</small>` : ''}</div>${action}</div>`;
         }).join('') : '<p class="py-4 text-center text-[11px] text-slate-500">لا توجد خزائن نشطة بعد.</p>';
     } catch (error) { list.innerHTML = `<p class="py-4 text-center text-[11px] text-rose-300">${escapeAiHtml(error.message)}</p>`; }
 }
@@ -1166,8 +1166,8 @@ async function loadVaultContracts() {
             const rate = Number(option?.dataset.rate || 0);
             const expectedProfit = amount * rate / 100;
             const incentive = document.getElementById('vaultExpectedIncentive');
-            if (incentive) incentive.innerText = `${expectedProfit.toFixed(4)} USDT`;
-            if (hint && option) hint.innerText = `الحافز المضمون وفق العقد: ${expectedProfit.toFixed(4)} USDT (${rate.toFixed(2)}% من مبلغ التجميد)، ويُصرف عند الاستحقاق.`;
+            if (incentive) incentive.innerText = `${expectedProfit.toFixed(2)} USDT`;
+            if (hint && option) hint.innerText = `الحافز المضمون وفق العقد: ${expectedProfit.toFixed(2)} USDT (${rate.toFixed(2)}% من مبلغ التجميد)، ويُصرف عند الاستحقاق.`;
         };
         const updateHint = updateIncentivePreview;
         select.onchange = updateHint;
@@ -1182,7 +1182,7 @@ async function createInvestmentVault(event) {
     const amount = Number(document.getElementById('vaultAmountInput')?.value);
     const durationDays = Number(document.getElementById('vaultDurationInput')?.value);
     if (!token || !Number.isFinite(amount) || amount < 10) return showToast('أدخل مبلغًا لا يقل عن 10 USDT');
-    const confirmed = await showPlatformConfirm(`سيتم تجميد ${amount.toFixed(4)} USDT لمدة ${durationDays} يومًا. لا يمكن الاسترداد قبل الاستحقاق. هل تتابع؟`, 'تأكيد تجميد السيولة');
+    const confirmed = await showPlatformConfirm(`سيتم تجميد ${amount.toFixed(2)} USDT لمدة ${durationDays} يومًا. لا يمكن الاسترداد قبل الاستحقاق. هل تتابع؟`, 'تأكيد تجميد السيولة');
     if (!confirmed) return;
     try {
         const response = await fetch('/api/investment-vault/create', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ amount, durationDays }) });
