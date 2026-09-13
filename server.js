@@ -1332,6 +1332,11 @@ let server;
 let initializationPromise;
 
 async function ensureSupabaseSchema() {
+  if (process.env.AUTO_APPLY_SUPABASE_SCHEMA !== 'true') {
+    console.log('ℹ️ تم تخطي تطبيق schema.sql التلقائي. فعّل AUTO_APPLY_SUPABASE_SCHEMA=true فقط عند توفر اتصال PostgreSQL مباشر صالح.');
+    return;
+  }
+
   const dbUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
   if (!dbUrl) {
     console.log('ℹ️ لا يوجد رابط قاعدة بيانات مباشر (SUPABASE_DATABASE_URL/DATABASE_URL). سيتم إنشاء الجداول يدويًا داخل Supabase SQL Editor.');
