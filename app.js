@@ -1152,6 +1152,7 @@ async function loadInvestmentVaults() {
 async function loadVaultContracts() {
     const select = document.getElementById('vaultDurationInput');
     const hint = document.getElementById('vaultContractHint');
+    const amountInput = document.getElementById('vaultAmountInput');
     const token = localStorage.getItem('token');
     if (!select || !token) return;
     try {
@@ -1159,8 +1160,18 @@ async function loadVaultContracts() {
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'تعذر تحميل عقود الخزنة');
         select.innerHTML = data.contracts?.length ? data.contracts.map(contract => `<option value="${Number(contract.durationDays)}" data-rate="${Number(contract.expectedReturnRate || 0)}">${Number(contract.durationDays)} يومًا${contract.label ? ` - ${escapeAiHtml(contract.label)}` : ''} · عائد متوقع ${Number(contract.expectedReturnRate || 0).toFixed(2)}%</option>`).join('') : '<option value="">لا توجد عقود متاحة</option>';
-        const updateHint = () => { const option = select.options[select.selectedIndex]; if (hint && option) hint.innerText = `العائد المتوقع لهذا العقد: ${Number(option.dataset.rate || 0).toFixed(2)}%، وهو تقديري وغير مضمون.`; };
+        const updateIncentivePreview = () => {
+            const option = select.options[select.selectedIndex];
+            const amount = Math.max(0, Number(amountInput?.value || 0));
+            const rate = Number(option?.dataset.rate || 0);
+            const expectedProfit = amount * rate / 100;
+            const incentive = document.getElementById('vaultExpectedIncentive');
+            if (incentive) incentive.innerText = `${expectedProfit.toFixed(4)} USDT`;
+            if (hint && option) hint.innerText = `الحافز المتوقع: ${expectedProfit.toFixed(4)} USDT (${rate.toFixed(2)}% من مبلغ التجميد)، وهو تقديري وغير مضمون.`;
+        };
+        const updateHint = updateIncentivePreview;
         select.onchange = updateHint;
+        if (amountInput) amountInput.oninput = updateIncentivePreview;
         updateHint();
     } catch (error) { select.innerHTML = '<option value="">تعذر تحميل العقود</option>'; if (hint) hint.innerText = error.message; }
 }
