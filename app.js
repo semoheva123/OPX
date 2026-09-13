@@ -479,16 +479,17 @@ async function refreshHomeDashboard() {
 function renderHomeSummary(summary) {
     const completedTasks = Number(summary.completedTasks || 0);
     const taskLimit = tierLimits[currentUserTier] || 33;
-    const taskProgress = Math.min(100, Math.round((completedTasks / taskLimit) * 100));
+    const tierActive = Boolean(currentUserTierActive);
+    const taskProgress = tierActive ? Math.min(100, Math.round((completedTasks / taskLimit) * 100)) : 0;
     const pulse = document.getElementById('homePulseMessage');
     const pulseMeta = document.getElementById('homePulseMeta');
     if (pulse) pulse.innerText = summary.todayEarned > 0 ? `حسابك نشط اليوم وحققت $${summary.todayEarned.toFixed(2)} من الأرباح.` : 'لم تسجل أرباحًا اليوم بعد. لديك فرصة لبدء مهامك.';
-    if (pulseMeta) pulseMeta.innerText = `${completedTasks} من ${taskLimit} مهمة مكتملة اليوم`;
+    if (pulseMeta) pulseMeta.innerText = tierActive ? `${completedTasks} من ${taskLimit} مهمة مكتملة اليوم` : 'المهام اليومية تتطلب تفعيل المستوى';
 
     const goal = document.getElementById('homeNextGoal');
     const goalMeta = document.getElementById('homeGoalMeta');
     const goalProgress = document.getElementById('homeGoalProgress');
-    if (goal) goal.innerText = completedTasks < taskLimit ? `أكمل ${taskLimit - completedTasks} مهمة للوصول إلى هدف اليوم.` : 'أكملت هدف المهام اليومية.';
+    if (goal) goal.innerText = tierActive ? (completedTasks < taskLimit ? `أكمل ${taskLimit - completedTasks} مهمة للوصول إلى هدف اليوم.` : 'أكملت هدف المهام اليومية.') : 'فعّل المستوى الأول لبدء المهام اليومية.';
     if (goalMeta) goalMeta.innerText = `${taskProgress}% من هدف اليوم`;
     if (goalProgress) goalProgress.style.width = `${taskProgress}%`;
 
@@ -527,9 +528,9 @@ function renderHomeSummary(summary) {
     if (syncStatus) syncStatus.innerText = `آخر مزامنة: ${new Date().toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' })}`;
 
     const opportunities = [];
-    if (completedTasks < taskLimit) opportunities.push(`أكمل ${taskLimit - completedTasks} مهمة متبقية اليوم`);
+    if (tierActive && completedTasks < taskLimit) opportunities.push(`أكمل ${taskLimit - completedTasks} مهمة متبقية اليوم`);
     if (!currentUserData?.twoFactorEnabled) opportunities.push({ text: 'فعّل المصادقة الثنائية لحماية السحب', action: "switchTab('profile')" });
-    if (completedTasks < taskLimit) opportunities[0] = { text: `أكمل ${taskLimit - completedTasks} مهمة متبقية اليوم`, action: "switchTab('travel')" };
+    if (tierActive && completedTasks < taskLimit) opportunities[0] = { text: `أكمل ${taskLimit - completedTasks} مهمة متبقية اليوم`, action: "switchTab('travel')" };
     if (!(currentUserData?.walletAddress || currentUserData?.withdrawWallet || '').trim()) opportunities.push({ text: 'ثبّت عنوان محفظة السحب من قسم حسابي', action: "switchTab('profile')" });
     if (summary.referralCount < 6) opportunities.push({ text: `لديك ${6 - summary.referralCount} إحالات للوصول إلى دورة الألعاب`, action: "switchTab('team')" });
     if (summary.nextLevel) opportunities.push({ text: `راجع متطلبات الترقية إلى ${summary.nextLevel.code}`, action: "switchTab('tiers')" });
@@ -1874,15 +1875,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function updateTaskAvailability(completed, maximum) {
     const button = document.getElementById('btnCompleteTask');
-    const finished = completed >= maximum;
+    const finished = !currentUserTierActive || completed >= maximum;
     if (button) {
         button.disabled = finished;
-        button.innerText = finished ? 'اكتملت مهام اليوم' : 'بدء المهمة اليومية';
+        button.innerText = !currentUserTierActive ? 'يتطلب تفعيل المستوى' : finished ? 'اكتملت مهام اليوم' : 'بدء المهمة اليومية';
         button.classList.toggle('opacity-50', finished);
         button.classList.toggle('cursor-not-allowed', finished);
     }
     const remaining = document.getElementById('lblRemainingTasks');
-    if (remaining) remaining.innerText = Math.max(0, maximum - completed);
+    if (remaining) remaining.innerText = currentUserTierActive ? Math.max(0, maximum - completed) : 'يتطلب التفعيل';
     renderTaskBoard(completed, maximum);
 }
 
