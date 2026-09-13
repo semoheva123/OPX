@@ -93,7 +93,7 @@ async function claimVaultSupabase(req, res) {
     const incentiveAmount = Number(vault.incentiveAmount ?? vault.expectedProfit ?? 0);
     const releaseAmount = Number((Number(vault.amount || 0) + incentiveAmount).toFixed(4));
     user.USDT_balance = Number((Number(user.USDT_balance || 0) + releaseAmount).toFixed(4));
-    user.wallet.profitBalance = Number((Number(user.wallet.profitBalance || 0) + releaseAmount).toFixed(4));
+    user.wallet.profitBalance = Number((Number(user.wallet.profitBalance || 0) + incentiveAmount).toFixed(4));
     user.wallet.balance = Number((Number(user.wallet.depositBalance || 0) + user.wallet.profitBalance).toFixed(2));
     const updatedUser = await dataAccess.user.updateOne({ id: user.id || user._id }, { $set: { wallet: user.wallet, USDT_balance: user.USDT_balance } });
     const updatedVault = await dataAccess.investmentVault.updateOne({ id: vault.id || vault._id, status: vault.status }, { $set: { status: 'claimed' } });

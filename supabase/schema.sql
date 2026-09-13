@@ -394,8 +394,8 @@ begin
   before_balance := wallet_row.balance;
   update wallet_balances set
     usdt_balance = usdt_balance + release_value,
-    profit_balance = profit_balance + release_value,
-    balance = deposit_balance + profit_balance + release_value,
+    profit_balance = profit_balance + incentive_value,
+    balance = deposit_balance + profit_balance + incentive_value,
     updated_at = now()
   where user_id = p_user_id;
   update investment_vault set status = 'claimed', updated_at = now() where id = vault_row.id;
