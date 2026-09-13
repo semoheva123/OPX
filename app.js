@@ -56,6 +56,11 @@ let tiersData = [
 
 const tierLimits = { 'A1': 33, 'A2': 35, 'A3': 40, 'A4': 45, 'A5': 50 };
 
+function getTaskLimitForTier(tierCode = currentUserTier) {
+    const tier = tiersData.find(item => item.code === tierCode);
+    return Number(tier?.tasks) > 0 ? Number(tier.tasks) : (tierLimits[tierCode] || 33);
+}
+
 // تهيئة التطبيق عند اكتمال تحميل عناصر الصفحة
 document.addEventListener('DOMContentLoaded', () => {
     const modalSelector = '[role="dialog"], [id$="Modal"]';
@@ -280,6 +285,7 @@ async function loadTiers() {
     renderTiersList();
     updateNextTierPanel();
     if (currentUserData?.teamStats) updateTeamTreeData(currentUserData.teamStats);
+    if (currentUserData) updateTaskAvailability(Number(currentUserData.todayCompletedTasks || 0), getTaskLimitForTier());
 }
 
 function updateNextTierPanel() { const title = document.getElementById('nextTierTitle'); const requirements = document.getElementById('nextTierRequirements'); if (!title || !requirements) return; const index = tiersData.findIndex(tier => tier.code === currentUserTier); const next = tiersData[index + 1]; if (!next) { title.innerText = 'أنت في أعلى مستوى'; requirements.innerHTML = '<span class="col-span-2 text-emerald-300">لا توجد ترقية أعلى حاليًا.</span>'; return; } const active = Number(currentUserData?.teamStats?.activeReferrals || 0); const goal = index * 10 + 10; const cost = Math.max(0, Number(next.price || 0) - Number(tiersData[index]?.price || 0)); title.innerText = `الترقية التالية: ${next.code}`; requirements.innerHTML = `<span class="bg-slate-950 rounded-xl p-2">الإحالات النشطة: <b class="text-amber-300">${active}/${goal}</b></span><span class="bg-slate-950 rounded-xl p-2">فرق السعر: <b class="text-emerald-300">$${cost.toFixed(2)}</b></span><span class="bg-slate-950 rounded-xl p-2">المهام اليومية: <b class="text-white">${next.tasks}</b></span><span class="bg-slate-950 rounded-xl p-2">العائد التقديري: <b class="text-emerald-300">$${Number(next.dailyProfit || 0).toFixed(2)}</b></span>`; }
@@ -478,7 +484,7 @@ async function refreshHomeDashboard() {
 
 function renderHomeSummary(summary) {
     const completedTasks = Number(summary.completedTasks || 0);
-    const taskLimit = tierLimits[currentUserTier] || 33;
+    const taskLimit = getTaskLimitForTier();
     const tierActive = Boolean(currentUserTierActive);
     const taskProgress = tierActive ? Math.min(100, Math.round((completedTasks / taskLimit) * 100)) : 0;
     const pulse = document.getElementById('homePulseMessage');
@@ -1709,7 +1715,7 @@ async function loadUserProfile() {
 
             updateTeamTreeData(data.user.teamStats || { l1: 0, l2: 0, l3: 0, total: 0 });
 
-            let maxTasks = tierLimits[currentUserTier] || 33;
+            let maxTasks = getTaskLimitForTier();
             document.getElementById('lblMaxTasks').innerText = maxTasks;
             let percent = ((data.user.todayCompletedTasks || 0) / maxTasks) * 100;
             document.getElementById('taskProgressBar').style.width = `${percent > 100 ? 100 : percent}%`;
@@ -1898,18 +1904,19 @@ function updateTaskLevelPanel(tier) {
     const description = document.getElementById('taskLevelDescription');
     const limit = document.getElementById('taskLevelLimit');
     const reward = document.getElementById('taskLevelReward');
+    const taskCount = activeTier.tasks || tierLimits[activeTier.code] || 33;
     if (!currentUserTierActive) {
         if (title) title.innerText = 'المستوى غير مفعّل';
-        if (code) code.innerText = '—';
-        if (description) description.innerText = 'مهام التحقق والأمان متاحة، أما المهام اليومية فتتطلب تفعيل المستوى الأول.';
-        if (limit) limit.innerText = 'يتطلب التفعيل';
+        if (code) code.innerText = activeTier.code;
+        if (description) description.innerText = `مهام التحقق والأمان متاحة. عند تفعيل ${activeTier.code} ستظهر خطة من ${taskCount} مهمة يومية.`;
+        if (limit) limit.innerText = `${taskCount} مهمة عند التفعيل`;
         if (reward) reward.innerText = '—';
         return;
     }
     if (title) title.innerText = activeTier.name || `المستوى ${activeTier.code}`;
     if (code) code.innerText = activeTier.code;
-    if (description) description.innerText = `خطة ${activeTier.code}: ${activeTier.tasks || tierLimits[activeTier.code] || 33} مهمة يومية حسب المستوى المفعّل.`;
-    if (limit) limit.innerText = `${activeTier.tasks || tierLimits[activeTier.code] || 33} مهمة`;
+    if (description) description.innerText = `خطة ${activeTier.code}: ${taskCount} مهمة يومية حسب المستوى المفعّل.`;
+    if (limit) limit.innerText = `${taskCount} مهمة`;
     if (reward) reward.innerText = `$${Number(activeTier.dailyProfit || 0).toFixed(2)}`;
 }
 
@@ -1944,7 +1951,7 @@ function setTaskFilter(filter) {
         if (!button) return;
         button.className = item === filter ? 'task-filter-active rounded-xl border py-2 text-[10px] font-bold' : 'rounded-xl border border-slate-800 py-2 text-[10px] font-bold text-slate-400';
     });
-    renderTaskBoard(Number(currentUserData?.todayCompletedTasks || 0), tierLimits[currentUserTier] || 33);
+    renderTaskBoard(Number(currentUserData?.todayCompletedTasks || 0), getTaskLimitForTier());
 }
 
 function renderTaskBoard(completed, maximum) {
@@ -2114,7 +2121,7 @@ async function completeTask() {
     } catch(err) {
         showToast('خطأ في الاتصال');
     } finally {
-        updateTaskAvailability(Number(currentUserData?.todayCompletedTasks || 0), tierLimits[currentUserTier] || 33);
+        updateTaskAvailability(Number(currentUserData?.todayCompletedTasks || 0), getTaskLimitForTier());
     }
 }
 
@@ -2518,7 +2525,7 @@ function switchTab(tabName) {
         loadGameStats();
     }
     if (tabName === 'travel') {
-        const maximum = tierLimits[currentUserTier] || 33;
+        const maximum = getTaskLimitForTier();
         updateTaskAvailability(Number(currentUserData?.todayCompletedTasks || 0), maximum);
         startTaskResetCountdown();
     }
