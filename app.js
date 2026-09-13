@@ -58,7 +58,31 @@ const tierLimits = { 'A1': 33, 'A2': 35, 'A3': 40, 'A4': 45, 'A5': 50 };
 
 // تهيئة التطبيق عند اكتمال تحميل عناصر الصفحة
 document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('[role="dialog"], [id$="Modal"]').forEach(modal => modal.classList.add('modal-shell'));
+    const modalSelector = '[role="dialog"], [id$="Modal"]';
+    const syncModalAccessibility = () => {
+        const visibleModals = [];
+        document.querySelectorAll(modalSelector).forEach(modal => {
+            modal.classList.add('modal-shell');
+            if (!modal.hasAttribute('role')) modal.setAttribute('role', 'dialog');
+            modal.setAttribute('aria-modal', 'true');
+            if (!modal.hasAttribute('aria-labelledby') && !modal.hasAttribute('aria-label')) modal.setAttribute('aria-label', modal.querySelector('h1, h2, h3')?.innerText.trim() || 'نافذة منبثقة');
+            const isVisible = !modal.classList.contains('hide') && getComputedStyle(modal).display !== 'none';
+            modal.setAttribute('aria-hidden', isVisible ? 'false' : 'true');
+            if (isVisible) visibleModals.push(modal);
+        });
+        document.body.classList.toggle('modal-open', visibleModals.length > 0);
+    };
+    document.querySelectorAll(modalSelector).forEach(modal => modal.classList.add('modal-shell'));
+    new MutationObserver(syncModalAccessibility).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
+    syncModalAccessibility();
+    document.addEventListener('keydown', event => {
+        if (event.key !== 'Escape') return;
+        const visibleModals = [...document.querySelectorAll(modalSelector)].filter(modal => !modal.classList.contains('hide') && getComputedStyle(modal).display !== 'none');
+        const modal = visibleModals[visibleModals.length - 1];
+        if (!modal) return;
+        const closeButton = modal.querySelector('button[aria-label*="إغلاق"], button[title*="إغلاق"], button[onclick*="close"], #platformConfirmCancel');
+        closeButton?.click();
+    });
     loadPlatformSupportSettings();
     const urlParams = new URLSearchParams(window.location.search);
     const refCode = urlParams.get('ref');

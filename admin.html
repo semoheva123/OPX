@@ -76,6 +76,9 @@ body::before{content:'';position:fixed;inset:-12%;z-index:-1;pointer-events:none
 @keyframes operixParallaxFloat{0%{transform:scale(1.08) translateY(-4%);opacity:0.65}50%{transform:scale(1.12) translateY(2%);opacity:0.75}100%{transform:scale(1.16) translateY(5%);opacity:0.82}}
 @media (max-width: 640px){body{overflow-x:hidden}}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+body.modal-open{overflow:hidden}
+.admin-modal{overscroll-behavior:contain}
+@media (max-width:767px){.admin-modal>.glass-card{width:100%;max-height:calc(100dvh - 1.5rem);overflow-y:auto;border-radius:1.5rem 1.5rem 1rem 1rem}}
 </style>
 </head>
 <body class="min-h-screen bg-slate-950 text-slate-100 flex flex-col md:flex-row">
@@ -428,9 +431,9 @@ body::before{content:'';position:fixed;inset:-12%;z-index:-1;pointer-events:none
 
     </main>
 
-    <div id="auditDetailsModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hide flex items-center justify-center p-4">
+    <div id="auditDetailsModal" class="admin-modal fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hide flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="auditDetailsTitle">
         <div class="glass-card w-full max-w-lg p-6 rounded-3xl space-y-4 border border-cyan-500/20">
-            <div class="flex justify-between items-center"><h3 class="text-base font-bold text-white">تفاصيل العملية</h3><button onclick="closeAuditDetails()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button></div>
+            <div class="flex justify-between items-center"><h3 id="auditDetailsTitle" class="text-base font-bold text-white">تفاصيل العملية</h3><button onclick="closeAuditDetails()" aria-label="إغلاق تفاصيل العملية" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button></div>
             <div id="auditDetailsContent" class="text-xs leading-6 text-slate-300"></div>
             <button onclick="closeAuditDetails()" class="w-full py-2 bg-slate-800 text-slate-300 rounded-xl text-xs font-bold">إغلاق</button>
         </div>
@@ -1681,6 +1684,23 @@ body::before{content:'';position:fixed;inset:-12%;z-index:-1;pointer-events:none
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => navigator.serviceWorker.getRegistrations().then(registrations => Promise.all(registrations.map(registration => registration.unregister()))).catch(() => {}));
         }
+    </script>
+    <script>
+        (() => {
+            const syncAdminModals = () => {
+                const visible = [...document.querySelectorAll('[id$="Modal"]')].filter(modal => !modal.classList.contains('hide') && getComputedStyle(modal).display !== 'none');
+                document.body.classList.toggle('modal-open', visible.length > 0);
+                visible.forEach(modal => { if (!modal.hasAttribute('role')) modal.setAttribute('role', 'dialog'); modal.setAttribute('aria-modal', 'true'); if (!modal.hasAttribute('aria-labelledby') && !modal.hasAttribute('aria-label')) modal.setAttribute('aria-label', modal.querySelector('h1, h2, h3')?.innerText.trim() || 'نافذة منبثقة'); modal.setAttribute('aria-hidden', 'false'); });
+            };
+            new MutationObserver(syncAdminModals).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
+            syncAdminModals();
+            document.addEventListener('keydown', event => {
+                if (event.key !== 'Escape') return;
+                const visible = [...document.querySelectorAll('[id$="Modal"]')].filter(modal => !modal.classList.contains('hide') && getComputedStyle(modal).display !== 'none');
+                const modal = visible[visible.length - 1];
+                modal?.querySelector('button[aria-label*="إغلاق"], button[title*="إغلاق"], button[onclick*="close"], #adminConfirmCancel')?.click();
+            });
+        })();
     </script>
 </body>
 </html>
