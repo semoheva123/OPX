@@ -34,9 +34,9 @@ async function createVaultSupabase(req, res) {
     user.wallet.balance = Number((Number(user.wallet.depositBalance || 0) + user.wallet.profitBalance).toFixed(2));
     const updatedUser = await dataAccess.user.updateOne({ id: user.id || user._id }, { $set: { wallet: user.wallet, USDT_balance: user.USDT_balance } });
     const expectedProfit = Number((amount * Number(contract.expectedReturnRate || 0) / 100).toFixed(4));
-    const vault = await dataAccess.investmentVault.create({ userId: updatedUser.id || updatedUser._id, amount: Number(amount.toFixed(4)), durationDays, expectedReturnRate: contract.expectedReturnRate, expectedProfit, maturityDate: new Date(Date.now() + durationDays * 86400000), incentiveStatus: 'pending' });
+    const vault = await dataAccess.investmentVault.create({ userId: updatedUser.id || updatedUser._id, amount: Number(amount.toFixed(4)), durationDays, expectedReturnRate: contract.expectedReturnRate, expectedProfit, incentiveAmount: expectedProfit, maturityDate: new Date(Date.now() + durationDays * 86400000), incentiveStatus: 'approved' });
     await dataAccess.transaction.create({ userId: updatedUser.id || updatedUser._id, type: 'vault_lock', amount, grossAmount: amount, usdtAmount: amount, walletAddress: `Investment Vault lock ${vault.id || vault._id}`, status: 'approved' });
-    res.status(201).json({ success: true, message: 'تم تجميد USDT داخل خزنة الاستثمار بنجاح. الحافز المستقبلي غير مضمون ويخضع لسياسة المنصة.', vault, wallet: updatedUser.wallet, USDT_balance: updatedUser.USDT_balance });
+    res.status(201).json({ success: true, message: 'تم تجميد USDT داخل خزنة الاستثمار بنجاح. الحافز مضمون وفق شروط العقد الفعال ويُصرف عند الاستحقاق.', vault, wallet: updatedUser.wallet, USDT_balance: updatedUser.USDT_balance });
   } catch (error) {
     console.error('Supabase vault creation error:', error.message);
     res.status(500).json({ error: 'تعذر إنشاء خزنة الاستثمار' });
@@ -65,7 +65,8 @@ async function claimVaultSupabase(req, res) {
     if (new Date() < new Date(vault.maturityDate)) return res.status(400).json({ error: 'لا يمكن استرداد الخزنة قبل تاريخ الاستحقاق' });
     const user = await dataAccess.user.findById(req.user.id);
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
-    const releaseAmount = Number((Number(vault.amount || 0) + Number(vault.incentiveAmount || 0)).toFixed(4));
+    const incentiveAmount = Number(vault.incentiveAmount ?? vault.expectedProfit ?? 0);
+    const releaseAmount = Number((Number(vault.amount || 0) + incentiveAmount).toFixed(4));
     user.USDT_balance = Number((Number(user.USDT_balance || 0) + releaseAmount).toFixed(4));
     user.wallet.profitBalance = Number((Number(user.wallet.profitBalance || 0) + releaseAmount).toFixed(4));
     user.wallet.balance = Number((Number(user.wallet.depositBalance || 0) + user.wallet.profitBalance).toFixed(2));
@@ -73,7 +74,7 @@ async function claimVaultSupabase(req, res) {
     const updatedVault = await dataAccess.investmentVault.updateOne({ id: vault.id || vault._id, status: vault.status }, { $set: { status: 'claimed' } });
     if (!updatedVault) return res.status(409).json({ error: 'تم استرداد هذه الخزنة مسبقًا' });
     await dataAccess.transaction.create({ userId: updatedUser.id || updatedUser._id, type: 'vault_release', amount: releaseAmount, grossAmount: releaseAmount, usdtAmount: releaseAmount, walletAddress: `Investment Vault release ${vault.id || vault._id}`, status: 'approved' });
-    res.json({ success: true, message: 'تم فك تجميد خزنة الاستثمار وإعادة USDT إلى رصيدك. أي حافز يخضع للاعتماد وفق سياسة المنصة.', vault: { ...vault, status: 'claimed' }, wallet: updatedUser.wallet, USDT_balance: updatedUser.USDT_balance });
+    res.json({ success: true, message: 'تم فك تجميد خزنة الاستثمار وإعادة رأس المال والحافز المضمون وفق شروط العقد إلى رصيدك.', vault: { ...vault, status: 'claimed', incentiveAmount }, wallet: updatedUser.wallet, USDT_balance: updatedUser.USDT_balance });
   } catch (error) {
     console.error('Supabase vault claim error:', error.message);
     res.status(500).json({ error: 'تعذر استرداد خزنة الاستثمار' });
