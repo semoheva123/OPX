@@ -62,7 +62,7 @@ function getTaskLimitForTier(tierCode = currentUserTier) {
 }
 
 // تهيئة التطبيق عند اكتمال تحميل عناصر الصفحة
-document.addEventListener('DOMContentLoaded', () => {
+function initializePlatform() {
     const modalSelector = '[role="dialog"], [id$="Modal"]';
     const syncModalAccessibility = () => {
         const visibleModals = [];
@@ -130,7 +130,13 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     passwordInput?.addEventListener('input', updatePasswordFeedback);
     passwordConfirmInput?.addEventListener('input', updatePasswordFeedback);
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializePlatform, { once: true });
+} else {
+    initializePlatform();
+}
 
 let gameConfig = { spinMin: 1, spinMax: 10, boxMin: 5, boxMax: 25, referralsPerCycle: 25 };
 
