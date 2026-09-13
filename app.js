@@ -520,7 +520,7 @@ function renderHomeSummary(summary) {
 async function initPushNotifications() {
     if ('serviceWorker' in navigator && 'PushManager' in window) {
         try {
-            const registration = await navigator.serviceWorker.register('/sw.js?v=20260912-3');
+            const registration = await navigator.serviceWorker.register('/sw.js?v=20260913-1');
             registration.update();
             if (registration.waiting) registration.waiting.postMessage({ type: 'SKIP_WAITING' });
             navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
