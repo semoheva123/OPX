@@ -26,6 +26,17 @@ let opxMarketRefreshTimer = null;
 let opxMarketDailyChangePercent = 0;
 let opxMarketTimeframe = '15m';
 let vaultCountdownTimer = null;
+const STARTUP_REQUEST_TIMEOUT = 8000;
+
+async function fetchWithTimeout(resource, options = {}, timeoutMs = STARTUP_REQUEST_TIMEOUT) {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        return await fetch(resource, { ...options, signal: controller.signal });
+    } finally {
+        window.clearTimeout(timeout);
+    }
+}
 
 function isStandaloneApp() {
     return window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true || new URLSearchParams(window.location.search).get('source') === 'pwa';
@@ -469,7 +480,7 @@ async function loadHomeSummary() {
     const token = localStorage.getItem('token');
     if (!token || !document.getElementById('homePulseMessage')) return;
     try {
-        const response = await fetch('/api/user/home-summary', { headers: { Authorization: `Bearer ${token}` } });
+        const response = await fetchWithTimeout('/api/user/home-summary', { headers: { Authorization: `Bearer ${token}` } });
         const data = await response.json();
         if (!response.ok || !data.summary) throw new Error('summary unavailable');
         if (homeSummaryRetryTimer) { clearTimeout(homeSummaryRetryTimer); homeSummaryRetryTimer = null; }
@@ -1671,7 +1682,7 @@ async function loadUserProfile() {
         return;
     }
     try {
-        const res = await fetch('/api/user/profile', {
+        const res = await fetchWithTimeout('/api/user/profile', {
             headers: {'Authorization': `Bearer ${token}`}
         });
         const data = await res.json();
