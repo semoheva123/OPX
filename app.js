@@ -572,7 +572,6 @@ async function initPushNotifications() {
             const registration = await navigator.serviceWorker.register('/sw.js?v=20260913-1');
             registration.update();
             if (registration.waiting) registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-            navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
             navigator.serviceWorker.addEventListener('message', event => { if (event.data?.type === 'OPERIX_NOTIFICATION') { fetchUnreadNotifications(true); } });
             const token = localStorage.getItem('token');
             if (token) {
