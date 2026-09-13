@@ -1202,6 +1202,7 @@ async function claimInvestmentVault(vaultId) {
 function updateProfileUI() {
     if (!currentUserData) return;
 
+    updateTierDisplay();
     updateProfileAvatar(currentUserData.profileImage);
     updateVerificationStatus(currentUserData.twoFactorEnabled);
     updateKycProfileUI();

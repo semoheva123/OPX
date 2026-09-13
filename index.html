@@ -675,7 +675,7 @@ body::before{content:'';position:fixed;inset:-12%;z-index:-1;pointer-events:none
                 <img src="/operix-logo.svg" alt="OPERIX" class="h-9 w-auto">
                 <div>
                     <span id="lblUserEmail" class="text-xs font-bold text-white block">user@domain.com</span>
-                    <span id="lblUserTierBadge" class="text-[10px] text-amber-400 font-extrabold">المستوى A1</span>
+                    <span id="lblUserTierBadge" class="text-[10px] text-amber-400 font-extrabold">المستوى غير مفعّل</span>
                 </div>
             </div>
             <div class="flex items-center gap-2"><button onclick="openPrivateMessagesModal()" title="الرسائل الخاصة" aria-label="الرسائل الخاصة" class="w-9 h-9 bg-cyan-400/10 border border-cyan-400/20 rounded-xl flex items-center justify-center text-cyan-300 relative hover:bg-cyan-400/20 transition-all"><i class="fa-brands fa-facebook-messenger text-sm"></i><span id="privateMessageBadge" class="hidden min-w-4 h-4 px-1 bg-cyan-400 text-slate-950 rounded-full absolute -top-1 -right-1 text-[9px] font-black leading-4">0</span></button><button onclick="openNotificationsModal()" class="w-9 h-9 bg-slate-800 rounded-xl flex items-center justify-center text-slate-300 relative">
@@ -836,7 +836,7 @@ body::before{content:'';position:fixed;inset:-12%;z-index:-1;pointer-events:none
         <!-- 4.2 تبويب المستويات (Tiers View - إرسال targetTier) -->
         <div id="view-tiers" class="space-y-4 hide">
             <div class="text-center space-y-1">
-                <h2 class="text-lg font-black text-white" id="lblCardTierName">المستويات الاستثمارية</h2>
+                <h2 class="text-lg font-black text-white" id="lblCardTierName">المستوى غير مفعّل</h2>
                 <p class="text-xs text-slate-400">اختر المستوى المناسب لزيادة عوائدك اليومية</p>
             </div>
             
@@ -878,13 +878,13 @@ body::before{content:'';position:fixed;inset:-12%;z-index:-1;pointer-events:none
                     <div class="flex items-center justify-between gap-3">
                         <div class="min-w-0">
                             <span class="text-[10px] font-bold text-cyan-300">مهام المستوى المفعّل</span>
-                            <h4 id="taskLevelTitle" class="mt-1 text-sm font-black text-white">المستوى A1</h4>
-                            <p id="taskLevelDescription" class="mt-1 text-[10px] leading-5 text-slate-400">يتم عرض خطة المهام الخاصة بمستواك الحالي.</p>
+                            <h4 id="taskLevelTitle" class="mt-1 text-sm font-black text-white">المستوى غير مفعّل</h4>
+                            <p id="taskLevelDescription" class="mt-1 text-[10px] leading-5 text-slate-400">مهام التحقق والأمان متاحة، أما المهام اليومية فتتطلب تفعيل المستوى الأول.</p>
                         </div>
                         <span id="taskLevelCode" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cyan-400/25 bg-cyan-400/10 text-xs font-black text-cyan-200">A1</span>
                     </div>
                     <div class="mt-3 grid grid-cols-2 gap-2 text-[10px]">
-                        <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-2"><span class="block text-slate-500">حد المهام اليومي</span><strong id="taskLevelLimit" class="mt-1 block text-white">33 مهمة</strong></div>
+                        <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-2"><span class="block text-slate-500">حد المهام اليومي</span><strong id="taskLevelLimit" class="mt-1 block text-white">يتطلب التفعيل</strong></div>
                         <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-2"><span class="block text-slate-500">العائد اليومي التقديري</span><strong id="taskLevelReward" class="mt-1 block text-emerald-300">$2.50</strong></div>
                     </div>
                 </div>
@@ -1063,7 +1063,7 @@ body::before{content:'';position:fixed;inset:-12%;z-index:-1;pointer-events:none
                 </div>
                 <div class="flex justify-center items-center gap-2 pt-1">
                     <span id="lblProfileTierBadge" class="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-bold px-3 py-1 rounded-full">
-                        <i class="fa-solid fa-ribbon mr-1"></i> مستوى A1
+                        <i class="fa-solid fa-ribbon mr-1"></i> المستوى غير مفعّل
                     </span>
                     <span id="lblVerificationStatus" class="bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[10px] font-bold px-3 py-1 rounded-full">
                         <i class="fa-solid fa-circle-xmark mr-1"></i> يحتاج إكمال الإعداد
