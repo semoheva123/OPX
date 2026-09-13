@@ -319,6 +319,98 @@ create table if not exists public.investment_vault_contracts (
   updated_at timestamptz not null default now()
 );
 
+create or replace function public.operix_vault_create_atomic(
+  p_user_id uuid,
+  p_amount numeric,
+  p_duration_days integer,
+  p_expected_return_rate numeric,
+  p_expected_profit numeric,
+  p_maturity_date timestamptz
+) returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  wallet_row wallet_balances%rowtype;
+  vault_row investment_vault%rowtype;
+  lock_tx transactions%rowtype;
+  before_balance numeric;
+  calculated_profit numeric;
+begin
+  if p_amount is null or p_amount < 10 then raise exception using errcode = 'P0001', message = 'INVALID_VAULT_AMOUNT'; end if;
+  if p_duration_days not in (90, 180, 365) then raise exception using errcode = 'P0001', message = 'INVALID_VAULT_DURATION'; end if;
+  if p_expected_return_rate is null or p_expected_return_rate < 0 or p_expected_return_rate > 100 then raise exception using errcode = 'P0001', message = 'INVALID_VAULT_RATE'; end if;
+  calculated_profit := round(p_amount * p_expected_return_rate / 100, 4);
+  if abs(calculated_profit - coalesce(p_expected_profit, calculated_profit)) > 0.0001 then raise exception using errcode = 'P0001', message = 'VAULT_PROFIT_MISMATCH'; end if;
+  select * into wallet_row from wallet_balances where user_id = p_user_id for update;
+  if wallet_row.id is null then raise exception using errcode = 'P0002', message = 'USER_WALLET_NOT_FOUND'; end if;
+  if wallet_row.usdt_balance < p_amount or wallet_row.profit_balance < p_amount then raise exception using errcode = 'P0001', message = 'INSUFFICIENT_VAULT_BALANCE'; end if;
+  before_balance := wallet_row.balance;
+  update wallet_balances set
+    usdt_balance = usdt_balance - p_amount,
+    profit_balance = profit_balance - p_amount,
+    balance = deposit_balance + profit_balance - p_amount,
+    updated_at = now()
+  where user_id = p_user_id;
+  insert into investment_vault(user_id, amount, duration_days, expected_return_rate, expected_profit, incentive_amount, incentive_status, maturity_date)
+  values(p_user_id, round(p_amount, 4), p_duration_days, p_expected_return_rate, calculated_profit, calculated_profit, 'approved', coalesce(p_maturity_date, now() + (p_duration_days || ' days')::interval))
+  returning * into vault_row;
+  insert into transactions(user_id, type, status, amount, gross_amount, usdt_amount, wallet_address)
+  values(p_user_id, 'vault_lock', 'approved', p_amount, p_amount, p_amount, 'Investment Vault lock ' || vault_row.id::text)
+  returning * into lock_tx;
+  insert into financial_ledger(user_id, type, currency, amount, net_amount, balance_before, balance_after, status, source, reference_id, metadata)
+  values(p_user_id, 'vault_lock', 'USDT', p_amount, p_amount, before_balance, before_balance - p_amount, 'approved', 'investment_vault_lock', lock_tx.id::text, jsonb_build_object('vaultId', vault_row.id, 'durationDays', p_duration_days, 'expectedProfit', calculated_profit));
+  insert into audit_logs(action, entity, actor_id, metadata, created_at)
+  values('vault_created', vault_row.id::text, p_user_id, jsonb_build_object('amount', vault_row.amount, 'durationDays', p_duration_days, 'expectedProfit', calculated_profit), now());
+  return jsonb_build_object('vault', row_to_json(vault_row), 'wallet', (select row_to_json(w) from wallet_balances w where w.user_id = p_user_id));
+end;
+$$;
+
+create or replace function public.operix_vault_claim_atomic(
+  p_user_id uuid,
+  p_vault_id uuid
+) returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  vault_row investment_vault%rowtype;
+  wallet_row wallet_balances%rowtype;
+  release_tx transactions%rowtype;
+  incentive_value numeric;
+  release_value numeric;
+  before_balance numeric;
+begin
+  select * into vault_row from investment_vault where id = p_vault_id and user_id = p_user_id for update;
+  if vault_row.id is null then raise exception using errcode = 'P0002', message = 'VAULT_NOT_FOUND'; end if;
+  if vault_row.status <> 'active' then raise exception using errcode = 'P0001', message = 'VAULT_ALREADY_RELEASED'; end if;
+  if now() < vault_row.maturity_date then raise exception using errcode = 'P0001', message = 'VAULT_NOT_MATURED'; end if;
+  select * into wallet_row from wallet_balances where user_id = p_user_id for update;
+  if wallet_row.id is null then raise exception using errcode = 'P0002', message = 'USER_WALLET_NOT_FOUND'; end if;
+  incentive_value := round(coalesce(vault_row.incentive_amount, vault_row.expected_profit, 0), 4);
+  release_value := round(vault_row.amount + incentive_value, 4);
+  before_balance := wallet_row.balance;
+  update wallet_balances set
+    usdt_balance = usdt_balance + release_value,
+    profit_balance = profit_balance + release_value,
+    balance = deposit_balance + profit_balance + release_value,
+    updated_at = now()
+  where user_id = p_user_id;
+  update investment_vault set status = 'claimed', updated_at = now() where id = vault_row.id;
+  insert into transactions(user_id, type, status, amount, gross_amount, usdt_amount, wallet_address)
+  values(p_user_id, 'vault_release', 'approved', release_value, release_value, release_value, 'Investment Vault release ' || vault_row.id::text)
+  returning * into release_tx;
+  insert into financial_ledger(user_id, type, currency, amount, net_amount, balance_before, balance_after, status, source, reference_id, metadata)
+  values(p_user_id, 'vault_release', 'USDT', release_value, release_value, before_balance, before_balance + release_value, 'approved', 'investment_vault_claim', release_tx.id::text, jsonb_build_object('vaultId', vault_row.id, 'principal', vault_row.amount, 'incentiveAmount', incentive_value));
+  insert into audit_logs(action, entity, actor_id, metadata, created_at)
+  values('vault_claimed', vault_row.id::text, p_user_id, jsonb_build_object('releaseAmount', release_value, 'incentiveAmount', incentive_value), now());
+  select * into vault_row from investment_vault where id = vault_row.id;
+  return jsonb_build_object('vault', row_to_json(vault_row), 'wallet', (select row_to_json(w) from wallet_balances w where w.user_id = p_user_id), 'releaseAmount', release_value);
+end;
+$$;
+
 create table if not exists public.stakings (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid not null references public.users(id) on delete cascade,

@@ -3,6 +3,7 @@ const dataAccess = require('../services/dataAccess');
 
 const MIN_VAULT_AMOUNT = 10;
 const DEFAULT_CONTRACTS = [90, 180, 365].map(durationDays => ({ durationDays, expectedReturnRate: 0, enabled: true, label: '' }));
+const isMissingVaultRpc = error => error?.code === 'PGRST202' || /function .*operix_vault_(create|claim)_atomic.*does not exist/i.test(String(error?.message || ''));
 
 async function getVaultContracts(req, res) {
   try {
@@ -26,6 +27,23 @@ async function createVaultSupabase(req, res) {
     const storedContract = await dataAccess.investmentVaultContract.findOne({ durationDays });
     const contract = storedContract ? (storedContract.enabled ? storedContract : null) : DEFAULT_CONTRACTS.find(item => item.durationDays === durationDays);
     if (!contract) return res.status(400).json({ error: 'عقد الخزنة المحدد غير متاح حاليًا' });
+    const expectedReturnRate = Number(contract.expectedReturnRate || 0);
+    const expectedProfit = Number((amount * expectedReturnRate / 100).toFixed(4));
+    if (dataAccess.isSupabaseRuntime()) {
+      try {
+        const result = await dataAccess.callSupabaseRpc('operix_vault_create_atomic', {
+          p_user_id: req.user.id,
+          p_amount: amount,
+          p_duration_days: durationDays,
+          p_expected_return_rate: expectedReturnRate,
+          p_expected_profit: expectedProfit,
+          p_maturity_date: new Date(Date.now() + durationDays * 86400000).toISOString()
+        });
+        return res.status(201).json({ success: true, message: 'تم تجميد USDT داخل خزنة الاستثمار بنجاح. الحافز مضمون وفق شروط العقد الفعال ويُصرف عند الاستحقاق.', vault: result?.vault, wallet: result?.wallet, USDT_balance: result?.wallet?.usdtBalance });
+      } catch (error) {
+        if (!isMissingVaultRpc(error)) throw error;
+      }
+    }
     const user = await dataAccess.user.findById(req.user.id);
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     if (Number(user.USDT_balance || 0) < amount || Number(user.wallet?.profitBalance || 0) < amount) return res.status(400).json({ error: `رصيد USDT القابل للتجميد غير كافٍ. المتاح: ${Math.min(Number(user.USDT_balance || 0), Number(user.wallet?.profitBalance || 0))} USDT` });
@@ -33,8 +51,7 @@ async function createVaultSupabase(req, res) {
     user.wallet.profitBalance = Number((Number(user.wallet.profitBalance) - amount).toFixed(4));
     user.wallet.balance = Number((Number(user.wallet.depositBalance || 0) + user.wallet.profitBalance).toFixed(2));
     const updatedUser = await dataAccess.user.updateOne({ id: user.id || user._id }, { $set: { wallet: user.wallet, USDT_balance: user.USDT_balance } });
-    const expectedProfit = Number((amount * Number(contract.expectedReturnRate || 0) / 100).toFixed(4));
-    const vault = await dataAccess.investmentVault.create({ userId: updatedUser.id || updatedUser._id, amount: Number(amount.toFixed(4)), durationDays, expectedReturnRate: contract.expectedReturnRate, expectedProfit, incentiveAmount: expectedProfit, maturityDate: new Date(Date.now() + durationDays * 86400000), incentiveStatus: 'approved' });
+    const vault = await dataAccess.investmentVault.create({ userId: updatedUser.id || updatedUser._id, amount: Number(amount.toFixed(4)), durationDays, expectedReturnRate, expectedProfit, incentiveAmount: expectedProfit, maturityDate: new Date(Date.now() + durationDays * 86400000), incentiveStatus: 'approved' });
     await dataAccess.transaction.create({ userId: updatedUser.id || updatedUser._id, type: 'vault_lock', amount, grossAmount: amount, usdtAmount: amount, walletAddress: `Investment Vault lock ${vault.id || vault._id}`, status: 'approved' });
     res.status(201).json({ success: true, message: 'تم تجميد USDT داخل خزنة الاستثمار بنجاح. الحافز مضمون وفق شروط العقد الفعال ويُصرف عند الاستحقاق.', vault, wallet: updatedUser.wallet, USDT_balance: updatedUser.USDT_balance });
   } catch (error) {
@@ -59,6 +76,14 @@ async function claimVault(req, res) {
 
 async function claimVaultSupabase(req, res) {
   try {
+    if (dataAccess.isSupabaseRuntime()) {
+      try {
+        const result = await dataAccess.callSupabaseRpc('operix_vault_claim_atomic', { p_user_id: req.user.id, p_vault_id: req.body.vaultId });
+        return res.json({ success: true, message: 'تم فك تجميد خزنة الاستثمار وإعادة رأس المال والحافز المضمون وفق شروط العقد إلى رصيدك.', vault: result?.vault, wallet: result?.wallet, USDT_balance: result?.wallet?.usdtBalance });
+      } catch (error) {
+        if (!isMissingVaultRpc(error)) throw error;
+      }
+    }
     const vault = await dataAccess.investmentVault.findOne({ id: req.body.vaultId, userId: req.user.id });
     if (!vault) return res.status(404).json({ error: 'خزنة الاستثمار غير موجودة' });
     if (vault.status === 'claimed') return res.status(400).json({ error: 'تم استرداد هذه الخزنة مسبقًا' });

@@ -25,6 +25,7 @@ let opxMarketCandles = [];
 let opxMarketRefreshTimer = null;
 let opxMarketDailyChangePercent = 0;
 let opxMarketTimeframe = '15m';
+let vaultCountdownTimer = null;
 
 function isStandaloneApp() {
     return window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true || new URLSearchParams(window.location.search).get('source') === 'pwa';
@@ -1141,7 +1142,9 @@ async function loadInvestmentVaults() {
         const response = await fetch('/api/investment-vault/my', { headers: { Authorization: `Bearer ${token}` } });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'تعذر تحميل الخزائن');
-        list.innerHTML = data.vaults?.length ? data.vaults.map(vault => {
+        const vaults = Array.isArray(data.vaults) ? data.vaults : [];
+        updateVaultSummary(vaults);
+        list.innerHTML = vaults.length ? vaults.map(vault => {
             const maturity = new Date(vault.maturityDate);
             const matured = ['matured'].includes(vault.status);
             const status = vault.status === 'active' ? `مجمّدة حتى ${maturity.toLocaleDateString('ar')}` : vault.status === 'matured' ? 'مستحقة للاسترداد' : vault.status === 'claimed' ? 'تم الاسترداد' : 'فتح اضطراري';
@@ -1151,7 +1154,31 @@ async function loadInvestmentVaults() {
             const maturityTotal = principal + incentive;
             return `<div class="flex items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-950/60 p-3"><div><b class="block text-sm text-white">${principal.toFixed(2)} USDT</b><span class="text-[10px] text-slate-500">${vault.durationDays} يومًا · ${status}</span><small class="block text-[10px] text-amber-300">حافز مضمون وفق العقد: ${Number(vault.expectedReturnRate || 0).toFixed(2)}% (${incentive.toFixed(2)} USDT عند الاستحقاق)</small><small class="block text-[10px] font-bold text-emerald-300">رأس المال مع العائد: ${maturityTotal.toFixed(2)} USDT عند الاستحقاق</small>${vault.penaltyAmount ? `<small class="block text-[10px] text-rose-300">غرامة: ${Number(vault.penaltyAmount).toFixed(2)} USDT</small>` : ''}</div>${action}</div>`;
         }).join('') : '<p class="py-4 text-center text-[11px] text-slate-500">لا توجد خزائن نشطة بعد.</p>';
-    } catch (error) { list.innerHTML = `<p class="py-4 text-center text-[11px] text-rose-300">${escapeAiHtml(error.message)}</p>`; }
+    } catch (error) { updateVaultSummary([]); list.innerHTML = `<p class="py-4 text-center text-[11px] text-rose-300">${escapeAiHtml(error.message)}</p>`; }
+}
+
+function updateVaultSummary(vaults) {
+    if (vaultCountdownTimer) { clearInterval(vaultCountdownTimer); vaultCountdownTimer = null; }
+    const activeVaults = vaults.filter(vault => vault.status === 'active' || vault.status === 'matured');
+    const locked = activeVaults.reduce((sum, vault) => sum + Number(vault.amount || 0), 0);
+    const maturityTotal = activeVaults.reduce((sum, vault) => sum + Number(vault.amount || 0) + Number(vault.incentiveAmount ?? vault.expectedProfit ?? 0), 0);
+    const nextVault = activeVaults.filter(vault => vault.status === 'active' && Number.isFinite(new Date(vault.maturityDate).getTime())).sort((first, second) => new Date(first.maturityDate) - new Date(second.maturityDate))[0];
+    const lockedElement = document.getElementById('vaultSummaryLocked');
+    const maturityElement = document.getElementById('vaultSummaryMaturity');
+    const nextElement = document.getElementById('vaultSummaryNext');
+    if (lockedElement) lockedElement.innerText = `${locked.toFixed(2)} USDT`;
+    if (maturityElement) maturityElement.innerText = `${maturityTotal.toFixed(2)} USDT`;
+    const renderNext = () => {
+        if (!nextElement) return;
+        if (!nextVault) { nextElement.innerText = 'لا توجد'; return; }
+        const remaining = Math.max(0, new Date(nextVault.maturityDate).getTime() - Date.now());
+        if (!remaining) { nextElement.innerText = 'مستحق الآن'; return; }
+        const days = Math.floor(remaining / 86400000);
+        const hours = Math.floor((remaining % 86400000) / 3600000);
+        nextElement.innerText = `${days}ي ${String(hours).padStart(2, '0')}س`;
+    };
+    renderNext();
+    if (nextVault) vaultCountdownTimer = setInterval(renderNext, 60000);
 }
 
 async function loadVaultContracts() {
