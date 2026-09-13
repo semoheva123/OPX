@@ -1748,7 +1748,7 @@ async function loadUserProfile() {
             await checkPendingDepositStatus();
         } else if (res.status === 401 || res.status === 403) {
             showToast(data.error || 'انتهت جلسة الدخول، يرجى تسجيل الدخول مجددًا');
-            await logout();
+            await logout({ notifyServer: false });
         } else {
             document.getElementById('loadingView').classList.add('hide');
             if (!currentUserData) showToast(data.error || 'تعذر تحميل بيانات الحساب. ستبقى جلسة الدخول محفوظة.');
@@ -3341,13 +3341,10 @@ function copyReferral() {
     executeCopyProcess(code);
 }
 
-async function logout() {
+async function logout({ notifyServer = true } = {}) {
     const token = localStorage.getItem('token');
-    if (token) {
-        try { await fetch('/api/auth/logout', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } }); } catch (error) { }
-    }
-    await stopRealtimeStream();
     localStorage.removeItem('token');
+    await stopRealtimeStream();
     if (notificationPollTimer) clearInterval(notificationPollTimer);
     notificationPollTimer = null;
     if (profileSyncTimer) clearInterval(profileSyncTimer);
@@ -3361,6 +3358,11 @@ async function logout() {
     document.getElementById('companyIntroView')?.classList.remove('hide');
     document.getElementById('liveTickerBar').classList.add('hide');
     document.getElementById('appNavBar').classList.add('hide');
+
+    if (!notifyServer) return;
+    if (token) {
+        fetchWithTimeout('/api/auth/logout', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } }, 3000).catch(() => {});
+    }
     showToast('تم تسجيل الخروج وحفظ محفظتك بأمان');
 }
 
