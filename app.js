@@ -567,6 +567,7 @@ function renderHomeSummary(summary) {
 
 /* --- 2. الإشعارات والأصوات والنوافذ التنبيهية --- */
 async function initPushNotifications() {
+    return;
     if ('serviceWorker' in navigator && 'PushManager' in window) {
         try {
             const registration = await navigator.serviceWorker.register('/sw.js?v=20260913-1');
