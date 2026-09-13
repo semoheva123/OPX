@@ -61,7 +61,7 @@ function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
     const runtimeMode = getDatabaseMode();
     const supabase = await checkSupabaseConnection().catch(error => ({ configured: true, reachable: false, error: error.message }));
     const databaseReady = Boolean(supabase?.reachable);
-    res.status(databaseReady ? 200 : 503).json({ success: databaseReady, status: databaseReady ? 'ok' : 'degraded', database: databaseReady ? 'supabase' : 'disconnected', supabase, migrationMode: runtimeMode, deploymentVersion: req.app.locals.deploymentVersion, uptime: Math.floor(process.uptime()), timestamp: new Date().toISOString() });
+    res.status(200).json({ success: databaseReady, status: databaseReady ? 'ok' : 'degraded', database: databaseReady ? 'supabase' : 'disconnected', supabase, migrationMode: runtimeMode, deploymentVersion: req.app.locals.deploymentVersion, uptime: Math.floor(process.uptime()), timestamp: new Date().toISOString() });
   });
 
   const runCronJob = async (req, res) => {

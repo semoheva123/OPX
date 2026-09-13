@@ -1371,6 +1371,7 @@ async function initializeRuntime() {
     const runtimeMode = getDatabaseMode();
     if (runtimeMode === 'supabase') {
       console.log('✅ تم تفعيل وضع Supabase فقط.');
+      if (isVercelRuntime) return;
       await seedVipLevels();
       await loadGameSettings();
       try {
