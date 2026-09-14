@@ -958,7 +958,11 @@ function updateWalletData(wallet) {
     const profitBalanceVal = wallet.profitBalance !== undefined ? wallet.profitBalance : (currentUserData?.profitBalance || 0);
     const depositsVal = wallet.totalDeposits !== undefined ? wallet.totalDeposits : (currentUserData?.wallet?.totalDeposits || 0);
     const withdrawnVal = wallet.totalWithdrawn !== undefined ? wallet.totalWithdrawn : (currentUserData?.wallet?.totalWithdrawn || 0);
-    const opxBalanceVal = currentUserData?.OPX_balance !== undefined ? currentUserData.OPX_balance : 0;
+    const opxBalanceVal = wallet.OPX_balance !== undefined
+        ? wallet.OPX_balance
+        : wallet.opxBalance !== undefined
+            ? wallet.opxBalance
+            : (currentUserData?.OPX_balance || 0);
 
     const balance = Number(balanceVal || 0).toFixed(2);
     const depositBal = Number(depositBalanceVal || 0).toFixed(2);
@@ -2243,7 +2247,10 @@ async function completeTask(taskKey) {
         });
         const data = await res.json();
         if(res.ok) {
-            if (currentUserData) { currentUserData.USDT_balance = data.USDT_balance; currentUserData.OPX_balance = data.OPX_balance; }
+            if (currentUserData) {
+                currentUserData.USDT_balance = data.USDT_balance ?? data.wallet?.USDT_balance ?? currentUserData.USDT_balance;
+                currentUserData.OPX_balance = data.OPX_balance ?? data.wallet?.OPX_balance ?? currentUserData.OPX_balance;
+            }
             showToast(`تم إنجاز المهمة وإضافة $${Number(data.grossAmount || 0).toFixed(4)} إجماليًا لمحفظتك!`, 'win');
             if (data.wallet) updateWalletData(data.wallet);
             await Promise.all([loadUserProfile(), openDailyTasks()]);
