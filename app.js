@@ -26,6 +26,7 @@ let opxMarketRefreshTimer = null;
 let opxMarketDailyChangePercent = 0;
 let opxMarketTimeframe = '15m';
 let vaultCountdownTimer = null;
+let profileRequestInFlight = null;
 const STARTUP_REQUEST_TIMEOUT = 8000;
 
 async function fetchWithTimeout(resource, options = {}, timeoutMs = STARTUP_REQUEST_TIMEOUT) {
@@ -74,19 +75,29 @@ function getTaskLimitForTier(tierCode = currentUserTier) {
 
 // تهيئة التطبيق عند اكتمال تحميل عناصر الصفحة
 function initializePlatform() {
+    if (window.__operixPlatformInitialized) return;
+    window.__operixPlatformInitialized = true;
     const modalSelector = '[role="dialog"], [id$="Modal"]';
+    let syncingModalAccessibility = false;
     const syncModalAccessibility = () => {
+        if (syncingModalAccessibility) return;
+        syncingModalAccessibility = true;
         const visibleModals = [];
-        document.querySelectorAll(modalSelector).forEach(modal => {
-            modal.classList.add('modal-shell');
-            if (!modal.hasAttribute('role')) modal.setAttribute('role', 'dialog');
-            modal.setAttribute('aria-modal', 'true');
-            if (!modal.hasAttribute('aria-labelledby') && !modal.hasAttribute('aria-label')) modal.setAttribute('aria-label', modal.querySelector('h1, h2, h3')?.innerText.trim() || 'نافذة منبثقة');
-            const isVisible = !modal.classList.contains('hide') && getComputedStyle(modal).display !== 'none';
-            modal.setAttribute('aria-hidden', isVisible ? 'false' : 'true');
-            if (isVisible) visibleModals.push(modal);
-        });
-        document.body.classList.toggle('modal-open', visibleModals.length > 0);
+        try {
+            document.querySelectorAll(modalSelector).forEach(modal => {
+                if (!modal.classList.contains('modal-shell')) modal.classList.add('modal-shell');
+                if (!modal.hasAttribute('role')) modal.setAttribute('role', 'dialog');
+                if (modal.getAttribute('aria-modal') !== 'true') modal.setAttribute('aria-modal', 'true');
+                if (!modal.hasAttribute('aria-labelledby') && !modal.hasAttribute('aria-label')) modal.setAttribute('aria-label', modal.querySelector('h1, h2, h3')?.innerText.trim() || 'نافذة منبثقة');
+                const isVisible = !modal.classList.contains('hide') && getComputedStyle(modal).display !== 'none';
+                if (modal.getAttribute('aria-hidden') !== (isVisible ? 'false' : 'true')) modal.setAttribute('aria-hidden', isVisible ? 'false' : 'true');
+                if (isVisible) visibleModals.push(modal);
+            });
+            const shouldLockBody = visibleModals.length > 0;
+            if (document.body.classList.contains('modal-open') !== shouldLockBody) document.body.classList.toggle('modal-open', shouldLockBody);
+        } finally {
+            syncingModalAccessibility = false;
+        }
     };
     document.querySelectorAll(modalSelector).forEach(modal => modal.classList.add('modal-shell'));
     new MutationObserver(syncModalAccessibility).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
@@ -1671,14 +1682,29 @@ function lockWalletUI(address) {
 }
 
 async function loadUserProfile() {
+    if (profileRequestInFlight) return profileRequestInFlight;
+    profileRequestInFlight = loadUserProfileInternal();
+    try {
+        return await profileRequestInFlight;
+    } finally {
+        profileRequestInFlight = null;
+    }
+}
+
+async function loadUserProfileInternal() {
     const token = localStorage.getItem('token');
     if(!token) {
-        document.getElementById('loadingView').classList.add('hide');
+        document.getElementById('loadingView')?.classList.add('hide');
         const hasReferral = new URLSearchParams(window.location.search).has('ref') || localStorage.getItem('operix_ref_code') || localStorage.getItem('ag_ref_code');
-        document.getElementById('companyIntroView')?.classList.toggle('hide', Boolean(hasReferral));
-        document.getElementById('authView').classList.toggle('hide', !hasReferral);
+        const intro = document.getElementById('companyIntroView');
+        const auth = document.getElementById('authView');
+        const appNav = document.getElementById('appNavBar');
+        intro?.classList.toggle('hide', Boolean(hasReferral));
+        auth?.classList.toggle('hide', !hasReferral);
         if (hasReferral) switchAuthTab('register');
-        document.getElementById('appNavBar').classList.add('hide');
+        document.getElementById('appView')?.classList.add('hide');
+        appNav?.classList.add('hide');
+        document.getElementById('liveTickerBar')?.classList.add('hide');
         return;
     }
     try {
@@ -1694,6 +1720,7 @@ async function loadUserProfile() {
             updateProfileAvatar(data.user.profileImage);
             applySocialProfile(data.user);
             document.getElementById('loadingView').classList.add('hide');
+            document.getElementById('companyIntroView')?.classList.add('hide');
             document.getElementById('authView').classList.add('hide');
             document.getElementById('appView').classList.remove('hide');
             document.getElementById('liveTickerBar').classList.remove('hide');
@@ -1755,9 +1782,18 @@ async function loadUserProfile() {
             if (!currentUserData) showToast(data.error || 'تعذر تحميل بيانات الحساب. ستبقى جلسة الدخول محفوظة.');
         }
     } catch(err) {
-        document.getElementById('loadingView').classList.add('hide');
+        document.getElementById('loadingView')?.classList.add('hide');
         if (!currentUserData) {
-            showToast('تعذر الاتصال بالخادم. ستتم إعادة المحاولة تلقائيًا.');
+            showToast('تعذر الاتصال بالخادم. سيتم عرض شاشة الزوار مؤقتًا.');
+            const intro = document.getElementById('companyIntroView');
+            const auth = document.getElementById('authView');
+            const hasReferral = new URLSearchParams(window.location.search).has('ref') || localStorage.getItem('operix_ref_code') || localStorage.getItem('ag_ref_code');
+            document.getElementById('appView')?.classList.add('hide');
+            document.getElementById('appNavBar')?.classList.add('hide');
+            document.getElementById('liveTickerBar')?.classList.add('hide');
+            intro?.classList.toggle('hide', Boolean(hasReferral));
+            auth?.classList.toggle('hide', !hasReferral);
+            if (hasReferral) switchAuthTab('register');
             setTimeout(() => { if (!currentUserData && localStorage.getItem('token')) loadUserProfile(); }, 1500);
         }
     }

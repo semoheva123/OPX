@@ -491,7 +491,7 @@ body::before{content:'';position:fixed;inset:-12%;z-index:-1;pointer-events:none
 <div class="tech-grid-bg"></div>
 
     <!-- 1. شاشة التحميل (Loading View) -->
-    <div id="loadingView" class="fixed inset-0 bg-slate-950 z-50 flex flex-col items-center justify-center space-y-4">
+    <div id="loadingView" class="hide fixed inset-0 bg-slate-950 z-50 flex flex-col items-center justify-center space-y-4">
         <div class="w-16 h-16 border-4 border-amber-500/20 border-t-amber-500 rounded-full animate-spin"></div>
         <span class="text-amber-400 font-bold text-sm tracking-wider">جاري تحميل OPERIX...</span>
     </div>
@@ -507,32 +507,59 @@ body::before{content:'';position:fixed;inset:-12%;z-index:-1;pointer-events:none
                 keys.forEach(function (key) { caches.delete(key); });
             }).catch(function () {});
         }
-        window.setTimeout(function () {
-            var loading = document.getElementById('loadingView');
-            var intro = document.getElementById('companyIntroView');
-            var auth = document.getElementById('authView');
-            var app = document.getElementById('appView');
-            var nav = document.getElementById('appNavBar');
-            var ticker = document.getElementById('liveTickerBar');
-            if (!loading || loading.classList.contains('hide')) return;
-            loading.classList.add('hide');
-            if (localStorage.getItem('token')) {
-                app?.classList.remove('hide');
-                nav?.classList.remove('hide');
-                ticker?.classList.remove('hide');
-                auth?.classList.add('hide');
+
+        function showGuestLanding() {
+            const loading = document.getElementById('loadingView');
+            const intro = document.getElementById('companyIntroView');
+            const auth = document.getElementById('authView');
+            const app = document.getElementById('appView');
+            const nav = document.getElementById('appNavBar');
+            const ticker = document.getElementById('liveTickerBar');
+            const hasReferral = new URLSearchParams(window.location.search).has('ref') || localStorage.getItem('operix_ref_code') || localStorage.getItem('ag_ref_code');
+
+            loading?.classList.add('hide');
+            if (hasReferral) {
                 intro?.classList.add('hide');
+                auth?.classList.remove('hide');
+                if (typeof window.switchAuthTab === 'function') window.switchAuthTab('register');
             } else {
                 intro?.classList.remove('hide');
                 auth?.classList.add('hide');
-                app?.classList.add('hide');
-                nav?.classList.add('hide');
-                ticker?.classList.add('hide');
             }
-        }, 10000);
+            app?.classList.add('hide');
+            nav?.classList.add('hide');
+            ticker?.classList.add('hide');
+        }
+
+        function showAuthenticatedShell() {
+            const loading = document.getElementById('loadingView');
+            const intro = document.getElementById('companyIntroView');
+            const auth = document.getElementById('authView');
+            const app = document.getElementById('appView');
+            const nav = document.getElementById('appNavBar');
+            const ticker = document.getElementById('liveTickerBar');
+
+            loading?.classList.add('hide');
+            intro?.classList.add('hide');
+            auth?.classList.add('hide');
+            app?.classList.remove('hide');
+            nav?.classList.remove('hide');
+            ticker?.classList.remove('hide');
+        }
+
+        function applyInitialBootstrapState() {
+            if (localStorage.getItem('token')) {
+                showAuthenticatedShell();
+            } else {
+                showGuestLanding();
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', applyInitialBootstrapState, { once: true });
+        applyInitialBootstrapState();
     </script>
 
-    <section id="companyIntroView" class="company-intro intro-grid hide w-full px-5 py-5 md:px-10">
+    <section id="companyIntroView" class="company-intro intro-grid w-full px-5 py-5 md:px-10">
         <div class="max-w-6xl mx-auto min-h-[calc(100vh-2.5rem)] flex flex-col">
             <header class="flex items-center justify-between gap-4 py-2 intro-reveal">
                 <a href="/" class="flex items-center gap-3" aria-label="OPERIX">
@@ -1768,6 +1795,6 @@ body::before{content:'';position:fixed;inset:-12%;z-index:-1;pointer-events:none
     </script>
 
     <!-- استدعاء ملف الجافاسكربت المفصول الأساسي -->
-    <script src="app.js?v=tier-state-20260913-1"></script>
+    <script src="app.js?v=auth-loop-fix-20260914-2"></script>
 </body>
 </html>
