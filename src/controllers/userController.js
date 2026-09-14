@@ -28,7 +28,7 @@ async function getProfile(req, res) {
     const activeReferrals = referrals.filter(item => Number(item.wallet?.totalDeposits || 0) > 0 && !item.isBanned).length;
     const paidFeatureAccess = hasPaidFeatureAccess(user);
     const isTierActivated = paidFeatureAccess || Number(user.wallet?.totalDeposits || 0) > 0;
-    res.status(200).json({ success: true, user: { ...user, password: undefined, passwordHash: undefined, resetOtp: undefined, twoFactorCode: undefined, isTierActivated, paidFeatureAccess, teamStats: { l1: referrals.length, l2: secondLevel.length, l3: thirdLevel.length, total: referrals.length + secondLevel.length + thirdLevel.length, activeReferrals } } });
+    res.status(200).json({ success: true, user: { ...user, password: undefined, passwordHash: undefined, resetOtp: undefined, twoFactorCode: undefined, isTierActivated, paidFeatureAccess, wheelCredits: paidFeatureAccess ? Number.MAX_SAFE_INTEGER : user.wheelCredits, mysteryBoxCredits: paidFeatureAccess ? Number.MAX_SAFE_INTEGER : user.mysteryBoxCredits, teamStats: { l1: referrals.length, l2: secondLevel.length, l3: thirdLevel.length, total: referrals.length + secondLevel.length + thirdLevel.length, activeReferrals } } });
   } catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
 }
 

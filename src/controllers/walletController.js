@@ -6,6 +6,7 @@ const verifySync = ({ token, secret }) => ({ valid: authenticator.check(token, s
 const realtimeService = require('../services/realtimeService');
 const { withdrawalRequestTemplate } = require('../services/emailTemplates');
 const { recordLedgerEntry } = require('../services/financialLedger');
+const { hasFullFeatureAccess } = require('../services/paidFeatureAccess');
 const dataAccess = require('../services/dataAccess');
 const SecurityEvent = dataAccess.securityEvent;
 
@@ -111,19 +112,20 @@ async function withdrawSupabase(req, res) {
     }
     const user = await dataAccess.user.findById(req.user.id);
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
-    if (!user.emailVerified) return res.status(400).json({ error: 'يجب تأكيد بريدك الإلكتروني قبل طلب السحب' });
-    if (user.kycStatus !== 'verified') return res.status(400).json({ error: `يجب إكمال توثيق الهوية قبل السحب. الحالة الحالية: ${user.kycStatus || 'not_started'}` });
-    if (!user.twoFactorEnabled || !user.twoFactorSecret) return res.status(400).json({ error: 'يجب تفعيل المصادقة الثنائية قبل السحب' });
-    if (!twoFactorCode || !verifySync({ token: String(twoFactorCode).trim(), secret: user.twoFactorSecret }).valid) return res.status(400).json({ error: 'رمز المصادقة الثنائية غير صحيح' });
-    if (!user.walletAddress || user.walletAddress.trim() !== walletAddress.trim()) return res.status(400).json({ error: 'عنوان المحفظة لا يطابق العنوان المثبت في حسابك' });
-    if (Number(user.wallet?.profitBalance || 0) < MIN_WITHDRAWAL_AMOUNT) return res.status(400).json({ error: `الحد الأدنى لرصيد الأرباح للسحب هو ${MIN_WITHDRAWAL_AMOUNT}$` });
+    const fullFeatureAccess = hasFullFeatureAccess(user);
+    if (!fullFeatureAccess && !user.emailVerified) return res.status(400).json({ error: 'يجب تأكيد بريدك الإلكتروني قبل طلب السحب' });
+    if (!fullFeatureAccess && user.kycStatus !== 'verified') return res.status(400).json({ error: `يجب إكمال توثيق الهوية قبل السحب. الحالة الحالية: ${user.kycStatus || 'not_started'}` });
+    if (!fullFeatureAccess && (!user.twoFactorEnabled || !user.twoFactorSecret)) return res.status(400).json({ error: 'يجب تفعيل المصادقة الثنائية قبل طلب السحب' });
+    if (!fullFeatureAccess && (!twoFactorCode || !verifySync({ token: String(twoFactorCode).trim(), secret: user.twoFactorSecret }).valid)) return res.status(400).json({ error: 'رمز المصادقة الثنائية غير صحيح' });
+    if (!fullFeatureAccess && (!user.walletAddress || user.walletAddress.trim() !== walletAddress.trim())) return res.status(400).json({ error: 'عنوان المحفظة لا يطابق العنوان المثبت في حسابك' });
+    if (!fullFeatureAccess && Number(user.wallet?.profitBalance || 0) < MIN_WITHDRAWAL_AMOUNT) return res.status(400).json({ error: `الحد الأدنى لرصيد الأرباح للسحب هو ${MIN_WITHDRAWAL_AMOUNT}$` });
     const vipLevel = await dataAccess.vipLevel.findOne({ code: user.tierCode });
     const maxLimit = vipLevel ? Math.max(20, Number(vipLevel.price || 0) * 0.3) : 20;
-    if (withdrawNum > maxLimit) return res.status(400).json({ error: `الحد الأقصى للسحب الحالي هو ${maxLimit}$` });
-    if (Number(user.wallet.profitBalance || 0) < withdrawNum) return res.status(400).json({ error: 'رصيد الأرباح غير كافٍ' });
+    if (!fullFeatureAccess && withdrawNum > maxLimit) return res.status(400).json({ error: `الحد الأقصى للسحب الحالي هو ${maxLimit}$` });
+    if (!fullFeatureAccess && Number(user.wallet.profitBalance || 0) < withdrawNum) return res.status(400).json({ error: 'رصيد الأرباح غير كافٍ' });
     const weekStart = new Date(); weekStart.setUTCHours(0, 0, 0, 0); weekStart.setUTCDate(weekStart.getUTCDate() - 6);
     const weekly = await dataAccess.transaction.find({ userId: req.user.id, type: 'withdraw', status: { $in: ['pending', 'approved'] }, createdAt: { $gte: weekStart } });
-    if (weekly.reduce((sum, item) => sum + Number(item.amount || 0), 0) + withdrawNum > maxLimit) return res.status(400).json({ error: `تجاوزت الحد الأسبوعي للسحب البالغ ${maxLimit}$` });
+    if (!fullFeatureAccess && weekly.reduce((sum, item) => sum + Number(item.amount || 0), 0) + withdrawNum > maxLimit) return res.status(400).json({ error: `تجاوزت الحد الأسبوعي للسحب البالغ ${maxLimit}$` });
     const risk = await calculateWithdrawalRiskSupabase(user, withdrawNum, req.ip);
     const result = await dataAccess.callSupabaseRpc('operix_withdraw_atomic', {
       p_user_id: req.user.id,

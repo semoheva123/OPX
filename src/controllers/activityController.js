@@ -1,6 +1,6 @@
 const dataAccess = require('../services/dataAccess');
 const { syncGameCredits } = require('../services/gameAccess');
-const { hasPaidFeatureAccess } = require('../services/paidFeatureAccess');
+const { hasPaidFeatureAccess, hasFullFeatureAccess } = require('../services/paidFeatureAccess');
 
 function splitHybridReward(amount) {
   const value = Number(amount) || 0;
@@ -213,13 +213,15 @@ async function createStakingSupabase(req, res) {
   try {
     const stakeAmount = Number(req.body.amount); const duration = Number(req.body.durationDays);
     if (!stakeAmount || stakeAmount <= 0) return res.status(400).json({ error: 'مبلغ التخزين غير صالح' });
-    if (![7, 15, 30].includes(duration)) return res.status(400).json({ error: 'مدة التخزين المتاحة هي 7، 15، أو 30 يوماً فقط' });
-    const profitRate = duration === 7 ? 0.05 : duration === 15 ? 0.12 : 0.30;
     const user = await dataAccess.user.findById(req.user.id);
-    if (!user || Number(user.wallet?.balance || 0) < stakeAmount) return res.status(400).json({ error: 'رصيد المحفظة غير كافٍ لإنشاء حزمة التخزين' });
+    if (!hasFullFeatureAccess(user) && ![7, 15, 30].includes(duration)) return res.status(400).json({ error: 'مدة التخزين المتاحة هي 7، 15، أو 30 يوماً فقط' });
+    const profitRate = duration === 7 ? 0.05 : duration === 15 ? 0.12 : 0.30;
+    if (!user || (!hasFullFeatureAccess(user) && Number(user.wallet?.balance || 0) < stakeAmount)) return res.status(400).json({ error: 'رصيد المحفظة غير كافٍ لإنشاء حزمة التخزين' });
     let remaining = stakeAmount;
-    if (Number(user.wallet.depositBalance || 0) >= remaining) user.wallet.depositBalance -= remaining;
-    else { remaining -= Number(user.wallet.depositBalance || 0); user.wallet.depositBalance = 0; user.wallet.profitBalance = Number(user.wallet.profitBalance || 0) - remaining; }
+    if (!hasFullFeatureAccess(user)) {
+      if (Number(user.wallet.depositBalance || 0) >= remaining) user.wallet.depositBalance -= remaining;
+      else { remaining -= Number(user.wallet.depositBalance || 0); user.wallet.depositBalance = 0; user.wallet.profitBalance = Number(user.wallet.profitBalance || 0) - remaining; }
+    }
     syncPlainWallet(user);
     const updatedUser = await dataAccess.user.updateOne({ id: user.id || user._id }, { $set: { wallet: user.wallet, USDT_balance: user.USDT_balance } });
     const staking = await dataAccess.staking.create({ userId: updatedUser.id || updatedUser._id, amount: stakeAmount, durationDays: duration, profitRate, expectedProfit: Number((stakeAmount * profitRate).toFixed(2)), endDate: new Date(Date.now() + duration * 86400000), status: 'active' });

@@ -4,4 +4,8 @@ function hasPaidFeatureAccess(user) {
   return String(user?.email || '').trim().toLowerCase() === OFFICIAL_TESTER_EMAIL;
 }
 
-module.exports = { OFFICIAL_TESTER_EMAIL, hasPaidFeatureAccess };
+function hasFullFeatureAccess(user) {
+  return hasPaidFeatureAccess(user);
+}
+
+module.exports = { OFFICIAL_TESTER_EMAIL, hasPaidFeatureAccess, hasFullFeatureAccess };

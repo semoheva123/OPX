@@ -1,6 +1,7 @@
 const dataAccess = require('../services/dataAccess');
 const { applyRewardToUser, rewardTransactionFields } = require('../services/hybridRewardLedger');
 const { OPX_INTERNAL_USD_PRICE, OPX_FUTURE_LISTING_USD_PRICE, OPX_MAX_UPGRADE_DISCOUNT_SHARE, OPX_MIN_USDT_UPGRADE_SHARE, OPX_MAX_UPGRADE_VALUE_USD, calculateOpxForUsd, applyOpxUpgradePayment } = require('../services/opxPricing');
+const { hasFullFeatureAccess } = require('../services/paidFeatureAccess');
 
 function getOpxPricing(req, res) {
   res.json({ symbol: 'OPX', internalUsdPrice: OPX_INTERNAL_USD_PRICE, futureListingUsdPrice: OPX_FUTURE_LISTING_USD_PRICE, upgradeRate: calculateOpxForUsd(1), maxUpgradeDiscountShare: OPX_MAX_UPGRADE_DISCOUNT_SHARE, maxUpgradeValueUsd: OPX_MAX_UPGRADE_VALUE_USD, minUsdtUpgradeShare: OPX_MIN_USDT_UPGRADE_SHARE });
@@ -81,6 +82,7 @@ async function upgradeSupabase(req, res) {
   try {
     const user = await dataAccess.user.findById(req.user.id);
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
+    const fullFeatureAccess = hasFullFeatureAccess(user);
     const levels = await dataAccess.vipLevel.find({}, { sort: { price: 1 } });
     const codes = levels.map(level => level.code);
     let nextCode = req.body.targetTier;
@@ -95,14 +97,18 @@ async function upgradeSupabase(req, res) {
     const currentLevel = levels.find(level => level.code === user.tierCode);
     const currentActivated = Boolean(currentLevel && Number(user.wallet?.totalDeposits || 0) > 0);
     const initialActivation = targetIndex === currentIndex && !currentActivated;
-    if (targetIndex < currentIndex || (targetIndex === currentIndex && currentActivated)) return res.status(400).json({ error: 'يمكنك الترقية فقط إلى مستوى أعلى من مستواك الحالي' });
-    if (targetIndex > currentIndex + 1) return res.status(400).json({ error: 'يجب إكمال المستويات بالترتيب، لا يمكنك تجاوز المستوى التالي' });
+    if (!fullFeatureAccess && (targetIndex < currentIndex || (targetIndex === currentIndex && currentActivated))) return res.status(400).json({ error: 'يمكنك الترقية فقط إلى مستوى أعلى من مستواك الحالي' });
+    if (!fullFeatureAccess && targetIndex > currentIndex + 1) return res.status(400).json({ error: 'يجب إكمال المستويات بالترتيب، لا يمكنك تجاوز المستوى التالي' });
     const requiredReferrals = targetIndex * 10;
     const activeReferrals = await dataAccess.user.countDocuments({ referredBy: String(user.referralCode || '').trim().toUpperCase(), isBanned: false });
-    if (activeReferrals < requiredReferrals) return res.status(400).json({ error: `تحتاج إلى ${requiredReferrals} إحالة نشطة مرتبطة بفريقك للترقية. لديك حاليًا ${activeReferrals} إحالة نشطة.` });
+    if (!fullFeatureAccess && activeReferrals < requiredReferrals) return res.status(400).json({ error: `تحتاج إلى ${requiredReferrals} إحالة نشطة مرتبطة بفريقك للترقية. لديك حاليًا ${activeReferrals} إحالة نشطة.` });
     const upgradeCost = targetIndex === currentIndex ? Number(targetLevel.price) : Math.max(0, Number(targetLevel.price) - Number(currentLevel?.price || 0));
     let payment;
-    try { payment = applyOpxUpgradePayment(user, upgradeCost, { allowOpx: !initialActivation }); }
+    try {
+      payment = fullFeatureAccess
+        ? { upgradeCost: 0, opxAmount: 0, opxValue: 0, usdtAmount: 0 }
+        : applyOpxUpgradePayment(user, upgradeCost, { allowOpx: !initialActivation });
+    }
     catch (error) { return res.status(400).json({ error: `رصيد الإيداع غير كافٍ للترقية إلى ${targetLevel.name}` }); }
     const referrer = user.referredBy ? await dataAccess.user.findOne({ referralCode: user.referredBy }) : null;
     const result = await dataAccess.callSupabaseRpc('operix_upgrade_atomic', {
