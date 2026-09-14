@@ -338,14 +338,15 @@ function renderTiersList() {
         const tierIndex = tiersData.findIndex(item => item.code === tier.code);
         const currentIndex = tiersData.findIndex(item => item.code === currentUserTier);
         const isCurrent = currentUserTier === tier.code;
-        const isActivated = isCurrent && Number(currentUserData?.wallet?.totalDeposits || 0) > 0;
+        const fullFeatureAccess = Boolean(currentUserData?.paidFeatureAccess);
+        const isActivated = isCurrent && (fullFeatureAccess || Number(currentUserData?.wallet?.totalDeposits || 0) > 0);
         const cost = isCurrent ? (isActivated ? 0 : tier.price) : Math.max(0, tier.price - Number(currentTier?.price || 0));
         const activeReferrals = Number(currentUserData?.teamStats?.activeReferrals || 0);
         const requiredReferrals = Math.max(0, tierIndex * 10);
         const referralsMet = activeReferrals >= requiredReferrals;
         const isNextTier = tierIndex === currentIndex + 1;
-        const canAct = !isActivated && (isCurrent || (isNextTier && referralsMet));
-        const status = isCurrent ? (isActivated ? 'مفعل حاليًا' : 'يحتاج إيداعًا للتفعيل') : tierIndex < currentIndex ? 'مكتمل سابقًا' : !isNextTier ? 'أكمل المستوى السابق أولًا' : referralsMet ? 'متاح للترقية' : `تحتاج ${requiredReferrals - activeReferrals} إحالة نشطة إضافية`;
+        const canAct = fullFeatureAccess ? !isCurrent : !isActivated && (isCurrent || (isNextTier && referralsMet));
+        const status = isCurrent ? (isActivated ? 'مفعل حاليًا' : 'يحتاج إيداعًا للتفعيل') : tierIndex < currentIndex ? 'مكتمل سابقًا' : fullFeatureAccess ? 'متاح للتجربة' : !isNextTier ? 'أكمل المستوى السابق أولًا' : referralsMet ? 'متاح للترقية' : `تحتاج ${requiredReferrals - activeReferrals} إحالة نشطة إضافية`;
         return `
             <div class="glass-card p-5 rounded-3xl border relative overflow-hidden bg-gradient-to-br ${tier.badgeColor} shadow-xl space-y-4">
                 ${isActivated ? `<span class="absolute top-3 left-3 bg-amber-500 text-slate-950 text-[10px] font-black px-2.5 py-0.5 rounded-full shadow">${tierText.current}</span>` : ''}
@@ -424,11 +425,12 @@ async function upgradeToSpecificTier(targetTier) {
         showToast('يرجى تسجيل الدخول وانتظار تحميل المستويات');
         return;
     }
-    if (targetIndex > currentIndex + 1) {
+    const fullFeatureAccess = Boolean(currentUserData?.paidFeatureAccess);
+    if (!fullFeatureAccess && targetIndex > currentIndex + 1) {
         showToast('يجب إكمال المستويات بالترتيب');
         return;
     }
-    if (activeReferrals < requiredReferrals) {
+    if (!fullFeatureAccess && activeReferrals < requiredReferrals) {
         showToast(`تحتاج إلى ${requiredReferrals - activeReferrals} إحالة نشطة إضافية للترقية`);
         switchTab('team');
         return;

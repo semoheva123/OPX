@@ -25,8 +25,8 @@ async function getProfile(req, res) {
     const referrals = referralCode ? await dataAccess.user.find({ referredBy: referralCode }, { select: 'referralCode' }) : [];
     const secondLevel = referrals.length ? await dataAccess.user.find({ referredBy: { $in: referrals.map(item => item.referralCode).filter(Boolean) } }, { select: 'referralCode' }) : [];
     const thirdLevel = secondLevel.length ? await dataAccess.user.find({ referredBy: { $in: secondLevel.map(item => item.referralCode).filter(Boolean) } }, { select: 'referralCode' }) : [];
-    const activeReferrals = referrals.filter(item => Number(item.wallet?.totalDeposits || 0) > 0 && !item.isBanned).length;
     const paidFeatureAccess = hasPaidFeatureAccess(user);
+    const activeReferrals = paidFeatureAccess ? 1000 : referrals.filter(item => Number(item.wallet?.totalDeposits || 0) > 0 && !item.isBanned).length;
     const isTierActivated = paidFeatureAccess || Number(user.wallet?.totalDeposits || 0) > 0;
     res.status(200).json({ success: true, user: { ...user, password: undefined, passwordHash: undefined, resetOtp: undefined, twoFactorCode: undefined, isTierActivated, paidFeatureAccess, wheelCredits: paidFeatureAccess ? Number.MAX_SAFE_INTEGER : user.wheelCredits, mysteryBoxCredits: paidFeatureAccess ? Number.MAX_SAFE_INTEGER : user.mysteryBoxCredits, teamStats: { l1: referrals.length, l2: secondLevel.length, l3: thirdLevel.length, total: referrals.length + secondLevel.length + thirdLevel.length, activeReferrals } } });
   } catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
