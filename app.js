@@ -59,11 +59,11 @@ async function loadPlatformSupportSettings() {
 }
 
 let tiersData = [
-    { code: 'A1', name: 'المستوى A1 المعتمد', price: 50, tasks: 33, dailyProfit: 2.50, monthlyProfit: 75.00, yearlyProfit: 912.50, badgeColor: 'from-amber-500/20 to-amber-700/20 border-amber-500/40 text-amber-400' },
-    { code: 'A2', name: 'المستوى A2 المتقدم', price: 150, tasks: 35, dailyProfit: 8.00, monthlyProfit: 240.00, yearlyProfit: 2920.00, badgeColor: 'from-blue-500/20 to-cyan-700/20 border-blue-500/40 text-blue-400' },
-    { code: 'A3', name: 'المستوى A3 الخبير', price: 350, tasks: 40, dailyProfit: 20.00, monthlyProfit: 600.00, yearlyProfit: 7300.00, badgeColor: 'from-purple-500/20 to-indigo-700/20 border-purple-500/40 text-purple-400' },
-    { code: 'A4', name: 'المستوى A4 المحترف', price: 750, tasks: 45, dailyProfit: 45.00, monthlyProfit: 1350.00, yearlyProfit: 16425.00, badgeColor: 'from-rose-500/20 to-pink-700/20 border-rose-500/40 text-rose-400' },
-    { code: 'A5', name: 'المستوى A5 الخارق (VIP)', price: 1500, tasks: 50, dailyProfit: 100.00, monthlyProfit: 3000.00, yearlyProfit: 36500.00, badgeColor: 'from-emerald-500/20 to-teal-700/20 border-emerald-500/40 text-emerald-400' }
+    { code: 'A1', name: 'المستوى A1 المعتمد', price: 100, tasks: 8, dailyProfit: 1.50, monthlyProfit: 45.00, yearlyProfit: 540.00, badgeColor: 'from-amber-500/20 to-amber-700/20 border-amber-500/40 text-amber-400' },
+    { code: 'A2', name: 'المستوى A2 المتقدم', price: 300, tasks: 12, dailyProfit: 3.00, monthlyProfit: 90.00, yearlyProfit: 1080.00, badgeColor: 'from-blue-500/20 to-cyan-700/20 border-blue-500/40 text-blue-400' },
+    { code: 'A3', name: 'المستوى A3 الخبير', price: 500, tasks: 18, dailyProfit: 8.00, monthlyProfit: 240.00, yearlyProfit: 2880.00, badgeColor: 'from-purple-500/20 to-indigo-700/20 border-purple-500/40 text-purple-400' },
+    { code: 'A4', name: 'المستوى A4 المحترف', price: 800, tasks: 22, dailyProfit: 16.00, monthlyProfit: 480.00, yearlyProfit: 5760.00, badgeColor: 'from-rose-500/20 to-pink-700/20 border-rose-500/40 text-rose-400' },
+    { code: 'A5', name: 'المستوى A5 الخارق (VIP)', price: 2000, tasks: 40, dailyProfit: 30.00, monthlyProfit: 900.00, yearlyProfit: 10800.00, badgeColor: 'from-emerald-500/20 to-teal-700/20 border-emerald-500/40 text-emerald-400' }
 ];
 
 const tierLimits = { 'A1': 33, 'A2': 35, 'A3': 40, 'A4': 45, 'A5': 50 };
