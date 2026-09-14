@@ -178,6 +178,8 @@ async function supabaseFindOne(table, query = {}) {
         USDT_balance: walletData.USDT_balance || 0,
         OPX_balance: walletData.OPX_balance || 0
       };
+      result.USDT_balance = result.wallet.USDT_balance;
+      result.OPX_balance = result.wallet.OPX_balance;
     }
   }
   return result;
@@ -214,7 +216,11 @@ async function supabaseFind(table, query = {}, options = {}) {
       const walletByUserId = new Map((wallets.data || []).map(wallet => [String(wallet.user_id), normalizeSupabaseResult(wallet)]));
       result.forEach(user => {
         const wallet = walletByUserId.get(String(user.id || user._id));
-        if (wallet) user.wallet = { balance: wallet.balance || 0, depositBalance: wallet.depositBalance || 0, profitBalance: wallet.profitBalance || 0, totalDeposits: wallet.totalDeposits || 0, totalWithdrawn: wallet.totalWithdrawn || 0, USDT_balance: wallet.USDT_balance || 0, OPX_balance: wallet.OPX_balance || 0 };
+        if (wallet) {
+          user.wallet = { balance: wallet.balance || 0, depositBalance: wallet.depositBalance || 0, profitBalance: wallet.profitBalance || 0, totalDeposits: wallet.totalDeposits || 0, totalWithdrawn: wallet.totalWithdrawn || 0, USDT_balance: wallet.USDT_balance || 0, OPX_balance: wallet.OPX_balance || 0 };
+          user.USDT_balance = user.wallet.USDT_balance;
+          user.OPX_balance = user.wallet.OPX_balance;
+        }
       });
     }
   }
