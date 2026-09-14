@@ -39,7 +39,7 @@ async function setWalletAddress(req, res) {
     const user = await dataAccess.user.findById(req.user.id);
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     if (user.walletAddress && user.walletAddress.trim()) return res.status(400).json({ error: 'عنوان المحفظة مثبت سابقاً، لا يمكنك تعديله إلا عن طريق التواصل مع الأدمن.' });
-    const updated = await dataAccess.user.updateOne({ id: req.user.id, walletAddress: null }, { walletAddress: walletAddress.trim() });
+    const updated = await dataAccess.user.updateOne({ id: req.user.id }, { walletAddress: walletAddress.trim() });
     res.json({ success: true, message: 'تم حفظ وتثبيت عنوان المحفظة بنجاح', walletAddress: updated?.walletAddress || walletAddress.trim() });
   } catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
 }
