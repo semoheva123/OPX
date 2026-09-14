@@ -149,11 +149,9 @@ async function login(req, res) {
     if (!email || !password || typeof email !== 'string' || typeof password !== 'string') return res.status(400).json({ error: 'يرجى إدخال البريد وكلمة المرور' });
     const user = await dataAccess.user.findOne({ email: email.trim().toLowerCase() });
     if (!user || !(await bcrypt.compare(password, user.password))) {
-      try {
-        await dataAccess.securityEvent.create({ email: email.trim().toLowerCase(), event: 'login_failed', ip: req.ip, userAgent: req.get('user-agent') || 'unknown' });
-      } catch (securityError) {
+      void dataAccess.securityEvent.create({ email: email.trim().toLowerCase(), event: 'login_failed', ip: req.ip, userAgent: req.get('user-agent') || 'unknown' }).catch((securityError) => {
         console.error('Failed to record login failure:', securityError.message);
-      }
+      });
       return res.status(400).json({ error: 'بيانات الدخول غير صحيحة' });
     }
     if (user.isBanned) return res.status(403).json({ error: 'حسابك معطل حالياً من قبل الإدارة. يرجى التواصل مع الدعم.' });
@@ -167,19 +165,21 @@ async function login(req, res) {
     user.wallet = wallet;
     user.USDT_balance = wallet.balance;
     user.lastLoginAt = new Date();
-    await dataAccess.user.updateOne({ id: user.id }, { lastLoginAt: user.lastLoginAt });
     const jti = crypto.randomUUID();
     const expiresInSeconds = 7 * 24 * 60 * 60;
     const token = jwt.sign({ id: user._id, email: user.email, role: user.role, jti }, JWT_SECRET, { expiresIn: expiresInSeconds });
     const userAgent = req.get('user-agent') || 'unknown';
-    const previousSession = await dataAccess.session.findOne({ userId: user.id, revokedAt: null, ip: { $ne: req.ip }, userAgent: { $ne: userAgent }, expiresAt: { $gt: new Date() } });
     await dataAccess.session.create({ userId: user._id, jti, userAgent, ip: req.ip, expiresAt: new Date(Date.now() + expiresInSeconds * 1000) });
-    await dataAccess.securityEvent.create({ userId: user._id, email: user.email, event: 'login_success', ip: req.ip, userAgent });
-    if (previousSession) {
-      await dataAccess.securityEvent.create({ userId: user._id, email: user.email, event: 'new_device', ip: req.ip, userAgent, metadata: { reason: 'new_ip_and_user_agent' } });
-      const notification = await dataAccess.notification.create({ userId: user.id, title: 'تسجيل دخول من جهاز جديد', body: 'تم تسجيل الدخول إلى حسابك من جهاز أو شبكة مختلفة. راجع الجلسات النشطة إذا لم تكن هذه العملية منك.', type: 'security' });
-      realtimeService.emit('notification_created', { notificationId: notification._id, title: notification.title, type: notification.type }, { userId: user._id });
-    }
+    void Promise.resolve().then(async () => {
+      await dataAccess.user.updateOne({ id: user.id }, { lastLoginAt: user.lastLoginAt });
+      const previousSession = await dataAccess.session.findOne({ userId: user.id, revokedAt: null, ip: { $ne: req.ip }, userAgent: { $ne: userAgent }, expiresAt: { $gt: new Date() } });
+      await dataAccess.securityEvent.create({ userId: user._id, email: user.email, event: 'login_success', ip: req.ip, userAgent });
+      if (previousSession) {
+        await dataAccess.securityEvent.create({ userId: user._id, email: user.email, event: 'new_device', ip: req.ip, userAgent, metadata: { reason: 'new_ip_and_user_agent' } });
+        const notification = await dataAccess.notification.create({ userId: user.id, title: 'تسجيل دخول من جهاز جديد', body: 'تم تسجيل الدخول إلى حسابك من جهاز أو شبكة مختلفة. راجع الجلسات النشطة إذا لم تكن هذه العملية منك.', type: 'security' });
+        realtimeService.emit('notification_created', { notificationId: notification._id, title: notification.title, type: notification.type }, { userId: user._id });
+      }
+    }).catch((backgroundError) => console.error('Login background audit error:', backgroundError.message));
     res.status(200).json({ success: true, token, user: safeUser(user) });
   } catch (err) {
     console.error('Login error:', err.message);
