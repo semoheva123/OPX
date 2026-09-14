@@ -55,6 +55,7 @@ function toCamelCaseKey(key) {
     referral_code: 'referralCode',
     referred_by: 'referredBy',
     wallet_address: 'walletAddress',
+    wallet_network: 'walletNetwork',
     kyc_status: 'kycStatus',
     two_factor_enabled: 'twoFactorEnabled',
     two_factor_secret: 'twoFactorSecret',

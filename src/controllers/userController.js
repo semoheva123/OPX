@@ -34,13 +34,14 @@ async function getProfile(req, res) {
 
 async function setWalletAddress(req, res) {
   try {
-    const { walletAddress } = req.body;
+    const { walletAddress, walletNetwork } = req.body;
     if (!walletAddress || typeof walletAddress !== 'string' || !walletAddress.trim()) return res.status(400).json({ error: 'يرجى إدخال عنوان محفظة صالح' });
+    if (!['TRC20', 'BEP20'].includes(String(walletNetwork || '').trim().toUpperCase())) return res.status(400).json({ error: 'اختر شبكة سحب صالحة' });
     const user = await dataAccess.user.findById(req.user.id);
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     if (user.walletAddress && user.walletAddress.trim()) return res.status(400).json({ error: 'عنوان المحفظة مثبت سابقاً، لا يمكنك تعديله إلا عن طريق التواصل مع الأدمن.' });
-    const updated = await dataAccess.user.updateOne({ id: req.user.id }, { walletAddress: walletAddress.trim() });
-    res.json({ success: true, message: 'تم حفظ وتثبيت عنوان المحفظة بنجاح', walletAddress: updated?.walletAddress || walletAddress.trim() });
+    const updated = await dataAccess.user.updateOne({ id: req.user.id }, { walletAddress: walletAddress.trim(), walletNetwork: String(walletNetwork).trim().toUpperCase() });
+    res.json({ success: true, message: 'تم حفظ وتثبيت عنوان المحفظة وشبكتها بنجاح', walletAddress: updated?.walletAddress || walletAddress.trim(), walletNetwork: updated?.walletNetwork || String(walletNetwork).trim().toUpperCase() });
   } catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
 }
 

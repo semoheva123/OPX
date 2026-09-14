@@ -1021,4 +1021,6 @@ begin
 end;
 $$;
 
+alter table if exists public.users add column if not exists wallet_network text;
+
 select table_name from information_schema.tables where table_schema = 'public' order by table_name;

@@ -1207,6 +1207,7 @@ body::before{content:'';position:fixed;inset:-12%;z-index:-1;pointer-events:none
                 </summary>
                 <div>
                     <label class="block text-[10px] font-bold text-slate-400 mb-1">عنوان المحفظة (TRC20 / BEP20)</label>
+                    <select id="profileWalletNetwork" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-amber-500"><option value="">اختر شبكة السحب</option><option value="TRC20">TRC20</option><option value="BEP20">BEP20</option></select>
                     <input type="text" id="profileWalletAddress" placeholder="أدخل عنوان المحفظة لربطه" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-amber-500 dir-ltr">
                     <div id="walletStatusContainerProfile" class="mt-2">
                         <div class="bg-slate-950 border border-slate-800 text-slate-400 p-2 rounded-xl text-[11px] font-bold flex items-center gap-2">
@@ -1431,6 +1432,7 @@ body::before{content:'';position:fixed;inset:-12%;z-index:-1;pointer-events:none
                 </div>
                 <div>
                     <label class="block text-xs text-slate-400 mb-1 font-bold">عنوان محفظة الاستلام</label>
+                    <select id="withdrawWalletNetwork" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-amber-500"><option value="">الشبكة المثبتة</option><option value="TRC20">TRC20</option><option value="BEP20">BEP20</option></select>
                     <input type="text" id="withdrawWallet" placeholder="ثبت عنوانك من الملف الشخصي" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-amber-500 dir-ltr">
                     <div id="walletStatusContainerWithdraw"></div>
                 </div>

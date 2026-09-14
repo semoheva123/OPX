@@ -99,12 +99,13 @@ async function withdraw(req, res) {
 
 async function withdrawSupabase(req, res) {
   try {
-    const { amount, walletAddress, twoFactorCode } = req.body;
+    const { amount, walletAddress, walletNetwork, twoFactorCode } = req.body;
     const idempotencyKey = String(req.get('Idempotency-Key') || '').trim().slice(0, 120);
     const withdrawNum = Number(amount);
     const feeSummary = calculateHybridWithdrawalFee(withdrawNum);
     if (!Number.isFinite(withdrawNum) || withdrawNum < MIN_WITHDRAWAL_AMOUNT) return res.status(400).json({ error: `الحد الأدنى للسحب هو ${MIN_WITHDRAWAL_AMOUNT}$ USDT` });
     if (!walletAddress || typeof walletAddress !== 'string' || !walletAddress.trim()) return res.status(400).json({ error: 'يرجى إدخال عنوان المحفظة' });
+    if (!['TRC20', 'BEP20'].includes(String(walletNetwork || '').trim().toUpperCase())) return res.status(400).json({ error: 'اختر شبكة السحب' });
     if (feeSummary.netAmount <= 0) return res.status(400).json({ error: 'مبلغ السحب غير صالح بعد احتساب الرسوم' });
     if (idempotencyKey) {
       const existing = await dataAccess.transaction.findOne({ userId: req.user.id, type: 'withdraw', idempotencyKey });
@@ -118,6 +119,7 @@ async function withdrawSupabase(req, res) {
     if (!fullFeatureAccess && (!user.twoFactorEnabled || !user.twoFactorSecret)) return res.status(400).json({ error: 'يجب تفعيل المصادقة الثنائية قبل طلب السحب' });
     if (!fullFeatureAccess && (!twoFactorCode || !verifySync({ token: String(twoFactorCode).trim(), secret: user.twoFactorSecret }).valid)) return res.status(400).json({ error: 'رمز المصادقة الثنائية غير صحيح' });
     if (!fullFeatureAccess && (!user.walletAddress || user.walletAddress.trim() !== walletAddress.trim())) return res.status(400).json({ error: 'عنوان المحفظة لا يطابق العنوان المثبت في حسابك' });
+    if (!fullFeatureAccess && String(user.walletNetwork || '').toUpperCase() !== String(walletNetwork).trim().toUpperCase()) return res.status(400).json({ error: 'شبكة السحب لا تطابق الشبكة المثبتة مع العنوان' });
     if (!fullFeatureAccess && Number(user.wallet?.profitBalance || 0) < MIN_WITHDRAWAL_AMOUNT) return res.status(400).json({ error: `الحد الأدنى لرصيد الأرباح للسحب هو ${MIN_WITHDRAWAL_AMOUNT}$` });
     const vipLevel = await dataAccess.vipLevel.findOne({ code: user.tierCode });
     const maxLimit = vipLevel ? Math.max(20, Number(vipLevel.price || 0) * 0.3) : 20;

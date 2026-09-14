@@ -1656,11 +1656,13 @@ function updateGameCredits(user = currentUserData) {
     if (boxStatus) boxStatus.innerText = Number(user.mysteryBoxCredits || 0) > 0 ? 'الدورة متاحة الآن.' : `تحتاج إلى ${referralsPerCycle} إحالة نشطة للحصول على دورة.`;
 }
 
-function lockWalletUI(address) {
+function lockWalletUI(address, network = '') {
     if (!address) return;
     
     const profileInput = document.getElementById('profileWalletAddress');
     const withdrawInput = document.getElementById('withdrawWallet');
+    const profileNetwork = document.getElementById('profileWalletNetwork');
+    const withdrawNetwork = document.getElementById('withdrawWalletNetwork');
     const saveBtn = document.getElementById('btnSaveProfileWallet');
     const statusProfile = document.getElementById('walletStatusContainerProfile');
     const statusWithdraw = document.getElementById('walletStatusContainerWithdraw');
@@ -1673,6 +1675,8 @@ function lockWalletUI(address) {
         withdrawInput.value = address;
         withdrawInput.disabled = true;
     }
+    if (profileNetwork) { profileNetwork.value = network; profileNetwork.disabled = true; }
+    if (withdrawNetwork) { withdrawNetwork.value = network; withdrawNetwork.disabled = true; }
     if (saveBtn) {
         saveBtn.style.display = 'none';
     }
@@ -1755,8 +1759,9 @@ async function loadUserProfileInternal() {
             if (verifyEmailButton) verifyEmailButton.classList.toggle('hidden', Boolean(data.user.emailVerified));
             
             const savedAddress = data.user.withdrawWallet || data.user.walletAddress;
+            const savedNetwork = data.user.walletNetwork || '';
             if (savedAddress && savedAddress.trim() !== '') {
-                lockWalletUI(savedAddress);
+                lockWalletUI(savedAddress, savedNetwork);
             }
 
             currentUserTier = data.user.tierCode || 'A1';
@@ -2147,11 +2152,13 @@ function startTaskResetCountdown() {
 async function saveProfileWallet() {
     const token = localStorage.getItem('token');
     const walletAddress = document.getElementById('profileWalletAddress').value.trim();
+    const walletNetwork = document.getElementById('profileWalletNetwork').value;
 
     if (!walletAddress) {
         showToast('يرجى إدخال عنوان محفظة صحيح');
         return;
     }
+    if (!walletNetwork) { showToast('يرجى اختيار شبكة السحب'); return; }
 
     try {
         const res = await fetch('/api/user/wallet-address', {
@@ -2160,12 +2167,12 @@ async function saveProfileWallet() {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ walletAddress })
+            body: JSON.stringify({ walletAddress, walletNetwork })
         });
 
         const data = await res.json();
         if (res.ok && (data.success || data.message)) {
-            lockWalletUI(walletAddress);
+            lockWalletUI(walletAddress, data.walletNetwork || walletNetwork);
             document.getElementById('profileWalletAddress')?.closest('details')?.removeAttribute('open');
             showToast('✅ تم تثبيت المحفظة وتفعيل قفل الحماية (24 ساعة)', 'win');
         } else {
@@ -3335,6 +3342,7 @@ function updateHybridWithdrawFee() {
 async function submitWithdraw() {
     const amount = parseFloat(document.getElementById('withdrawAmount').value);
     const walletAddress = document.getElementById('withdrawWallet').value.trim();
+    const walletNetwork = document.getElementById('withdrawWalletNetwork').value;
     const twoFactorCode = document.getElementById('withdraw2faCode').value.trim();
     const token = localStorage.getItem('token');
     const btn = document.getElementById('btnSubmitWithdraw');
@@ -3355,6 +3363,7 @@ async function submitWithdraw() {
         showToast('يرجى تثبيت عنوان المحفظة أولاً من الملف الشخصي');
         return;
     }
+    if (!walletNetwork) { showToast('يرجى اختيار شبكة السحب'); return; }
 
     if (!twoFactorCode) {
         showToast('يرجى إدخال رمز التحقق الثنائي (2FA)');
@@ -3368,7 +3377,7 @@ async function submitWithdraw() {
         const res = await fetch('/api/wallet/withdraw', {
             method: 'POST',
             headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'Idempotency-Key': idempotencyKey},
-            body: JSON.stringify({ amount, walletAddress, twoFactorCode })
+            body: JSON.stringify({ amount, walletAddress, walletNetwork, twoFactorCode })
         });
         const data = await res.json();
         if(res.ok) {
