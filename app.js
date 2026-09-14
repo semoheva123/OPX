@@ -1330,7 +1330,7 @@ function updateProfileUI() {
     if (refInputEl) refInputEl.value = dynamicRefLink;
 
     // المبالغ
-    const totalEarned = (currentUserData.wallet && currentUserData.wallet.balance !== undefined) ? currentUserData.wallet.balance : (currentUserData.totalEarned || 0);
+    const totalEarned = (currentUserData.wallet && currentUserData.wallet.profitBalance !== undefined) ? currentUserData.wallet.profitBalance : (currentUserData.totalEarned || 0);
     const totalWithdrawn = (currentUserData.wallet && currentUserData.wallet.totalWithdrawn !== undefined) ? currentUserData.wallet.totalWithdrawn : (currentUserData.totalWithdrawn || 0);
 
     const totalEarnedEl = document.getElementById('lblProfileTotalEarnings');

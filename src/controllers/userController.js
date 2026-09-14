@@ -250,13 +250,18 @@ async function getHomeSummary(req, res) {
     if (dataAccess.isSupabaseRuntime()) {
       const user = await dataAccess.user.findById(req.user.id);
       if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
-      const transactions = await dataAccess.transaction.find({ userId: req.user.id }, { sort: { createdAt: -1 }, limit: 25 });
+      const transactions = await dataAccess.transaction.find({ userId: req.user.id }, { sort: { createdAt: -1 }, limit: 100 });
       const approvedTransactions = transactions.filter(transaction => ['approved', 'completed'].includes(transaction.status));
       const referralCount = await dataAccess.user.countDocuments({ referredBy: user.referralCode?.trim().toUpperCase() });
-      const earnings = approvedTransactions.filter(transaction => ['deposit', 'reward', 'staking_reward', 'referral_commission'].includes(transaction.type)).reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0);
+      const earningTransactions = approvedTransactions.filter(transaction => ['reward', 'staking_reward', 'referral_commission'].includes(transaction.type));
+      const todayStart = new Date(); todayStart.setUTCHours(0, 0, 0, 0);
+      const weekStart = new Date(todayStart); weekStart.setUTCDate(weekStart.getUTCDate() - 6);
+      const monthStart = new Date(todayStart); monthStart.setUTCDate(1);
+      const sumSince = (start) => earningTransactions.reduce((sum, transaction) => new Date(transaction.createdAt) >= start ? sum + Number(transaction.amount || 0) : sum, 0);
+      const earnings = { today: sumSince(todayStart), week: sumSince(weekStart), month: sumSince(monthStart) };
       const pendingTransactions = transactions.filter(transaction => transaction.status === 'pending');
       const healthChecks = { email: Boolean(user.email), twoFactor: Boolean(user.twoFactorEnabled), wallet: Boolean(user.walletAddress?.trim()), deposit: Number(user.wallet?.totalDeposits) > 0, activity: approvedTransactions.length > 0 };
-      return res.json({ success: true, summary: { todayEarned: Number(earnings.toFixed(2)), earnings: { today: Number(earnings.toFixed(2)), week: Number(earnings.toFixed(2)), month: Number(earnings.toFixed(2)) }, health: Object.values(healthChecks).filter(Boolean).length * 20, healthChecks, referralCount, pendingTransactions: pendingTransactions.length, pendingByType: { deposits: pendingTransactions.filter(item => item.type === 'deposit').length, withdrawals: pendingTransactions.filter(item => item.type === 'withdraw').length }, completedTasks: user.todayCompletedTasks || 0, teamStats: user.teamStats || {}, nextLevel: null, timeline: [{ type: 'registered', date: user.createdAt, title: 'إنشاء الحساب' }], recentActivity: approvedTransactions.slice(0, 10) } });
+      return res.json({ success: true, summary: { todayEarned: Number(earnings.today.toFixed(2)), earnings: { today: Number(earnings.today.toFixed(2)), week: Number(earnings.week.toFixed(2)), month: Number(earnings.month.toFixed(2)) }, health: Object.values(healthChecks).filter(Boolean).length * 20, healthChecks, referralCount, pendingTransactions: pendingTransactions.length, pendingByType: { deposits: pendingTransactions.filter(item => item.type === 'deposit').length, withdrawals: pendingTransactions.filter(item => item.type === 'withdraw').length }, completedTasks: user.todayCompletedTasks || 0, teamStats: user.teamStats || {}, nextLevel: null, timeline: [{ type: 'registered', date: user.createdAt, title: 'إنشاء الحساب' }], recentActivity: approvedTransactions.slice(0, 10) } });
     }
     const user = await User.findById(req.user.id).select('-password -resetOTP -twoFactorCode');
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
@@ -266,7 +271,7 @@ async function getHomeSummary(req, res) {
     const weekStart = new Date(todayStart); weekStart.setUTCDate(weekStart.getUTCDate() - 6);
     const monthStart = new Date(todayStart); monthStart.setUTCDate(1);
     const earningsAggregate = await Transaction.aggregate([
-      { $match: { userId: user._id, status: { $in: ['approved', 'completed'] }, type: { $in: ['deposit', 'reward', 'staking_reward', 'referral_commission'] } } },
+      { $match: { userId: user._id, status: { $in: ['approved', 'completed'] }, type: { $in: ['reward', 'staking_reward', 'referral_commission'] } } },
       { $group: {
         _id: null,
         today: { $sum: { $cond: [{ $gte: ['$createdAt', todayStart] }, '$amount', 0] } },
