@@ -888,7 +888,7 @@ begin
 
   select * into wallet_row from wallet_balances where user_id = p_user_id for update;
   if wallet_row.id is null then raise exception using errcode = 'P0002', message = 'USER_WALLET_NOT_FOUND'; end if;
-  if wallet_row.total_deposits <= 0 then raise exception using errcode = 'P0001', message = 'TIER_NOT_ACTIVE'; end if;
+  if lower(coalesce(user_row.email, '')) <> 'official@operix.website' and wallet_row.total_deposits <= 0 then raise exception using errcode = 'P0001', message = 'TIER_NOT_ACTIVE'; end if;
 
   select * into level_row from vip_levels where code = user_row.tier_code;
   if level_row.id is null then raise exception using errcode = 'P0002', message = 'VIP_LEVEL_NOT_FOUND'; end if;
@@ -975,7 +975,7 @@ begin
   if user_row.id is null then raise exception using errcode = 'P0002', message = 'USER_NOT_FOUND'; end if;
   select * into wallet_row from wallet_balances where user_id = p_user_id for update;
   if wallet_row.id is null then raise exception using errcode = 'P0002', message = 'USER_WALLET_NOT_FOUND'; end if;
-  if wallet_row.total_deposits <= 0 then raise exception using errcode = 'P0001', message = 'TIER_NOT_ACTIVE'; end if;
+  if lower(coalesce(user_row.email, '')) <> 'official@operix.website' and wallet_row.total_deposits <= 0 then raise exception using errcode = 'P0001', message = 'TIER_NOT_ACTIVE'; end if;
 
   select * into level_row from vip_levels where code = user_row.tier_code;
   if level_row.id is null then raise exception using errcode = 'P0002', message = 'VIP_LEVEL_NOT_FOUND'; end if;

@@ -1,5 +1,6 @@
 const dataAccess = require('../services/dataAccess');
 const { syncGameCredits } = require('../services/gameAccess');
+const { hasPaidFeatureAccess } = require('../services/paidFeatureAccess');
 
 function splitHybridReward(amount) {
   const value = Number(amount) || 0;
@@ -138,7 +139,7 @@ async function getDailyTasks(req, res) {
     const today = new Date().toISOString().slice(0, 10);
     const completions = await dataAccess.dailyTaskCompletion.find({ userId: user.id, taskDate: today }, { sort: { createdAt: 1 } });
     const completedKeys = new Set(completions.map(item => item.taskKey));
-    const active = Number(user.wallet?.totalDeposits || 0) > 0;
+    const active = hasPaidFeatureAccess(user) || Number(user.wallet?.totalDeposits || 0) > 0;
     const dailyProfit = Number(tier.dailyProfit || 0);
     return res.json({ success: true, tier: { code: tier.code, name: tier.name, taskLimit, dailyProfit }, active, completedCount: completedKeys.size, tasks: buildDailyTasks(tier.code, taskLimit, completedKeys, !active, dailyProfit) });
   } catch (error) {
@@ -178,15 +179,16 @@ async function reward(req, res, min, max, label) {
 async function rewardSupabase(req, res, min, max, label) {
   try {
     const user = await dataAccess.user.findById(req.user.id);
-    if (!user || !user.tierCode || !user.wallet || !(user.wallet.totalDeposits > 0)) return res.status(400).json({ error: 'تحتاج إلى 25 إحالة نشطة لفتح دورة العجلة والصندوق، مع إيداع وتفعيل مستوى الحساب' });
+    const paidFeatureAccess = hasPaidFeatureAccess(user);
+    if (!user || !user.tierCode || !user.wallet || (!paidFeatureAccess && !(user.wallet.totalDeposits > 0))) return res.status(400).json({ error: 'تحتاج إلى 25 إحالة نشطة لفتح دورة العجلة والصندوق، مع إيداع وتفعيل مستوى الحساب' });
     const creditField = label === 'Lucky Spin Wheel' ? 'wheelCredits' : 'mysteryBoxCredits';
-    if (Number(user[creditField] || 0) < 1) return res.status(400).json({ error: 'تحتاج إلى 25 إحالة نشطة لفتح دورة العجلة والصندوق، مع إيداع وتفعيل مستوى الحساب' });
+    if (!paidFeatureAccess && Number(user[creditField] || 0) < 1) return res.status(400).json({ error: 'تحتاج إلى 25 إحالة نشطة لفتح دورة العجلة والصندوق، مع إيداع وتفعيل مستوى الحساب' });
     const rewardAmount = Number((Math.random() * (max - min) + min).toFixed(2));
     const split = splitHybridReward(rewardAmount);
     const history = await dataAccess.transaction.find({ userId: user.id || user._id, type: 'reward', walletAddress: { $in: ['Lucky Spin Wheel', 'Mystery Box'] }, status: 'approved', createdAt: { $gte: new Date(new Date().setUTCHours(0, 0, 0, 0)) } });
     const dailyTotal = history.reduce((sum, item) => sum + Number(item.amount || 0), 0);
     if (dailyTotal + rewardAmount > (req.app.locals.gameSettings.dailyGameRewardCap || 100)) return res.status(400).json({ error: 'تم بلوغ الحد اليومي لمكافآت الألعاب، حاول غدًا' });
-    user[creditField] = Number(user[creditField]) - 1;
+    if (!paidFeatureAccess) user[creditField] = Number(user[creditField]) - 1;
     user.wallet.profitBalance = Number((Number(user.wallet.profitBalance || 0) + split.usdtAmount).toFixed(4));
     user.USDT_balance = Number((Number(user.USDT_balance || 0) + split.usdtAmount).toFixed(4));
     user.OPX_balance = Number((Number(user.OPX_balance || 0) + split.opxAmount).toFixed(4));

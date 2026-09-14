@@ -11,6 +11,7 @@ const User = dataAccess.user;
 const Session = dataAccess.session;
 const SecurityEvent = dataAccess.securityEvent;
 const Notification = dataAccess.notification;
+const { hasPaidFeatureAccess } = require('../services/paidFeatureAccess');
 
 const verifySync = ({ token, secret }) => ({ valid: authenticator.check(token, secret) });
 const generateSecret = () => authenticator.generateSecret();
@@ -36,12 +37,15 @@ function matchesHash(value, expected) {
 }
 
 function safeUser(user) {
+  const paidFeatureAccess = hasPaidFeatureAccess(user);
   return {
     _id: user._id, email: user.email, emailVerified: user.emailVerified, role: user.role, tierCode: user.tierCode,
     assetWallet: user.assetWallet, todayCompletedTasks: user.todayCompletedTasks,
     referralCode: user.referralCode, referredBy: user.referredBy,
     walletAddress: user.walletAddress, isBanned: user.isBanned, wallet: user.wallet,
-    USDT_balance: user.USDT_balance, OPX_balance: user.OPX_balance
+    USDT_balance: user.USDT_balance, OPX_balance: user.OPX_balance, paidFeatureAccess,
+    wheelCredits: paidFeatureAccess ? Number.MAX_SAFE_INTEGER : user.wheelCredits,
+    mysteryBoxCredits: paidFeatureAccess ? Number.MAX_SAFE_INTEGER : user.mysteryBoxCredits
   };
 }
 
