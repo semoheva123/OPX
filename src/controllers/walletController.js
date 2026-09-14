@@ -142,7 +142,30 @@ async function withdrawSupabase(req, res) {
     const withdrawal = result.transaction;
     await realtimeService.publish('user_data_changed', { reason: 'withdrawal_created', timestamp: new Date().toISOString() }, { userId: req.user.id });
     await realtimeService.publish('admin_transaction_created', { transactionId: withdrawal.id, type: 'withdraw', userId: req.user.id, riskLevel: withdrawal.riskLevel, riskScore: withdrawal.riskScore }, { scope: 'admin' });
-    return res.json({ success: true, message: 'تم تقديم طلب السحب بنجاح وإرسال التفاصيل لبريدك الإلكتروني', wallet: result.wallet, withdrawal });
+    const resend = req.app.locals.resend;
+    let emailSent = false;
+    if (resend && user.email && emailFrom) {
+      try {
+        const emailResult = await resend.emails.send({
+          from: emailFrom,
+          to: user.email,
+          subject: 'تم استلام طلب السحب - OPERIX',
+          html: withdrawalRequestTemplate({
+            amount: withdrawNum.toFixed(2),
+            transactionId: withdrawal.id,
+            walletAddress: walletAddress.trim(),
+            requestedAt: new Date().toLocaleString('ar')
+          })
+        });
+        if (emailResult?.error) throw new Error(emailResult.error.message || 'Email provider rejected the request');
+        emailSent = true;
+      } catch (emailError) {
+        console.error('Withdrawal request email failed:', emailError.message);
+      }
+    } else {
+      console.error('Withdrawal request email skipped: email service is not configured');
+    }
+    return res.json({ success: true, emailSent, message: emailSent ? 'تم تقديم طلب السحب وإرسال إشعار إلى بريدك الإلكتروني' : 'تم تقديم طلب السحب، لكن تعذر إرسال إشعار البريد حاليًا', wallet: result.wallet, withdrawal });
   } catch (error) {
     if (error?.message === 'INSUFFICIENT_PROFIT') return res.status(400).json({ error: 'رصيد الأرباح غير كافٍ' });
     if (error?.code === '23505') return res.status(409).json({ success: true, message: 'تم استلام طلب السحب مسبقًا', duplicate: true });
