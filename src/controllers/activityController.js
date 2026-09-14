@@ -51,26 +51,18 @@ async function completeTask(req, res) {
 
 async function completeTaskSupabase(req, res) {
   try {
-    const user = await dataAccess.user.findById(req.user.id);
-    if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
-    const vipLevel = await dataAccess.vipLevel.findOne({ code: user.tierCode });
-    if (!vipLevel || !(user.wallet?.totalDeposits > 0)) return res.status(400).json({ error: 'يجب إيداع قيمة المستوى وتفعيله قبل إنجاز المهام' });
-    const maxTasks = vipLevel.tasks || 33;
-    if (Number(user.todayCompletedTasks || 0) >= maxTasks) return res.status(400).json({ error: 'لقد أتممت جميع مهام اليوم' });
-    const commission = Number((Number(vipLevel.dailyProfit || 2.5) / maxTasks).toFixed(4));
-    const split = splitHybridReward(commission);
-    user.assetWallet = Number((Number(user.assetWallet || 0) + commission).toFixed(4));
-    user.wallet.profitBalance = Number((Number(user.wallet.profitBalance || 0) + split.usdtAmount).toFixed(4));
-    user.USDT_balance = Number((Number(user.USDT_balance || 0) + split.usdtAmount).toFixed(4));
-    user.OPX_balance = Number((Number(user.OPX_balance || 0) + split.opxAmount).toFixed(4));
-    user.todayCompletedTasks = Number(user.todayCompletedTasks || 0) + 1;
-    syncPlainWallet(user);
-    const updatedUser = await dataAccess.user.updateOne({ id: user.id || user._id }, { $set: { assetWallet: user.assetWallet, wallet: user.wallet, USDT_balance: user.USDT_balance, OPX_balance: user.OPX_balance, todayCompletedTasks: user.todayCompletedTasks } });
-    await dataAccess.transaction.create({ userId: updatedUser.id || updatedUser._id, type: 'reward', amount: commission, grossAmount: commission, usdtAmount: split.usdtAmount, opxAmount: split.opxAmount, walletAddress: 'Daily Task Reward', status: 'approved' });
-    res.json({ success: true, assetWallet: updatedUser.assetWallet, wallet: updatedUser.wallet, completed: updatedUser.todayCompletedTasks });
+    const result = await dataAccess.callSupabaseRpc('operix_daily_task_atomic', { p_user_id: req.user.id });
+    res.json({ success: true, ...result });
   } catch (error) {
     console.error('Supabase task reward error:', error.message);
-    res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' });
+    const message = String(error?.message || '');
+    if (message.includes('USER_NOT_FOUND')) return res.status(404).json({ error: 'المستخدم غير موجود' });
+    if (message.includes('USER_WALLET_NOT_FOUND')) return res.status(503).json({ error: 'محفظة الحساب غير جاهزة حاليًا، حاول لاحقًا' });
+    if (message.includes('TIER_NOT_ACTIVE')) return res.status(400).json({ error: 'يجب إيداع قيمة المستوى وتفعيله قبل إنجاز المهام' });
+    if (message.includes('VIP_LEVEL_NOT_FOUND')) return res.status(503).json({ error: 'إعدادات المستوى غير متاحة حاليًا، حاول لاحقًا' });
+    if (message.includes('DAILY_TASK_LIMIT_REACHED')) return res.status(400).json({ error: 'لقد أتممت جميع مهام اليوم' });
+    if (error?.code === 'PGRST202' || /operix_daily_task_atomic.*does not exist/i.test(message)) return res.status(503).json({ error: 'نظام المكافآت يحتاج إلى تحديث قاعدة البيانات قبل الاستخدام' });
+    res.status(500).json({ error: 'حدث خطأ في معالجة المهمة والمكافأة' });
   }
 }
 

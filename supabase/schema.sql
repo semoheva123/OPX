@@ -865,4 +865,73 @@ begin
 end;
 $$;
 
+create or replace function public.operix_daily_task_atomic(
+  p_user_id uuid
+) returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  user_row users%rowtype;
+  wallet_row wallet_balances%rowtype;
+  level_row vip_levels%rowtype;
+  max_tasks integer;
+  gross_reward numeric;
+  usdt_reward numeric;
+  opx_reward numeric;
+  balance_before numeric;
+  transaction_id uuid;
+begin
+  select * into user_row from users where id = p_user_id for update;
+  if user_row.id is null then raise exception using errcode = 'P0002', message = 'USER_NOT_FOUND'; end if;
+
+  select * into wallet_row from wallet_balances where user_id = p_user_id for update;
+  if wallet_row.id is null then raise exception using errcode = 'P0002', message = 'USER_WALLET_NOT_FOUND'; end if;
+  if wallet_row.total_deposits <= 0 then raise exception using errcode = 'P0001', message = 'TIER_NOT_ACTIVE'; end if;
+
+  select * into level_row from vip_levels where code = user_row.tier_code;
+  if level_row.id is null then raise exception using errcode = 'P0002', message = 'VIP_LEVEL_NOT_FOUND'; end if;
+  max_tasks := greatest(level_row.tasks, 1);
+  if user_row.today_completed_tasks >= max_tasks then raise exception using errcode = 'P0001', message = 'DAILY_TASK_LIMIT_REACHED'; end if;
+
+  gross_reward := round(coalesce(level_row.daily_profit, 2.5) / max_tasks, 4);
+  usdt_reward := round(gross_reward * 0.70, 4);
+  opx_reward := round(gross_reward - usdt_reward, 4);
+  balance_before := wallet_row.balance;
+
+  update users
+  set asset_wallet = round(coalesce(asset_wallet, 0) + gross_reward, 4),
+      today_completed_tasks = today_completed_tasks + 1,
+      updated_at = now()
+  where id = p_user_id;
+
+  update wallet_balances
+  set profit_balance = round(profit_balance + usdt_reward, 4),
+      opx_balance = round(opx_balance + opx_reward, 4),
+      usdt_balance = round(deposit_balance + profit_balance + usdt_reward, 4),
+      balance = round(deposit_balance + profit_balance + usdt_reward, 4),
+      updated_at = now()
+  where user_id = p_user_id;
+
+  insert into transactions(user_id, type, status, amount, gross_amount, usdt_amount, opx_amount, wallet_address)
+  values(p_user_id, 'reward', 'approved', gross_reward, gross_reward, usdt_reward, opx_reward, 'Daily Task Reward')
+  returning id into transaction_id;
+
+  insert into financial_ledger(user_id, type, currency, amount, net_amount, balance_before, balance_after, status, source, reference_id, metadata)
+  values(p_user_id, 'reward', 'USDT', usdt_reward, usdt_reward, balance_before, balance_before + usdt_reward, 'approved', 'daily_task', transaction_id::text, jsonb_build_object('grossAmount', gross_reward, 'opxAmount', opx_reward));
+
+  return jsonb_build_object(
+    'userId', p_user_id,
+    'assetWallet', (select asset_wallet from users where id = p_user_id),
+    'wallet', (select row_to_json(w) from wallet_balances w where w.user_id = p_user_id),
+    'completed', (select today_completed_tasks from users where id = p_user_id),
+    'grossAmount', gross_reward,
+    'usdtAmount', usdt_reward,
+    'opxAmount', opx_reward,
+    'transactionId', transaction_id
+  );
+end;
+$$;
+
 select table_name from information_schema.tables where table_schema = 'public' order by table_name;
