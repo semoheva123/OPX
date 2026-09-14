@@ -9,6 +9,7 @@ let currentUserData = null; // الاحتفاظ ببيانات المستخدم 
 let hasPendingDeposit = false; // متغير لتتبع وجود طلب إيداع معلق
 let taskCountdownTimer = null;
 let taskBoardFilter = 'all';
+let expandedDailyTaskKey = null;
 let growthChartPoints = [];
 let unreadNotificationCount = null;
 let notificationPollTimer = null;
@@ -2024,12 +2025,12 @@ function renderTaskBoard(completed, maximum) {
         { id: 'twoFactor', category: 'priority', icon: 'fa-shield-halved', title: 'فعّل المصادقة الثنائية', description: 'أضف طبقة حماية قبل السحب والعمليات الحساسة.', done: Boolean(currentUserData?.twoFactorEnabled), action: "switchTab('profile'); document.getElementById('toggle2FA')?.focus()", status: 'جاهزية الحساب' },
         { id: 'wallet', category: 'priority', icon: 'fa-wallet', title: 'ثبّت محفظة السحب', description: 'أدخل عنوانًا صحيحًا لتجهيز مسار السحب الآمن.', done: Boolean((currentUserData?.walletAddress || currentUserData?.withdrawWallet || '').trim()), action: "switchTab('profile'); document.getElementById('profileWalletAddress')?.focus()", status: 'جاهزية الحساب' },
         { id: 'kyc', category: 'priority', icon: 'fa-id-card', title: 'أكمل توثيق الهوية', description: 'أرسل بيانات KYC لرفع جاهزية الحساب للعمليات الحساسة.', done: currentUserData?.kycStatus === 'verified', action: "switchTab('profile'); document.getElementById('kycFullNameInput')?.focus()", status: 'جاهزية الحساب' },
-        { id: 'daily', category: 'operations', icon: 'fa-bolt', title: currentUserTierActive ? tierTask.title : 'مهام المستوى اليومية', description: currentUserTierActive ? `${tierTask.description} الحد اليومي: ${maximum} مهمة.` : 'تتطلب هذه المهمة إيداعًا وتفعيل المستوى الأول.', done: completed >= maximum, locked: !currentUserTierActive, action: 'completeTask()', status: currentUserTierActive ? 'تشغيلية' : 'غير متاحة' },
+        { id: 'daily', category: 'operations', icon: 'fa-bolt', title: currentUserTierActive ? tierTask.title : 'مهام المستوى اليومية', description: currentUserTierActive ? `${tierTask.description} الحد اليومي: ${maximum} مهمة.` : 'تتطلب هذه المهمة إيداعًا وتفعيل المستوى الأول.', done: completed >= maximum, locked: !currentUserTierActive, action: 'openDailyTasks()', status: currentUserTierActive ? 'تشغيلية' : 'غير متاحة' },
     ];
     const pendingTasks = tasks.filter(task => !task.done);
     const visibleTasks = pendingTasks.filter(task => taskBoardFilter === 'all' || task.category === taskBoardFilter);
     board.innerHTML = visibleTasks.length
-        ? visibleTasks.map(task => `<article class="task-card rounded-2xl p-3 transition-all"><div class="flex items-start gap-3"><span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${task.locked ? 'bg-slate-400/10 text-slate-500' : 'bg-amber-400/12 text-amber-300'}"><i class="fa-solid ${task.icon} text-sm"></i></span><div class="min-w-0 flex-1"><div class="flex items-start justify-between gap-2"><div><h4 class="text-xs font-bold text-white">${task.title}</h4><p class="mt-1 text-[10px] leading-5 text-slate-500">${task.description}</p></div><span class="shrink-0 text-[10px] font-bold ${task.locked ? 'text-slate-500' : 'text-amber-300'}">${task.status}</span></div><div class="mt-2 flex items-center justify-between gap-2"><span class="text-[9px] ${task.locked ? 'text-slate-600' : 'text-slate-500'}">${task.locked ? 'مقفلة حتى التفعيل' : 'قيد الانتظار'}</span><button ${task.id === 'daily' ? 'id="btnCompleteTask"' : ''} ${task.locked ? 'disabled aria-disabled="true"' : `onclick="${task.action}"`} class="mt-0 rounded-xl border px-3 py-2 text-[10px] font-bold ${task.locked ? 'cursor-not-allowed border-slate-700 bg-slate-900 text-slate-500' : 'border-amber-500/25 bg-amber-500/10 text-amber-300 hover:border-amber-400/50'}">${task.locked ? 'تفعيل المستوى' : task.id === 'daily' ? 'بدء المهمة' : 'فتح الإجراء'} <i class="fa-solid ${task.locked ? 'fa-lock' : 'fa-arrow-left'} mr-1"></i></button></div></div></div></article>`).join('')
+        ? visibleTasks.map(task => `<article class="task-card rounded-2xl p-3 transition-all"><div class="flex items-start gap-3"><span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${task.locked ? 'bg-slate-400/10 text-slate-500' : 'bg-amber-400/12 text-amber-300'}"><i class="fa-solid ${task.icon} text-sm"></i></span><div class="min-w-0 flex-1"><div class="flex items-start justify-between gap-2"><div><h4 class="text-xs font-bold text-white">${task.title}</h4><p class="mt-1 text-[10px] leading-5 text-slate-500">${task.description}</p></div><span class="shrink-0 text-[10px] font-bold ${task.locked ? 'text-slate-500' : 'text-amber-300'}">${task.status}</span></div><div class="mt-2 flex items-center justify-between gap-2"><span class="text-[9px] ${task.locked ? 'text-slate-600' : 'text-slate-500'}">${task.locked ? 'مقفلة حتى التفعيل' : 'قيد الانتظار'}</span><button ${task.id === 'daily' ? 'id="btnCompleteTask"' : ''} ${task.locked ? 'disabled aria-disabled="true"' : `onclick="${task.action}"`} class="mt-0 rounded-xl border px-3 py-2 text-[10px] font-bold ${task.locked ? 'cursor-not-allowed border-slate-700 bg-slate-900 text-slate-500' : 'border-amber-500/25 bg-amber-500/10 text-amber-300 hover:border-amber-400/50'}">${task.locked ? 'تفعيل المستوى' : task.id === 'daily' ? 'عرض المهام اليومية' : 'فتح الإجراء'} <i class="fa-solid ${task.locked ? 'fa-lock' : 'fa-arrow-left'} mr-1"></i></button></div></div></div></article>`).join('')
         : '<p class="rounded-xl border border-emerald-500/15 bg-emerald-500/5 p-3 text-center text-[10px] text-emerald-300">لا توجد مهام معلقة في هذا التصنيف.</p>';
 
     const nextTask = pendingTasks[0];
@@ -2039,6 +2040,84 @@ function renderTaskBoard(completed, maximum) {
     if (strategyTitle) strategyTitle.innerText = nextTask ? nextTask.title : 'الخطة مكتملة اليوم';
     if (strategyMeta) strategyMeta.innerText = `${pendingTasks.length} / ${tasks.length} خطوات متبقية`;
     if (strategyState) strategyState.innerText = completed >= maximum ? 'مكتمل اليوم' : 'الخطة مفتوحة';
+}
+
+async function openDailyTasks() {
+    const board = document.getElementById('taskBoard');
+    const panel = document.getElementById('dailyTaskDetailPanel');
+    const list = document.getElementById('dailyTaskList');
+    const token = localStorage.getItem('token');
+    if (!board || !panel || !list || !token) return showToast('يرجى تسجيل الدخول أولًا');
+    board.classList.add('hidden');
+    panel.classList.remove('hidden');
+    list.innerHTML = '<p class="rounded-xl border border-slate-800 p-4 text-center text-[10px] text-slate-500">جارٍ تحميل مهام المستوى...</p>';
+    try {
+        const response = await fetch('/api/tasks/today', { headers: { Authorization: `Bearer ${token}` } });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'تعذر تحميل مهام اليوم');
+        renderDailyTaskDetail(data);
+    } catch (error) {
+        list.innerHTML = `<p class="rounded-xl border border-rose-500/20 bg-rose-500/5 p-4 text-center text-[10px] text-rose-300">${escapeAiHtml(error.message)}</p>`;
+    }
+}
+
+function toggleDailyTaskDetails(taskKey) {
+    expandedDailyTaskKey = expandedDailyTaskKey === taskKey ? null : taskKey;
+    const panel = document.getElementById('dailyTaskDetailPanel');
+    if (!panel) return;
+    const button = panel.querySelector(`[data-task-key="${CSS.escape(taskKey)}"]`);
+    if (button) button.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    renderDailyTaskDetail({
+        tier: currentUserData?.tierData || { code: currentUserTier, name: `المستوى ${currentUserTier}`, dailyProfit: 0 },
+        active: currentUserTierActive,
+        completedCount: Number(currentUserData?.todayCompletedTasks || 0),
+        taskLimit: getTaskLimitForTier(),
+        tasks: (window.__latestDailyTasks || [])
+    });
+}
+
+function renderDailyTaskDetail(data) {
+    const title = document.getElementById('dailyTaskDetailTitle');
+    const meta = document.getElementById('dailyTaskDetailMeta');
+    const list = document.getElementById('dailyTaskList');
+    if (!title || !meta || !list) return;
+    const tasks = Array.isArray(data.tasks) ? data.tasks : [];
+    window.__latestDailyTasks = tasks;
+    title.innerText = `${data.tier?.name || data.tier?.code || 'المستوى'} - مهام اليوم`;
+    meta.innerText = data.active ? `${data.completedCount || 0} من ${data.taskLimit || 0} مكتملة • الربح اليومي الإجمالي $${Number(data.tier?.dailyProfit || 0).toFixed(2)}` : 'فعّل المستوى لفتح المهام المدفوعة';
+    list.innerHTML = tasks.map(task => {
+        const isExpanded = expandedDailyTaskKey === task.taskKey;
+        const taskReward = Number(task.reward || (Number(data.tier?.dailyProfit || 0) / Math.max(1, Number(data.taskLimit || task.number || 1)))).toFixed(4);
+        return `<article class="rounded-2xl border ${task.completed ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-slate-800 bg-slate-950/45'} p-3" data-task-card="${escapeAiHtml(task.taskKey)}">
+            <div class="flex items-start gap-3">
+                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${task.completed ? 'bg-emerald-400/10 text-emerald-300' : 'bg-amber-400/10 text-amber-300'}"><i class="fa-solid ${escapeAiHtml(task.icon)}"></i></span>
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-start justify-between gap-2">
+                        <div>
+                            <h4 class="text-xs font-bold text-white">${escapeAiHtml(task.number + '. ' + task.title)}</h4>
+                            <p class="mt-1 text-[10px] leading-5 text-slate-500">${escapeAiHtml(task.description)}</p>
+                        </div>
+                        <span class="text-[10px] font-bold ${task.completed ? 'text-emerald-300' : 'text-amber-300'}">${task.completed ? 'مكتملة' : task.locked ? 'مقفلة' : 'متاحة'}</span>
+                    </div>
+                    <div class="mt-3 flex items-center justify-between gap-2 text-[10px] text-slate-400">
+                        <span>مكافأة المهمة: <strong class="text-amber-300">$${taskReward}</strong></span>
+                        <span>${task.number} من ${Math.max(1, Number(data.taskLimit || task.number || 1))}</span>
+                    </div>
+                    <div class="mt-3 flex gap-2">
+                        <button type="button" data-task-key="${escapeAiHtml(task.taskKey)}" onclick="toggleDailyTaskDetails('${escapeAiHtml(task.taskKey)}')" class="flex-1 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-[10px] font-bold text-slate-200">${isExpanded ? 'إخفاء التعليمات' : 'بدء المهمة'} <i class="fa-solid ${isExpanded ? 'fa-chevron-up' : 'fa-arrow-left'} mr-1"></i></button>
+                        <button type="button" ${task.completed || task.locked ? 'disabled' : `onclick="completeTask('${escapeAiHtml(task.taskKey)}')"`} class="rounded-xl border px-3 py-2 text-[10px] font-bold ${task.completed || task.locked ? 'cursor-not-allowed border-slate-700 bg-slate-900 text-slate-500' : 'border-amber-500/25 bg-amber-500/10 text-amber-300'}">${task.completed ? 'تم الإنجاز' : task.locked ? 'تفعيل المستوى' : 'إتمام المهمة'} <i class="fa-solid ${task.completed ? 'fa-check' : task.locked ? 'fa-lock' : 'fa-arrow-left'} mr-1"></i></button>
+                    </div>
+                    ${isExpanded ? `<div class="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3"><div class="mb-2 text-[10px] font-bold text-amber-300">محتوى المهمة / التعليمات</div><ol class="space-y-1 text-[10px] leading-5 text-slate-300 list-decimal list-inside">${(task.instructions || []).map((instruction) => `<li>${escapeAiHtml(instruction)}</li>`).join('')}</ol></div>` : ''}
+                </div>
+            </div>
+        </article>`;
+    }).join('') || '<p class="rounded-xl border border-slate-800 p-4 text-center text-[10px] text-slate-500">لا توجد مهام متاحة.</p>';
+}
+
+function closeDailyTasks() {
+    expandedDailyTaskKey = null;
+    document.getElementById('dailyTaskDetailPanel')?.classList.add('hidden');
+    document.getElementById('taskBoard')?.classList.remove('hidden');
 }
 
 function startTaskResetCountdown() {
@@ -2151,29 +2230,30 @@ function updateRankStatus(rankId, currentTotal, targetCount, cardId, badgeId) {
 }
 
 /* --- 6. المهام والألعاب والمستشار الذكي --- */
-async function completeTask() {
+async function completeTask(taskKey) {
     const btn = document.getElementById('btnCompleteTask');
     const token = localStorage.getItem('token');
-    if (!btn || !token) return;
+    if (!token || !taskKey) return;
     
-    btn.disabled = true;
     try {
         const res = await fetch('/api/tasks/complete', {
             method: 'POST',
-            headers: {'Authorization': `Bearer ${token}`}
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ taskKey })
         });
         const data = await res.json();
         if(res.ok) {
             if (currentUserData) { currentUserData.USDT_balance = data.USDT_balance; currentUserData.OPX_balance = data.OPX_balance; }
-            showToast('تم إنجاز المهمة وإضافة الأرباح لمحفظتك!', 'win');
+            showToast(`تم إنجاز المهمة وإضافة $${Number(data.grossAmount || 0).toFixed(4)} إجماليًا لمحفظتك!`, 'win');
             if (data.wallet) updateWalletData(data.wallet);
-            await loadUserProfile();
+            await Promise.all([loadUserProfile(), openDailyTasks()]);
         } else {
             showToast(data.error || 'لا يمكن إنجاز المهمة');
         }
     } catch(err) {
         showToast('خطأ في الاتصال');
     } finally {
+        if (btn) btn.disabled = false;
         updateTaskAvailability(Number(currentUserData?.todayCompletedTasks || 0), getTaskLimitForTier());
     }
 }

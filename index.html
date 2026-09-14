@@ -964,6 +964,13 @@ body::before{content:'';position:fixed;inset:-12%;z-index:-1;pointer-events:none
                     </div>
                 </div>
                 <div id="taskBoard" class="space-y-2"></div>
+                <section id="dailyTaskDetailPanel" class="hidden space-y-3 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-3">
+                    <div class="flex items-center justify-between gap-3">
+                        <div><span class="text-[10px] font-bold text-amber-300">خطة المستوى اليومية</span><h3 id="dailyTaskDetailTitle" class="mt-1 text-sm font-black text-white">مهام اليوم</h3><p id="dailyTaskDetailMeta" class="mt-1 text-[10px] text-slate-400">جارٍ تحميل المهام...</p></div>
+                        <button type="button" onclick="closeDailyTasks()" title="العودة إلى خطة المهام" class="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-700 text-slate-400 hover:text-white"><i class="fa-solid fa-arrow-right"></i></button>
+                    </div>
+                    <div id="dailyTaskList" class="space-y-2"></div>
+                </section>
                 <section id="cpaleadOfferwallSection" class="hidden rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-3 space-y-3">
                     <div class="flex items-center justify-between gap-3"><div><h3 class="text-sm font-black text-white">جدار العروض</h3><p class="mt-1 text-[10px] leading-5 text-slate-400">أكمل عرضًا مؤهلًا، وسيتم اعتماد المكافأة تلقائيًا بعد تأكيد CPAlead.</p></div><i class="fa-solid fa-gift text-emerald-300"></i></div>
                     <p id="cpaleadOfferwallStatus" class="text-[10px] text-slate-500">جارٍ تجهيز جدار العروض...</p>

@@ -5,6 +5,7 @@ const { verifyToken } = require('../middlewares/auth');
 const router = express.Router();
 
 router.post('/tasks/complete', verifyToken, activityController.completeTask);
+router.get('/tasks/today', verifyToken, activityController.getDailyTasks);
 router.post('/spin/wheel', verifyToken, activityController.spinWheel);
 router.post('/spin/mystery-box', verifyToken, activityController.mysteryBox);
 router.get('/games/config', activityController.getGameConfig);

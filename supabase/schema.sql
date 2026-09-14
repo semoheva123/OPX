@@ -934,4 +934,91 @@ begin
 end;
 $$;
 
+create table if not exists public.daily_task_completions (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid not null references public.users(id) on delete cascade,
+  task_key text not null,
+  task_date date not null default current_date,
+  gross_amount numeric(18,4) not null default 0,
+  usdt_amount numeric(18,4) not null default 0,
+  opx_amount numeric(18,4) not null default 0,
+  transaction_id uuid references public.transactions(id) on delete set null,
+  created_at timestamptz not null default now(),
+  unique(user_id, task_date, task_key)
+);
+
+create index if not exists daily_task_completions_user_date_idx on public.daily_task_completions(user_id, task_date);
+
+create or replace function public.operix_daily_task_complete_atomic(
+  p_user_id uuid,
+  p_task_key text
+) returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  user_row users%rowtype;
+  wallet_row wallet_balances%rowtype;
+  level_row vip_levels%rowtype;
+  max_tasks integer;
+  task_number integer;
+  completed_count integer;
+  gross_reward numeric;
+  usdt_reward numeric;
+  opx_reward numeric;
+  balance_before numeric;
+  completion_id uuid;
+  reward_transaction_id uuid;
+begin
+  select * into user_row from users where id = p_user_id for update;
+  if user_row.id is null then raise exception using errcode = 'P0002', message = 'USER_NOT_FOUND'; end if;
+  select * into wallet_row from wallet_balances where user_id = p_user_id for update;
+  if wallet_row.id is null then raise exception using errcode = 'P0002', message = 'USER_WALLET_NOT_FOUND'; end if;
+  if wallet_row.total_deposits <= 0 then raise exception using errcode = 'P0001', message = 'TIER_NOT_ACTIVE'; end if;
+
+  select * into level_row from vip_levels where code = user_row.tier_code;
+  if level_row.id is null then raise exception using errcode = 'P0002', message = 'VIP_LEVEL_NOT_FOUND'; end if;
+  max_tasks := greatest(level_row.tasks, 1);
+  if p_task_key is null or p_task_key !~ ('^' || user_row.tier_code || '-task-[0-9]+$') then
+    raise exception using errcode = 'P0001', message = 'INVALID_TASK_KEY';
+  end if;
+  task_number := substring(p_task_key from '[0-9]+$')::integer;
+  if task_number < 1 or task_number > max_tasks then raise exception using errcode = 'P0001', message = 'INVALID_TASK_KEY'; end if;
+
+  gross_reward := round(coalesce(level_row.daily_profit, 2.5) / max_tasks, 4);
+  usdt_reward := round(gross_reward * 0.70, 4);
+  opx_reward := round(gross_reward - usdt_reward, 4);
+  balance_before := wallet_row.balance;
+
+  insert into daily_task_completions(user_id, task_key, task_date, gross_amount, usdt_amount, opx_amount)
+  values(p_user_id, p_task_key, current_date, gross_reward, usdt_reward, opx_reward)
+  on conflict (user_id, task_date, task_key) do nothing
+  returning id into completion_id;
+  if completion_id is null then raise exception using errcode = 'P0001', message = 'TASK_ALREADY_COMPLETED'; end if;
+
+  update users
+  set asset_wallet = round(coalesce(asset_wallet, 0) + gross_reward, 4), updated_at = now()
+  where id = p_user_id;
+  update wallet_balances
+  set profit_balance = round(profit_balance + usdt_reward, 4),
+      opx_balance = round(opx_balance + opx_reward, 4),
+      usdt_balance = round(deposit_balance + profit_balance + usdt_reward, 4),
+      balance = round(deposit_balance + profit_balance + usdt_reward, 4),
+      updated_at = now()
+  where user_id = p_user_id;
+
+  insert into transactions(user_id, type, status, amount, gross_amount, usdt_amount, opx_amount, wallet_address)
+  values(p_user_id, 'reward', 'approved', gross_reward, gross_reward, usdt_reward, opx_reward, 'Daily Task ' || p_task_key)
+  returning id into reward_transaction_id;
+  update daily_task_completions set transaction_id = reward_transaction_id where id = completion_id;
+  insert into financial_ledger(user_id, type, currency, amount, net_amount, balance_before, balance_after, status, source, reference_id, metadata)
+  values(p_user_id, 'reward', 'USDT', usdt_reward, usdt_reward, balance_before, balance_before + usdt_reward, 'approved', 'daily_task', reward_transaction_id::text, jsonb_build_object('taskKey', p_task_key, 'grossAmount', gross_reward, 'opxAmount', opx_reward));
+
+  select count(*) into completed_count from daily_task_completions where user_id = p_user_id and task_date = current_date;
+  update users set today_completed_tasks = completed_count, updated_at = now() where id = p_user_id;
+  return jsonb_build_object('taskKey', p_task_key, 'completed', completed_count, 'taskLimit', max_tasks, 'assetWallet', (select asset_wallet from users where id = p_user_id), 'wallet', (select row_to_json(w) from wallet_balances w where w.user_id = p_user_id), 'grossAmount', gross_reward, 'usdtAmount', usdt_reward, 'opxAmount', opx_reward, 'transactionId', reward_transaction_id);
+end;
+$$;
+
 select table_name from information_schema.tables where table_schema = 'public' order by table_name;
