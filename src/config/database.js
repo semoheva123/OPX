@@ -22,6 +22,8 @@ function getRuntimeDatabaseInfo() {
     mode,
     supabaseConfigured,
     shouldUseSupabase: true,
+    shouldUseMongo: false,
+    canFallbackToMongo: false,
     safeCutoverReady: mode === 'supabase' && supabaseConfigured
   };
 }

@@ -910,7 +910,7 @@ async function handleRegister(e) {
         if(res.ok) {
             localStorage.removeItem('operix_ref_code');
             localStorage.removeItem('ag_ref_code');
-            showToast('تم إنشاء الحساب والمحفظة بنجاح، يرجى الدخول');
+            showToast(data.message || 'تم إنشاء الحساب والمحفظة بنجاح، يرجى الدخول');
             switchAuthTab('login');
             document.getElementById('loginEmail').value = email;
         } else {
@@ -3389,12 +3389,18 @@ async function logout({ notifyServer = true } = {}) {
     unreadNotificationCount = null;
     currentUserData = null;
     hasPendingDeposit = false;
-    document.getElementById('loadingView').classList.add('hide');
-    document.getElementById('appView').classList.add('hide');
-    document.getElementById('authView').classList.add('hide');
-    document.getElementById('companyIntroView')?.classList.remove('hide');
-    document.getElementById('liveTickerBar').classList.add('hide');
-    document.getElementById('appNavBar').classList.add('hide');
+    localStorage.removeItem('operix_ref_code');
+    localStorage.removeItem('ag_ref_code');
+    if (typeof showGuestLanding === 'function') {
+        showGuestLanding();
+    } else {
+        document.getElementById('loadingView')?.classList.add('hide');
+        document.getElementById('appView')?.classList.add('hide');
+        document.getElementById('authView')?.classList.add('hide');
+        document.getElementById('companyIntroView')?.classList.remove('hide');
+        document.getElementById('liveTickerBar')?.classList.add('hide');
+        document.getElementById('appNavBar')?.classList.add('hide');
+    }
 
     if (!notifyServer) return;
     if (token) {

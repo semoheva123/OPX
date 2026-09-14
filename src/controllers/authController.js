@@ -71,16 +71,22 @@ async function register(req, res) {
     };
     const newUser = await dataAccess.user.create(userPayload);
     await followOfficialCommunityAccount(newUser.id || newUser._id);
+    let emailWarning = '';
     if (req.app.locals.resend) {
-      const verifyUrl = `${process.env.APP_URL || 'http://localhost:5000'}/api/auth/verify-email?token=${newUser.emailVerificationToken}`;
-      await req.app.locals.resend.emails.send({
-        from: emailFrom,
-        to: newUser.email,
-        subject: 'تأكيد بريدك الإلكتروني - OPERIX',
-        html: emailVerificationTemplate({ verifyUrl, userEmail: newUser.email })
-      });
+      try {
+        const verifyUrl = `${process.env.APP_URL || 'http://localhost:5000'}/api/auth/verify-email?token=${newUser.emailVerificationToken}`;
+        await req.app.locals.resend.emails.send({
+          from: emailFrom,
+          to: newUser.email,
+          subject: 'تأكيد بريدك الإلكتروني - OPERIX',
+          html: emailVerificationTemplate({ verifyUrl, userEmail: newUser.email })
+        });
+      } catch (emailError) {
+        console.error('Registration verification email failed:', emailError.message);
+        emailWarning = ' تعذر إرسال رابط توثيق البريد حاليًا، ويمكن طلبه لاحقًا.';
+      }
     }
-    res.status(201).json({ success: true, message: 'تم إنشاء الحساب بنجاح' });
+    res.status(201).json({ success: true, message: `تم إنشاء الحساب بنجاح.${emailWarning}` });
   } catch (err) {
     console.error('Register error:', err.message);
     res.status(400).json({ error: 'فشل في إنشاء الحساب' });
@@ -265,6 +271,15 @@ async function adminSecurityStatus(req, res) {
 
 async function adminSecuritySetup(req, res) {
   try {
+    if (dataAccess.isSupabaseRuntime()) {
+      const user = await dataAccess.user.findById(req.user.id);
+      if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
+      if (user.adminTwoFactorEnabled) return res.status(400).json({ error: 'مصادقة الإدارة مفعلة بالفعل' });
+      const secret = generateSecret();
+      await dataAccess.user.updateOne({ id: user.id }, { adminTwoFactorSecret: secret });
+      const otpauth = generateURI({ issuer: 'OPERIX Admin', label: user.email, secret });
+      return res.json({ success: true, secret, qrCode: await QRCode.toDataURL(otpauth) });
+    }
     const user = await User.findById(req.user.id).select('+adminTwoFactorSecret adminTwoFactorEnabled email');
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     if (user.adminTwoFactorEnabled) return res.status(400).json({ error: 'مصادقة الإدارة مفعلة بالفعل' });
@@ -278,6 +293,13 @@ async function adminSecuritySetup(req, res) {
 
 async function adminSecurityConfirm(req, res) {
   try {
+    if (dataAccess.isSupabaseRuntime()) {
+      const user = await dataAccess.user.findById(req.user.id);
+      if (!user || !user.adminTwoFactorSecret) return res.status(400).json({ error: 'ابدأ إعداد المصادقة أولًا' });
+      if (!verifySync({ token: String(req.body.code || '').trim(), secret: user.adminTwoFactorSecret }).valid) return res.status(400).json({ error: 'رمز المصادقة غير صحيح' });
+      await dataAccess.user.updateOne({ id: user.id }, { adminTwoFactorEnabled: true });
+      return res.json({ success: true, enabled: true, message: 'تم تفعيل مصادقة الإدارة بنجاح' });
+    }
     const user = await User.findById(req.user.id).select('+adminTwoFactorSecret');
     if (!user || !user.adminTwoFactorSecret) return res.status(400).json({ error: 'ابدأ إعداد المصادقة أولًا' });
     if (!verifySync({ token: String(req.body.code || '').trim(), secret: user.adminTwoFactorSecret }).valid) return res.status(400).json({ error: 'رمز المصادقة غير صحيح' });
@@ -294,10 +316,33 @@ async function inviteAdmin(req, res) {
     const allowedRoles = ['admin', 'financial_admin', 'support_admin', 'monitor'];
     if (!/^\S+@\S+\.\S+$/.test(email) || !allowedRoles.includes(role)) return res.status(400).json({ error: 'البريد أو الدور غير صالح' });
     const rawToken = crypto.randomBytes(32).toString('hex');
-    let user = await User.findOne({ email }).select('+adminInviteToken +adminInviteExpire');
-    if (!user) user = new User({ email, password: await bcrypt.hash(crypto.randomBytes(24).toString('hex'), 12), referralCode: `OPERIX${Date.now().toString(36).slice(-5).toUpperCase()}${crypto.randomBytes(2).toString('hex').toUpperCase()}` });
-    user.role = role; user.adminInviteToken = crypto.createHash('sha256').update(rawToken).digest('hex'); user.adminInviteExpire = new Date(Date.now() + 24 * 60 * 60 * 1000); user.adminInviteUsed = false; user.adminTwoFactorEnabled = false; user.adminTwoFactorSecret = null;
-    await user.save();
+    const inviteChanges = {
+      role,
+      adminInviteToken: crypto.createHash('sha256').update(rawToken).digest('hex'),
+      adminInviteExpire: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      adminInviteUsed: false,
+      adminTwoFactorEnabled: false,
+      adminTwoFactorSecret: null
+    };
+    let user;
+    if (dataAccess.isSupabaseRuntime()) {
+      user = await dataAccess.user.findOne({ email });
+      if (!user) {
+        user = await dataAccess.user.create({
+          email,
+          password: await bcrypt.hash(crypto.randomBytes(24).toString('hex'), 12),
+          referralCode: `OPERIX${Date.now().toString(36).slice(-5).toUpperCase()}${crypto.randomBytes(2).toString('hex').toUpperCase()}`,
+          ...inviteChanges
+        });
+      } else {
+        user = await dataAccess.user.updateOne({ id: user.id }, inviteChanges);
+      }
+    } else {
+      user = await User.findOne({ email }).select('+adminInviteToken +adminInviteExpire');
+      if (!user) user = new User({ email, password: await bcrypt.hash(crypto.randomBytes(24).toString('hex'), 12), referralCode: `OPERIX${Date.now().toString(36).slice(-5).toUpperCase()}${crypto.randomBytes(2).toString('hex').toUpperCase()}` });
+      Object.assign(user, inviteChanges);
+      await user.save();
+    }
     const inviteUrl = `${process.env.APP_URL || 'http://localhost:5000'}/admin-first-login.html?token=${rawToken}`;
     if (req.app.locals.resend) await req.app.locals.resend.emails.send({
       from: emailFrom,
@@ -313,6 +358,15 @@ async function acceptAdminInviteSetup(req, res) {
   try {
     const token = String(req.body.token || '').trim();
     const password = String(req.body.password || '');
+    if (dataAccess.isSupabaseRuntime()) {
+      const user = await dataAccess.user.findOne({ adminInviteToken: crypto.createHash('sha256').update(token).digest('hex'), adminInviteExpire: { $gt: new Date() }, adminInviteUsed: false });
+      if (!user) return res.status(400).json({ error: 'دعوة الإدارة غير صالحة أو منتهية' });
+      if (password.length < 8) return res.status(400).json({ error: 'كلمة المرور يجب أن لا تقل عن 8 أحرف' });
+      const secret = generateSecret();
+      await dataAccess.user.updateOne({ id: user.id }, { password_hash: await bcrypt.hash(password, 12), adminTwoFactorSecret: secret });
+      const otpauth = generateURI({ issuer: 'OPERIX Admin', label: user.email, secret });
+      return res.json({ success: true, qrCode: await QRCode.toDataURL(otpauth), secret, message: 'امسح QR ثم أدخل الرمز لتفعيل الحماية' });
+    }
     const user = await User.findOne({ adminInviteToken: crypto.createHash('sha256').update(token).digest('hex'), adminInviteExpire: { $gt: new Date() }, adminInviteUsed: false }).select('+adminInviteToken +adminInviteExpire +adminTwoFactorSecret email role');
     if (!user) return res.status(400).json({ error: 'دعوة الإدارة غير صالحة أو منتهية' });
     if (password.length < 8) return res.status(400).json({ error: 'كلمة المرور يجب أن لا تقل عن 8 أحرف' });
@@ -326,6 +380,13 @@ async function acceptAdminInviteSetup(req, res) {
 async function confirmAdminInvite(req, res) {
   try {
     const token = String(req.body.token || '').trim();
+    if (dataAccess.isSupabaseRuntime()) {
+      const user = await dataAccess.user.findOne({ adminInviteToken: crypto.createHash('sha256').update(token).digest('hex'), adminInviteExpire: { $gt: new Date() }, adminInviteUsed: false });
+      if (!user || !user.adminTwoFactorSecret) return res.status(400).json({ error: 'دعوة الإدارة غير صالحة أو لم يتم إعدادها' });
+      if (!verifySync({ token: String(req.body.code || '').trim(), secret: user.adminTwoFactorSecret }).valid) return res.status(400).json({ error: 'رمز المصادقة غير صحيح' });
+      await dataAccess.user.updateOne({ id: user.id }, { adminTwoFactorEnabled: true, adminInviteUsed: true, adminInviteToken: null, adminInviteExpire: null });
+      return res.json({ success: true, message: 'اكتمل إعداد حساب الإدارة. يمكنك تسجيل الدخول الآن.' });
+    }
     const user = await User.findOne({ adminInviteToken: crypto.createHash('sha256').update(token).digest('hex'), adminInviteExpire: { $gt: new Date() }, adminInviteUsed: false }).select('+adminInviteToken +adminInviteExpire +adminTwoFactorSecret email role');
     if (!user || !user.adminTwoFactorSecret) return res.status(400).json({ error: 'دعوة الإدارة غير صالحة أو لم يتم إعدادها' });
     if (!verifySync({ token: String(req.body.code || '').trim(), secret: user.adminTwoFactorSecret }).valid) return res.status(400).json({ error: 'رمز المصادقة غير صحيح' });
@@ -350,7 +411,9 @@ async function revokeSession(req, res) {
   if (!jti || jti === req.session?.jti) return res.status(400).json({ error: 'لا يمكن إنهاء الجلسة الحالية من هنا' });
   const session = await dataAccess.session.updateOne({ userId: req.user.id, scope: 'user', jti, revokedAt: null }, { revokedAt: new Date() });
   if (!session) return res.status(404).json({ error: 'الجلسة غير موجودة أو منتهية' });
-  await SecurityEvent.create({ userId: req.user.id, email: req.user.email, event: 'session_revoked', ip: req.ip, userAgent: req.get('user-agent') || 'unknown', metadata: { revokedJti: jti } });
+  const securityEvent = { userId: req.user.id, email: req.user.email, event: 'session_revoked', ip: req.ip, userAgent: req.get('user-agent') || 'unknown', metadata: { revokedJti: jti } };
+  if (dataAccess.isSupabaseRuntime()) await dataAccess.securityEvent.create(securityEvent);
+  else await SecurityEvent.create(securityEvent);
   res.json({ success: true, message: 'تم إنهاء الجلسة المحددة' });
 }
 
