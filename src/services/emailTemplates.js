@@ -187,6 +187,26 @@ function withdrawalRequestTemplate({ amount, transactionId, walletAddress, reque
 }
 
 function withdrawalCompletedTemplate({ amount, transactionId, walletAddress, completedAt }) {
+  function withdrawalRejectedTemplate({ amount, transactionId, walletAddress, rejectedAt, reason }) {
+    return renderEmailTemplate({
+      title: 'تم رفض طلب السحب',
+      preheader: 'تم تحديث حالة طلب السحب الخاص بك',
+      heading: 'تم رفض طلب السحب',
+      description: 'تمت مراجعة طلب السحب ولم تتم الموافقة عليه. تمت إعادة المبلغ إلى رصيد أرباحك وفقًا لسياسات المنصة.',
+      actionText: 'فتح المنصة',
+      actionUrl: `${process.env.APP_URL || 'https://operix.website'}/`,
+      highlightTitle: 'مبلغ الطلب',
+      highlightValue: `${amount} USDT`,
+      details: [
+        { label: 'معرف الطلب', value: transactionId },
+        { label: 'عنوان المحفظة', value: walletAddress },
+        ...(rejectedAt ? [{ label: 'تاريخ القرار', value: rejectedAt }] : []),
+        ...(reason ? [{ label: 'ملاحظة الإدارة', value: reason }] : [])
+      ],
+      secondaryText: 'يمكنك مراجعة بيانات السحب والتواصل مع الدعم إذا احتجت إلى مزيد من المعلومات.',
+      footerNote: 'تم إرسال هذا الإشعار تلقائيًا من OPERIX بعد تحديث حالة الطلب.'
+    });
+  }
   return renderEmailTemplate({
     title: 'تم إتمام عملية السحب',
     preheader: 'تمت الموافقة على طلب السحب وتحويل المبلغ',
@@ -228,5 +248,6 @@ module.exports = {
   twoFactorTemplate,
   withdrawalRequestTemplate,
   withdrawalCompletedTemplate,
+    withdrawalRejectedTemplate,
   adminInviteTemplate
 };

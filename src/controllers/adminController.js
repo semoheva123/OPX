@@ -1,3 +1,4 @@
+const { withdrawalCompletedTemplate, withdrawalRejectedTemplate } = require('../services/emailTemplates');
 const realtimeService = require('../services/realtimeService');
 const kycStorage = require('../services/kycStorage');
 const dataAccess = require('../services/dataAccess');
@@ -924,6 +925,31 @@ async function applyWithdrawalAction(transactionId, action, req) {
   throw Object.assign(new Error('ADMIN_FINANCE_RPC_REQUIRED'), { statusCode: 503 });
 }
 
+async function sendWithdrawalDecisionEmail(req, transaction, action) {
+  const resend = req.app.locals.resend;
+  const emailFrom = String(process.env.EMAIL_FROM || '').trim();
+  if (!resend || !emailFrom || !transaction?.userId) return false;
+  const user = await dataAccess.user.findById(transaction.userId);
+  if (!user?.email) return false;
+  const values = {
+    amount: Number(transaction.amount || 0).toFixed(2),
+    transactionId: transaction.id || transaction._id,
+    walletAddress: transaction.walletAddress || '',
+    ...(action === 'approve'
+      ? { completedAt: new Date().toLocaleString('ar') }
+      : { rejectedAt: new Date().toLocaleString('ar'), reason: String(req.body?.note || '').trim() })
+  };
+  const html = action === 'approve' ? withdrawalCompletedTemplate(values) : withdrawalRejectedTemplate(values);
+  const result = await resend.emails.send({
+    from: emailFrom,
+    to: user.email,
+    subject: action === 'approve' ? 'تمت الموافقة على طلب السحب - OPERIX' : 'تم رفض طلب السحب - OPERIX',
+    html
+  });
+  if (result?.error) throw new Error(result.error.message || 'Email provider rejected the decision email');
+  return true;
+}
+
 function transactionErrorResponse(res, err) {
   const errorCode = err.code || err.details?.code;
   if (err.message === 'ADMIN_FINANCE_RPC_REQUIRED') return res.status(503).json({ error: 'معالجة المعاملات الإدارية متوقفة حتى تطبيق RPC الإدارة الذرية في Supabase' });
@@ -937,8 +963,11 @@ function transactionErrorResponse(res, err) {
 
 async function withdrawalAction(req, res) {
   try {
-    await applyWithdrawalAction(req.body.transactionId, req.body.action, req);
-    res.json({ success: true, message: `تمت عملية (${req.body.action === 'approve' ? 'الموافقة' : 'الرفض'}) بنجاح` });
+    const result = await applyWithdrawalAction(req.body.transactionId, req.body.action, req);
+    let emailSent = false;
+    try { emailSent = await sendWithdrawalDecisionEmail(req, result.transaction, req.body.action); }
+    catch (emailError) { console.error('Withdrawal decision email failed:', emailError.message); }
+    res.json({ success: true, emailSent, message: `تمت عملية (${req.body.action === 'approve' ? 'الموافقة' : 'الرفض'}) بنجاح` });
   } catch (err) { transactionErrorResponse(res, err); }
 }
 
@@ -948,7 +977,13 @@ async function bulkWithdrawalAction(req, res) {
   if (!transactionIds.length || !['approve', 'reject'].includes(action)) return res.status(400).json({ error: 'حدد معاملات وإجراءً صالحًا' });
   const results = [];
   for (const transactionId of transactionIds) {
-    try { await applyWithdrawalAction(transactionId, action, req); results.push({ transactionId, success: true }); }
+    try {
+      const result = await applyWithdrawalAction(transactionId, action, req);
+      let emailSent = false;
+      try { emailSent = await sendWithdrawalDecisionEmail(req, result.transaction, action); }
+      catch (emailError) { console.error('Withdrawal decision email failed:', emailError.message); }
+      results.push({ transactionId, success: true, emailSent });
+    }
     catch (error) { results.push({ transactionId, success: false, error: error.message }); }
   }
   res.json({ success: true, processed: results.filter(item => item.success).length, failed: results.filter(item => !item.success).length, results });
