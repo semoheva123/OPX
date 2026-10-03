@@ -97,13 +97,11 @@ async function upgradeSupabase(req, res) {
     const targetIndex = codes.indexOf(targetLevel.code);
     const currentLevel = levels.find(level => level.code === user.tierCode);
     const currentActivated = Boolean(currentLevel && Number(user.wallet?.totalDeposits || 0) > 0);
-    const initialActivation = targetIndex === currentIndex && !currentActivated;
+    const initialActivation = !currentActivated;
     if (!fullFeatureAccess && (targetIndex < currentIndex || (targetIndex === currentIndex && currentActivated))) return res.status(400).json({ error: 'يمكنك الترقية فقط إلى مستوى أعلى من مستواك الحالي' });
-    if (!fullFeatureAccess && targetIndex > currentIndex + 1) return res.status(400).json({ error: 'يجب إكمال المستويات بالترتيب، لا يمكنك تجاوز المستوى التالي' });
-    const requiredReferrals = targetIndex * 10;
-    const activeReferrals = await dataAccess.user.countDocuments({ referredBy: String(user.referralCode || '').trim().toUpperCase(), isBanned: false });
-    if (!fullFeatureAccess && activeReferrals < requiredReferrals) return res.status(400).json({ error: `تحتاج إلى ${requiredReferrals} إحالة نشطة مرتبطة بفريقك للترقية. لديك حاليًا ${activeReferrals} إحالة نشطة.` });
-    const upgradeCost = targetIndex === currentIndex ? Number(targetLevel.price) : Math.max(0, Number(targetLevel.price) - Number(currentLevel?.price || 0));
+    const upgradeCost = initialActivation
+      ? Number(targetLevel.price)
+      : Math.max(0, Number(targetLevel.price) - Number(currentLevel?.price || 0));
     let payment;
     try {
       payment = fullFeatureAccess

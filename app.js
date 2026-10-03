@@ -317,7 +317,7 @@ async function loadTiers() {
     if (currentUserData) updateTaskAvailability(Number(currentUserData.todayCompletedTasks || 0), getTaskLimitForTier());
 }
 
-function updateNextTierPanel() { const title = document.getElementById('nextTierTitle'); const requirements = document.getElementById('nextTierRequirements'); if (!title || !requirements) return; const index = tiersData.findIndex(tier => tier.code === currentUserTier); const next = tiersData[index + 1]; if (!next) { title.innerText = 'أنت في أعلى مستوى'; requirements.innerHTML = '<span class="col-span-2 text-emerald-300">لا توجد ترقية أعلى حاليًا.</span>'; return; } const active = Number(currentUserData?.teamStats?.activeReferrals || 0); const goal = index * 10 + 10; const cost = Math.max(0, Number(next.price || 0) - Number(tiersData[index]?.price || 0)); title.innerText = `الترقية التالية: ${next.code}`; requirements.innerHTML = `<span class="bg-slate-950 rounded-xl p-2">الإحالات النشطة: <b class="text-amber-300">${active}/${goal}</b></span><span class="bg-slate-950 rounded-xl p-2">فرق السعر: <b class="text-emerald-300">$${cost.toFixed(2)}</b></span><span class="bg-slate-950 rounded-xl p-2">المهام اليومية: <b class="text-white">${next.tasks}</b></span><span class="bg-slate-950 rounded-xl p-2">العائد التقديري: <b class="text-emerald-300">$${Number(next.dailyProfit || 0).toFixed(2)}</b></span>`; }
+function updateNextTierPanel() { const title = document.getElementById('nextTierTitle'); const requirements = document.getElementById('nextTierRequirements'); if (!title || !requirements) return; const index = tiersData.findIndex(tier => tier.code === currentUserTier); const next = tiersData[index + 1]; if (!next) { title.innerText = 'أنت في أعلى مستوى'; requirements.innerHTML = '<span class="col-span-2 text-emerald-300">لا توجد ترقية أعلى حاليًا.</span>'; return; } const cost = Math.max(0, Number(next.price || 0) - Number(tiersData[index]?.price || 0)); title.innerText = `الترقية التالية: ${next.code}`; requirements.innerHTML = `<span class="bg-slate-950 rounded-xl p-2 text-emerald-300">لا يشترط وجود إحالات</span><span class="bg-slate-950 rounded-xl p-2">فرق السعر: <b class="text-emerald-300">$${cost.toFixed(2)}</b></span><span class="bg-slate-950 rounded-xl p-2">المهام اليومية: <b class="text-white">${next.tasks}</b></span><span class="bg-slate-950 rounded-xl p-2">العائد التقديري: <b class="text-emerald-300">$${Number(next.dailyProfit || 0).toFixed(2)}</b></span>`; }
 async function loadUpgradeHistory() { const list = document.getElementById('upgradeHistoryList'); const token = localStorage.getItem('token'); if (!list || !token) return; try { const response = await fetch('/api/user/upgrade-history', { headers: { Authorization: `Bearer ${token}` } }); const data = await response.json(); if (!response.ok) throw new Error(data.error); list.innerHTML = data.history?.length ? data.history.map(item => `<div class="flex justify-between items-center border-b border-slate-800 pb-2"><span>${escapeAiHtml(item.walletAddress || 'ترقية')}<small class="block text-[9px] text-slate-600">${new Date(item.createdAt).toLocaleString('ar')}</small></span><b class="text-amber-300">-$${Number(item.amount || 0).toFixed(2)}</b></div>`).join('') : '<span>لا توجد ترقيات مسجلة بعد.</span>'; } catch (error) { list.innerText = 'تعذر تحميل سجل الترقيات'; } }
 
 /* --- 1. إدارة المستويات (Tiers) --- */
@@ -339,14 +339,12 @@ function renderTiersList() {
         const currentIndex = tiersData.findIndex(item => item.code === currentUserTier);
         const isCurrent = currentUserTier === tier.code;
         const fullFeatureAccess = Boolean(currentUserData?.paidFeatureAccess);
-        const isActivated = isCurrent && (fullFeatureAccess || Number(currentUserData?.wallet?.totalDeposits || 0) > 0);
-        const cost = isCurrent ? (isActivated ? 0 : tier.price) : Math.max(0, tier.price - Number(currentTier?.price || 0));
-        const activeReferrals = Number(currentUserData?.teamStats?.activeReferrals || 0);
-        const requiredReferrals = Math.max(0, tierIndex * 10);
-        const referralsMet = activeReferrals >= requiredReferrals;
+        const currentActivated = fullFeatureAccess || Number(currentUserData?.wallet?.totalDeposits || 0) > 0;
+        const isActivated = isCurrent && currentActivated;
+        const cost = fullFeatureAccess ? 0 : !currentActivated ? Number(tier.price || 0) : isCurrent ? 0 : Math.max(0, tier.price - Number(currentTier?.price || 0));
         const isNextTier = tierIndex === currentIndex + 1;
-        const canAct = fullFeatureAccess ? !isCurrent : !isActivated && (isCurrent || (isNextTier && referralsMet));
-        const status = isCurrent ? (isActivated ? 'مفعل حاليًا' : 'يحتاج إيداعًا للتفعيل') : tierIndex < currentIndex ? 'مكتمل سابقًا' : fullFeatureAccess ? 'متاح للتجربة' : !isNextTier ? 'أكمل المستوى السابق أولًا' : referralsMet ? 'متاح للترقية' : `تحتاج ${requiredReferrals - activeReferrals} إحالة نشطة إضافية`;
+        const canAct = fullFeatureAccess ? tierIndex > currentIndex : !isActivated && (isCurrent || tierIndex > currentIndex);
+        const status = isCurrent ? (isActivated ? 'مفعل حاليًا' : 'يحتاج إيداعًا للتفعيل') : tierIndex < currentIndex ? 'مكتمل سابقًا' : fullFeatureAccess ? 'متاح للتجربة' : 'متاح بدون شرط إحالات';
         return `
             <div class="glass-card p-5 rounded-3xl border relative overflow-hidden bg-gradient-to-br ${tier.badgeColor} shadow-xl space-y-4">
                 ${isActivated ? `<span class="absolute top-3 left-3 bg-amber-500 text-slate-950 text-[10px] font-black px-2.5 py-0.5 rounded-full shadow">${tierText.current}</span>` : ''}
@@ -362,7 +360,7 @@ function renderTiersList() {
                     </div>
                 </div>
 
-                <div class="flex justify-between text-[10px] text-slate-400"><span>${status}</span><span class="text-amber-400">الإحالات: ${activeReferrals}/${requiredReferrals}</span></div>
+                <div class="flex justify-between text-[10px] text-slate-400"><span>${status}</span><span class="text-amber-400">اختر المستوى المناسب لك</span></div>
 
                 <div class="grid grid-cols-2 gap-2 text-xs border-y border-slate-800/80 py-3">
                     <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/50">
@@ -416,32 +414,22 @@ async function upgradeToSpecificTier(targetTier) {
     const current = tiersData.find(tier => tier.code === currentUserTier);
     const currentIndex = tiersData.findIndex(tier => tier.code === currentUserTier);
     const targetIndex = tiersData.findIndex(tier => tier.code === targetTier);
-    const currentActivated = Boolean(current?.price && Number(currentUserData?.wallet?.totalDeposits || 0) > 0);
-    const initialActivation = targetIndex === currentIndex && !currentActivated;
-    const activeReferrals = Number(currentUserData?.teamStats?.activeReferrals || 0);
-    const requiredReferrals = Math.max(0, targetIndex * 10);
-    const upgradeCost = targetIndex === currentIndex ? Number(target?.price || 0) : Math.max(0, Number(target?.price || 0) - Number(current?.price || 0));
     if (!target || !token) {
         showToast('يرجى تسجيل الدخول وانتظار تحميل المستويات');
         return;
     }
     const fullFeatureAccess = Boolean(currentUserData?.paidFeatureAccess);
-    if (!fullFeatureAccess && targetIndex > currentIndex + 1) {
-        showToast('يجب إكمال المستويات بالترتيب');
-        return;
-    }
-    if (!fullFeatureAccess && activeReferrals < requiredReferrals) {
-        showToast(`تحتاج إلى ${requiredReferrals - activeReferrals} إحالة نشطة إضافية للترقية`);
-        switchTab('team');
-        return;
-    }
-    const maxOpxValue = Math.min(upgradeCost * opxMaxUpgradeDiscountShare, opxMaxUpgradeValueUsd);
+    const currentActivated = fullFeatureAccess || Boolean(current && Number(currentUserData?.wallet?.totalDeposits || 0) > 0);
+    const initialActivation = !currentActivated;
+    const upgradeCost = fullFeatureAccess ? 0 : initialActivation ? Number(target.price || 0) : targetIndex === currentIndex ? Number(target.price || 0) : Math.max(0, Number(target.price || 0) - Number(current?.price || 0));
+    const activationCost = upgradeCost;
+    const maxOpxValue = Math.min(activationCost * opxMaxUpgradeDiscountShare, opxMaxUpgradeValueUsd);
     const opxRequired = (maxOpxValue / opxInternalUsdPrice).toFixed(4);
-    const minUsdtRequired = (upgradeCost * (1 - opxMaxUpgradeDiscountShare)).toFixed(2);
+    const minUsdtRequired = (activationCost * (1 - opxMaxUpgradeDiscountShare)).toFixed(2);
     const paymentText = initialActivation
-        ? `التفعيل الأول يتطلب دفع $${upgradeCost.toFixed(2)} USDT بالكامل. لا يتم استخدام OPX قبل حصول الحساب على مكافآت.`
+        ? `التفعيل الأول يتطلب دفع $${activationCost.toFixed(2)} USDT بالكامل. لا يتم استخدام OPX قبل حصول الحساب على مكافآت.`
         : `حد OPX الأقصى: ${opxRequired} OPX = $${maxOpxValue.toFixed(2)} (الأقل من 30% أو $${opxMaxUpgradeValueUsd})\nالحد الأدنى للدفع النقدي: $${minUsdtRequired} USDT (70% من التكلفة على الأقل)\nسيتم تحديد الحرق الفعلي حسب رصيد OPX المتاح، وأي نقص يُدفع USDT. الحرق نهائي ولا يمكن عكسه.`;
-    const confirmed = await showPlatformConfirm(`تأكيد ${targetIndex === currentIndex ? 'تفعيل' : 'الترقية إلى'} ${target.name}؟\nالتكلفة الإجمالية: $${upgradeCost.toFixed(2)}\n${paymentText}\nالإحالات النشطة: ${activeReferrals}/${requiredReferrals}`, 'تأكيد المستوى');
+    const confirmed = await showPlatformConfirm(`تأكيد ${targetIndex === currentIndex ? 'تفعيل' : 'الترقية إلى'} ${target.name}؟\nالتكلفة الإجمالية: $${activationCost.toFixed(2)}\n${paymentText}\nلا يشترط وجود إحالات أو إكمال المستويات السابقة.`, 'تأكيد المستوى');
     if (!confirmed) return;
     try {
         const res = await fetch('/api/user/upgrade', {
