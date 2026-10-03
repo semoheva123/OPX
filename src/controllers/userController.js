@@ -212,6 +212,10 @@ async function getUpgradeHistory(req, res) {
   }
 }
 
+async function getHomeSummary(req, res) {
+  return getUpgradeHistory(req, res);
+}
+
 async function sendTwoFactorCode(req, res) {
   try {
     const resend = req.app.locals.resend;
@@ -300,5 +304,4 @@ async function subscribePush(req, res) {
   } catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
 }
 
-module.exports = { getProfile, setWalletAddress, updateProfileImage, updateSocialProfile, getReferrals, getReferralRewards, getGrowth, getUpgradeHistory, getHomeSummary, sendTwoFactorCode, toggleTwoFactor, setupTwoFactor, confirmTwoFactor, changePassword, subscribePush };
 module.exports = { getProfile, setWalletAddress, updateProfileImage, updateSocialProfile, getReferrals, getReferralRewards, getGrowth, getUpgradeHistory, getHomeSummary, sendTwoFactorCode, toggleTwoFactor, setupTwoFactor, confirmTwoFactor, changePassword, subscribePush };

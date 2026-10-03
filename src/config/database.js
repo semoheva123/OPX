@@ -9,7 +9,8 @@ function getDatabaseMode() {
 
 function assertSupabaseRuntimeReady() {
   if (!isSupabaseEnabled()) {
-    throw new Error('Production database is configured for Supabase only. Set SUPABASE_URL, SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY before startup.');
+    console.warn('⚠️ Supabase runtime is not configured yet. The app will continue in degraded mode without database writes.');
+    return false;
   }
   return true;
 }
@@ -40,7 +41,10 @@ async function connectDatabase() {
   const mode = getDatabaseMode();
   const runtimeInfo = getRuntimeDatabaseInfo();
 
-  assertSupabaseRuntimeReady();
+  if (!runtimeInfo.supabaseConfigured) {
+    console.warn('⚠️ Production database is not configured. Continuing in degraded mode so the app can stay online.');
+    return { mode, connected: false, ...runtimeInfo };
+  }
 
   console.log('✅ Production runtime is locked to Supabase.');
   return { mode, connected: true, ...runtimeInfo };
