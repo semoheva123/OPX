@@ -86,7 +86,7 @@ async function mapUserToSupabaseRow(doc) {
     referral_code: doc.referralCode || null,
     referred_by: doc.referredBy || null,
     wallet_address: doc.walletAddress || '',
-    kyc_status: ['not_started', 'pending', 'verified', 'rejected'].includes(doc.kycStatus) ? doc.kycStatus : 'not_started',
+    campaign_points: Math.max(0, Math.floor(safeNumber(doc.campaignPoints, 0))),
     two_factor_enabled: Boolean(doc.twoFactorEnabled),
     two_factor_secret: doc.twoFactorSecret || null,
     admin_two_factor_enabled: Boolean(doc.adminTwoFactorEnabled),
@@ -109,7 +109,19 @@ async function mapUserToSupabaseRow(doc) {
       resetOTPExpire: undefined,
       adminInviteToken: undefined,
       adminInviteExpire: undefined,
-      id: undefined
+      id: undefined,
+      campaignPoints: undefined,
+      kycStatus: undefined,
+      kycFullName: undefined,
+      kycDocumentType: undefined,
+      kycDocumentNumber: undefined,
+      kycDocumentUrl: undefined,
+      kycCountry: undefined,
+      kycSubmittedAt: undefined,
+      kycReviewedAt: undefined,
+      kycReviewedBy: undefined,
+      kycNotes: undefined,
+      kycReason: undefined
     })
   };
 

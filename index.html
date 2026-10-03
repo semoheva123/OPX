@@ -122,6 +122,47 @@
         @keyframes operixNewsReveal { 0%, 4% { opacity: .35; transform: translateY(3px); } 12%, 88% { opacity: 1; transform: translateY(0); } 96%, 100% { opacity: .35; transform: translateY(-3px); } }
         @media (max-width: 480px) { .operix-news-ticker { gap: 14px; padding-inline: 12px; } .operix-news-label { font-size: 9px; } .operix-news-live { display: none; } .operix-news-message { font-size: 10px; } }
         .operix-mark { position: relative; overflow: hidden; background: linear-gradient(145deg, #ffe1a1 0%, #f7b955 38%, #bb7620 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 12px 28px rgba(247,185,85,.2); }
+        .rewards-campaign { position: relative; isolation: isolate; overflow: hidden; border: 1px solid rgba(247,185,85,.27); border-radius: 30px; padding: clamp(18px,3vw,34px); background: radial-gradient(ellipse at 4% 0%, rgba(139,92,246,.2), transparent 36%), radial-gradient(ellipse at 100% 100%, rgba(6,182,212,.13), transparent 38%), linear-gradient(125deg, #081321 0%, #111629 52%, #091a24 100%); box-shadow: 0 26px 70px rgba(0,0,0,.27), inset 0 1px 0 rgba(255,255,255,.06); }
+        .rewards-campaign::before { content: ''; position: absolute; z-index: -1; inset: -65% -25%; background: linear-gradient(105deg, transparent 42%, rgba(255,255,255,.055) 49%, transparent 56%); transform: translateX(-55%) rotate(8deg); animation: rewardsSheen 8s ease-in-out infinite; pointer-events: none; }
+        .reward-campaign-heading { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; margin-bottom:22px; }
+        .reward-campaign-kicker { display:inline-flex; align-items:center; gap:8px; padding:7px 11px; border:1px solid rgba(247,185,85,.24); border-radius:999px; background:rgba(247,185,85,.08); color:#f8d58d; font-size:10px; font-weight:900; }
+        .reward-campaign-title { margin:13px 0 4px; color:#f8fafc; font-size:clamp(21px,3vw,30px); font-weight:900; line-height:1.35; text-wrap:balance; }
+        .reward-campaign-subtitle { margin:0; color:#94a3b8; font-size:12px; line-height:1.8; }
+        .reward-campaign-cta { display:inline-flex; flex:0 0 auto; align-items:center; justify-content:center; gap:9px; min-height:46px; padding:0 18px; border:1px solid rgba(255,225,161,.45); border-radius:14px; background:linear-gradient(135deg,#ffe1a1,#f7b955 55%,#d88d31); color:#111827; font-size:12px; font-weight:900; box-shadow:0 10px 28px rgba(247,185,85,.17); transition:transform .2s ease, box-shadow .2s ease; }
+        .reward-campaign-cta:hover { transform:translateY(-2px); box-shadow:0 14px 34px rgba(247,185,85,.25); }
+        .reward-prize-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:13px; }
+        .reward-prize-card { position:relative; display:flex; min-width:0; flex-direction:column; overflow:hidden; border:1px solid rgba(148,163,184,.15); border-radius:21px; background:linear-gradient(150deg,rgba(16,27,45,.94),rgba(5,12,23,.92)); box-shadow:0 12px 32px rgba(0,0,0,.16); transition:transform .25s ease,border-color .25s ease,box-shadow .25s ease; }
+        .reward-prize-card:hover { transform:translateY(-4px); border-color:rgba(247,185,85,.4); box-shadow:0 18px 40px rgba(0,0,0,.24); }
+        .reward-prize-card--grand { border-color:rgba(247,185,85,.38); background:radial-gradient(ellipse at 50% 0%,rgba(247,185,85,.13),transparent 65%),linear-gradient(150deg,rgba(24,28,43,.97),rgba(5,12,23,.96)); }
+        .reward-prize-art { position:relative; display:grid; height:148px; place-items:center; overflow:hidden; border-bottom:1px solid rgba(148,163,184,.1); background:radial-gradient(ellipse at 50% 75%,rgba(148,163,184,.09),transparent 66%); }
+        .reward-prize-art::before { content:''; position:absolute; width:118px; height:118px; border-radius:50%; background:var(--reward-glow,rgba(247,185,85,.12)); filter:blur(34px); opacity:.8; }
+        .reward-prize-art img { position:relative; z-index:1; display:block; width:min(100%,220px); height:142px; object-fit:contain; filter:drop-shadow(0 12px 13px rgba(0,0,0,.32)); transition:transform .35s cubic-bezier(.2,.8,.2,1); }
+        .reward-prize-card:hover .reward-prize-art img { transform:translateY(-3px) scale(1.035); }
+        .reward-prize-art--gold { --reward-glow:rgba(247,185,85,.24); }
+        .reward-prize-art--cyan { --reward-glow:rgba(34,211,238,.2); }
+        .reward-prize-art--violet { --reward-glow:rgba(167,139,250,.2); }
+        .reward-prize-art--cash { --reward-glow:rgba(52,211,153,.17); }
+        .reward-cash-visual { position:relative; z-index:1; display:grid; width:94px; height:94px; place-items:center; border:1px solid rgba(110,231,183,.36); border-radius:50%; background:radial-gradient(circle at 35% 25%,rgba(110,231,183,.28),rgba(5,46,37,.82) 68%); color:#a7f3d0; font-size:39px; box-shadow:0 0 35px rgba(52,211,153,.13),inset 0 1px rgba(255,255,255,.13); }
+        .reward-prize-copy { display:flex; flex:1; flex-direction:column; padding:15px; }
+        .reward-prize-meta { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+        .reward-prize-place { color:#aab6c9; font-size:10px; font-weight:800; }
+        .reward-points { display:inline-flex; align-items:center; gap:5px; padding:6px 9px; border:1px solid var(--reward-border,rgba(247,185,85,.25)); border-radius:999px; background:var(--reward-pill,rgba(247,185,85,.09)); color:var(--reward-color,#f8d58d); font-size:10px; font-weight:900; white-space:nowrap; animation:rewardsPulse 2.8s ease-in-out infinite; }
+        .reward-prize-name { margin:13px 0 3px; color:#f8fafc; font-size:14px; font-weight:900; line-height:1.45; }
+        .reward-prize-detail { margin:0; color:#94a3b8; font-size:10px; line-height:1.75; }
+        .reward-prize-card--grand .reward-prize-place,.reward-prize-card--grand .reward-points { --reward-border:rgba(247,185,85,.32); --reward-pill:rgba(247,185,85,.1); --reward-color:#ffe1a1; color:#ffe1a1; }
+        .reward-prize-card--galaxy .reward-points { --reward-border:rgba(103,232,249,.25); --reward-pill:rgba(34,211,238,.08); --reward-color:#a5f3fc; }
+        .reward-prize-card--xiaomi .reward-points { --reward-border:rgba(196,181,253,.25); --reward-pill:rgba(167,139,250,.09); --reward-color:#ddd6fe; }
+        .reward-prize-card--cash .reward-points { --reward-border:rgba(110,231,183,.25); --reward-pill:rgba(52,211,153,.08); --reward-color:#a7f3d0; }
+        .reward-campaign-note { display:flex; align-items:flex-start; gap:8px; margin:14px 0 0; padding-top:12px; border-top:1px solid rgba(148,163,184,.12); color:#8391a6; font-size:9px; line-height:1.8; }
+        .reward-campaign-note i { margin-top:3px; color:#f7b955; }
+        .reward-photo-credit { margin:6px 0 0; color:#718096; font-size:8px; line-height:1.8; }
+        .reward-photo-credit a { color:#9fb0c5; text-decoration:underline; text-decoration-color:rgba(148,163,184,.4); text-underline-offset:2px; }
+        .reward-photo-credit a:hover { color:#e2e8f0; }
+        @keyframes rewardsSheen { 0%, 18% { transform: translateX(-55%) rotate(8deg); opacity: 0; } 30% { opacity: 1; } 62%, 100% { transform: translateX(55%) rotate(8deg); opacity: 0; } }
+        @keyframes rewardsPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(247,185,85,.03); } 50% { box-shadow: 0 0 0 6px rgba(247,185,85,.08); } }
+        @media (max-width: 1000px) { .reward-prize-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+        @media (max-width: 640px) { .reward-campaign-heading { align-items:stretch; flex-direction:column; gap:13px; margin-bottom:15px; } .reward-campaign-cta { width:100%; } .reward-prize-grid { grid-template-columns:1fr; gap:9px; } .reward-prize-card { display:grid; grid-template-columns:112px minmax(0,1fr); min-height:128px; } .reward-prize-art { height:100%; min-height:128px; border-right:0; border-bottom:0; border-left:1px solid rgba(148,163,184,.1); } .reward-prize-art img { width:116px; height:116px; } .reward-cash-visual { width:65px; height:65px; font-size:29px; } .reward-prize-copy { justify-content:center; padding:12px; } .reward-prize-name { margin-top:9px; font-size:13px; } }
+        @media (prefers-reduced-motion: reduce) { .rewards-campaign::before, .reward-points { animation:none !important; } .reward-prize-card:hover,.reward-campaign-cta:hover { transform:none; } .reward-prize-card:hover .reward-prize-art img { transform:none; } }
         .operix-mark::after { content: ''; position: absolute; width: 120%; height: 45%; top: -18%; left: -10%; background: rgba(255,255,255,.28); transform: rotate(-28deg); }
         .operix-wordmark { letter-spacing: .08em; font-family: Georgia, serif; }
         #view-home > div:first-child { box-shadow: 0 22px 65px rgba(247,185,85,.12), inset 0 1px 0 rgba(255,255,255,.08); }
@@ -576,6 +617,40 @@ body::before{content:'';position:fixed;inset:-12%;z-index:-1;pointer-events:none
                 <div class="trust-item"><i class="fa-solid fa-list-check" aria-hidden="true"></i><span><b>سجل قابل للمراجعة</b><small>تفاصيل النشاط والمعاملات بوضوح</small></span></div>
                 <div class="trust-item"><i class="fa-solid fa-scale-balanced" aria-hidden="true"></i><span><b>إفصاح واضح</b><small><a href="/transparency.html">الرسوم والمخاطر</a> و<a href="/compliance.html">الامتثال</a></small></span></div>
             </div>
+            <section class="rewards-campaign intro-reveal mt-5" aria-labelledby="rewardsCampaignTitle">
+                <div class="reward-campaign-heading">
+                    <div>
+                        <span class="reward-campaign-kicker"><i class="fa-solid fa-sparkles" aria-hidden="true"></i> حملة نقاط ومكافآت</span>
+                        <h2 id="rewardsCampaignTitle" class="reward-campaign-title">اجمع النقاط. اختر جائزتك.</h2>
+                        <p class="reward-campaign-subtitle">مكافآت مميزة لأصحاب أعلى النقاط في الحملة.</p>
+                    </div>
+                    <button type="button" onclick="showAuthView('register')" class="reward-campaign-cta">إنشاء حساب <i class="fa-solid fa-arrow-left" aria-hidden="true"></i></button>
+                </div>
+                <div class="reward-prize-grid">
+                    <article class="reward-prize-card reward-prize-card--grand">
+                        <div class="reward-prize-art reward-prize-art--gold"><img src="https://aitnews.com/wp-content/uploads/2026/09/Apple-Foldable-iPhone-Plan-780x470.jpg" alt="صورة iPhone Duo القابل للطي من الرابط المرسل" width="780" height="470" fetchpriority="high" referrerpolicy="no-referrer"></div>
+                        <div class="reward-prize-copy"><div class="reward-prize-meta"><span class="reward-prize-place">الجائزة الرئيسية</span><span class="reward-points"><i class="fa-solid fa-star" aria-hidden="true"></i> 500 نقطة</span></div><h3 class="reward-prize-name">iPhone Duo</h3><p class="reward-prize-detail">الصورة المرفقة لهاتف iPhone Duo القابل للطي.</p></div>
+                    </article>
+                    <article class="reward-prize-card reward-prize-card--galaxy">
+                        <div class="reward-prize-art reward-prize-art--cyan"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRdUBwnWFymDuYAsjmLsyxk3if6bUYsP3Ixdfbvu5lHXaoW3ALUetRwOZg&amp;s=10" alt="صورة لهاتفين من Samsung وفق الرابط المرسل" width="678" height="452" loading="eager" referrerpolicy="no-referrer"></div>
+                        <div class="reward-prize-copy"><div class="reward-prize-meta"><span class="reward-prize-place">الجائزة الثانية</span><span class="reward-points"><i class="fa-solid fa-star" aria-hidden="true"></i> 350 نقطة</span></div><h3 class="reward-prize-name">Samsung Galaxy</h3><p class="reward-prize-detail">S26 أو S25 Ultra، بحسب التوفر.</p></div>
+                    </article>
+                    <article class="reward-prize-card reward-prize-card--xiaomi">
+                        <div class="reward-prize-art reward-prize-art--violet"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTppIx-NvZGPMVl_Aj2GRPP0G6Ocaby2xFvHPCQRxM3NsnN6inQyxIWLj8&amp;s=10" alt="صورة لهاتف Redmi Note 14 وفق الرابط المرسل" width="414" height="483" loading="eager" referrerpolicy="no-referrer"></div>
+                        <div class="reward-prize-copy"><div class="reward-prize-meta"><span class="reward-prize-place">الجائزة الثالثة</span><span class="reward-points"><i class="fa-solid fa-star" aria-hidden="true"></i> 200 نقطة</span></div><h3 class="reward-prize-name">هاتف Xiaomi</h3><p class="reward-prize-detail">بقيمة معلنة قدرها 350 دولارًا.</p></div>
+                    </article>
+                    <article class="reward-prize-card reward-prize-card--cash">
+                        <div class="reward-prize-art reward-prize-art--cash"><span class="reward-cash-visual" aria-hidden="true"><i class="fa-solid fa-coins"></i></span></div>
+                        <div class="reward-prize-copy"><div class="reward-prize-meta"><span class="reward-prize-place">المراكز 4–10</span><span class="reward-points">حسب النقاط</span></div><h3 class="reward-prize-name">مكافآت مالية</h3><p class="reward-prize-detail">قابلة للسحب الفوري وفق النقاط المجمعة.</p></div>
+                    </article>
+                </div>
+                <p class="reward-campaign-note"><i class="fa-solid fa-circle-info" aria-hidden="true"></i><span>تُحتسب الإحالة المباشرة عند نجاح تفعيل مدفوع: نقطة للمستوى الأول، نقطتان للثاني، و4 للثالث، مرة واحدة لكل مستوى. النقاط تظهر في حساب الداعي والترتيب؛ تسليم الجوائز وصرف المكافآت يخضع لشروط الحملة ومراجعة الإدارة.</span></p>
+                <details class="campaign-leaderboard mt-3 rounded-2xl border border-slate-700/70 bg-slate-950/35 p-3" ontoggle="if(this.open) loadCampaignLeaderboard()">
+                    <summary class="flex cursor-pointer list-none items-center justify-between gap-3 text-[11px] font-bold text-slate-200"><span><i class="fa-solid fa-ranking-star ml-2 text-amber-300" aria-hidden="true"></i>ترتيب الحملة — أعلى 10</span><i class="fa-solid fa-chevron-down text-[9px] text-slate-500" aria-hidden="true"></i></summary>
+                    <div id="campaignLeaderboardList" class="mt-3 space-y-1.5 text-[10px] text-slate-400"><p>افتح القائمة لعرض ترتيب النقاط الحالي.</p></div>
+                </details>
+                <p class="reward-photo-credit">مصدر صورة iPhone: <a href="https://aitnews.com/2026/09/16/%D8%A2%D8%A8%D9%84-%D8%AA%D8%AE%D8%B7%D8%B7-%D9%84%D8%A5%D8%B7%D9%84%D8%A7%D9%82-%D8%B3%D9%84%D8%B3%D9%84%D8%A9-%D9%85%D8%AA%D9%83%D8%A7%D9%85%D9%84%D8%A9-%D9%85%D9%86-%D9%87%D9%88%D8%A7%D8%AA%D9%81/" target="_blank" rel="noopener noreferrer">البوابة التقنية — الرابط المرسل</a> · صور Samsung وXiaomi من روابط المعاينة التي أرسلها المستخدم.</p>
+            </section>
             <div class="flex-1 grid lg:grid-cols-[1.1fr_.9fr] items-center gap-12 py-12 md:py-16">
                 <div class="intro-reveal space-y-6">
                     <span class="inline-flex items-center gap-2 text-[11px] text-cyan-200 border border-cyan-400/25 bg-cyan-400/10 rounded-full px-3 py-1.5"><i class="fa-solid fa-coins"></i> OPX — عملة رقمية جديدة واعدة</span>
@@ -632,7 +707,7 @@ body::before{content:'';position:fixed;inset:-12%;z-index:-1;pointer-events:none
                 <div class="space-y-2">
                     <details class="group rounded-2xl border border-slate-800 bg-slate-950/45 p-4"><summary class="cursor-pointer list-none text-sm font-bold text-white flex items-center justify-between gap-3">ما الذي تقدمه OPERIX؟<i class="fa-solid fa-chevron-down text-[10px] text-slate-500 transition-transform group-open:rotate-180"></i></summary><p class="text-xs leading-6 text-slate-400 mt-3">توفر المنصة مساحة موحدة لمتابعة المهام والحساب والإحالات والمكافآت وسجل المعاملات، مع أدوات أمان ومؤشرات تساعدك على فهم نشاطك.</p></details>
                     <details class="group rounded-2xl border border-slate-800 bg-slate-950/45 p-4"><summary class="cursor-pointer list-none text-sm font-bold text-white flex items-center justify-between gap-3">هل العوائد أو المكافآت مضمونة؟<i class="fa-solid fa-chevron-down text-[10px] text-slate-500 transition-transform group-open:rotate-180"></i></summary><p class="text-xs leading-6 text-slate-400 mt-3">لا. أي عوائد أو مكافآت تقديرية وغير مضمونة، ويجب مراجعة الشروط والمخاطر وعدم استخدام أموال لا يمكنك تحمل خسارتها.</p></details>
-                    <details class="group rounded-2xl border border-slate-800 bg-slate-950/45 p-4"><summary class="cursor-pointer list-none text-sm font-bold text-white flex items-center justify-between gap-3">كيف أحمي حسابي؟<i class="fa-solid fa-chevron-down text-[10px] text-slate-500 transition-transform group-open:rotate-180"></i></summary><p class="text-xs leading-6 text-slate-400 mt-3">ابدأ بتأكيد البريد، فعّل Google Authenticator، ثبّت محفظة السحب، وأكمل KYC. راجع الجلسات وسجل المعاملات بانتظام.</p></details>
+                    <details class="group rounded-2xl border border-slate-800 bg-slate-950/45 p-4"><summary class="cursor-pointer list-none text-sm font-bold text-white flex items-center justify-between gap-3">كيف أحمي حسابي؟<i class="fa-solid fa-chevron-down text-[10px] text-slate-500 transition-transform group-open:rotate-180"></i></summary><p class="text-xs leading-6 text-slate-400 mt-3">ابدأ بتأكيد البريد، فعّل Google Authenticator، وثبّت محفظة السحب. راجع الجلسات وسجل المعاملات بانتظام.</p></details>
                     <details class="group rounded-2xl border border-slate-800 bg-slate-950/45 p-4"><summary class="cursor-pointer list-none text-sm font-bold text-white flex items-center justify-between gap-3">أين أراجع الرسوم وحدود السحب؟<i class="fa-solid fa-chevron-down text-[10px] text-slate-500 transition-transform group-open:rotate-180"></i></summary><p class="text-xs leading-6 text-slate-400 mt-3">تجد التفاصيل المحدثة في صفحة <a href="/transparency.html" class="text-amber-400 underline">الشفافية</a>، وتظهر قيود السحب المناسبة لحسابك قبل إرسال الطلب.</p></details>
                 </div>
             </section>
@@ -646,7 +721,7 @@ body::before{content:'';position:fixed;inset:-12%;z-index:-1;pointer-events:none
             <div class="flex items-start justify-between gap-4"><div><span class="text-[10px] font-bold text-cyan-300">OPERIX / جولة المنتج</span><h2 id="productTourTitle" class="mt-2 text-xl font-black text-white">تعرّف على التجربة خلال دقيقة</h2></div><button onclick="closeProductTour()" class="text-slate-400 hover:text-white" aria-label="إغلاق الجولة"><i class="fa-solid fa-xmark text-lg"></i></button></div>
             <div class="mt-6 grid gap-3">
                 <div class="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4"><div class="flex items-center gap-3"><span class="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-400/15 text-amber-300 font-black">1</span><div><b class="block text-sm text-white">ابدأ بحساب واضح</b><span class="text-xs text-slate-400">تابع الرصيد والمهام والإحالات من لوحة واحدة.</span></div></div></div>
-                <div class="rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-4"><div class="flex items-center gap-3"><span class="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-400/15 text-emerald-300 font-black">2</span><div><b class="block text-sm text-white">فعّل طبقات الحماية</b><span class="text-xs text-slate-400">البريد، 2FA، KYC، وإدارة الجلسات للعمليات الحساسة.</span></div></div></div>
+                <div class="rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-4"><div class="flex items-center gap-3"><span class="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-400/15 text-emerald-300 font-black">2</span><div><b class="block text-sm text-white">فعّل طبقات الحماية</b><span class="text-xs text-slate-400">البريد، 2FA، وإدارة الجلسات للعمليات الحساسة.</span></div></div></div>
                 <div class="rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4"><div class="flex items-center gap-3"><span class="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-400/15 text-cyan-300 font-black">3</span><div><b class="block text-sm text-white">اتخذ قراراتك بوعي</b><span class="text-xs text-slate-400">راجع الرسوم والمخاطر وسجل المعاملات قبل أي خطوة مالية.</span></div></div></div>
             </div>
             <div class="mt-6 flex flex-wrap gap-2"><button onclick="showAuthView('register'); closeProductTour()" class="flex-1 rounded-xl bg-amber-400 px-4 py-3 text-sm font-black text-slate-950">إنشاء حساب</button><a href="/transparency.html" class="flex-1 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-center text-sm font-bold text-slate-200">قراءة الشفافية</a></div>
@@ -855,7 +930,7 @@ body::before{content:'';position:fixed;inset:-12%;z-index:-1;pointer-events:none
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
                     <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-3"><i class="fa-solid fa-shield-halved text-emerald-400"></i><b class="block text-[11px] text-white mt-2">حماية الحساب</b><span class="text-[9px] text-slate-500">2FA والجلسات النشطة</span></div>
                     <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-3"><i class="fa-solid fa-receipt text-cyan-400"></i><b class="block text-[11px] text-white mt-2">سجل واضح</b><span class="text-[9px] text-slate-500">راجع كل حركة مالية</span></div>
-                    <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-3"><i class="fa-solid fa-user-check text-amber-400"></i><b class="block text-[11px] text-white mt-2">توثيق منظم</b><span class="text-[9px] text-slate-500">حالة KYC محدثة</span></div>
+                    <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-3"><i class="fa-solid fa-user-check text-amber-400"></i><b class="block text-[11px] text-white mt-2">إدارة الحساب</b><span class="text-[9px] text-slate-500">راجع إعداداتك وسجل النشاط</span></div>
                     <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-3"><i class="fa-solid fa-headset text-rose-300"></i><b class="block text-[11px] text-white mt-2">دعم مباشر</b><span class="text-[9px] text-slate-500">مساعدة عند الحاجة</span></div>
                 </div>
                 <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-800 pt-3">
@@ -1056,6 +1131,17 @@ body::before{content:'';position:fixed;inset:-12%;z-index:-1;pointer-events:none
                 <button onclick="copyProfileReferral()" class="w-full py-2.5 bg-amber-500 text-slate-950 rounded-xl text-xs font-black"><i class="fa-solid fa-link ml-1"></i> نسخ رابط الدعوة</button>
                 <p class="text-[10px] text-slate-500">كل إحالة نشطة تساعدك على فتح دورات ومتابعة تقدم الفريق.</p>
             </div>
+
+            <div class="campaign-points-card glass-card rounded-3xl border border-amber-400/20 p-5 text-right">
+                <div class="flex items-start justify-between gap-3">
+                    <div><span class="text-[10px] font-black tracking-wide text-amber-200">نقاط حملة الإحالات</span><h3 class="mt-1 text-sm font-black text-white">رصيد نقاطك</h3></div>
+                    <i class="fa-solid fa-trophy text-xl text-amber-300" aria-hidden="true"></i>
+                </div>
+                <div class="mt-3 flex items-end gap-2"><strong id="campaignPointsBalance" class="text-4xl font-black text-amber-300">0</strong><span class="pb-1 text-[11px] text-slate-400">نقطة</span></div>
+                <p id="campaignPointsNextReward" class="mt-2 text-[10px] leading-5 text-slate-400">كل إحالة مباشرة تكسبك نقطة أو نقطتين أو 4 نقاط عند تفعيل مستوياتها الثلاثة.</p>
+                <div class="mt-3 h-2 overflow-hidden rounded-full bg-slate-950"><div id="campaignPointsProgress" class="h-full rounded-full bg-gradient-to-l from-amber-300 to-amber-600 transition-all" style="width:0%"></div></div>
+                <div id="campaignPointsHistory" class="mt-3 space-y-1.5 text-[10px] text-slate-400"><span>يُعرض سجل النقاط عند فتح هذا التبويب.</span></div>
+            </div>
             
             <div class="grid grid-cols-3 gap-2 text-center text-xs">
                 <div class="team-level-card bg-slate-900 p-3 rounded-2xl border border-slate-800">
@@ -1173,15 +1259,14 @@ body::before{content:'';position:fixed;inset:-12%;z-index:-1;pointer-events:none
 
             <div class="glass-card p-4 rounded-2xl space-y-3">
                 <div class="flex items-center justify-between gap-3">
-                    <div><h4 class="text-xs font-bold text-white">اكتمال إعداد الحساب</h4><p id="profileCompletionLabel" class="text-[10px] text-slate-400 mt-1">0 من 4 خطوات مكتملة</p></div>
+                    <div><h4 class="text-xs font-bold text-white">اكتمال إعداد الحساب</h4><p id="profileCompletionLabel" class="text-[10px] text-slate-400 mt-1">0 من 3 خطوات مكتملة</p></div>
                     <strong id="profileCompletionPercent" class="text-sm text-amber-300">0%</strong>
                 </div>
                 <div class="h-2 rounded-full bg-slate-950 overflow-hidden"><div id="profileCompletionProgress" class="h-full gold-gradient rounded-full transition-all" style="width:0%"></div></div>
-                <div class="grid grid-cols-2 gap-2 text-[10px]">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[10px]">
                     <span id="profileEmailStatus" class="rounded-xl border border-rose-500/20 bg-rose-500/5 px-2.5 py-2 text-rose-300">البريد: غير موثق</span>
                     <span id="profileTwoFactorStatus" class="rounded-xl border border-rose-500/20 bg-rose-500/5 px-2.5 py-2 text-rose-300">2FA: غير مفعلة</span>
                     <span id="profileWalletStatus" class="rounded-xl border border-rose-500/20 bg-rose-500/5 px-2.5 py-2 text-rose-300">المحفظة: غير مثبتة</span>
-                    <span id="profileKycStatus" class="rounded-xl border border-rose-500/20 bg-rose-500/5 px-2.5 py-2 text-rose-300">KYC: لم يبدأ</span>
                 </div>
             </div>
 
@@ -1217,34 +1302,6 @@ body::before{content:'';position:fixed;inset:-12%;z-index:-1;pointer-events:none
                     </div>
                 </div>
                 <button type="button" id="btnSaveProfileWallet" onclick="saveProfileWallet()" class="w-full py-2.5 gold-gradient text-slate-950 font-bold rounded-xl text-xs active:scale-95 transition-all">تثبيت المحفظة وقفل الحماية</button>
-            </details>
-
-            <details open class="profile-section glass-card p-4 rounded-2xl space-y-3">
-                <summary class="text-xs font-bold text-white flex items-center justify-between">
-                    <h4 class="text-xs font-bold text-white flex items-center">
-                        <i class="fa-solid fa-id-card text-cyan-400 mr-2"></i> توثيق الهوية (KYC)
-                    </h4>
-                    <span class="flex items-center gap-2"><span id="kycProfileStatusBadge" class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-800 text-slate-300">لم يبدأ</span><i class="fa-solid fa-chevron-down text-[10px] text-slate-500"></i></span>
-                </summary>
-                <div id="kycProfileInfo" class="text-[10px] text-slate-400">قم بإرسال البيانات لتوثيق حسابك ومراجعتها من الإدارة.</div>
-                <div class="space-y-2">
-                    <input id="kycFullNameInput" type="text" maxlength="80" placeholder="الاسم الكامل كما في الوثيقة" oninput="this.dataset.kycDirty='true'" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-500">
-                    <select id="kycDocumentTypeInput" onchange="this.dataset.kycDirty='true'" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-500">
-                        <option value="">اختر نوع الوثيقة</option>
-                        <option value="national_id">بطاقة الهوية</option>
-                        <option value="passport">جواز السفر</option>
-                        <option value="driver_license">رخصة القيادة</option>
-                        <option value="residence_card">بطاقة الإقامة</option>
-                    </select>
-                    <div class="grid grid-cols-2 gap-2">
-                        <input id="kycDocumentNumberInput" type="text" maxlength="50" placeholder="رقم الوثيقة" oninput="this.dataset.kycDirty='true'" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-500">
-                        <input id="kycCountryInput" type="text" maxlength="80" placeholder="الدولة" oninput="this.dataset.kycDirty='true'" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-500">
-                    </div>
-                    <label for="kycDocumentFileInput" class="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5 text-xs text-slate-300 hover:border-cyan-400/50"><span><i class="fa-solid fa-upload text-cyan-300 mr-2"></i>صورة الوثيقة</span><span id="kycDocumentFileName" class="text-[10px] text-slate-500">اختر ملفًا</span></label>
-                    <input id="kycDocumentFileInput" type="file" accept="image/*" class="hidden" onchange="this.dataset.kycDirty='true'; document.getElementById('kycDocumentFileName').innerText = this.files?.[0]?.name || 'اختر ملفًا'">
-                    <input id="kycDocumentUrlInput" type="url" placeholder="أو أدخل رابط صورة الوثيقة" oninput="this.dataset.kycDirty='true'" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-500 dir-ltr">
-                    <button type="button" id="btnSubmitUserKyc" onclick="submitUserKyc()" class="w-full py-2.5 bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 hover:border-cyan-400/40 rounded-xl text-xs font-bold active:scale-95 transition-all">إرسال طلب التوثيق</button>
-                </div>
             </details>
 
             <!-- 5. الأمان والحماية -->

@@ -20,12 +20,8 @@ router.get('/investment-vault/contracts', requirePermission('finance'), adminCon
 router.post('/investment-vault/contracts', requireFullAdmin, adminController.updateInvestmentVaultContracts);
 router.get('/investment-vault/list', requirePermission('finance'), adminController.listInvestmentVaults);
 router.post('/investment-vault/:vaultId/emergency-release', requireFullAdmin, adminController.emergencyReleaseInvestmentVault);
-router.get('/kyc-summary', requirePermission('read_overview'), adminController.kycSummary);
 router.get('/users', requirePermission('read_users'), adminController.listUsers);
 router.get('/users/:userId/details', requirePermission('read_users'), adminController.userDetails);
-router.get('/users/:userId/kyc-document', requirePermission('manage_users'), adminController.streamKycDocument);
-router.get('/compliance-report', requirePermission('read_audit'), adminController.complianceReport);
-router.post('/users/:userId/kyc-review', requirePermission('manage_users'), adminController.reviewUserKyc);
 router.post('/reset-daily-tasks', requirePermission('manage_users'), adminController.resetDailyTasks);
 router.post('/users/toggle-ban', requirePermission('manage_users'), adminController.toggleBan);
 router.post('/users/bulk-ban', requirePermission('manage_users'), adminController.bulkToggleBan);

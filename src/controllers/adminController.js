@@ -1,6 +1,5 @@
 const { withdrawalCompletedTemplate, withdrawalRejectedTemplate } = require('../services/emailTemplates');
 const realtimeService = require('../services/realtimeService');
-const kycStorage = require('../services/kycStorage');
 const dataAccess = require('../services/dataAccess');
 const User = adminRepository(dataAccess.user);
 const Transaction = adminRepository(dataAccess.transaction);
@@ -14,7 +13,7 @@ const Notification = adminRepository(dataAccess.notification);
 const Session = adminRepository(dataAccess.session);
 const { supabaseAdmin } = require('../config/supabase');
 
-const ADMIN_USER_DETAIL_FIELDS = new Set(['id', '_id', 'email', 'role', 'emailVerified', 'isBanned', 'tierCode', 'referralCode', 'referredBy', 'walletAddress', 'kycStatus', 'adminTwoFactorEnabled', 'assetWallet', 'createdAt', 'updatedAt', 'lastLoginAt', 'metadata', 'profileImage', 'coverImage', 'socialBio', 'kycFullName', 'kycDocumentType', 'kycDocumentNumber', 'kycDocumentUrl', 'kycCountry', 'kycSubmittedAt', 'kycReviewedAt', 'kycReviewedBy', 'kycNotes', 'kycReason', 'wallet']);
+const ADMIN_USER_DETAIL_FIELDS = new Set(['id', '_id', 'email', 'role', 'emailVerified', 'isBanned', 'tierCode', 'referralCode', 'referredBy', 'walletAddress', 'campaignPoints', 'adminTwoFactorEnabled', 'assetWallet', 'createdAt', 'updatedAt', 'lastLoginAt', 'metadata', 'profileImage', 'coverImage', 'socialBio', 'wallet']);
 
 function sanitizeAdminUserDetail(user) {
   return Object.fromEntries(Object.entries(user?.toObject?.() || user || {}).filter(([key]) => ADMIN_USER_DETAIL_FIELDS.has(key)));
@@ -161,7 +160,7 @@ async function listVipLevels(req, res) {
 
 async function overview(req, res) {
   try {
-    const [totalUsers, pendingWithdrawals, pendingDeposits, activeUsers, deposits, withdrawals, rewards, riskSummaryInfo, financialSummaryInfo, kycSummaryInfo] = await Promise.all([
+    const [totalUsers, pendingWithdrawals, pendingDeposits, activeUsers, deposits, withdrawals, rewards, riskSummaryInfo, financialSummaryInfo] = await Promise.all([
       User.countDocuments(),
       Transaction.countDocuments({ type: 'withdraw', status: 'pending' }),
       Transaction.countDocuments({ type: 'deposit', status: 'pending' }),
@@ -170,8 +169,7 @@ async function overview(req, res) {
       dataAccess.transaction.find({ type: 'withdraw', status: 'approved' }, { limit: 10000 }).then(rows => [{ total: rows.reduce((sum, row) => sum + Number(row.amount || 0), 0) }]),
       dataAccess.transaction.find({ type: { $in: ['reward', 'staking_reward', 'referral_commission'] }, status: 'approved' }, { limit: 10000 }).then(rows => [{ total: rows.reduce((sum, row) => sum + Number(row.amount || 0), 0) }]),
       buildRiskSummary(30),
-      buildFinancialSummary(30),
-      buildKycSummary()
+      buildFinancialSummary(30)
     ]);
     res.json({
       success: true,
@@ -186,39 +184,9 @@ async function overview(req, res) {
         pendingRequests: pendingWithdrawals + pendingDeposits
       },
       riskSummary: riskSummaryInfo,
-      financialSummary: financialSummaryInfo,
-      kycSummary: kycSummaryInfo
+      financialSummary: financialSummaryInfo
     });
   } catch (err) { res.status(500).json({ success: false, error: 'حدث خطأ في معالجة الطلب' }); }
-}
-
-async function buildKycSummary() {
-  const [total, pending, verified, rejected, notStarted] = await Promise.all([
-    User.countDocuments(),
-    User.countDocuments({ kycStatus: 'pending' }),
-    User.countDocuments({ kycStatus: 'verified' }),
-    User.countDocuments({ kycStatus: 'rejected' }),
-    User.countDocuments({ kycStatus: 'not_started' })
-  ]);
-
-  return {
-    total,
-    pending,
-    verified,
-    rejected,
-    notStarted,
-    verificationRate: total ? Number(((verified / total) * 100).toFixed(2)) : 0,
-    reviewQueue: pending + rejected
-  };
-}
-
-async function kycSummary(req, res) {
-  try {
-    const summary = await buildKycSummary();
-    res.json({ success: true, summary });
-  } catch (error) {
-    res.status(500).json({ error: 'تعذر تحميل ملخص KYC' });
-  }
 }
 
 async function analytics(req, res) {
@@ -409,7 +377,6 @@ async function listUsers(req, res) {
     if (req.query.status === 'active') filter.isBanned = false;
     if (req.query.verified === 'yes') filter.emailVerified = true;
     if (req.query.verified === 'no') filter.emailVerified = false;
-    if (['not_started', 'pending', 'verified', 'rejected'].includes(req.query.kycStatus)) filter.kycStatus = req.query.kycStatus;
     const allUsers = await dataAccess.user.find(filter, { sort: { createdAt: -1 }, limit: 10000 });
     const searchedUsers = search ? allUsers.filter(user => `${user.email || ''} ${user.referralCode || ''}`.toLowerCase().includes(search.toLowerCase())) : allUsers;
     const total = searchedUsers.length;
@@ -442,143 +409,6 @@ async function userDetails(req, res) {
     ]);
     res.json({ success: true, user: sanitizeAdminUserDetail(user), transactions, auditLogs, sessions });
   } catch (error) { res.status(500).json({ error: 'تعذر تحميل تفاصيل المستخدم' }); }
-}
-
-async function streamKycDocument(req, res) {
-  try {
-    const user = await User.findById(req.params.userId).select('kycDocumentUrl');
-    const reference = String(user?.kycDocumentUrl || '');
-    if (/^https:\/\/(?:i\.)?ibb\.co\//i.test(reference) || /^https:\/\/(?:www\.)?imgbb\.com\//i.test(reference)) return res.redirect(reference);
-    if (!/^private:\/\//.test(reference)) return res.status(404).json({ error: 'وثيقة KYC غير موجودة أو قديمة' });
-    await createAudit(req, 'view_kyc_document', user._id.toString(), { referenceType: 'private' });
-    res.set({ 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' });
-    if (!kycStorage.stream(reference, res)) return res.status(404).json({ error: 'ملف الوثيقة غير موجود' });
-  } catch (error) {
-    res.status(500).json({ error: 'تعذر عرض وثيقة KYC' });
-  }
-}
-
-function csvCell(value) {
-  return `"${String(value ?? '').replace(/"/g, '""')}"`;
-}
-
-async function complianceReport(req, res) {
-  try {
-    if (dataAccess.isSupabaseRuntime()) {
-      const filter = {};
-      if (['not_started', 'pending', 'verified', 'rejected'].includes(req.query.kycStatus)) filter.kycStatus = req.query.kycStatus;
-      const since = req.query.from ? new Date(`${req.query.from}T00:00:00.000Z`) : null;
-      const until = req.query.to ? new Date(`${req.query.to}T00:00:00.000Z`) : null;
-      if (until && !Number.isNaN(until.valueOf())) until.setUTCDate(until.getUTCDate() + 1);
-      if (since || until) filter.updatedAt = { ...(since && !Number.isNaN(since.valueOf()) ? { $gte: since } : {}), ...(until && !Number.isNaN(until.valueOf()) ? { $lt: until } : {}) };
-      const users = await dataAccess.user.find(filter, { sort: { updatedAt: -1 }, limit: 10000 });
-      const userIds = users.map(user => user.id || user._id);
-      const transactions = userIds.length ? await dataAccess.transaction.find({ userId: { $in: userIds }, type: 'withdraw', riskScore: { $gt: 0 } }, { limit: 10000 }) : [];
-      const riskByUser = new Map();
-      transactions.forEach(transaction => {
-        const key = String(transaction.userId);
-        const current = riskByUser.get(key) || { maxRiskScore: 0, highRiskCount: 0 };
-        current.maxRiskScore = Math.max(current.maxRiskScore, Number(transaction.riskScore || 0));
-        if (transaction.riskLevel === 'high') current.highRiskCount += 1;
-        riskByUser.set(key, current);
-      });
-      const rows = [['البريد', 'حالة KYC', 'الدولة', 'نوع الوثيقة', 'تاريخ الإرسال', 'آخر مراجعة', 'راجع بواسطة', 'سبب الرفض', 'أعلى درجة خطر', 'سحوبات عالية الخطورة', 'محظور']];
-      users.forEach(user => { const risk = riskByUser.get(String(user.id || user._id)) || {}; rows.push([user.email, user.kycStatus || 'not_started', user.kycCountry || '', user.kycDocumentType || '', user.kycSubmittedAt || '', user.kycReviewedAt || '', user.kycReviewedBy || '', user.kycReason || '', risk.maxRiskScore || 0, risk.highRiskCount || 0, user.isBanned ? 'نعم' : 'لا']); });
-      const csv = rows.map(row => row.map(csvCell).join(',')).join('\r\n');
-      res.set({ 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="operix-compliance-${new Date().toISOString().slice(0, 10)}.csv"`, 'Cache-Control': 'no-store' });
-      await createAudit(req, 'export_compliance_report', null, { count: users.length, kycStatus: req.query.kycStatus || 'all' });
-      return res.send(`\ufeff${csv}`);
-    }
-    const filter = {};
-    if (['not_started', 'pending', 'verified', 'rejected'].includes(req.query.kycStatus)) filter.kycStatus = req.query.kycStatus;
-    const since = req.query.from ? new Date(`${req.query.from}T00:00:00.000Z`) : null;
-    const until = req.query.to ? new Date(`${req.query.to}T00:00:00.000Z`) : null;
-    if (until && !Number.isNaN(until.valueOf())) until.setUTCDate(until.getUTCDate() + 1);
-    if ((since && !Number.isNaN(since.valueOf())) || (until && !Number.isNaN(until.valueOf()))) {
-      filter.updatedAt = {};
-      if (since && !Number.isNaN(since.valueOf())) filter.updatedAt.$gte = since;
-      if (until && !Number.isNaN(until.valueOf())) filter.updatedAt.$lt = until;
-    }
-
-    const users = await User.find(filter).select('email kycStatus kycCountry kycDocumentType kycSubmittedAt kycReviewedAt kycReviewedBy kycReason isBanned').populate('kycReviewedBy', 'email').sort({ updatedAt: -1 }).limit(10000).lean();
-    const userIds = users.map(user => user._id);
-    const riskTotals = userIds.length ? await Transaction.aggregate([
-      { $match: { userId: { $in: userIds }, type: 'withdraw', riskScore: { $gt: 0 } } },
-      { $group: { _id: '$userId', maxRiskScore: { $max: '$riskScore' }, highRiskCount: { $sum: { $cond: [{ $eq: ['$riskLevel', 'high'] }, 1, 0] } }, riskFlags: { $push: '$riskFlags' } } }
-    ]) : [];
-    const riskByUser = new Map(riskTotals.map(item => [String(item._id), item]));
-    const rows = [
-      ['البريد', 'حالة KYC', 'الدولة', 'نوع الوثيقة', 'تاريخ الإرسال', 'آخر مراجعة', 'راجع بواسطة', 'سبب الرفض', 'أعلى درجة خطر', 'سحوبات عالية الخطورة', 'محظور']
-    ];
-    for (const user of users) {
-      const risk = riskByUser.get(String(user._id)) || {};
-      rows.push([user.email, user.kycStatus || 'not_started', user.kycCountry, user.kycDocumentType, user.kycSubmittedAt?.toISOString?.() || '', user.kycReviewedAt?.toISOString?.() || '', user.kycReviewedBy?.email || '', user.kycReason, risk.maxRiskScore || 0, risk.highRiskCount || 0, user.isBanned ? 'نعم' : 'لا']);
-    }
-    const csv = rows.map(row => row.map(csvCell).join(',')).join('\r\n');
-    res.set({ 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="operix-compliance-${new Date().toISOString().slice(0, 10)}.csv"`, 'Cache-Control': 'no-store' });
-    await createAudit(req, 'export_compliance_report', null, { count: users.length, kycStatus: req.query.kycStatus || 'all' });
-    res.send(`\ufeff${csv}`);
-  } catch (error) {
-    res.status(500).json({ error: 'تعذر تصدير تقرير الامتثال' });
-  }
-}
-
-async function reviewUserKyc(req, res) {
-  try {
-    const { status, notes } = req.body;
-    const validStatuses = ['not_started', 'pending', 'verified', 'rejected'];
-    if (!validStatuses.includes(status)) return res.status(400).json({ error: 'حالة KYC غير صالحة' });
-
-    if (dataAccess.isSupabaseRuntime()) {
-      const user = await dataAccess.user.findById(req.params.userId);
-      if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
-      const userId = user.id || user._id;
-      const reviewNotes = String(notes || '').trim().slice(0, 500);
-      const kycReason = status === 'rejected' ? (reviewNotes.slice(0, 200) || 'الوثيقة غير مكتملة أو غير واضحة') : '';
-      const updates = {
-        kycStatus: status,
-        kycReviewedAt: new Date(),
-        kycReviewedBy: req.user?.id || req.user?._id || null,
-        kycNotes: reviewNotes,
-        kycReason
-      };
-      if (status === 'pending' && !user.kycSubmittedAt) updates.kycSubmittedAt = new Date();
-      const updatedUser = await dataAccess.user.updateOne({ id: userId }, { $set: updates });
-      const title = status === 'verified' ? 'تم اعتماد توثيق هويتك' : status === 'rejected' ? 'تحتاج وثائق KYC إلى تحديث' : 'تم تحديث حالة توثيق هويتك';
-      const body = status === 'verified' ? 'تمت الموافقة على مستندات التحقق الخاصة بك.' : status === 'rejected' ? (kycReason || 'يرجى مراجعة الملاحظات وإرسال وثائق واضحة مجدداً.') : 'تم تحديث حالة طلب التحقق الخاص بك.';
-      const notification = await dataAccess.notification.create({ userId, title, body, type: 'system' });
-      await createAudit(req, 'review_user_kyc', String(userId), { oldStatus: user.kycStatus, newStatus: status, notes: reviewNotes });
-      await emitUserDataChanged(userId, 'kyc_reviewed');
-      return res.json({ success: true, message: status === 'verified' ? 'تم اعتماد KYC بنجاح' : status === 'rejected' ? 'تم رفض KYC بنجاح' : 'تم تحديث حالة KYC', user: sanitizeAdminUserDetail(updatedUser || { ...user, ...updates }), notificationId: notification?.id || notification?._id || null });
-    }
-
-    const user = await User.findById(req.params.userId);
-    if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
-
-    const previousStatus = user.kycStatus;
-    user.kycStatus = status;
-    user.kycReviewedAt = new Date();
-    user.kycReviewedBy = req.user._id;
-    user.kycNotes = String(notes || '').trim().slice(0, 500);
-    if (status === 'rejected') user.kycReason = String(notes || '').trim().slice(0, 200) || 'الوثيقة غير مكتملة أو غير واضحة';
-    else user.kycReason = '';
-    if (status === 'pending' && !user.kycSubmittedAt) user.kycSubmittedAt = new Date();
-
-    await user.save();
-    await createAudit(req, 'review_user_kyc', user._id.toString(), { oldStatus: previousStatus, newStatus: status, notes: user.kycNotes });
-    const notification = await Notification.create({
-      userId: user._id,
-      title: status === 'verified' ? 'تم اعتماد توثيق هويتك' : status === 'rejected' ? 'تحتاج وثائق KYC إلى تحديث' : 'تم تحديث حالة توثيق هويتك',
-      body: status === 'verified' ? 'تمت الموافقة على مستندات التحقق الخاصة بك.' : status === 'rejected' ? (user.kycReason || 'يرجى مراجعة الملاحظات وإرسال وثائق واضحة مجدداً.') : 'تم تحديث حالة طلب التحقق الخاص بك.',
-      type: 'system'
-    });
-    realtimeService.emit('notification_created', { notificationId: notification._id, title: notification.title, type: notification.type }, { userId: user._id });
-    await emitUserDataChanged(user._id, 'kyc_reviewed');
-
-    res.json({ success: true, message: status === 'verified' ? 'تم اعتماد KYC بنجاح' : status === 'rejected' ? 'تم رفض KYC بنجاح' : 'تم تحديث حالة KYC', user });
-  } catch (error) {
-    res.status(500).json({ error: 'تعذر مراجعة KYC' });
-  }
 }
 
 async function bulkToggleBan(req, res) {
@@ -1062,4 +892,4 @@ async function processScheduledBroadcasts(webpush) {
   return [];
 }
 
-module.exports = { saveVipLevel, listVipLevels, deleteVipLevel, overview, analytics, financialSummary, investmentVaultSummary, getInvestmentVaultContracts, updateInvestmentVaultContracts, listInvestmentVaults, emergencyReleaseInvestmentVault, riskSummary, kycSummary, listUsers, userDetails, streamKycDocument, complianceReport, reviewUserKyc, resetDailyTasks, toggleBan, bulkToggleBan, revokeUserSessions, verifyUserEmail, disableUserTwoFactor, updateUser, updateUserAccount, updateUserRole, updateUserTier, listWithdrawals, transactionDetails, exportTransactions, listAuditLogs, listReferrals, referralTree, withdrawalAction, bulkWithdrawalAction, gameSettings, updateGameSettings, broadcast, listBroadcasts, processScheduledBroadcasts, sendAdminAuditBroadcast };
+module.exports = { saveVipLevel, listVipLevels, deleteVipLevel, overview, analytics, financialSummary, investmentVaultSummary, getInvestmentVaultContracts, updateInvestmentVaultContracts, listInvestmentVaults, emergencyReleaseInvestmentVault, riskSummary, listUsers, userDetails, resetDailyTasks, toggleBan, bulkToggleBan, revokeUserSessions, verifyUserEmail, disableUserTwoFactor, updateUser, updateUserAccount, updateUserRole, updateUserTier, listWithdrawals, transactionDetails, exportTransactions, listAuditLogs, listReferrals, referralTree, withdrawalAction, bulkWithdrawalAction, gameSettings, updateGameSettings, broadcast, listBroadcasts, processScheduledBroadcasts, sendAdminAuditBroadcast };

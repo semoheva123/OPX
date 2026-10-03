@@ -23,6 +23,7 @@ const modelMap = {
   InvestmentVaultContract: { table: 'investment_vault_contracts' },
   Staking: { table: 'stakings' },
   DailyTaskCompletion: { table: 'daily_task_completions' },
+  CampaignPointAward: { table: 'campaign_point_awards' },
   AuditLog: { table: 'audit_logs' }
 };
 
@@ -56,7 +57,6 @@ function toCamelCaseKey(key) {
     referred_by: 'referredBy',
     wallet_address: 'walletAddress',
     wallet_network: 'walletNetwork',
-    kyc_status: 'kycStatus',
     two_factor_enabled: 'twoFactorEnabled',
     two_factor_secret: 'twoFactorSecret',
     admin_two_factor_enabled: 'adminTwoFactorEnabled',
@@ -99,6 +99,18 @@ function normalizeSupabaseResult(data) {
   if (result.id && !result._id) result._id = result.id;
 
   return result;
+}
+
+function stripLegacyUserVerificationData(user) {
+  if (!user || typeof user !== 'object') return user;
+  const fields = ['kycStatus', 'kycFullName', 'kycDocumentType', 'kycDocumentNumber', 'kycDocumentUrl', 'kycCountry', 'kycSubmittedAt', 'kycReviewedAt', 'kycReviewedBy', 'kycNotes', 'kycReason'];
+  const safeUser = { ...user };
+  fields.forEach(field => delete safeUser[field]);
+  if (safeUser.metadata && typeof safeUser.metadata === 'object') {
+    safeUser.metadata = { ...safeUser.metadata };
+    fields.forEach(field => delete safeUser.metadata[field]);
+  }
+  return safeUser;
 }
 
 function flattenMongoFilter(query = {}) {
@@ -165,7 +177,8 @@ async function supabaseFindOne(table, query = {}) {
   if (error && error.code !== 'PGRST116') {
     throw error;
   }
-  const result = normalizeSupabaseResult(data || null);
+  let result = normalizeSupabaseResult(data || null);
+  if (table === 'users' && result) result = stripLegacyUserVerificationData(result);
   if (result && table === 'users' && result.id) {
     const wallet = await supabaseAdmin.from('wallet_balances').select('*').eq('user_id', result.id).maybeSingle();
     if (!wallet.error && wallet.data) {
@@ -209,7 +222,8 @@ async function supabaseFind(table, query = {}, options = {}) {
   req = applyQueryOptions(req, options);
   const { data, error } = await req;
   if (error) throw error;
-  const result = normalizeSupabaseResult(data || []);
+  let result = normalizeSupabaseResult(data || []);
+  if (table === 'users') result = result.map(stripLegacyUserVerificationData);
   if (table === 'users' && result.length) {
     const ids = result.map(item => item.id || item._id).filter(Boolean);
     const wallets = await supabaseAdmin.from('wallet_balances').select('*').in('user_id', ids);
@@ -526,6 +540,7 @@ const dataAccess = {
   investmentVaultContract: createRepository('InvestmentVaultContract'),
   staking: createRepository('Staking'),
   dailyTaskCompletion: createRepository('DailyTaskCompletion'),
+  campaignPointAward: createRepository('CampaignPointAward'),
   auditLog: createRepository('AuditLog'),
   transaction: {
     async create(data) {

@@ -115,7 +115,6 @@ async function withdrawSupabase(req, res) {
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     const fullFeatureAccess = hasFullFeatureAccess(user);
     if (!fullFeatureAccess && !user.emailVerified) return res.status(400).json({ error: 'يجب تأكيد بريدك الإلكتروني قبل طلب السحب' });
-    if (!fullFeatureAccess && user.kycStatus !== 'verified') return res.status(400).json({ error: `يجب إكمال توثيق الهوية قبل السحب. الحالة الحالية: ${user.kycStatus || 'not_started'}` });
     if (!fullFeatureAccess && (!user.twoFactorEnabled || !user.twoFactorSecret)) return res.status(400).json({ error: 'يجب تفعيل المصادقة الثنائية قبل طلب السحب' });
     if (!fullFeatureAccess && (!twoFactorCode || !verifySync({ token: String(twoFactorCode).trim(), secret: user.twoFactorSecret }).valid)) return res.status(400).json({ error: 'رمز المصادقة الثنائية غير صحيح' });
     if (!fullFeatureAccess && (!user.walletAddress || user.walletAddress.trim() !== walletAddress.trim())) return res.status(400).json({ error: 'عنوان المحفظة لا يطابق العنوان المثبت في حسابك' });

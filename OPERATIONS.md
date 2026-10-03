@@ -11,7 +11,7 @@
 - Configure alerts for repeated login failures, withdrawal backlog, failed email delivery, and health-check failures.
 - Put the app behind HTTPS and a reverse proxy with rate limiting and secure headers.
 - Replace the localhost URLs in `sitemap.xml` and `robots.txt` with the real canonical domain before deployment.
-- Run a full production smoke test: authentication, wallet flow, KYC, withdrawal, rewards, admin operations, and realtime updates.
+- Run a full production smoke test: authentication, wallet flow, withdrawal, rewards, admin operations, and realtime updates.
 
 ## Suggested checks
 

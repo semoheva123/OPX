@@ -40,7 +40,7 @@ function safeUser(user) {
   const paidFeatureAccess = hasPaidFeatureAccess(user);
   return {
     _id: user._id, email: user.email, emailVerified: user.emailVerified, role: user.role, tierCode: user.tierCode,
-    assetWallet: user.assetWallet, todayCompletedTasks: user.todayCompletedTasks,
+    assetWallet: user.assetWallet, todayCompletedTasks: user.todayCompletedTasks, campaignPoints: Number(user.campaignPoints || 0),
     referralCode: user.referralCode, referredBy: user.referredBy,
     walletAddress: user.walletAddress, isBanned: user.isBanned, wallet: user.wallet,
     USDT_balance: user.USDT_balance, OPX_balance: user.OPX_balance, paidFeatureAccess,

@@ -45,94 +45,6 @@ async function setWalletAddress(req, res) {
   } catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
 }
 
-async function submitKyc(req, res) {
-  try {
-    const {
-      fullName,
-      documentType,
-      documentNumber,
-      country,
-      documentUrl,
-      documentImage
-    } = req.body || {};
-
-    const safeFullName = String(fullName || '').trim();
-    const safeDocumentNumber = String(documentNumber || '').trim();
-    const safeCountry = String(country || '').trim();
-    const allowedDocumentTypes = ['national_id', 'passport', 'driver_license', 'residence_card'];
-
-    if (!safeFullName || safeFullName.length < 2 || safeFullName.length > 80) {
-      return res.status(400).json({ error: 'يرجى إدخال اسم كامل صحيح' });
-    }
-
-    if (!allowedDocumentTypes.includes(String(documentType || ''))) {
-      return res.status(400).json({ error: 'نوع الوثيقة غير صالح' });
-    }
-
-    if (!safeDocumentNumber || safeDocumentNumber.length < 4 || safeDocumentNumber.length > 50) {
-      return res.status(400).json({ error: 'رقم الوثيقة غير صالح' });
-    }
-
-    if (!safeCountry || safeCountry.length < 2 || safeCountry.length > 80) {
-      return res.status(400).json({ error: 'يرجى تحديد الدولة' });
-    }
-
-    const rawDocumentReference = String(documentUrl || documentImage || '').trim();
-    if (!rawDocumentReference) {
-      return res.status(400).json({ error: 'يرجى إرفاق صورة أو رابط الوثيقة' });
-    }
-
-    let normalizedDocumentUrl = '';
-    if (rawDocumentReference.startsWith('data:image/')) {
-      if (!/^data:image\/(jpeg|jpg|png|webp|gif|bmp|heic|heif|avif);base64,[A-Za-z0-9+/=]+$/i.test(rawDocumentReference) || rawDocumentReference.length > 2 * 1024 * 1024) {
-        return res.status(400).json({ error: 'صورة الوثيقة يجب أن تكون JPG أو PNG أو WebP أو أي صورة مدعومة وألا تتجاوز 2 ميجابايت' });
-      }
-      normalizedDocumentUrl = await imgbbStorage.uploadDataUrl(rawDocumentReference);
-      if (!normalizedDocumentUrl) return res.status(400).json({ error: 'تعذر حفظ صورة الوثيقة' });
-    } else if (/^https?:\/\//i.test(rawDocumentReference)) {
-      normalizedDocumentUrl = imgbbStorage.validateUrl(rawDocumentReference);
-      if (!normalizedDocumentUrl) return res.status(400).json({ error: 'يجب أن يكون رابط الوثيقة من ImgBB' });
-    } else {
-      return res.status(400).json({ error: 'رابط أو صورة الوثيقة غير صالحة' });
-    }
-
-    const user = await dataAccess.user.findById(req.user.id);
-    if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
-
-    const updated = await dataAccess.user.updateOne({ id: req.user.id }, {
-      kycFullName: safeFullName,
-      kycDocumentType: String(documentType),
-      kycDocumentNumber: safeDocumentNumber,
-      kycCountry: safeCountry,
-      kycDocumentUrl: normalizedDocumentUrl,
-      kycStatus: 'pending',
-      kycSubmittedAt: new Date(),
-      kycReviewedAt: null,
-      kycNotes: '',
-      kycReason: ''
-    });
-
-    res.json({
-      success: true,
-      message: 'تم إرسال طلب التوثيق بنجاح وسيتم مراجعته من الإدارة',
-      user: {
-        kycFullName: updated.kycFullName,
-        kycDocumentType: updated.kycDocumentType,
-        kycDocumentNumber: updated.kycDocumentNumber,
-        kycCountry: updated.kycCountry,
-        kycDocumentUrl: updated.kycDocumentUrl,
-        kycStatus: updated.kycStatus,
-        kycSubmittedAt: updated.kycSubmittedAt
-      }
-    });
-  } catch (err) {
-    console.error('Submit KYC error:', err);
-    if (err.statusCode === 503) return res.status(503).json({ error: 'رفع الصور إلى ImgBB غير مهيأ حالياً' });
-    if (err.statusCode === 502) return res.status(502).json({ error: 'تعذر رفع الصورة إلى ImgBB' });
-    res.status(500).json({ error: 'حدث خطأ أثناء إرسال طلب التوثيق' });
-  }
-}
-
 async function updateProfileImage(req, res) {
   try {
     const { profileImage } = req.body;
@@ -189,6 +101,20 @@ async function getReferrals(req, res) {
     const activeReferrals = referrals.filter(referral => !referral.isBanned && Number(referral.wallet?.totalDeposits || 0) > 0).length;
     res.json({ success: true, referralCode: currentUser.referralCode, referredBy: currentUser.referredBy || null, totalReferrals: referrals.length, activeReferrals, referrals });
   } catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
+}
+
+async function getCampaignPoints(req, res) {
+  try {
+    const user = await dataAccess.user.findById(req.user.id);
+    if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
+    const awards = await dataAccess.campaignPointAward.find(
+      { referrerId: req.user.id },
+      { sort: { createdAt: -1 }, limit: 100, select: 'levelNumber tierCode points createdAt' }
+    );
+    res.json({ success: true, points: Math.max(0, Number(user.campaignPoints) || 0), awards });
+  } catch (error) {
+    res.status(500).json({ error: 'تعذر تحميل نقاط الحملة' });
+  }
 }
 
 async function getTeamNetwork(req, res) {
@@ -402,4 +328,4 @@ async function subscribePush(req, res) {
   } catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
 }
 
-module.exports = { getProfile, setWalletAddress, submitKyc, updateProfileImage, updateSocialProfile, getReferrals, getTeamNetwork, getGrowth, getUpgradeHistory, getHomeSummary, sendTwoFactorCode, toggleTwoFactor, setupTwoFactor, confirmTwoFactor, changePassword, subscribePush };
+module.exports = { getProfile, setWalletAddress, updateProfileImage, updateSocialProfile, getReferrals, getCampaignPoints, getTeamNetwork, getGrowth, getUpgradeHistory, getHomeSummary, sendTwoFactorCode, toggleTwoFactor, setupTwoFactor, confirmTwoFactor, changePassword, subscribePush };

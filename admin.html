@@ -215,14 +215,10 @@ body.modal-open{overflow:hidden}
                 <div class="glass-card p-5 rounded-3xl border border-slate-800"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-white text-sm">ملخص مالي</h3><i class="fa-solid fa-sack-dollar text-emerald-300"></i></div><div id="overviewFinancialSummary" class="space-y-2"></div></div>
                 <div class="glass-card p-5 rounded-3xl border border-slate-800"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-white text-sm">تنبيهات المخاطر</h3><i class="fa-solid fa-shield-heart text-amber-300"></i></div><div id="overviewRiskAlerts" class="space-y-2"></div></div>
             </div>
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 gap-4">
                 <div class="glass-card p-5 rounded-3xl border border-slate-800"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-white text-sm">مؤشر المخاطر</h3><button onclick="loadOverviewRiskSummary()" class="text-[10px] text-amber-400 hover:underline">تحديث</button></div><div id="overviewRiskSummary" class="space-y-2"></div></div>
-                <div class="glass-card p-5 rounded-3xl border border-slate-800"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-white text-sm">KYC & التحقق</h3><button onclick="loadOverviewKycSummary()" class="text-[10px] text-cyan-400 hover:underline">تحديث</button></div><div id="overviewKycSummary" class="space-y-2"></div></div>
             </div>
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div class="glass-card p-5 rounded-3xl border border-slate-800"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-white text-sm">آخر نشاط مالي</h3><button onclick="switchAdminTab('withdrawals')" class="text-[10px] text-amber-400 hover:underline">فتح السجل الكامل</button></div><div id="overviewRecentActivity" class="space-y-2"></div></div>
-                <div class="glass-card p-5 rounded-3xl border border-slate-800"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-white text-sm">حالة التوثيق</h3><button onclick="switchAdminTab('users')" class="text-[10px] text-cyan-400 hover:underline">فتح المستخدمين</button></div><div id="overviewKycQuickStatus" class="space-y-2"></div></div>
-            </div>
+            <div class="grid grid-cols-1 gap-4"><div class="glass-card p-5 rounded-3xl border border-slate-800"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-white text-sm">آخر نشاط مالي</h3><button onclick="switchAdminTab('withdrawals')" class="text-[10px] text-amber-400 hover:underline">فتح السجل الكامل</button></div><div id="overviewRecentActivity" class="space-y-2"></div></div></div>
         </div>
 
         <div id="admin-analytics" class="space-y-6 hide"><div class="flex justify-between items-center"><div><h2 class="text-xl font-black text-white">مركز التحليلات</h2><p class="text-[10px] text-slate-500 mt-1">آخر 30 يومًا من نشاط المنصة والسجل الأمني</p></div><div class="flex gap-2"><button onclick="exportAnalyticsCsv()" title="تصدير التحليلات" class="px-3 py-2 bg-slate-900 text-emerald-400 rounded-xl"><i class="fa-solid fa-file-csv"></i></button><button onclick="fetchAdminAnalytics()" title="تحديث التحليلات" class="px-3 py-2 bg-slate-900 text-slate-300 rounded-xl"><i class="fa-solid fa-arrows-rotate"></i></button></div></div><div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div class="glass-card p-5 rounded-2xl"><span class="text-xs text-slate-400">دخول ناجح</span><strong id="analyticsLoginSuccess" class="block text-3xl text-emerald-400 mt-2">--</strong></div><div class="glass-card p-5 rounded-2xl"><span class="text-xs text-slate-400">محاولات فاشلة</span><strong id="analyticsLoginFailed" class="block text-3xl text-rose-400 mt-2">--</strong></div><div class="glass-card p-5 rounded-2xl"><span class="text-xs text-slate-400">بريد موثق</span><strong id="analyticsEmailVerified" class="block text-3xl text-cyan-400 mt-2">--</strong></div></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-4"><div class="glass-card p-5 rounded-2xl"><h3 class="font-bold text-white text-sm mb-4">توزيع الأدوار</h3><div id="analyticsRoles" class="space-y-3"></div></div><div class="glass-card p-5 rounded-2xl"><h3 class="font-bold text-white text-sm mb-4">نشاط المعاملات اليومية</h3><div id="analyticsDaily" class="space-y-2 max-h-72 overflow-y-auto"></div></div></div></div>
@@ -233,12 +229,11 @@ body.modal-open{overflow:hidden}
                 <div class="flex items-center gap-2"><h2 class="text-xl font-black text-white">إدارة حسابات الأعضاء</h2><button onclick="exportUsersCsv()" title="تصدير CSV" class="px-3 py-2 bg-slate-900 text-emerald-400 rounded-xl"><i class="fa-solid fa-file-csv"></i></button></div>
                 <input type="text" id="txtSearchUser" onkeydown="if(event.key === 'Enter') fetchUsersList(1)" placeholder="ابحث بالبريد أو كود الإحالة..." class="bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500 w-full sm:w-64">
             </div>
-            <div class="grid grid-cols-2 sm:grid-cols-6 gap-2">
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
                 <select id="userFilterRole" onchange="fetchUsersList(1)" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white"><option value="">كل الأدوار</option><option value="user">مستخدم</option><option value="admin">مدير كامل</option><option value="financial_admin">مدير مالي</option><option value="support_admin">مدير دعم</option><option value="monitor">مراقب</option></select>
                 <input id="userFilterTier" onkeydown="if(event.key === 'Enter') fetchUsersList(1)" placeholder="المستوى A1" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white">
                 <select id="userFilterStatus" onchange="fetchUsersList(1)" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white"><option value="">كل الحالات</option><option value="active">نشط</option><option value="banned">محظور</option></select>
                 <select id="userFilterVerified" onchange="fetchUsersList(1)" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white"><option value="">توثيق البريد</option><option value="yes">موثق</option><option value="no">غير موثق</option></select>
-                <select id="userFilterKyc" onchange="fetchUsersList(1)" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white"><option value="">كل حالات KYC</option><option value="not_started">لم يبدأ</option><option value="pending">قيد المراجعة</option><option value="verified">معتمد</option><option value="rejected">مرفوض</option></select>
                 <button onclick="fetchUsersList(1)" class="bg-amber-500/15 text-amber-300 border border-amber-500/20 rounded-xl text-[10px] font-bold"><i class="fa-solid fa-magnifying-glass ml-1"></i> بحث</button>
             </div>
             <div class="flex flex-wrap items-center gap-2"><button onclick="bulkUserAction(true)" class="px-3 py-2 bg-rose-500/15 text-rose-300 border border-rose-500/20 rounded-xl text-[10px] font-bold">حظر المحدد</button><button onclick="bulkUserAction(false)" class="px-3 py-2 bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 rounded-xl text-[10px] font-bold">إلغاء حظر المحدد</button><button onclick="clearUserSelection()" class="px-3 py-2 bg-slate-900 text-slate-300 rounded-xl text-[10px]">إلغاء التحديد</button><span id="userSelectionCount" class="text-[10px] text-slate-500">لم يتم تحديد مستخدمين</span></div>
@@ -275,7 +270,7 @@ body.modal-open{overflow:hidden}
         <!-- تبويب: طلبات السحب والشحن -->
         <div id="admin-withdrawals" class="space-y-6 hide">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div class="flex items-center gap-2"><div><h2 class="text-xl font-black text-white">إدارة المعاملات المالية</h2><p class="text-[10px] text-slate-500 mt-1">الإيداعات المتحققة من blockchain تعتمد تلقائيًا؛ المعلّق فقط يحتاج قرارًا إداريًا.</p></div><button onclick="exportTransactionsCsv()" title="تصدير CSV" class="px-3 py-2 bg-slate-900 text-emerald-400 rounded-xl"><i class="fa-solid fa-file-csv"></i></button><button onclick="exportComplianceReport()" title="تصدير تقرير الامتثال" class="px-3 py-2 bg-cyan-500/15 text-cyan-300 rounded-xl"><i class="fa-solid fa-shield-halved"></i></button></div>
+                <div class="flex items-center gap-2"><div><h2 class="text-xl font-black text-white">إدارة المعاملات المالية</h2><p class="text-[10px] text-slate-500 mt-1">الإيداعات المتحققة من blockchain تعتمد تلقائيًا؛ المعلّق فقط يحتاج قرارًا إداريًا.</p></div><button onclick="exportTransactionsCsv()" title="تصدير CSV" class="px-3 py-2 bg-slate-900 text-emerald-400 rounded-xl"><i class="fa-solid fa-file-csv"></i></button></div>
                 <div class="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto">
                     <input id="txSearch" onkeydown="if(event.key === 'Enter') fetchTransactionsList(1)" placeholder="بريد / هاش / محفظة" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white">
                     <input id="txFrom" type="date" onchange="fetchTransactionsList(1)" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white">
@@ -498,7 +493,6 @@ body.modal-open{overflow:hidden}
             <div class="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div class="space-y-3">
-                    <div><h4 class="text-sm font-bold text-white mb-2">KYC / التحقق</h4><div id="kycReviewPanel" class="space-y-2 text-[10px]"></div></div>
                     <div><h4 class="text-sm font-bold text-white mb-2">آخر المعاملات</h4><div id="userDetailsTransactions" class="space-y-2 text-[10px]"></div></div>
                 </div>
                 <div class="space-y-3">
@@ -796,46 +790,6 @@ body.modal-open{overflow:hidden}
             }
         }
 
-        async function loadOverviewKycSummary() {
-            const container = document.getElementById('overviewKycSummary');
-            const quick = document.getElementById('overviewKycQuickStatus');
-            if (!container && !quick) return;
-            try {
-                const response = await fetch('/api/admin/kyc-summary', { headers: adminHeaders() });
-                const data = await response.json();
-                if (!response.ok || !data.success) throw new Error(data.error || 'تعذر تحميل KYC');
-                const summary = data.summary || {};
-                const rate = Number(summary.verificationRate || 0);
-                const tone = rate >= 80 ? 'text-emerald-300' : rate >= 50 ? 'text-amber-300' : 'text-rose-300';
-                if (container) {
-                    container.innerHTML = `
-                        <div class="flex items-center justify-between gap-3">
-                            <div>
-                                <div class="text-[9px] text-slate-400">معدل الاعتماد</div>
-                                <div class="text-3xl font-black ${tone}">${rate.toFixed(1)}%</div>
-                            </div>
-                            <span class="px-2 py-1 rounded-full text-[9px] font-bold bg-cyan-500/10 text-cyan-300">${Number(summary.reviewQueue || 0)} في fila</span>
-                        </div>
-                        <div class="grid grid-cols-2 gap-2 text-[10px] text-slate-300 mt-3">
-                            <div class="rounded-xl bg-slate-950/60 p-2"><span class="text-slate-500 block">معتمد</span><b class="text-emerald-300">${Number(summary.verified || 0)}</b></div>
-                            <div class="rounded-xl bg-slate-950/60 p-2"><span class="text-slate-500 block">قيد المراجعة</span><b class="text-amber-300">${Number(summary.pending || 0)}</b></div>
-                            <div class="rounded-xl bg-slate-950/60 p-2"><span class="text-slate-500 block">مرفوض</span><b class="text-rose-300">${Number(summary.rejected || 0)}</b></div>
-                            <div class="rounded-xl bg-slate-950/60 p-2"><span class="text-slate-500 block">لم يبدأ</span><b class="text-slate-300">${Number(summary.notStarted || 0)}</b></div>
-                        </div>
-                    `;
-                }
-                if (quick) {
-                    quick.innerHTML = `
-                        <div class="rounded-xl bg-slate-950/60 p-2 text-[10px] text-slate-300"><span class="text-slate-500 block">الإجمالي</span><b class="text-white">${Number(summary.total || 0)} مستخدم</b></div>
-                        <div class="rounded-xl bg-slate-950/60 p-2 text-[10px] text-slate-300"><span class="text-slate-500 block">قائمة الانتظار</span><b class="text-amber-300">${Number(summary.reviewQueue || 0)} يحتاج مراجعة</b></div>
-                    `;
-                }
-            } catch (error) {
-                if (container) container.innerHTML = '<div class="text-[10px] text-rose-300">تعذر تحميل KYC</div>';
-                if (quick) quick.innerHTML = '<div class="text-[10px] text-rose-300">تعذر تحميل حالة KYC</div>';
-            }
-        }
-
         async function loadOverviewFinancialSummary() {
             const container = document.getElementById('overviewFinancialSummary');
             if (!container) return;
@@ -959,7 +913,6 @@ body.modal-open{overflow:hidden}
                 await fetchAdminOverview();
                 await loadOverviewFinancialSummary();
                 await loadOverviewRiskSummary();
-                await loadOverviewKycSummary();
                 await loadRiskSignals();
                 const response = await fetch('/api/admin/analytics', { headers: adminHeaders() });
                 const data = await response.json();
@@ -986,7 +939,7 @@ body.modal-open{overflow:hidden}
 
         async function fetchUsersList(page = 1) {
             try {
-                const params = new URLSearchParams({ page, limit: 10, search: document.getElementById('txtSearchUser')?.value.trim() || '', role: document.getElementById('userFilterRole')?.value || '', tier: document.getElementById('userFilterTier')?.value.trim() || '', status: document.getElementById('userFilterStatus')?.value || '', verified: document.getElementById('userFilterVerified')?.value || '', kycStatus: document.getElementById('userFilterKyc')?.value || '' });
+                const params = new URLSearchParams({ page, limit: 10, search: document.getElementById('txtSearchUser')?.value.trim() || '', role: document.getElementById('userFilterRole')?.value || '', tier: document.getElementById('userFilterTier')?.value.trim() || '', status: document.getElementById('userFilterStatus')?.value || '', verified: document.getElementById('userFilterVerified')?.value || '' });
                 const res = await fetch(`/api/admin/users?${params.toString()}`, {
                     headers: adminHeaders()
                 });
@@ -1032,18 +985,10 @@ body.modal-open{overflow:hidden}
         function exportReferralsCsv() { exportCsv([['البريد', 'كود الإحالة', 'أحاله', 'المستوى', 'نشطة'], ...allReferralsData.map(item => [item.email, item.referralCode, item.referredBy, Number(item.wallet?.totalDeposits || 0) > 0 ? item.tierCode : 'غير مفعّل', Number(item.wallet?.totalDeposits || 0) > 0 ? 'نعم' : 'لا'])], 'referrals.csv'); }
         function exportUsersCsv() { exportCsv([['البريد', 'المستوى', 'الرصيد', 'الحالة'], ...allUsersData.map(item => [item.email, Number(item.wallet?.totalDeposits || 0) > 0 ? item.tierCode : 'غير مفعّل', item.wallet?.balance || 0, item.isBanned ? 'محظور' : 'نشط'])], 'users.csv'); }
         async function exportTransactionsCsv() { const params = new URLSearchParams({ status: document.getElementById('filterTxStatus')?.value || 'all', type: document.getElementById('filterTxType')?.value || 'all', network: document.getElementById('filterTxNetwork')?.value || '', search: document.getElementById('txSearch')?.value.trim() || '', from: document.getElementById('txFrom')?.value || '', to: document.getElementById('txTo')?.value || '' }); const response = await fetch(`/api/admin/withdrawals/export?${params}`, { headers: adminHeaders() }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر تصدير المعاملات'); exportCsv([['المستخدم', 'النوع', 'المبلغ', 'الشبكة', 'الهاش', 'المحفظة', 'الحالة', 'التاريخ'], ...(data.transactions || []).map(item => [item.userId?.email || '-', item.type, item.amount, item.network || '-', item.txHash || '-', item.walletAddress || '-', item.status, new Date(item.createdAt).toISOString()])], 'transactions.csv'); }
-        async function exportComplianceReport() { const params = new URLSearchParams({ kycStatus: document.getElementById('userFilterKyc')?.value || '', from: document.getElementById('txFrom')?.value || '', to: document.getElementById('txTo')?.value || '' }); const response = await fetch(`/api/admin/compliance-report?${params}`, { headers: adminHeaders() }); if (!response.ok) { const data = await response.json(); return showToast(data.error || 'تعذر تصدير تقرير الامتثال'); } const blob = await response.blob(); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `operix-compliance-${new Date().toISOString().slice(0, 10)}.csv`; link.click(); URL.revokeObjectURL(link.href); showToast('تم تصدير تقرير الامتثال بنجاح'); }
-
-        function kycStatusBadge(status) {
-            const labelMap = { not_started: 'لم يبدأ', pending: 'قيد المراجعة', verified: 'معتمد', rejected: 'مرفوض' };
-            const colorMap = { not_started: 'bg-slate-500/20 text-slate-300', pending: 'bg-amber-500/20 text-amber-300', verified: 'bg-emerald-500/20 text-emerald-300', rejected: 'bg-rose-500/20 text-rose-300' };
-            return `<span class="px-2 py-0.5 rounded ${colorMap[status] || 'bg-slate-500/20 text-slate-300'} text-[10px] font-bold">${labelMap[status] || 'غير معروف'}</span>`;
-        }
-
         function renderUsersTable(users) {
             const tbody = document.getElementById('tblUsersBody');
             if(!users || users.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-slate-500">لا يوجد مستخدمين لعرضهم</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500">لا يوجد مستخدمين لعرضهم</td></tr>`;
                 return;
             }
             tbody.innerHTML = users.map(u => {
@@ -1060,7 +1005,6 @@ body.modal-open{overflow:hidden}
                         <td class="p-4 text-emerald-400 font-mono font-bold">${Number(u.wallet?.balance || 0).toFixed(2)} $</td>
                         <td class="p-4">${statusBadge}</td>
                         <td class="p-4 text-slate-400">${u.todayCompletedTasks || 0}</td>
-                        <td class="p-4">${kycStatusBadge(u.kycStatus || 'not_started')}</td>
                         <td class="p-4 space-x-2 space-x-reverse">
                             <button onclick="showUserDetails('${u._id}')" class="px-3 py-1 bg-cyan-600/20 text-cyan-300 rounded-lg text-[10px] font-bold">التفاصيل</button>
                             <button data-action-permission="finance" onclick="openEditUser('${u._id}', '${u.tierCode || 'A1'}', ${u.wallet?.balance || 0}, '${u.role || 'user'}')" class="px-3 py-1 bg-blue-600/20 text-blue-400 rounded-lg text-[10px] font-bold hover:bg-blue-600/40 transition-all">إدارة مالية</button>
@@ -1088,7 +1032,6 @@ body.modal-open{overflow:hidden}
             const transactions = document.getElementById('userDetailsTransactions');
             const audit = document.getElementById('userDetailsAudit');
             const sessions = document.getElementById('userDetailsSessions');
-            const kycPanel = document.getElementById('kycReviewPanel');
             summary.innerHTML = '<span class="text-slate-400">جاري التحميل...</span>';
             try {
                 const response = await fetch(`/api/admin/users/${encodeURIComponent(userId)}/details`);
@@ -1097,72 +1040,10 @@ body.modal-open{overflow:hidden}
                 const user = data.user;
                 document.getElementById('userDetailsEmail').innerText = user.email || '-';
                 summary.innerHTML = `<span class="bg-slate-950 rounded-xl p-3">المستوى<br><b class="text-amber-300">${Number(user.wallet?.totalDeposits || 0) > 0 ? escapeAdminHtml(user.tierCode || '-') : 'غير مفعّل'}</b></span><span class="bg-slate-950 rounded-xl p-3">الرصيد<br><b class="text-emerald-300">$${Number(user.wallet?.balance || 0).toFixed(2)}</b></span><span class="bg-slate-950 rounded-xl p-3">الحالة<br><b class="${user.isBanned ? 'text-rose-300' : 'text-emerald-300'}">${user.isBanned ? 'محظور' : 'نشط'}</b></span><span class="bg-slate-950 rounded-xl p-3">البريد<br><b class="text-cyan-300">${user.emailVerified ? 'موثق' : 'غير موثق'}</b></span>`;
-                const kycStatus = user.kycStatus || 'not_started';
-                const kycInfo = `
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
-                        <div class="rounded-xl bg-slate-950/60 p-3"><div class="text-[10px] text-slate-400">حالة KYC</div><div class="mt-1">${kycStatusBadge(kycStatus)}</div></div>
-                        <div class="rounded-xl bg-slate-950/60 p-3"><div class="text-[10px] text-slate-400">الاسم الكامل</div><div class="text-xs text-white mt-1">${escapeAdminHtml(user.kycFullName || 'غير مُدخل')}</div></div>
-                        <div class="rounded-xl bg-slate-950/60 p-3"><div class="text-[10px] text-slate-400">نوع الوثيقة</div><div class="text-xs text-white mt-1">${escapeAdminHtml(user.kycDocumentType || 'غير محدد')}</div></div>
-                        <div class="rounded-xl bg-slate-950/60 p-3"><div class="text-[10px] text-slate-400">رقم الوثيقة</div><div class="text-xs text-white mt-1">${escapeAdminHtml(user.kycDocumentNumber || 'غير محدد')}</div></div>
-                        <div class="rounded-xl bg-slate-950/60 p-3"><div class="text-[10px] text-slate-400">الدولة</div><div class="text-xs text-white mt-1">${escapeAdminHtml(user.kycCountry || 'غير محددة')}</div></div>
-                        <div class="rounded-xl bg-slate-950/60 p-3 md:col-span-2"><div class="text-[10px] text-slate-400">الوثيقة</div><div class="text-xs text-cyan-300 mt-1 break-all">${user.kycDocumentUrl ? (/^private:\/\//i.test(String(user.kycDocumentUrl)) ? `<button type="button" onclick="viewKycDocument('${encodeURIComponent(user._id)}')" class="underline text-cyan-300 hover:text-cyan-200">عرض الملف المحمي</button>` : 'مرجع وثيقة غير مدعوم') : 'لا توجد وثيقة'}</div></div>
-                        <div class="rounded-xl bg-slate-950/60 p-3"><div class="text-[10px] text-slate-400">تاريخ الإرسال</div><div class="text-xs text-white mt-1">${user.kycSubmittedAt ? escapeAdminHtml(new Date(user.kycSubmittedAt).toLocaleString('ar')) : 'غير متوفر'}</div></div>
-                        <div class="rounded-xl bg-slate-950/60 p-3"><div class="text-[10px] text-slate-400">آخر مراجعة</div><div class="text-xs text-white mt-1">${user.kycReviewedAt ? escapeAdminHtml(new Date(user.kycReviewedAt).toLocaleString('ar')) : 'لم تتم المراجعة'}</div></div>
-                        <div class="rounded-xl bg-slate-950/60 p-3 md:col-span-2"><div class="text-[10px] text-slate-400">ملاحظات المراجعة</div><div class="text-xs text-slate-300 mt-1 whitespace-pre-wrap">${escapeAdminHtml(user.kycNotes || user.kycReason || 'لا توجد ملاحظات بعد')}</div></div>
-                    </div>
-                `;
-                if (kycPanel) kycPanel.innerHTML = kycInfo + `
-                    <div class="mt-4 space-y-3">
-                        <div class="grid grid-cols-2 gap-2">
-                            <select id="kycReviewStatus" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white">
-                                <option value="pending" ${kycStatus === 'pending' ? 'selected' : ''}>قيد المراجعة</option>
-                                <option value="verified" ${kycStatus === 'verified' ? 'selected' : ''}>معتمد</option>
-                                <option value="rejected" ${kycStatus === 'rejected' ? 'selected' : ''}>مرفوض</option>
-                                <option value="not_started" ${kycStatus === 'not_started' ? 'selected' : ''}>لم يبدأ</option>
-                            </select>
-                            <button onclick="reviewCurrentUserKyc()" class="px-3 py-2 bg-cyan-500/15 text-cyan-300 border border-cyan-500/20 rounded-xl text-[10px] font-bold">تحديث حالة KYC</button>
-                        </div>
-                        <textarea id="kycReviewNotes" rows="3" placeholder="أدخل ملاحظات المراجعة أو سبب الرفض..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">${escapeAdminHtml(user.kycNotes || '')}</textarea>
-                    </div>
-                `;
                 transactions.innerHTML = data.transactions?.length ? data.transactions.map(item => `<div class="flex justify-between gap-3 border-b border-slate-800 pb-2"><span>${escapeAdminHtml(item.type)} · ${escapeAdminHtml(item.status)}</span><b class="text-amber-300">${Number(item.amount || 0).toFixed(2)} $</b></div>`).join('') : '<span class="text-slate-500">لا توجد معاملات</span>';
                 audit.innerHTML = data.auditLogs?.length ? data.auditLogs.map(item => `<div class="border-b border-slate-800 pb-2"><b class="text-cyan-300">${escapeAdminHtml(item.action)}</b><span class="text-slate-500 mr-2">${escapeAdminHtml(item.adminId?.email || 'مدير')} · ${escapeAdminHtml(new Date(item.createdAt).toLocaleString('ar'))}</span><div class="text-slate-400 mt-1">${formatAuditDetails(item.details || {})}</div></div>`).join('') : '<span class="text-slate-500">لا توجد تعديلات مسجلة</span>';
                 sessions.innerHTML = data.sessions?.length ? data.sessions.map(item => `<div class="border-b border-slate-800 pb-2"><span class="text-slate-300">${escapeAdminHtml(item.userAgent || 'جهاز غير معروف')}</span><span class="block text-slate-500">${escapeAdminHtml(item.ip || '-')} · آخر نشاط ${escapeAdminHtml(new Date(item.lastSeenAt).toLocaleString('ar'))}</span></div>`).join('') : '<span class="text-slate-500">لا توجد جلسات نشطة</span>';
             } catch (error) { summary.innerHTML = `<span class="text-rose-300">${escapeAdminHtml(error.message)}</span>`; }
-        }
-        async function viewKycDocument(userId) {
-            const previewWindow = window.open('', '_blank');
-            if (!previewWindow) return showToast('يرجى السماح بالنوافذ المنبثقة لعرض الوثيقة');
-            previewWindow.document.write('<title>جاري تحميل وثيقة KYC</title><p style="font-family: sans-serif; padding: 24px;">جاري تحميل الوثيقة...</p>');
-            try {
-                const response = await fetch(`/api/admin/users/${userId}/kyc-document`, { headers: adminHeaders(), credentials: 'same-origin' });
-                if (!response.ok) throw new Error(response.status === 401 ? 'انتهت جلسة الإدارة، يرجى تسجيل الدخول مجددًا' : 'تعذر تحميل وثيقة KYC');
-                const blob = await response.blob();
-                const objectUrl = URL.createObjectURL(blob);
-                previewWindow.location.href = objectUrl;
-                setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
-            } catch (error) {
-                previewWindow.close();
-                showToast(error.message);
-            }
-        }
-        async function reviewCurrentUserKyc() {
-            if (!currentDetailsUserId) return;
-            const status = document.getElementById('kycReviewStatus')?.value || 'pending';
-            const notes = document.getElementById('kycReviewNotes')?.value || '';
-            try {
-                const response = await fetch(`/api/admin/users/${encodeURIComponent(currentDetailsUserId)}/kyc-review`, {
-                    method: 'POST',
-                    headers: adminJsonHeaders(),
-                    body: JSON.stringify({ status, notes })
-                });
-                const data = await response.json();
-                if (!response.ok) throw new Error(data.error || 'تعذر تحديث حالة KYC');
-                showToast(data.message || 'تم تحديث حالة KYC');
-                loadUserDetails(currentDetailsUserId);
-                fetchUsersList(usersCurrentPage);
-                loadOverviewKycSummary();
-            } catch (error) { showToast(error.message); }
         }
         async function revokeDetailsSessions() { if (!currentDetailsUserId || !await showAdminConfirm('سيتم إنهاء جلسات المستخدم الحالية. هل تتابع؟', 'إنهاء الجلسات')) return; const response = await fetch(`/api/admin/users/${encodeURIComponent(currentDetailsUserId)}/revoke-sessions`, { method: 'POST' }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر إنهاء الجلسات'); showToast(data.message || 'تم إنهاء الجلسات'); loadUserDetails(currentDetailsUserId); }
         async function verifyDetailsEmail() { if (!currentDetailsUserId) return; const response = await fetch(`/api/admin/users/${encodeURIComponent(currentDetailsUserId)}/verify-email`, { method: 'POST' }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر توثيق البريد'); showToast(data.message || 'تم توثيق البريد'); loadUserDetails(currentDetailsUserId); }

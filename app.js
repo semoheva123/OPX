@@ -1316,8 +1316,8 @@ function updateProfileUI() {
     updateTierDisplay();
     updateProfileAvatar(currentUserData.profileImage);
     updateVerificationStatus(currentUserData.twoFactorEnabled);
-    updateKycProfileUI();
     updateProfileSecuritySummary();
+    updateCampaignPointsUI();
 
     // البريد واسم المستخدم
     const displayNameEl = document.getElementById('lblProfileDisplayName');
@@ -1342,78 +1342,78 @@ function updateProfileUI() {
     if (totalWithdrawnEl) totalWithdrawnEl.innerText = `$${parseFloat(totalWithdrawn).toFixed(2)}`;
 }
 
-function updateKycProfileUI() {
-    const statusBadge = document.getElementById('kycProfileStatusBadge');
-    const infoText = document.getElementById('kycProfileInfo');
-    const fullNameInput = document.getElementById('kycFullNameInput');
-    const documentTypeInput = document.getElementById('kycDocumentTypeInput');
-    const documentNumberInput = document.getElementById('kycDocumentNumberInput');
-    const countryInput = document.getElementById('kycCountryInput');
-    const documentUrlInput = document.getElementById('kycDocumentUrlInput');
-    const documentFileInput = document.getElementById('kycDocumentFileInput');
-    const submitButton = document.getElementById('btnSubmitUserKyc');
-    if (!statusBadge && !infoText && !fullNameInput && !documentTypeInput && !documentNumberInput && !countryInput && !documentUrlInput && !submitButton) return;
+function updateCampaignPointsUI() {
+    const points = Math.max(0, Number(currentUserData?.campaignPoints) || 0);
+    const balance = document.getElementById('campaignPointsBalance');
+    const nextReward = document.getElementById('campaignPointsNextReward');
+    const progress = document.getElementById('campaignPointsProgress');
+    if (balance) balance.innerText = points.toLocaleString('ar');
+    if (!nextReward || !progress) return;
 
-    const status = currentUserData?.kycStatus || 'not_started';
-    const lookup = {
-        not_started: { label: 'لم يبدأ', className: 'bg-slate-800 text-slate-300' },
-        pending: { label: 'قيد المراجعة', className: 'bg-amber-500/15 text-amber-300 border border-amber-500/20' },
-        verified: { label: 'معتمد', className: 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/20' },
-        rejected: { label: 'مرفوض', className: 'bg-rose-500/15 text-rose-300 border border-rose-500/20' }
-    };
-
-    if (statusBadge) {
-        const config = lookup[status] || lookup.not_started;
-        statusBadge.className = `text-[10px] font-bold px-2.5 py-1 rounded-full ${config.className}`;
-        statusBadge.innerText = config.label;
+    const milestones = [
+        { points: 200, label: 'هاتف Xiaomi' },
+        { points: 350, label: 'هاتف Samsung Galaxy' },
+        { points: 500, label: 'iPhone Duo' }
+    ];
+    const next = milestones.find(item => points < item.points);
+    if (!next) {
+        nextReward.innerText = 'وصلت إلى عتبة 500 نقطة؛ اعتماد الجائزة يخضع لشروط الحملة وترتيبها.';
+        progress.style.width = '100%';
+        return;
     }
+    const nextIndex = milestones.indexOf(next);
+    const previousPoints = nextIndex ? milestones[nextIndex - 1].points : 0;
+    const segmentProgress = Math.max(0, Math.min(100, ((points - previousPoints) / (next.points - previousPoints)) * 100));
+    nextReward.innerText = `باقي ${Math.max(0, next.points - points)} نقطة لعتبة ${next.label} (${next.points} نقطة).`;
+    progress.style.width = `${segmentProgress}%`;
+}
 
-    const statusText = {
-        not_started: 'قم بإرسال البيانات لتوثيق حسابك ومراجعتها من الإدارة.',
-        pending: 'تم إرسال طلبك بنجاح. جاري مراجعة الوثائق من الإدارة.',
-        verified: 'تم اعتماد حسابك بنجاح. يمكنك استخدام جميع ميزات المنصة بدون قيود.',
-        rejected: 'تم رفض الوثائق الحالية. أعد إرسال بيانات جديدة أو عدّل الوثيقة وقدمها مجددًا.'
-    };
-    if (infoText) infoText.innerText = statusText[status] || statusText.not_started;
+async function loadCampaignPointHistory() {
+    const list = document.getElementById('campaignPointsHistory');
+    const token = localStorage.getItem('token');
+    if (!list || !token) return;
+    try {
+        const response = await fetch('/api/user/campaign-points', { headers: { Authorization: `Bearer ${token}` } });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'تعذر تحميل نقاط الحملة');
+        if (currentUserData) currentUserData.campaignPoints = Math.max(0, Number(data.points) || 0);
+        updateCampaignPointsUI();
+        const levelLabels = { 1: 'المستوى الأول', 2: 'المستوى الثاني', 3: 'المستوى الثالث' };
+        list.innerHTML = data.awards?.length
+            ? data.awards.slice(0, 5).map(award => `<div class="flex items-center justify-between gap-2 border-t border-slate-800/70 pt-2"><span>${levelLabels[Number(award.levelNumber)] || 'مستوى'} · ${new Date(award.createdAt).toLocaleDateString('ar')}</span><strong class="text-emerald-300">+${Number(award.points) || 0}</strong></div>`).join('')
+            : '<span>ستظهر هنا نقاط إحالاتك بعد تفعيل مستوياتها.</span>';
+    } catch (error) {
+        list.innerHTML = `<span class="text-rose-300">${escapeAiHtml(error.message)}</span>`;
+    }
+}
 
-    const hasKycDraft = [fullNameInput, documentTypeInput, documentNumberInput, countryInput, documentUrlInput, documentFileInput]
-        .some(input => input?.dataset.kycDirty === 'true');
-    if (!hasKycDraft || status === 'pending' || status === 'verified') {
-        if (fullNameInput) fullNameInput.value = currentUserData?.kycFullName || '';
-        if (documentTypeInput) documentTypeInput.value = currentUserData?.kycDocumentType || '';
-        if (documentNumberInput) documentNumberInput.value = currentUserData?.kycDocumentNumber || '';
-        if (countryInput) countryInput.value = currentUserData?.kycCountry || '';
-        if (documentUrlInput) documentUrlInput.value = currentUserData?.kycDocumentUrl || '';
+async function loadCampaignLeaderboard() {
+    const list = document.getElementById('campaignLeaderboardList');
+    if (!list) return;
+    list.innerHTML = '<p class="text-slate-500">جارٍ تحميل ترتيب النقاط...</p>';
+    try {
+        const response = await fetch('/api/campaign/leaderboard');
+        if (!response.ok) throw new Error('CAMPAIGN_LEADERBOARD_UNAVAILABLE');
+        let data;
+        try {
+            data = await response.json();
+        } catch (parseError) {
+            throw new Error('CAMPAIGN_LEADERBOARD_UNAVAILABLE');
+        }
+        if (!data?.success || !Array.isArray(data.leaderboard)) throw new Error('CAMPAIGN_LEADERBOARD_UNAVAILABLE');
+        list.innerHTML = data.leaderboard?.length
+            ? data.leaderboard.map(item => `<div class="flex items-center justify-between gap-3 rounded-lg bg-slate-900/60 px-3 py-2"><span class="flex min-w-0 items-center gap-2"><b class="text-amber-300">${Number(item.rank)}.</b><span class="truncate">${escapeAiHtml(item.email)}</span></span><strong class="shrink-0 text-cyan-200">${Number(item.points) || 0} نقطة</strong></div>`).join('')
+            : '<p class="text-slate-500">لا توجد نقاط مسجلة بعد.</p>';
+    } catch (error) {
+        list.innerHTML = '<p class="text-slate-400">ترتيب الحملة غير متاح الآن. حاول مرة أخرى لاحقًا.</p>';
     }
-    if (submitButton) {
-        const locked = status === 'pending' || status === 'verified';
-        [fullNameInput, documentNumberInput, countryInput, documentUrlInput].forEach(input => {
-            if (!input) return;
-            input.readOnly = locked;
-            input.classList.toggle('opacity-60', locked);
-            input.classList.toggle('cursor-not-allowed', locked);
-        });
-        [documentTypeInput, documentFileInput].forEach(input => {
-            if (!input) return;
-            input.disabled = locked;
-            input.classList.toggle('opacity-60', locked);
-            input.classList.toggle('cursor-not-allowed', locked);
-        });
-        submitButton.disabled = locked;
-        submitButton.classList.toggle('opacity-50', locked);
-        submitButton.classList.toggle('cursor-not-allowed', locked);
-        submitButton.innerText = status === 'verified' ? 'تم اعتماد التوثيق' : status === 'pending' ? 'طلب التوثيق قيد المراجعة' : 'إرسال طلب التوثيق';
-    }
-    const kycSection = document.getElementById('kycProfileStatusBadge')?.closest('details');
-    if (kycSection && (status === 'verified' || status === 'pending')) kycSection.open = false;
 }
 
 function updateProfileSecuritySummary() {
     const checks = [
         { id: 'profileEmailStatus', done: Boolean(currentUserData?.emailVerified), text: 'البريد: موثق', pending: 'البريد: غير موثق' },
         { id: 'profileTwoFactorStatus', done: Boolean(currentUserData?.twoFactorEnabled), text: '2FA: مفعلة', pending: '2FA: غير مفعلة' },
-        { id: 'profileWalletStatus', done: Boolean((currentUserData?.walletAddress || currentUserData?.withdrawWallet || '').trim()), text: 'المحفظة: مثبتة', pending: 'المحفظة: غير مثبتة' },
-        { id: 'profileKycStatus', done: currentUserData?.kycStatus === 'verified', text: 'KYC: معتمد', pending: `KYC: ${currentUserData?.kycStatus === 'pending' ? 'قيد المراجعة' : currentUserData?.kycStatus === 'rejected' ? 'مرفوض' : 'لم يبدأ'}` }
+        { id: 'profileWalletStatus', done: Boolean((currentUserData?.walletAddress || currentUserData?.withdrawWallet || '').trim()), text: 'المحفظة: مثبتة', pending: 'المحفظة: غير مثبتة' }
     ];
     const completed = checks.filter(check => check.done).length;
     const percent = Math.round((completed / checks.length) * 100);
@@ -1431,62 +1431,10 @@ function updateProfileSecuritySummary() {
     });
 }
 
-async function submitUserKyc() {
-    const token = localStorage.getItem('token');
-    if (!token) return showToast('يجب تسجيل الدخول أولاً');
-
-    const fullName = document.getElementById('kycFullNameInput')?.value.trim() || '';
-    const documentType = document.getElementById('kycDocumentTypeInput')?.value || '';
-    const documentNumber = document.getElementById('kycDocumentNumberInput')?.value.trim() || '';
-    const country = document.getElementById('kycCountryInput')?.value.trim() || '';
-    const documentUrl = document.getElementById('kycDocumentUrlInput')?.value.trim() || '';
-    const documentFile = document.getElementById('kycDocumentFileInput')?.files?.[0];
-
-    try {
-        let documentImage = '';
-        if (documentFile) {
-            if (!isSupportedImageFile(documentFile)) return showToast('يرجى اختيار صورة JPG أو PNG أو WebP أو أي صورة مدعومة أخرى');
-            if (documentFile.size > MAX_ALLOWED_IMAGE_BYTES) return showToast('حجم صورة الوثيقة يجب ألا يتجاوز 2 ميجابايت');
-            documentImage = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = () => reject(new Error('تعذر قراءة صورة الوثيقة'));
-                reader.readAsDataURL(documentFile);
-            });
-        }
-
-        const response = await fetch('/api/user/kyc/submit', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ fullName, documentType, documentNumber, country, documentUrl, documentImage })
-        });
-
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'فشل إرسال طلب KYC');
-
-        currentUserData = { ...(currentUserData || {}), ...data.user, kycStatus: data.user?.kycStatus || 'pending' };
-        [
-            'kycFullNameInput',
-            'kycDocumentTypeInput',
-            'kycDocumentNumberInput',
-            'kycCountryInput',
-            'kycDocumentUrlInput',
-            'kycDocumentFileInput'
-        ].forEach(id => document.getElementById(id)?.removeAttribute('data-kyc-dirty'));
-        updateProfileUI();
-        showToast(data.message || 'تم إرسال طلب التوثيق بنجاح', 'win');
-    } catch (error) {
-        showToast(`❌ ${error.message}`);
-    }
-}
-
 function updateVerificationStatus() {
     const status = document.getElementById('lblVerificationStatus');
     if (!status) return;
-    const isComplete = Boolean(currentUserData?.emailVerified && currentUserData?.twoFactorEnabled && (currentUserData?.walletAddress || currentUserData?.withdrawWallet || '').trim() && currentUserData?.kycStatus === 'verified');
+    const isComplete = Boolean(currentUserData?.emailVerified && currentUserData?.twoFactorEnabled && (currentUserData?.walletAddress || currentUserData?.withdrawWallet || '').trim());
     status.className = isComplete
         ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold px-3 py-1 rounded-full'
         : 'bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[10px] font-bold px-3 py-1 rounded-full';
@@ -1815,8 +1763,7 @@ function onboardingState() {
     return [
         { label: 'تأكيد البريد الإلكتروني', done: Boolean(currentUserData?.emailVerified), action: () => { closeOnboarding(); switchTab('profile'); document.getElementById('btnVerifyEmailProfile')?.click(); } },
         { label: 'تفعيل المصادقة الثنائية', done: Boolean(currentUserData?.twoFactorEnabled), action: () => { closeOnboarding(); switchTab('profile'); } },
-            { label: 'تثبيت محفظة السحب', done: Boolean((currentUserData?.walletAddress || currentUserData?.withdrawWallet || '').trim()), action: () => { closeOnboarding(); switchTab('profile'); document.getElementById('profileWalletAddress')?.focus(); } },
-        { label: 'إكمال توثيق الهوية KYC', done: currentUserData?.kycStatus === 'verified', action: () => { closeOnboarding(); switchTab('profile'); document.getElementById('kycFullNameInput')?.focus(); } }
+        { label: 'تثبيت محفظة السحب', done: Boolean((currentUserData?.walletAddress || currentUserData?.withdrawWallet || '').trim()), action: () => { closeOnboarding(); switchTab('profile'); document.getElementById('profileWalletAddress')?.focus(); } }
     ];
 }
 
@@ -2035,7 +1982,6 @@ function renderTaskBoard(completed, maximum) {
         { id: 'email', category: 'priority', icon: 'fa-envelope-circle-check', title: 'أكد بريدك الإلكتروني', description: 'ارفع جاهزية الحساب واستقبل تنبيهات العمليات المهمة.', done: Boolean(currentUserData?.emailVerified), action: "switchTab('profile'); document.getElementById('btnVerifyEmailProfile')?.click()", status: 'جاهزية الحساب' },
         { id: 'twoFactor', category: 'priority', icon: 'fa-shield-halved', title: 'فعّل المصادقة الثنائية', description: 'أضف طبقة حماية قبل السحب والعمليات الحساسة.', done: Boolean(currentUserData?.twoFactorEnabled), action: "switchTab('profile'); document.getElementById('toggle2FA')?.focus()", status: 'جاهزية الحساب' },
         { id: 'wallet', category: 'priority', icon: 'fa-wallet', title: 'ثبّت محفظة السحب', description: 'أدخل عنوانًا صحيحًا لتجهيز مسار السحب الآمن.', done: Boolean((currentUserData?.walletAddress || currentUserData?.withdrawWallet || '').trim()), action: "switchTab('profile'); document.getElementById('profileWalletAddress')?.focus()", status: 'جاهزية الحساب' },
-        { id: 'kyc', category: 'priority', icon: 'fa-id-card', title: 'أكمل توثيق الهوية', description: 'أرسل بيانات KYC لرفع جاهزية الحساب للعمليات الحساسة.', done: currentUserData?.kycStatus === 'verified', action: "switchTab('profile'); document.getElementById('kycFullNameInput')?.focus()", status: 'جاهزية الحساب' },
         { id: 'daily', category: 'operations', icon: 'fa-bolt', title: currentUserTierActive ? tierTask.title : 'مهام المستوى اليومية', description: currentUserTierActive ? `${tierTask.description} الحد اليومي: ${maximum} مهمة.` : 'تتطلب هذه المهمة إيداعًا وتفعيل المستوى الأول.', done: completed >= maximum, locked: !currentUserTierActive, action: 'openDailyTasks()', status: currentUserTierActive ? 'تشغيلية' : 'غير متاحة' },
     ];
     const pendingTasks = tasks.filter(task => !task.done);
@@ -2680,6 +2626,7 @@ function switchTab(tabName) {
     }
     if (tabName === 'team') {
         loadTeamNetwork();
+        loadCampaignPointHistory();
     }
     if (tabName === 'feed') loadSocialCommunity();
 }
@@ -3349,13 +3296,6 @@ async function submitWithdraw() {
 
     if (!Number.isFinite(amount) || amount < 20) {
         showToast('الحد الأدنى للسحب هو 20$ USDT');
-        return;
-    }
-
-    if (currentUserData?.kycStatus !== 'verified') {
-        const kycStatus = currentUserData?.kycStatus || 'not_started';
-        showToast(kycStatus === 'pending' ? 'طلب توثيق هويتك قيد المراجعة. انتظر الاعتماد قبل السحب.' : kycStatus === 'rejected' ? 'تم رفض توثيق هويتك. حدّث وثائق KYC قبل السحب.' : 'يجب توثيق هويتك قبل طلب السحب.');
-        switchTab('profile');
         return;
     }
 

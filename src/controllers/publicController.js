@@ -2,6 +2,7 @@ const dataAccess = require('../services/dataAccess');
 const { applyRewardToUser, rewardTransactionFields } = require('../services/hybridRewardLedger');
 const { OPX_INTERNAL_USD_PRICE, OPX_FUTURE_LISTING_USD_PRICE, OPX_MAX_UPGRADE_DISCOUNT_SHARE, OPX_MIN_USDT_UPGRADE_SHARE, OPX_MAX_UPGRADE_VALUE_USD, calculateOpxForUsd, applyOpxUpgradePayment } = require('../services/opxPricing');
 const { hasFullFeatureAccess } = require('../services/paidFeatureAccess');
+const realtimeService = require('../services/realtimeService');
 
 function getOpxPricing(req, res) {
   res.json({ symbol: 'OPX', internalUsdPrice: OPX_INTERNAL_USD_PRICE, futureListingUsdPrice: OPX_FUTURE_LISTING_USD_PRICE, upgradeRate: calculateOpxForUsd(1), maxUpgradeDiscountShare: OPX_MAX_UPGRADE_DISCOUNT_SHARE, maxUpgradeValueUsd: OPX_MAX_UPGRADE_VALUE_USD, minUsdtUpgradeShare: OPX_MIN_USDT_UPGRADE_SHARE });
@@ -49,6 +50,27 @@ async function leaderboard(req, res) {
   } catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
 }
 
+async function campaignLeaderboard(req, res) {
+  try {
+    const topUsers = await dataAccess.user.find(
+      { role: 'user', isBanned: false, campaignPoints: { $gt: 0 } },
+      { sort: { campaignPoints: -1, createdAt: 1 }, limit: 10, select: 'email campaignPoints' }
+    );
+    const result = topUsers.map((user, index) => {
+      const [name, domain] = String(user.email || '').split('@');
+      return {
+        rank: index + 1,
+        email: domain ? `${name.length > 3 ? name.substring(0, 3) : '***'}***@${domain}` : 'مشارك',
+        points: Math.max(0, Number(user.campaignPoints) || 0)
+      };
+    });
+    res.set('Cache-Control', 'no-store');
+    res.json({ success: true, leaderboard: result });
+  } catch (error) {
+    res.status(500).json({ error: 'تعذر تحميل ترتيب نقاط الحملة' });
+  }
+}
+
 async function liveActivity(req, res) {
   try {
     const [transactions, referrals] = await Promise.all([
@@ -83,7 +105,7 @@ async function upgradeSupabase(req, res) {
     const user = await dataAccess.user.findById(req.user.id);
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     const fullFeatureAccess = hasFullFeatureAccess(user);
-    const levels = await dataAccess.vipLevel.find({}, { sort: { price: 1 } });
+    const levels = await dataAccess.vipLevel.find({}, { sort: { price: 1, code: 1 } });
     const codes = levels.map(level => level.code);
     let nextCode = req.body.targetTier;
     const currentIndex = codes.indexOf(user.tierCode);
@@ -123,12 +145,19 @@ async function upgradeSupabase(req, res) {
       p_referral_commission: referrer ? Number((payment.upgradeCost * 0.1).toFixed(2)) : 0,
       p_target_name: targetLevel.name
     });
+    if (referrer && Number(result.campaignPointsAwarded) > 0) {
+      realtimeService.emit('user_data_changed', {
+        reason: 'referral_campaign_points',
+        campaignPoints: Number(result.referrerCampaignPoints) || 0,
+        timestamp: new Date().toISOString()
+      }, { userId: referrer.id || referrer._id });
+    }
     const updatedUser = result.user;
-    res.json({ success: true, message: `تمت الترقية بنجاح إلى ${targetLevel.name}.`, tierCode: updatedUser.tierCode, wallet: result.wallet, OPX_balance: result.wallet?.OPX_balance, upgradeCost, opxAmount: payment.opxAmount, usdtAmount: payment.usdtAmount, initialActivation: payment.opxAmount === 0 && payment.usdtAmount === upgradeCost });
+    res.json({ success: true, message: `تمت الترقية بنجاح إلى ${targetLevel.name}.`, tierCode: updatedUser.tierCode, wallet: result.wallet, OPX_balance: result.wallet?.OPX_balance, upgradeCost, opxAmount: payment.opxAmount, usdtAmount: payment.usdtAmount, initialActivation: payment.opxAmount === 0 && payment.usdtAmount === upgradeCost, inviterPointsAwarded: Number(result.campaignPointsAwarded) || 0 });
   } catch (error) {
     console.error('Supabase upgrade error:', error.message);
     res.status(500).json({ error: 'خطأ تقني أثناء معالجة الترقية' });
   }
 }
 
-module.exports = { getVipLevels, getOpxPricing, getOpxMarketData, leaderboard, liveActivity, upgrade };
+module.exports = { getVipLevels, getOpxPricing, getOpxMarketData, leaderboard, campaignLeaderboard, liveActivity, upgrade };

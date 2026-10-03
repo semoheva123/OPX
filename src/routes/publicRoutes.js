@@ -7,6 +7,7 @@ router.get('/vip-levels', publicController.getVipLevels);
 router.get('/opx-price', publicController.getOpxPricing);
 router.get('/opx-market', publicController.getOpxMarketData);
 router.get('/leaderboard', publicController.leaderboard);
+router.get('/campaign/leaderboard', publicController.campaignLeaderboard);
 router.get('/live-activity', publicController.liveActivity);
 router.post('/user/upgrade', verifyToken, publicController.upgrade);
 
