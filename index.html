@@ -809,17 +809,35 @@ body::before{content:'';position:fixed;inset:-12%;z-index:-1;pointer-events:none
                 <div class="reward-campaign-heading">
                     <div>
                         <span class="reward-campaign-kicker"><i class="fa-solid fa-sparkles" aria-hidden="true"></i> حملة نقاط ومكافآت</span>
-                        <h2 id="rewardsCampaignTitle" class="reward-campaign-title">ادعُ أصدقاءك واكسب مكافآت مباشرة</h2>
-                        <p class="reward-campaign-subtitle">تُضاف مكافأة نقدية إلى رصيدك عند تفعيل إحالتك المباشرة لكل مستوى.</p>
+                        <h2 id="rewardsCampaignTitle" class="reward-campaign-title">اجمع النقاط. اختر جائزتك.</h2>
+                        <p class="reward-campaign-subtitle">مكافآت مميزة لأصحاب أعلى النقاط في الحملة.</p>
                     </div>
                     <button type="button" onclick="showAuthView('register')" class="reward-campaign-cta">إنشاء حساب <i class="fa-solid fa-arrow-left" aria-hidden="true"></i></button>
                 </div>
-                <div class="reward-prize-grid reward-tier-grid">
-                    <article class="reward-prize-card reward-prize-card--grand"><div class="reward-prize-art reward-prize-art--gold"><span class="reward-cash-visual" aria-hidden="true"><i class="fa-solid fa-user-plus"></i></span></div><div class="reward-prize-copy"><div class="reward-prize-meta"><span class="reward-prize-place">عند تفعيل المستوى الأول</span><span class="reward-points">$1</span></div><h3 class="reward-prize-name">مكافأة الإحالة الأولى</h3><p class="reward-prize-detail">تُمنح مرة واحدة عن كل إحالة مباشرة مؤهلة.</p></div></article>
-                    <article class="reward-prize-card reward-prize-card--galaxy"><div class="reward-prize-art reward-prize-art--cyan"><span class="reward-cash-visual" aria-hidden="true"><i class="fa-solid fa-arrow-trend-up"></i></span></div><div class="reward-prize-copy"><div class="reward-prize-meta"><span class="reward-prize-place">عند تفعيل المستوى الثاني</span><span class="reward-points">$2</span></div><h3 class="reward-prize-name">مكافأة الترقية</h3><p class="reward-prize-detail">مكافأة إضافية عند وصول الإحالة المباشرة للمستوى الثاني.</p></div></article>
-                    <article class="reward-prize-card reward-prize-card--cash"><div class="reward-prize-art reward-prize-art--cash"><span class="reward-cash-visual" aria-hidden="true"><i class="fa-solid fa-sack-dollar"></i></span></div><div class="reward-prize-copy"><div class="reward-prize-meta"><span class="reward-prize-place">عند تفعيل المستوى الثالث</span><span class="reward-points">$5</span></div><h3 class="reward-prize-name">مكافأة المستوى الثالث</h3><p class="reward-prize-detail">إجمالي المكافآت عن إحالة تبلغ المستوى الثالث: $8.</p></div></article>
+                <div class="reward-prize-grid">
+                    <article class="reward-prize-card reward-prize-card--grand">
+                        <div class="reward-prize-art reward-prize-art--gold"><img src="https://aitnews.com/wp-content/uploads/2026/09/Apple-Foldable-iPhone-Plan-780x470.jpg" alt="صورة iPhone Duo القابل للطي من الرابط المرسل" width="780" height="470" fetchpriority="high" referrerpolicy="no-referrer"></div>
+                        <div class="reward-prize-copy"><div class="reward-prize-meta"><span class="reward-prize-place">الجائزة الرئيسية</span><span class="reward-points"><i class="fa-solid fa-star" aria-hidden="true"></i> 500 نقطة</span></div><h3 class="reward-prize-name">iPhone Duo</h3><p class="reward-prize-detail">الصورة المرفقة لهاتف iPhone Duo القابل للطي.</p></div>
+                    </article>
+                    <article class="reward-prize-card reward-prize-card--galaxy">
+                        <div class="reward-prize-art reward-prize-art--cyan"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRdUBwnWFymDuYAsjmLsyxk3if6bUYsP3Ixdfbvu5lHXaoW3ALUetRwOZg&amp;s=10" alt="صورة لهاتفين من Samsung وفق الرابط المرسل" width="678" height="452" loading="eager" referrerpolicy="no-referrer"></div>
+                        <div class="reward-prize-copy"><div class="reward-prize-meta"><span class="reward-prize-place">الجائزة الثانية</span><span class="reward-points"><i class="fa-solid fa-star" aria-hidden="true"></i> 350 نقطة</span></div><h3 class="reward-prize-name">Samsung Galaxy</h3><p class="reward-prize-detail">S26 أو S25 Ultra، بحسب التوفر.</p></div>
+                    </article>
+                    <article class="reward-prize-card reward-prize-card--xiaomi">
+                        <div class="reward-prize-art reward-prize-art--violet"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTppIx-NvZGPMVl_Aj2GRPP0G6Ocaby2xFvHPCQRxM3NsnN6inQyxIWLj8&amp;s=10" alt="صورة لهاتف Redmi Note 14 وفق الرابط المرسل" width="414" height="483" loading="eager" referrerpolicy="no-referrer"></div>
+                        <div class="reward-prize-copy"><div class="reward-prize-meta"><span class="reward-prize-place">الجائزة الثالثة</span><span class="reward-points"><i class="fa-solid fa-star" aria-hidden="true"></i> 200 نقطة</span></div><h3 class="reward-prize-name">هاتف Xiaomi</h3><p class="reward-prize-detail">بقيمة معلنة قدرها 350 دولارًا.</p></div>
+                    </article>
+                    <article class="reward-prize-card reward-prize-card--cash">
+                        <div class="reward-prize-art reward-prize-art--cash"><span class="reward-cash-visual" aria-hidden="true"><i class="fa-solid fa-coins"></i></span></div>
+                        <div class="reward-prize-copy"><div class="reward-prize-meta"><span class="reward-prize-place">المراكز 4–10</span><span class="reward-points">حسب النقاط</span></div><h3 class="reward-prize-name">مكافآت مالية</h3><p class="reward-prize-detail">قابلة للسحب الفوري وفق النقاط المجمعة.</p></div>
+                    </article>
                 </div>
-                <p class="reward-campaign-note"><i class="fa-solid fa-circle-info" aria-hidden="true"></i><span>تُضاف المكافآت إلى رصيد الأرباح القابل للسحب، وتُحتسب لكل مستوى مرة واحدة عن الإحالة المباشرة بعد نجاح التفعيل. تنطبق شروط السحب والتحقق المالي المعتادة.</span></p>
+                <p class="reward-campaign-note"><i class="fa-solid fa-circle-info" aria-hidden="true"></i><span>تُحتسب الإحالة المباشرة عند نجاح تفعيل مدفوع: نقطة للمستوى الأول، نقطتان للثاني، و4 للثالث، مرة واحدة لكل مستوى. النقاط تظهر في حساب الداعي والترتيب؛ تسليم الجوائز وصرف المكافآت يخضع لشروط الحملة ومراجعة الإدارة.</span></p>
+                <details class="campaign-leaderboard mt-3 rounded-2xl border border-slate-700/70 bg-slate-950/35 p-3">
+                    <summary class="flex cursor-pointer list-none items-center justify-between gap-3 text-[11px] font-bold text-slate-200"><span><i class="fa-solid fa-ranking-star ml-2 text-amber-300" aria-hidden="true"></i>ترتيب الحملة — أعلى 10</span><i class="fa-solid fa-chevron-down text-[9px] text-slate-500" aria-hidden="true"></i></summary>
+                    <div id="campaignLeaderboardList" class="mt-3 space-y-1.5 text-[10px] text-slate-400"><p>ترتيب النقاط غير متاح حالياً.</p></div>
+                </details>
+                <p class="reward-photo-credit">مصدر صورة iPhone: <a href="https://aitnews.com/2026/09/16/%D8%A2%D8%A8%D9%84-%D8%AA%D8%AE%D8%B7%D8%B7-%D9%84%D8%A5%D8%B7%D9%84%D8%A7%D9%82-%D8%B3%D9%84%D8%B3%D9%84%D8%A9-%D9%85%D8%AA%D9%83%D8%A7%D9%85%D9%84%D8%A9-%D9%85%D9%86-%D9%87%D9%88%D8%A7%D8%AA%D9%81/" target="_blank" rel="noopener noreferrer">البوابة التقنية — الرابط المرسل</a> · صور Samsung وXiaomi من روابط المعاينة التي أرسلها المستخدم.</p>
             </section>
             <div class="flex-1 grid lg:grid-cols-[1.1fr_.9fr] items-center gap-12 py-12 md:py-16">
                 <div class="intro-reveal space-y-6">
