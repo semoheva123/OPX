@@ -308,6 +308,67 @@
             font-size: 15px;
             font-weight: 900;
         }
+        .home-campaign-prizes-heading {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: end;
+            justify-content: space-between;
+            gap: 10px;
+            margin: 18px 0 10px;
+        }
+        .home-campaign-prizes-heading h4 { margin: 4px 0 0; color: #f8fafc; font-size: 13px; font-weight: 900; }
+        .home-campaign-prizes-heading p { margin: 0; color: #94a3b8; font-size: 9px; line-height: 1.6; text-align: left; }
+        .home-campaign-prize-grid {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 9px;
+        }
+        .home-campaign-prize {
+            min-width: 0;
+            overflow: hidden;
+            border: 1px solid rgba(148,163,184,.14);
+            border-radius: 16px;
+            background: linear-gradient(155deg, rgba(17,29,47,.92), rgba(5,12,23,.9));
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 10px 24px rgba(0,0,0,.14);
+        }
+        .home-campaign-prize-art {
+            display: grid;
+            height: 92px;
+            place-items: center;
+            overflow: hidden;
+            border-bottom: 1px solid rgba(148,163,184,.1);
+            background: radial-gradient(ellipse at 50% 80%, rgba(247,185,85,.12), transparent 70%), rgba(3,9,18,.5);
+        }
+        .home-campaign-prize-art img { display: block; width: 100%; height: 88px; object-fit: contain; filter: drop-shadow(0 7px 10px rgba(0,0,0,.38)); }
+        .home-campaign-prize--galaxy .home-campaign-prize-art { background: radial-gradient(ellipse at 50% 80%, rgba(34,211,238,.14), transparent 70%), rgba(3,9,18,.5); }
+        .home-campaign-prize--xiaomi .home-campaign-prize-art { background: radial-gradient(ellipse at 50% 80%, rgba(167,139,250,.15), transparent 70%), rgba(3,9,18,.5); }
+        .home-campaign-prize-copy { padding: 9px 10px 11px; }
+        .home-campaign-prize-meta { display: flex; align-items: center; justify-content: space-between; gap: 5px; }
+        .home-campaign-prize-meta span:first-child { color: #aab6c9; font-size: 8px; font-weight: 800; }
+        .home-campaign-prize-score { flex: 0 0 auto; color: #ffe1a1; font-size: 8px; font-weight: 900; white-space: nowrap; }
+        .home-campaign-prize h5 { margin: 6px 0 2px; color: #f8fafc; font-size: 11px; font-weight: 900; }
+        .home-campaign-prize-copy p { margin: 0; color: #94a3b8; font-size: 8px; line-height: 1.6; }
+        .home-campaign-cta {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            width: 100%;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 12px;
+            padding: 11px 14px;
+            border: 1px solid rgba(255,225,161,.4);
+            border-radius: 13px;
+            background: linear-gradient(135deg,#ffe1a1,#f7b955 55%,#d88d31);
+            color: #111827;
+            font-size: 10px;
+            font-weight: 900;
+            box-shadow: 0 10px 24px rgba(247,185,85,.14);
+        }
         .home-referral-history {
             display: grid;
             gap: 8px;
@@ -1082,6 +1143,30 @@ body::before{content:'';position:fixed;inset:-12%;z-index:-1;pointer-events:none
                     <div class="home-referral-tier-item"><span>المستوى الثاني</span><b>+$2</b></div>
                     <div class="home-referral-tier-item"><span>المستوى الثالث</span><b>+$5</b></div>
                 </div>
+
+                <div class="home-campaign-prizes-heading">
+                    <div><span class="home-referral-kicker"><i class="fa-solid fa-gift" aria-hidden="true"></i> جوائز الحملة</span><h4>مكافآت أصحاب أعلى النقاط</h4></div>
+                    <p>نقاط الإحالات<br>الأولى والثانية والثالثة</p>
+                </div>
+                <div class="home-campaign-prize-grid" aria-label="جوائز حملة الإحالات">
+                    <article class="home-campaign-prize home-campaign-prize--grand">
+                        <div class="home-campaign-prize-art"><img src="https://aitnews.com/wp-content/uploads/2026/09/Apple-Foldable-iPhone-Plan-780x470.jpg" alt="جائزة iPhone Duo" width="780" height="470" loading="lazy" referrerpolicy="no-referrer"></div>
+                        <div class="home-campaign-prize-copy"><div class="home-campaign-prize-meta"><span>الجائزة الرئيسية</span><b class="home-campaign-prize-score">500 نقطة</b></div><h5>iPhone Duo</h5><p>الهاتف القابل للطي — الجائزة الأولى.</p></div>
+                    </article>
+                    <article class="home-campaign-prize home-campaign-prize--galaxy">
+                        <div class="home-campaign-prize-art"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRdUBwnWFymDuYAsjmLsyxk3if6bUYsP3Ixdfbvu5lHXaoW3ALUetRwOZg&amp;s=10" alt="جائزة Samsung Galaxy" width="678" height="452" loading="lazy" referrerpolicy="no-referrer"></div>
+                        <div class="home-campaign-prize-copy"><div class="home-campaign-prize-meta"><span>الجائزة الثانية</span><b class="home-campaign-prize-score">350 نقطة</b></div><h5>Samsung Galaxy</h5><p>S26 أو S25 Ultra بحسب التوفر.</p></div>
+                    </article>
+                    <article class="home-campaign-prize home-campaign-prize--xiaomi">
+                        <div class="home-campaign-prize-art"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTppIx-NvZGPMVl_Aj2GRPP0G6Ocaby2xFvHPCQRxM3NsnN6inQyxIWLj8&amp;s=10" alt="جائزة هاتف Xiaomi" width="414" height="483" loading="lazy" referrerpolicy="no-referrer"></div>
+                        <div class="home-campaign-prize-copy"><div class="home-campaign-prize-meta"><span>الجائزة الثالثة</span><b class="home-campaign-prize-score">200 نقطة</b></div><h5>هاتف Xiaomi</h5><p>بقيمة معلنة قدرها 350 دولارًا.</p></div>
+                    </article>
+                    <article class="home-campaign-prize home-campaign-prize--cash">
+                        <div class="home-campaign-prize-art"><span class="reward-cash-visual" aria-hidden="true"><i class="fa-solid fa-coins"></i></span></div>
+                        <div class="home-campaign-prize-copy"><div class="home-campaign-prize-meta"><span>المراكز 4–10</span><b class="home-campaign-prize-score">حسب النقاط</b></div><h5>مكافآت مالية</h5><p>تُصرف وفق شروط الحملة ومراجعة الإدارة.</p></div>
+                    </article>
+                </div>
+                <button type="button" onclick="switchTab('team')" class="home-campaign-cta"><i class="fa-solid fa-user-plus" aria-hidden="true"></i> شارك رابط الدعوة وابدأ جمع النقاط</button>
 
                 <div id="referralHomeRewardsHistory" class="home-referral-history"><span>سيظهر سجل الحملة هنا بعد تفعيل إحالاتك.</span></div>
             </section>

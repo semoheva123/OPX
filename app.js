@@ -1351,7 +1351,8 @@ async function loadReferralRewardHistory() {
         currentReferralRewardTotal = Math.max(0, Number(data.total) || 0);
         updateReferralRewardTotal(currentReferralRewardTotal);
         if (homeTotal) homeTotal.innerText = `$${currentReferralRewardTotal.toFixed(2)}`;
-        const pointsTotal = Array.isArray(data.rewards) ? data.rewards.reduce((sum, reward) => sum + Number(reward.levelNumber || 0), 0) : 0;
+        const campaignPointsByLevel = { 1: 1, 2: 2, 3: 4 };
+        const pointsTotal = Array.isArray(data.rewards) ? data.rewards.reduce((sum, reward) => sum + (campaignPointsByLevel[Number(reward.levelNumber)] || 0), 0) : 0;
         if (homePoints) homePoints.innerText = String(pointsTotal);
         const levelLabels = { 1: 'المستوى الأول', 2: 'المستوى الثاني', 3: 'المستوى الثالث' };
         const renderRewards = (node) => {
