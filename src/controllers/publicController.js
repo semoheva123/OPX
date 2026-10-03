@@ -79,6 +79,12 @@ async function upgrade(req, res) {
   return upgradeSupabase(req, res);
 }
 
+async function getActiveReferralMilestones(referralCode) {
+  if (!referralCode) return 0;
+  const referrals = await dataAccess.user.find({ referredBy: referralCode, isBanned: false }, { select: 'wallet.totalDeposits' });
+  return referrals.filter(referral => Number(referral.wallet?.totalDeposits || 0) > 0).length;
+}
+
 async function upgradeSupabase(req, res) {
   try {
     const user = await dataAccess.user.findById(req.user.id);
@@ -98,13 +104,15 @@ async function upgradeSupabase(req, res) {
     const currentLevel = levels.find(level => level.code === user.tierCode);
     const currentActivated = Boolean(currentLevel && Number(user.wallet?.totalDeposits || 0) > 0);
     const initialActivation = !currentActivated;
+    const referralMilestoneCount = await getActiveReferralMilestones(user.referralCode?.trim().toUpperCase());
+    const levelFourFreeActivationEligible = !fullFeatureAccess && targetLevel.code === 'A4' && user.tierCode !== 'A4' && referralMilestoneCount >= 300;
     if (!fullFeatureAccess && (targetIndex < currentIndex || (targetIndex === currentIndex && currentActivated))) return res.status(400).json({ error: 'يمكنك الترقية فقط إلى مستوى أعلى من مستواك الحالي' });
     const upgradeCost = initialActivation
       ? Number(targetLevel.price)
       : Math.max(0, Number(targetLevel.price) - Number(currentLevel?.price || 0));
     let payment;
     try {
-      payment = fullFeatureAccess
+      payment = fullFeatureAccess || levelFourFreeActivationEligible
         ? { upgradeCost: 0, opxAmount: 0, opxValue: 0, usdtAmount: 0 }
         : applyOpxUpgradePayment(user, upgradeCost, { allowOpx: !initialActivation });
     }
@@ -122,6 +130,14 @@ async function upgradeSupabase(req, res) {
       p_referral_commission: 0,
       p_target_name: targetLevel.name
     });
+    let finalWallet = result.wallet || user.wallet || {};
+    let rewardBonusApplied = 0;
+    if (levelFourFreeActivationEligible) {
+      const nextProfitBalance = Number((Number(finalWallet.profitBalance || 0) + 100).toFixed(2));
+      finalWallet = { ...finalWallet, profitBalance: nextProfitBalance, balance: Number((Number(finalWallet.depositBalance || 0) + nextProfitBalance).toFixed(2)) };
+      rewardBonusApplied = 100;
+      await dataAccess.user.updateOne({ id: user.id || user._id }, { wallet: finalWallet });
+    }
     if (referrer && Number(result.referralRewardAwarded) > 0) {
       realtimeService.emit('user_data_changed', {
         reason: 'referral_reward_awarded',
@@ -131,7 +147,8 @@ async function upgradeSupabase(req, res) {
       }, { userId: referrer.id || referrer._id });
     }
     const updatedUser = result.user;
-    res.json({ success: true, message: `تمت الترقية بنجاح إلى ${targetLevel.name}.`, tierCode: updatedUser.tierCode, wallet: result.wallet, OPX_balance: result.wallet?.OPX_balance, upgradeCost, opxAmount: payment.opxAmount, usdtAmount: payment.usdtAmount, initialActivation: payment.opxAmount === 0 && payment.usdtAmount === upgradeCost, referralRewardAwarded: Number(result.referralRewardAwarded) || 0 });
+    const tierFourNotice = levelFourFreeActivationEligible ? ' عند الوصول إلى 300 إحالة فعالة، يمكنك تفعيل المستوى الرابع مجانًا مع مكافأة فورية بقيمة $100 في رصيد الأرباح.' : '';
+    res.json({ success: true, message: `تمت الترقية بنجاح إلى ${targetLevel.name}.${tierFourNotice}`.trim(), tierCode: updatedUser.tierCode, wallet: finalWallet, OPX_balance: finalWallet?.OPX_balance, upgradeCost, opxAmount: payment.opxAmount, usdtAmount: payment.usdtAmount, initialActivation: payment.opxAmount === 0 && payment.usdtAmount === upgradeCost, referralRewardAwarded: Number(result.referralRewardAwarded) || 0, freeTierFourActivation: levelFourFreeActivationEligible, instantProfitReward: rewardBonusApplied });
   } catch (error) {
     console.error('Supabase upgrade error:', error.message);
     res.status(500).json({ error: 'خطأ تقني أثناء معالجة الترقية' });

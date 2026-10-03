@@ -1343,6 +1343,25 @@ async function loadReferralRewardHistory() {
     const homeTotal = document.getElementById('referralHomeRewardTotal');
     const homePoints = document.getElementById('referralHomePoints');
     const token = localStorage.getItem('token');
+    const campaignCard = document.querySelector('.home-referral-campaign');
+    const milestoneNoticeId = 'homeReferralMilestoneNotice';
+    if (campaignCard && !document.getElementById(milestoneNoticeId)) {
+        const notice = document.createElement('div');
+        notice.id = milestoneNoticeId;
+        notice.className = 'mt-3 rounded-2xl border border-rose-500/20 bg-rose-500/5 px-3 py-2 text-[10px] leading-5 text-rose-200';
+        campaignCard.appendChild(notice);
+    }
+    const milestoneNotice = document.getElementById(milestoneNoticeId);
+    const activeReferrals = Number(currentUserData?.teamStats?.activeReferrals || 0);
+    const isA4Unlocked = ['A4', 'A5'].includes(currentUserData?.tierCode || '');
+    if (milestoneNotice) {
+        const milestoneText = activeReferrals >= 300 && !isA4Unlocked
+            ? 'عند الوصول إلى 300 إحالة فعالة، يمكنك تفعيل المستوى الرابع مجانًا مع مكافأة فورية بقيمة $100 في رصيد الأرباح.'
+            : activeReferrals >= 300 && isA4Unlocked
+                ? 'تم تفعيل المستوى الرابع مجانًا: 300 إحالة فعالة + مكافأة فورية بقيمة $100 في رصيد الأرباح.'
+                : 'لا يزال يتبقى لك 300 إحالة فعالة لتفعيل المستوى الرابع مجانًا.';
+        milestoneNotice.innerHTML = `<i class="fa-solid fa-circle-check ml-1 text-emerald-300" aria-hidden="true"></i>${escapeAiHtml(milestoneText)}`;
+    }
     if ((!list && !homeList) || !token) return;
     try {
         const response = await fetch('/api/user/referral-rewards', { headers: { Authorization: `Bearer ${token}` } });
@@ -1678,6 +1697,7 @@ async function loadUserProfileInternal() {
             updateProfileUI();
 
             updateTeamTreeData(data.user.teamStats || { l1: 0, l2: 0, l3: 0, total: 0 });
+            loadReferralRewardHistory();
 
             let maxTasks = getTaskLimitForTier();
             document.getElementById('lblMaxTasks').innerText = maxTasks;
