@@ -1,0 +1,3 @@
+-- DEPRECATED: do not execute this file.
+-- Its old task RPC does not validate the current per-user daily assignments.
+-- Use supabase/production-readiness.sql for both fresh and existing projects.

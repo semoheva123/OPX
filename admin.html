@@ -382,7 +382,7 @@ body.modal-open{overflow:hidden}
                         <input type="number" id="cfgDailyGameRewardCap" value="100" min="0" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white">
                         <p class="text-[10px] text-slate-500 mt-2">يحمي المنصة من تجاوز إجمالي مكافآت الألعاب لهذا الحد خلال يوم UTC.</p>
                     </div>
-                    <div class="md:col-span-2"><label class="block text-xs text-slate-400 mb-1">الإحالات النشطة المطلوبة لكل دورة</label><input type="number" id="cfgReferralsPerCycle" value="25" min="1" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white"><p class="text-[10px] text-slate-500 mt-1">يؤثر على دورات العجلة والصندوق لجميع المستخدمين.</p></div>
+                    <div class="md:col-span-2"><label class="block text-xs text-slate-400 mb-1">الإحالات النشطة المطلوبة لكل دورة</label><input type="number" id="cfgReferralsPerCycle" value="6" min="1" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white"><p class="text-[10px] text-slate-500 mt-1">كل 6 إحالات نشطة تمنح دورة للعجلة ودورة للصندوق، ويمكن تعديل العدد من هنا.</p></div>
                     <button onclick="saveGameSettings()" class="w-full py-3 purple-gradient text-white font-bold rounded-xl text-xs">حفظ الإعدادات</button>
                 </div>
             </div>
@@ -1277,9 +1277,10 @@ body.modal-open{overflow:hidden}
                                 <label class="block text-[11px] text-slate-400 mb-1">الربح اليومي ($)</label>
                                 <input type="number" step="0.01" id="dailyProfit-${plan.code}" value="${plan.dailyProfit || 0}" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
                             </div>
-                            <div>
-                                <label class="block text-[11px] text-slate-400 mb-1">عدد المهام اليومية</label>
-                                <input type="number" id="tasksCount-${escapeAdminHtml(plan.code)}" value="${plan.tasks || 1}" min="1" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                            <div class="rounded-xl border border-cyan-500/15 bg-cyan-500/5 p-3 space-y-2">
+                                <label class="block text-[11px] text-slate-300">عدد التقييمات الديناميكية يوميًا</label>
+                                <input type="number" id="evaluationCount-${escapeAdminHtml(plan.code)}" value="${Math.max(0, Number(plan.tasks || 1) - 1)}" min="0" max="49" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                                <p class="text-[9px] leading-4 text-slate-500">المجموع اليومي = مهمة مجتمع ثابتة واحدة + هذا العدد. النظام يجلب شركات تقنية ومنصات ذكاء وأصولًا رقمية تلقائيًا، ويمنع التكرار للمستخدم 30 يومًا.</p>
                             </div>
                             <div>
                                 <label class="block text-[11px] text-slate-400 mb-1">الربح الشهري ($)</label>
@@ -1316,15 +1317,13 @@ body.modal-open{overflow:hidden}
 
             const price = parseNum(`price-${code}`, 0);
             const dailyProfit = parseNum(`dailyProfit-${code}`, 0);
-            const tasksCount = parseNum(`tasksCount-${code}`, 1, true);
+            const evaluationCount = parseNum(`evaluationCount-${code}`, 0, true);
             const monthlyProfit = parseNum(`monthlyProfit-${code}`, dailyProfit * 30);
             const yearlyProfit = parseNum(`yearlyProfit-${code}`, dailyProfit * 365);
             
             const token = getAdminAuthToken();
 
-            if (!name || tasksCount <= 0) {
-                return showToast('يرجى التأكد من كتابة اسم المستوى وعدد مهام صحيح');
-            }
+            if (!name || evaluationCount < 0 || evaluationCount > 49) return showToast('يرجى كتابة اسم المستوى واختيار 0 إلى 49 تقييمًا يوميًا.');
 
             try {
                 const res = await fetch('/api/admin/vip-levels', {
@@ -1338,7 +1337,8 @@ body.modal-open{overflow:hidden}
                         name: name,
                         price: price,
                         dailyProfit: dailyProfit,
-                        tasks: tasksCount,
+                        tasks: evaluationCount + 1,
+                        evaluationCount,
                         monthlyProfit,
                         yearlyProfit
                     })
@@ -1392,7 +1392,7 @@ body.modal-open{overflow:hidden}
                     document.getElementById('cfgBoxMin').value = data.settings.boxMin;
                     document.getElementById('cfgBoxMax').value = data.settings.boxMax;
                     document.getElementById('cfgDailyGameRewardCap').value = data.settings.dailyGameRewardCap;
-                    document.getElementById('cfgReferralsPerCycle').value = data.settings.referralsPerCycle || 25;
+                    document.getElementById('cfgReferralsPerCycle').value = data.settings.referralsPerCycle || 6;
                 }
             } catch(e) { console.error('خطأ إعدادات الألعاب:', e); }
         }

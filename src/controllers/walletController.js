@@ -99,7 +99,11 @@ async function withdraw(req, res) {
 
 async function withdrawSupabase(req, res) {
   try {
-    const { amount, walletAddress, walletNetwork, twoFactorCode } = req.body;
+    const { amount, walletAddress, walletNetwork, twoFactorCode, asset, currency } = req.body;
+    const requestedAsset = String(asset || currency || '').trim().toUpperCase();
+    if (requestedAsset === 'OPX') {
+      return res.status(400).json({ error: 'رصيد OPX الداخلي مخصص فقط للترقيات ولا يمكن سحبه.' });
+    }
     const idempotencyKey = String(req.get('Idempotency-Key') || '').trim().slice(0, 120);
     const withdrawNum = Number(amount);
     const feeSummary = calculateHybridWithdrawalFee(withdrawNum);

@@ -24,6 +24,7 @@ const Staking = dataAccess.staking;
 const VipLevel = dataAccess.vipLevel;
 const GameSetting = dataAccess.gameSetting;
 const { resetDailyTasks, scheduleDailyTaskReset } = require('./src/jobs/dailyTasksReset');
+const { generateDailyTaskEntities, scheduleDailyTaskGeneration } = require('./src/jobs/dailyTaskGeneration');
 const { generateOfficialAiPost } = require('./src/jobs/aiAnnouncer');
 const { ensureOfficialCommunityAccount, followOfficialForExistingUsers } = require('./src/services/officialCommunity');
 const { processScheduledBroadcasts } = require('./src/controllers/adminController');
@@ -71,8 +72,8 @@ let gameSettings = {
   spinMax: 10,
   boxMin: 5,
   boxMax: 25,
-  dailyGameRewardCap: 100
-  , referralsPerCycle: 25
+  dailyGameRewardCap: 100,
+  referralsPerCycle: 6
 };
 const app = createApp({
   resend,
@@ -80,6 +81,7 @@ const app = createApp({
   gameSettings,
   cronHandlers: {
     'reset-daily-tasks': resetDailyTasks,
+    'refresh-daily-task-entities': generateDailyTaskEntities,
     'ai-announcer': generateOfficialAiPost,
     'process-broadcasts': () => processScheduledBroadcasts(webpush)
   }
@@ -108,8 +110,13 @@ async function seedVipLevels() {
 async function loadGameSettings() {
   try {
     let stored = await dataAccess.gameSetting.findOne({ key: 'default' });
-    if (!stored) stored = await dataAccess.gameSetting.create({ key: 'default', spinMin: gameSettings.spinMin, spinMax: gameSettings.spinMax, boxMin: gameSettings.boxMin, boxMax: gameSettings.boxMax, dailyGameRewardCap: gameSettings.dailyGameRewardCap });
-    if (stored) Object.assign(gameSettings, { spinMin: stored.spinMin, spinMax: stored.spinMax, boxMin: stored.boxMin, boxMax: stored.boxMax, dailyGameRewardCap: stored.dailyGameRewardCap, referralsPerCycle: stored.referralsPerCycle || 25 });
+    if (!stored) stored = await dataAccess.gameSetting.create({ key: 'default', spinMin: gameSettings.spinMin, spinMax: gameSettings.spinMax, boxMin: gameSettings.boxMin, boxMax: gameSettings.boxMax, dailyGameRewardCap: gameSettings.dailyGameRewardCap, referralsPerCycle: gameSettings.referralsPerCycle });
+    if (stored) {
+      const storedReferralThreshold = Number(stored.referralsPerCycle);
+      const referralsPerCycle = storedReferralThreshold === 25 ? 6 : storedReferralThreshold || 6;
+      if (storedReferralThreshold === 25) await dataAccess.gameSetting.updateOne({ id: stored.id || stored._id }, { referralsPerCycle });
+      Object.assign(gameSettings, { spinMin: stored.spinMin, spinMax: stored.spinMax, boxMin: stored.boxMin, boxMax: stored.boxMax, dailyGameRewardCap: stored.dailyGameRewardCap, referralsPerCycle });
+    }
   } catch (error) {
     console.error('⚠️ تعذر تحميل إعدادات الألعاب، سيتم استخدام الإعدادات الافتراضية:', error.message);
   }
@@ -1378,7 +1385,11 @@ async function initializeRuntime() {
       } catch (error) {
         console.error('⚠️ تعذر تهيئة الحساب الرسمي للمجتمع، وسيستمر الخادم:', error.message);
       }
-      if (!isVercelRuntime) scheduleDailyTaskReset();
+      if (!isVercelRuntime) {
+        scheduleDailyTaskReset();
+        scheduleDailyTaskGeneration();
+        generateDailyTaskEntities().catch(error => console.warn('⚠️ تعذر تحميل كيانات المهام عند بدء التشغيل:', error.message));
+      }
     } else {
       await seedVipLevels();
       await loadGameSettings();
@@ -1388,6 +1399,8 @@ async function initializeRuntime() {
       await Transaction.init();
       if (!isVercelRuntime) {
         scheduleDailyTaskReset();
+        scheduleDailyTaskGeneration();
+        generateDailyTaskEntities().catch(error => console.warn('⚠️ تعذر تحميل كيانات المهام عند بدء التشغيل:', error.message));
         setInterval(() => processScheduledBroadcasts(webpush).catch(error => console.error('Broadcast scheduler error:', error.message)), 60 * 1000);
       }
     }

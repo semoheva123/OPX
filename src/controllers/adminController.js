@@ -119,17 +119,18 @@ async function emitPlatformDataChanged(reason) {
 
 async function saveVipLevel(req, res) {
   try {
-    const { code, name, price, tasks, dailyProfit, monthlyProfit, yearlyProfit, badgeColor } = req.body;
-    if (!code || !name || price === undefined || tasks === undefined || dailyProfit === undefined) return res.status(400).json({ error: 'يرجى إدخال جميع البيانات الأساسية للمستوى' });
+    const { code, name, price, dailyProfit, monthlyProfit, yearlyProfit, badgeColor } = req.body;
+    const evaluationCount = Number(req.body.evaluationCount ?? (Number(req.body.tasks) - 1));
+    if (!code || !name || price === undefined || dailyProfit === undefined || !Number.isInteger(evaluationCount)) return res.status(400).json({ error: 'يرجى إدخال بيانات المستوى وعدد التقييمات اليومية' });
     if (!/^[A-Z][A-Z0-9_-]{1,15}$/i.test(String(code).trim())) return res.status(400).json({ error: 'كود المستوى يجب أن يتكون من أحرف وأرقام فقط' });
     if (String(name).trim().length < 2 || String(name).trim().length > 100) return res.status(400).json({ error: 'اسم المستوى غير صالح' });
-    if (![price, tasks, dailyProfit, monthlyProfit, yearlyProfit].every(value => value === undefined || Number.isFinite(Number(value)) && Number(value) >= 0) || Number(tasks) < 1) return res.status(400).json({ error: 'قيم المستوى غير صالحة' });
-    const level = { code: code.trim().toUpperCase(), name, price: Number(price), tasks: Number(tasks), dailyProfit: Number(dailyProfit), monthlyProfit: monthlyProfit ? Number(monthlyProfit) : Number(dailyProfit) * 30, yearlyProfit: yearlyProfit ? Number(yearlyProfit) : Number(dailyProfit) * 365, badgeColor: ALLOWED_BADGE_COLORS.has(badgeColor) ? badgeColor : DEFAULT_BADGE_COLOR };
+    if (![price, dailyProfit, monthlyProfit, yearlyProfit].every(value => value === undefined || Number.isFinite(Number(value)) && Number(value) >= 0) || evaluationCount < 0 || evaluationCount > 49) return res.status(400).json({ error: 'قيم المستوى أو عدد التقييمات غير صالح (0 إلى 49)' });
+    const level = { code: code.trim().toUpperCase(), name: name.trim(), price: Number(price), tasks: evaluationCount + 1, dailyTasks: [], dailyProfit: Number(dailyProfit), monthlyProfit: monthlyProfit ? Number(monthlyProfit) : Number(dailyProfit) * 30, yearlyProfit: yearlyProfit ? Number(yearlyProfit) : Number(dailyProfit) * 365, badgeColor: ALLOWED_BADGE_COLORS.has(badgeColor) ? badgeColor : DEFAULT_BADGE_COLOR };
     const existingLevel = await dataAccess.vipLevel.findOne({ code: level.code });
     const updatedLevel = existingLevel
       ? await dataAccess.vipLevel.updateOne({ id: existingLevel.id }, level)
       : await dataAccess.vipLevel.create(level);
-    await createAudit(req, 'update_vip_level', level.code, { newValue: { price: level.price, tasks: level.tasks, dailyProfit: level.dailyProfit } });
+    await createAudit(req, 'update_vip_level', level.code, { newValue: { price: level.price, tasks: level.tasks, evaluationTaskCount: evaluationCount, dailyProfit: level.dailyProfit } });
     await emitPlatformDataChanged('vip_level_updated');
     res.json({ success: true, message: 'تم حفظ المستوى بنجاح', level: updatedLevel });
   } catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }

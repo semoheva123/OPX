@@ -1,6 +1,8 @@
 const dataAccess = require('../services/dataAccess');
 const { syncGameCredits } = require('../services/gameAccess');
 const { hasPaidFeatureAccess, hasFullFeatureAccess } = require('../services/paidFeatureAccess');
+const { calculateDailyTaskRewardSplit } = require('../services/opxPricing');
+const { assignDailyEvaluationEntities, getEvaluationTags, getCategoryLabel, utcDateString } = require('../services/dailyTaskAutomation');
 
 function splitHybridReward(amount) {
   const value = Number(amount) || 0;
@@ -72,25 +74,91 @@ const DAILY_TASK_LIBRARY = {
   ]
 };
 
-function buildDailyTasks(tierCode, taskLimit, completedKeys = new Set(), locked = false, dailyProfit = 0) {
-  const library = DAILY_TASK_LIBRARY[tierCode] || DAILY_TASK_LIBRARY.A1 || [];
-  const perTaskReward = Number(dailyProfit > 0 && taskLimit > 0 ? dailyProfit / taskLimit : 0);
+const SUPPLEMENTAL_TASK_FOCUS = {
+  A1: ['إعداد الملف الشخصي', 'توثيق البريد', 'المصادقة الثنائية', 'محفظة السحب', 'الشبكة المختارة', 'الجلسات النشطة', 'الإشعارات الجديدة', 'سجل العمليات', 'خطة اليوم', 'حالة الحساب'],
+  A2: ['تقرير التقدم', 'رصيد المحفظة', 'سجل الإيداعات', 'عنوان السحب', 'مراجعة الأمان', 'المهام المكتملة', 'الإحالات المباشرة', 'الإشعارات', 'سجل المكافآت', 'خطة المستوى'],
+  A3: ['تحليل الأداء', 'حركة المحفظة', 'سجل المعاملات', 'حماية الحساب', 'نشاط الفريق', 'تقدم المهام', 'مكافآت الإحالات', 'التنبيهات الأمنية', 'العمليات الأخيرة', 'أهداف اليوم'],
+  A4: ['مؤشرات الأداء', 'تدقيق المحفظة', 'مراجعة السحب', 'أمان الجلسات', 'تحليل الفريق', 'جودة إنجاز المهام', 'سجل المكافآت', 'طلبات الدعم', 'التقارير اليومية', 'أولويات المستوى'],
+  A5: ['مؤشرات VIP', 'تحليل الأداء المتقدم', 'تدقيق الأرصدة', 'مراجعة العمليات', 'أمان الحساب المتقدم', 'تقدم شبكة الفريق', 'جودة خطة المهام', 'التقارير المالية', 'التنبيهات المهمة', 'خطة التطوير']
+};
+
+const SUPPLEMENTAL_TASK_ACTIONS = [
+  { label: 'تحقق', description: 'تحقق من البيانات والحالة الحالية.', instructions: ['افتح القسم المرتبط بالمحور.', 'راجع البيانات والحالة الظاهرة.', 'تحقق من وجود أي عنصر يحتاج متابعة.', 'سجّل النتيجة وأكمل الخطوة.'] },
+  { label: 'راجع', description: 'راجع آخر التحديثات والعناصر المعلقة.', instructions: ['افتح القسم المرتبط بالمحور.', 'راجع أحدث التحديثات.', 'حدّد العناصر التي تتطلب إجراءً.', 'أكمل المراجعة وسجّل النتيجة.'] },
+  { label: 'حلل', description: 'حلل النتائج الأخيرة وحدد خطوة متابعة مناسبة.', instructions: ['افتح بيانات المحور.', 'قارن النتائج المتاحة.', 'حدّد ملاحظة أو نمطًا مهمًا.', 'اختر خطوة متابعة مناسبة.'] },
+  { label: 'تابع', description: 'تابع الحالة الحالية وتأكد من عدم وجود إجراء متأخر.', instructions: ['افتح القسم المرتبط بالمحور.', 'تحقق من الحالة وآخر نشاط.', 'عالج الإجراء المعلق إن وجد.', 'تأكد من اكتمال المتابعة.'] },
+  { label: 'حدّث', description: 'تأكد من حداثة المعلومات والإعدادات المرتبطة.', instructions: ['افتح الإعداد أو السجل المناسب.', 'راجع المعلومات الحالية.', 'حدّث ما يحتاج إلى تصحيح فقط.', 'تحقق من حفظ التغييرات.'] }
+];
+
+const COMMUNITY_DAILY_TASK = {
+  taskKeySuffix: 'community',
+  requirement: 'community_engagement',
+  title: 'شارك وتفاعل في مجتمع OPERIX',
+  description: 'انشر منشورًا أصليًا عن OPERIX، ثم أضف تعليقًا مفيدًا إلى منشور ظاهر لعضو آخر.',
+  icon: 'fa-users',
+  instructions: ['افتح تبويب المجتمع.', 'انشر منشورًا أصليًا يذكر OPERIX أو أوبيريكس.', 'أضف تعليقًا مفيدًا إلى منشور ظاهر لعضو آخر اليوم.', 'ارجع إلى المهام وأكملها بعد تنفيذ الإجراءين.']
+};
+
+function hasDailyPlatformPost(posts, userId, dayStart) {
+  const startTime = new Date(dayStart).getTime();
+  return (Array.isArray(posts) ? posts : []).some(post =>
+    String(post.authorId || '') === String(userId) &&
+    post.status === 'visible' &&
+    new Date(post.createdAt).getTime() >= startTime &&
+    /operix|أوبيريكس/i.test(String(post.content || ''))
+  );
+}
+
+function hasDailyCommunityInteraction(posts, userId, dayStart) {
+  const startTime = new Date(dayStart).getTime();
+  return (Array.isArray(posts) ? posts : []).some(post =>
+    post.status === 'visible' && String(post.authorId || '') !== String(userId) &&
+    (Array.isArray(post.comments) ? post.comments : []).some(comment =>
+      String(comment.authorId || '') === String(userId) &&
+      comment.status === 'visible' &&
+      new Date(comment.createdAt).getTime() >= startTime
+    )
+  );
+}
+
+function buildSupplementalTask(tierCode, number, supplementalIndex) {
+  const focusAreas = SUPPLEMENTAL_TASK_FOCUS[tierCode] || SUPPLEMENTAL_TASK_FOCUS.A1;
+  const focus = focusAreas[supplementalIndex % focusAreas.length];
+  const action = SUPPLEMENTAL_TASK_ACTIONS[Math.floor(supplementalIndex / focusAreas.length) % SUPPLEMENTAL_TASK_ACTIONS.length];
+  return {
+    title: `${action.label} ${focus} · ${number}`,
+    description: `${action.description} محور ${focus} ضمن خطة المستوى ${tierCode}.`,
+    icon: 'fa-list-check',
+    instructions: action.instructions.map(instruction => `${instruction} (${focus})`)
+  };
+}
+
+function buildDailyTasks(tierCode, adminTasks = [], completedKeys = new Set(), locked = false, dailyProfit = 0, communityTaskStatus = {}) {
+  const taskLimit = 1 + (Array.isArray(adminTasks) ? adminTasks.length : 0);
+  const split = calculateDailyTaskRewardSplit(dailyProfit, tierCode, taskLimit);
+  const perTaskReward = Number(split.perTaskUsdt || 0);
   return Array.from({ length: taskLimit }, (_, index) => {
     const number = index + 1;
-    const template = library[index] || library[Math.min(index, library.length - 1)] || {
-      title: `مهمة المستوى ${tierCode}`,
-      description: 'أكمل هذه المهمة المخصصة اليوم.',
-      icon: 'fa-check-double',
-      instructions: ['افتح المهمة.', 'راجع التعليمات.', 'انفذها بدقة.', 'اضغط على إتمام المهمة.']
-    };
-    const taskKey = `${tierCode}-task-${String(number).padStart(2, '0')}`;
+    const isCommunityTask = number === 1;
+    const configuredTask = isCommunityTask ? COMMUNITY_DAILY_TASK : adminTasks[index - 1];
+    const template = configuredTask || {};
+    const taskKey = isCommunityTask ? `${tierCode}-${COMMUNITY_DAILY_TASK.taskKeySuffix}` : `${tierCode}-task-${String(number).padStart(2, '0')}`;
     return {
       taskKey,
       number,
-      icon: template.icon || 'fa-check-double',
-      title: template.title || `مهمة ${number}`,
-      description: template.description || 'أكمل هذه المهمة اليوم.',
-      instructions: Array.isArray(template.instructions) ? template.instructions : ['افتح المهمة.', 'راجع التعليمات.', 'انفذها بدقة.', 'اضغط على إتمام المهمة.'],
+      icon: isCommunityTask ? COMMUNITY_DAILY_TASK.icon : 'fa-magnifying-glass-chart',
+      title: isCommunityTask ? COMMUNITY_DAILY_TASK.title : `قيّم ${String(template.entityName || 'الجهة المحددة')}`,
+      description: isCommunityTask ? COMMUNITY_DAILY_TASK.description : String(template.summary || 'قدّم تقييمًا متوازنًا استنادًا إلى المعلومات المعروضة داخل المنصة.'),
+      instructions: isCommunityTask ? COMMUNITY_DAILY_TASK.instructions : (Array.isArray(template.instructions) ? template.instructions : []),
+      requirement: isCommunityTask ? COMMUNITY_DAILY_TASK.requirement : 'evaluation',
+      targetCategory: isCommunityTask ? null : String(template.category || 'technology'),
+      targetCategoryLabel: isCommunityTask ? null : getCategoryLabel(template.category),
+      targetName: isCommunityTask ? null : String(template.entityName || ''),
+      targetSummary: isCommunityTask ? null : String(template.summary || ''),
+      targetImageUrl: isCommunityTask ? '' : String(template.imageUrl || ''),
+      entityKey: isCommunityTask ? null : String(template.entityKey || ''),
+      tags: isCommunityTask ? [] : getEvaluationTags(template.category),
+      requirementMet: isCommunityTask ? Boolean(communityTaskStatus.communityEngagement) : Boolean(template.submissionComplete),
       reward: Number(perTaskReward.toFixed(4)),
       completed: completedKeys.has(taskKey),
       locked
@@ -100,7 +168,7 @@ function buildDailyTasks(tierCode, taskLimit, completedKeys = new Set(), locked 
 
 function getGameConfig(req, res) {
   const settings = req.app.locals.gameSettings;
-  res.json({ success: true, settings: { spinMin: settings.spinMin, spinMax: settings.spinMax, boxMin: settings.boxMin, boxMax: settings.boxMax, dailyGameRewardCap: settings.dailyGameRewardCap, referralsPerCycle: settings.referralsPerCycle || 25 } });
+  res.json({ success: true, settings: { spinMin: settings.spinMin, spinMax: settings.spinMax, boxMin: settings.boxMin, boxMax: settings.boxMax, dailyGameRewardCap: settings.dailyGameRewardCap, referralsPerCycle: settings.referralsPerCycle || 6 } });
 }
 
 async function getGameHistory(req, res) {
@@ -135,13 +203,34 @@ async function getDailyTasks(req, res) {
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     const tier = await dataAccess.vipLevel.findOne({ code: user.tierCode });
     if (!tier) return res.status(503).json({ error: 'إعدادات المستوى غير متاحة حاليًا' });
-    const taskLimit = Math.max(1, Number(tier.tasks || 1));
-    const today = new Date().toISOString().slice(0, 10);
-    const completions = await dataAccess.dailyTaskCompletion.find({ userId: user.id, taskDate: today }, { sort: { createdAt: 1 } });
+    const today = utcDateString();
+    const todayStart = new Date();
+    todayStart.setUTCHours(0, 0, 0, 0);
+    const taskLimit = Math.max(1, Math.min(50, Number(tier.tasks || 1)));
+    const evaluationAssignments = await assignDailyEvaluationEntities({
+      userId: user.id || user._id,
+      tierCode: tier.code,
+      totalTaskCount: taskLimit,
+      date: today
+    });
+    const [todayUserPosts, otherMembersPosts] = await Promise.all([
+      dataAccess.socialPost.find({ authorId: user.id, status: 'visible', createdAt: { $gte: todayStart } }, { select: 'authorId content status createdAt', limit: 100 }),
+      dataAccess.socialPost.find({ authorId: { $ne: user.id }, status: 'visible' }, { select: 'authorId comments likedBy status', sort: { createdAt: -1 }, limit: 1000 })
+    ]);
+    const communityTaskStatus = {
+      communityPost: hasDailyPlatformPost(todayUserPosts, user.id, todayStart),
+      communityInteraction: hasDailyCommunityInteraction(otherMembersPosts, user.id, todayStart)
+    };
+    const [evaluationSubmissions, completions] = await Promise.all([
+      dataAccess.dailyTaskSubmission.find({ userId: user.id, taskDate: today }, { select: 'taskKey' }),
+      dataAccess.dailyTaskCompletion.find({ userId: user.id, taskDate: today }, { sort: { createdAt: 1 } })
+    ]);
+    const submittedTaskKeys = new Set(evaluationSubmissions.map(submission => submission.taskKey));
+    evaluationAssignments.forEach(assignment => { assignment.submissionComplete = submittedTaskKeys.has(`${tier.code}-task-${String(assignment.taskNumber).padStart(2, '0')}`); });
     const completedKeys = new Set(completions.map(item => item.taskKey));
     const active = hasPaidFeatureAccess(user) || Number(user.wallet?.totalDeposits || 0) > 0;
     const dailyProfit = Number(tier.dailyProfit || 0);
-    return res.json({ success: true, tier: { code: tier.code, name: tier.name, taskLimit, dailyProfit }, active, completedCount: completedKeys.size, tasks: buildDailyTasks(tier.code, taskLimit, completedKeys, !active, dailyProfit) });
+    return res.json({ success: true, tier: { code: tier.code, name: tier.name, taskLimit, dailyProfit }, active, completedCount: completedKeys.size, tasks: buildDailyTasks(tier.code, evaluationAssignments, completedKeys, !active, dailyProfit, { communityEngagement: communityTaskStatus.communityPost && communityTaskStatus.communityInteraction }) });
   } catch (error) {
     console.error('Daily task list error:', error.message);
     res.status(500).json({ error: 'تعذر تحميل مهام اليوم' });
@@ -167,8 +256,66 @@ async function completeTaskSupabase(req, res) {
     if (message.includes('VIP_LEVEL_NOT_FOUND')) return res.status(503).json({ error: 'إعدادات المستوى غير متاحة حاليًا، حاول لاحقًا' });
     if (message.includes('INVALID_TASK_KEY')) return res.status(400).json({ error: 'هذه المهمة غير صالحة لخطة مستواك الحالية' });
     if (message.includes('TASK_ALREADY_COMPLETED')) return res.status(400).json({ error: 'تم إنجاز هذه المهمة مسبقًا اليوم' });
+    if (message.includes('COMMUNITY_TASK_REQUIRED')) return res.status(400).json({ error: 'أكمل أولًا نشر منشور عن OPERIX والتفاعل مع منشور عضو آخر في المجتمع اليوم.' });
+    if (message.includes('EVALUATION_REQUIRED')) return res.status(400).json({ error: 'أرسل التقييم المتوازن مع مصدر موثوق قبل إنهاء المهمة.' });
     if (error?.code === 'PGRST202' || /operix_daily_task_complete_atomic.*does not exist/i.test(message)) return res.status(503).json({ error: 'نظام المهام يحتاج إلى تحديث قاعدة البيانات قبل الاستخدام' });
     res.status(500).json({ error: 'حدث خطأ في معالجة المهمة والمكافأة' });
+  }
+}
+
+async function submitDailyEvaluation(req, res) {
+  try {
+    const user = await dataAccess.user.findById(req.user.id);
+    if (!user || !user.tierCode) return res.status(404).json({ error: 'المستخدم أو المستوى غير موجود' });
+    const tier = await dataAccess.vipLevel.findOne({ code: user.tierCode });
+    if (!tier) return res.status(503).json({ error: 'إعدادات المستوى غير متاحة حاليًا' });
+    if (!hasPaidFeatureAccess(user) && Number(user.wallet?.totalDeposits || 0) <= 0) return res.status(400).json({ error: 'يجب تفعيل المستوى أولًا' });
+
+    const taskKey = String(req.body?.taskKey || '').trim();
+    const match = taskKey.match(new RegExp(`^${String(tier.code).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-task-(\\d+)$`));
+    const taskNumber = match ? Number(match[1]) : 0;
+    const today = utcDateString();
+    const assignment = taskNumber >= 2 ? await dataAccess.dailyTaskAssignment.findOne({ userId: user.id || user._id, tierCode: tier.code, taskDate: today, taskNumber }) : null;
+    if (!assignment) return res.status(400).json({ error: 'مهمة التقييم غير موجودة ضمن خطة اليوم الحالية' });
+
+    const rating = Number(req.body?.rating);
+    const selectedTag = String(req.body?.selectedTag || '').trim();
+    const feedback = String(req.body?.feedback || '').trim();
+    const allowedTags = getEvaluationTags(assignment.category);
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5 || !allowedTags.includes(selectedTag) || feedback.length < 10 || feedback.length > 500) {
+      return res.status(400).json({ error: 'اختر تقييمًا من 1 إلى 5 ووسمًا مناسبًا، واكتب ملاحظة قصيرة من 10 إلى 500 حرف.' });
+    }
+
+    const completion = await dataAccess.dailyTaskCompletion.findOne({ userId: user.id, taskKey, taskDate: today });
+    if (completion) return res.status(409).json({ error: 'تم إنهاء هذه المهمة اليوم مسبقًا' });
+    const submission = {
+      userId: user.id || user._id,
+      taskKey,
+      taskDate: today,
+      assignmentId: assignment.id || assignment._id,
+      entityKey: assignment.entityKey,
+      targetCategory: assignment.category,
+      targetName: assignment.entityName,
+      rating,
+      selectedTag,
+      feedback,
+      strengths: feedback,
+      concerns: feedback,
+      evidenceUrl: 'in-app-daily-entity-review'
+    };
+    const existingSubmission = await dataAccess.dailyTaskSubmission.findOne({ userId: user.id, taskKey, taskDate: today });
+    if (existingSubmission) await dataAccess.dailyTaskSubmission.updateOne({ id: existingSubmission.id || existingSubmission._id }, submission);
+    else await dataAccess.dailyTaskSubmission.create(submission);
+
+    const result = await dataAccess.callSupabaseRpc('operix_daily_task_complete_atomic', { p_user_id: req.user.id, p_task_key: taskKey });
+    return res.json({ success: true, ...result });
+  } catch (error) {
+    const message = String(error?.message || '');
+    console.error('Daily evaluation submission error:', message);
+    if (message.includes('EVALUATION_REQUIRED')) return res.status(400).json({ error: 'أرسل التقييم مع مصدر موثوق قبل إنهاء المهمة.' });
+    if (message.includes('TASK_ALREADY_COMPLETED')) return res.status(409).json({ error: 'تم إنهاء هذه المهمة اليوم مسبقًا' });
+    if (error?.code === 'PGRST202' || /operix_daily_task_complete_atomic.*does not exist/i.test(message)) return res.status(503).json({ error: 'قاعدة البيانات تحتاج إلى تحديث نظام مهام التقييم.' });
+    res.status(500).json({ error: 'تعذر حفظ التقييم وإنهاء المهمة' });
   }
 }
 
@@ -180,9 +327,11 @@ async function rewardSupabase(req, res, min, max, label) {
   try {
     const user = await dataAccess.user.findById(req.user.id);
     const paidFeatureAccess = hasPaidFeatureAccess(user);
-    if (!user || !user.tierCode || !user.wallet || (!paidFeatureAccess && !(user.wallet.totalDeposits > 0))) return res.status(400).json({ error: 'تحتاج إلى 25 إحالة نشطة لفتح دورة العجلة والصندوق، مع إيداع وتفعيل مستوى الحساب' });
+    const referralsPerCycle = Math.max(1, Number(req.app.locals.gameSettings?.referralsPerCycle) || 6);
+    const cycleRequirementMessage = `تحتاج إلى ${referralsPerCycle} إحالات نشطة لفتح دورة العجلة والصندوق، مع إيداع وتفعيل مستوى الحساب`;
+    if (!user || !user.tierCode || !user.wallet || (!paidFeatureAccess && !(user.wallet.totalDeposits > 0))) return res.status(400).json({ error: cycleRequirementMessage });
     const creditField = label === 'Lucky Spin Wheel' ? 'wheelCredits' : 'mysteryBoxCredits';
-    if (!paidFeatureAccess && Number(user[creditField] || 0) < 1) return res.status(400).json({ error: 'تحتاج إلى 25 إحالة نشطة لفتح دورة العجلة والصندوق، مع إيداع وتفعيل مستوى الحساب' });
+    if (!paidFeatureAccess && Number(user[creditField] || 0) < 1) return res.status(400).json({ error: cycleRequirementMessage });
     const rewardAmount = Number((Math.random() * (max - min) + min).toFixed(2));
     const split = splitHybridReward(rewardAmount);
     const history = await dataAccess.transaction.find({ userId: user.id || user._id, type: 'reward', walletAddress: { $in: ['Lucky Spin Wheel', 'Mystery Box'] }, status: 'approved', createdAt: { $gte: new Date(new Date().setUTCHours(0, 0, 0, 0)) } });
@@ -265,7 +414,10 @@ async function claimStakingSupabase(req, res) {
 
 module.exports = {
   buildDailyTasks,
+  hasDailyPlatformPost,
+  hasDailyCommunityInteraction,
   completeTask,
+  submitDailyEvaluation,
   getDailyTasks,
   spinWheel,
   mysteryBox,

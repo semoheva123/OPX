@@ -16,7 +16,11 @@ async function main() {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
   });
 
-  const checks = ['users', 'wallet_balances', 'transactions', 'financial_ledger', 'sessions', 'security_events'];
+  const checks = [
+    'users', 'wallet_balances', 'transactions', 'financial_ledger', 'sessions', 'security_events',
+    'vip_levels', 'game_settings', 'daily_task_completions', 'daily_task_entities',
+    'daily_task_assignments', 'daily_task_submissions', 'referral_reward_awards', 'milestone_reward_awards'
+  ];
   const results = [];
 
   for (const table of checks) {

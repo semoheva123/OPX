@@ -1133,7 +1133,7 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
                     <div class="balance-summary-card balance-opx">
                         <div class="balance-card-head"><span><i class="fa-solid fa-coins"></i> OPX</span><span class="text-[10px]">العملة</span></div>
                         <span class="balance-card-value"><span id="lblOPXBalanceMini">0.0000</span> <small>OPX</small></span>
-                        <span class="balance-card-note">العائد الداخلي</span>
+                        <span class="balance-card-note">مخصص للترقيات فقط</span>
                     </div>
                 </div>
 
@@ -1429,7 +1429,7 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
         <!-- 4.5 تبويب عجلة الحظ (Spin View) -->
         <div id="view-spin" class="space-y-4 hide text-center">
             <div class="glass-card p-5 rounded-3xl space-y-2 text-right border border-amber-500/20">
-                <div class="flex justify-between items-center"><div><span class="text-[10px] text-amber-400 font-bold uppercase">ألعاب المكافآت</span><h3 class="font-black text-white text-lg">اختبر حظك</h3></div><span id="gameReferralRequirement" class="text-[10px] text-slate-400">25 إحالة نشطة = دورة</span></div>
+                <div class="flex justify-between items-center"><div><span class="text-[10px] text-amber-400 font-bold uppercase">ألعاب المكافآت</span><h3 class="font-black text-white text-lg">اختبر حظك</h3></div><span id="gameReferralRequirement" class="text-[10px] text-slate-400">6 إحالات نشطة = دورة</span></div>
                 <p class="text-[11px] text-slate-400 leading-5">كل دورة تمنح مكافأة فعلية تُسجل في سجل المعاملات. لا تُفتح الألعاب إلا بعد توفر دورة وإيداع مفعّل.</p>
                 <div class="flex flex-wrap gap-2 text-[10px]"><p id="gameConfigStatus" class="text-emerald-400">جاري تحميل قيم المكافآت...</p><span id="platformStatus" class="text-slate-500">الخدمة: جاري التحقق...</span></div>
             </div>
@@ -1437,13 +1437,13 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
                 <div class="glass-card p-5 rounded-3xl border border-amber-500/25 space-y-4 overflow-hidden relative">
                     <div class="flex justify-between items-start text-right"><div><h3 class="font-black text-white">عجلة الحظ</h3><p id="wheelRewardRange" class="text-[10px] text-slate-400 mt-1">جاري تحميل نطاق المكافأة...</p></div><span class="bg-amber-500/15 text-amber-400 border border-amber-500/25 rounded-full px-2.5 py-1 text-[10px] font-bold"><b id="lblWheelCredits">0</b> دورة</span></div>
                     <div class="relative w-44 h-44 mx-auto"><div id="spinWheelVisual" class="wheel-disc relative w-full h-full rounded-full border-4 border-amber-300/70 flex items-center justify-center transition-transform duration-1000"><div class="relative z-10 w-14 h-14 rounded-full bg-slate-950 border-2 border-amber-400 flex items-center justify-center"><i class="fa-solid fa-gift text-2xl text-amber-400"></i></div></div><i class="fa-solid fa-caret-down absolute -top-3 left-1/2 -translate-x-1/2 text-amber-300 text-xl"></i></div>
-                    <p id="wheelGameStatus" class="text-center text-[10px] text-slate-500">تحتاج إلى 25 إحالة نشطة للحصول على دورة.</p>
+                    <p id="wheelGameStatus" class="text-center text-[10px] text-slate-500">تحتاج إلى 6 إحالات نشطة للحصول على دورة.</p>
                     <button id="btnLuckySpin" disabled aria-disabled="true" onclick="triggerLuckySpin()" class="w-full py-3 gold-gradient text-slate-950 font-black rounded-xl text-xs shadow-lg active:scale-95 transition-all opacity-50 cursor-not-allowed"><i class="fa-solid fa-rotate mr-1"></i> تدوير العجلة</button>
                 </div>
                 <div class="glass-card p-5 rounded-3xl border border-purple-500/25 space-y-4 overflow-hidden relative">
                     <div class="flex justify-between items-start text-right"><div><h3 class="font-black text-white">الصندوق المجهول</h3><p id="boxRewardRange" class="text-[10px] text-slate-400 mt-1">جاري تحميل نطاق المكافأة...</p></div><span class="bg-purple-500/15 text-purple-300 border border-purple-500/25 rounded-full px-2.5 py-1 text-[10px] font-bold"><b id="lblMysteryBoxCredits">0</b> دورة</span></div>
                     <div id="mysteryBoxVisual" class="mystery-box-visual w-32 h-32 mx-auto rounded-3xl bg-gradient-to-br from-purple-500 to-indigo-700 border-4 border-purple-300/50 flex items-center justify-center"><i class="fa-solid fa-box-open text-6xl text-white"></i></div>
-                    <p id="boxGameStatus" class="text-center text-[10px] text-slate-500">تحتاج إلى 25 إحالة نشطة للحصول على دورة.</p>
+                    <p id="boxGameStatus" class="text-center text-[10px] text-slate-500">تحتاج إلى 6 إحالات نشطة للحصول على دورة.</p>
                     <button id="btnMysteryBox" disabled aria-disabled="true" onclick="openMysteryBox()" class="w-full py-3 purple-gradient text-white font-black rounded-xl text-xs shadow-lg active:scale-95 transition-all opacity-50 cursor-not-allowed"><i class="fa-solid fa-unlock-keyhole mr-1"></i> فتح الصندوق</button>
                 </div>
             </div>
@@ -1469,6 +1469,17 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
                 <p class="text-[10px] text-slate-500">اكسب مكافأة نقدية عند تفعيل إحالاتك المباشرة للمستويات.</p>
             </div>
 
+            <section class="glass-card rounded-3xl border border-emerald-400/20 p-5 text-right" aria-labelledby="teamReferralMilestoneTitle">
+                <div class="flex items-start justify-between gap-3">
+                    <div><span class="text-[10px] font-black text-emerald-300">إنجاز الإحالات</span><h3 id="teamReferralMilestoneTitle" class="mt-1 text-sm font-black text-white">هدف 300 إحالة فعّالة</h3></div>
+                    <i class="fa-solid fa-bullseye text-xl text-emerald-300" aria-hidden="true"></i>
+                </div>
+                <div class="mt-4 flex items-end justify-between gap-3"><p class="text-[10px] text-slate-400">الإحالات المباشرة المفعّلة</p><strong id="teamReferralMilestoneCount" class="text-sm font-black text-emerald-300">0 / 300</strong></div>
+                <div class="mt-2 h-2 overflow-hidden rounded-full bg-slate-900" role="progressbar" aria-label="التقدم نحو 300 إحالة فعالة" aria-valuemin="0" aria-valuemax="300" aria-valuenow="0"><div id="teamReferralMilestoneBar" class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-cyan-300 transition-all duration-500" style="width:0%"></div></div>
+                <p id="teamReferralMilestoneStatus" class="mt-3 text-[10px] leading-5 text-slate-300">يتبقى 300 إحالة فعّالة للوصول إلى الهدف.</p>
+                <p class="mt-1 text-[10px] leading-5 text-slate-500">عند استيفاء الشرط، يتيح النظام تفعيل المستوى الرابع مجانًا مع مكافأة فورية قدرها $100 في رصيد الأرباح.</p>
+            </section>
+
             <div class="referral-rewards-card glass-card rounded-3xl border border-amber-400/20 p-5 text-right">
                 <div class="flex items-start justify-between gap-3">
                     <div><span class="text-[10px] font-black tracking-wide text-amber-200">مكافآت الإحالات المباشرة</span><h3 class="mt-1 text-sm font-black text-white">إجمالي ما كسبته</h3></div>
@@ -1476,9 +1487,9 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
                 </div>
                 <div class="mt-3 flex items-end gap-2"><strong id="referralRewardsTotal" class="text-4xl font-black text-amber-300">$0.00</strong><span class="pb-1 text-[11px] text-slate-400">USDT</span></div>
                 <div class="mt-4 grid grid-cols-3 gap-2 text-center text-[10px]">
-                    <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-2"><span class="block text-slate-500">المستوى الأول</span><b class="mt-1 block text-emerald-300">+$1</b></div>
-                    <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-2"><span class="block text-slate-500">المستوى الثاني</span><b class="mt-1 block text-emerald-300">+$2</b></div>
-                    <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-2"><span class="block text-slate-500">المستوى الثالث</span><b class="mt-1 block text-emerald-300">+$5</b></div>
+                    <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-2"><span class="block text-slate-500">المستوى الأول</span><b class="mt-1 block text-emerald-300">+$1</b><div class="mt-2 space-y-1"><span class="block text-emerald-300">مفعّل: <b id="lblTeamLevel1ActiveCount">0</b></span><span class="block text-slate-400">غير مفعّل: <b id="lblTeamLevel1InactiveCount">0</b></span></div></div>
+                    <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-2"><span class="block text-slate-500">المستوى الثاني</span><b class="mt-1 block text-emerald-300">+$2</b><div class="mt-2 space-y-1"><span class="block text-emerald-300">مفعّل: <b id="lblTeamLevel2ActiveCount">0</b></span><span class="block text-slate-400">غير مفعّل: <b id="lblTeamLevel2InactiveCount">0</b></span></div></div>
+                    <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-2"><span class="block text-slate-500">المستوى الثالث</span><b class="mt-1 block text-emerald-300">+$5</b><div class="mt-2 space-y-1"><span class="block text-emerald-300">مفعّل: <b id="lblTeamLevel3ActiveCount">0</b></span><span class="block text-slate-400">غير مفعّل: <b id="lblTeamLevel3InactiveCount">0</b></span></div></div>
                 </div>
                 <div id="referralRewardsHistory" class="mt-4 space-y-2 text-[10px] text-slate-400"><span>سيظهر سجل المكافآت هنا بعد تفعيل إحالاتك.</span></div>
             </div>
@@ -1532,7 +1543,7 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
                 <div class="balance-summary-card balance-opx">
                     <div class="balance-card-head"><span><i class="fa-solid fa-coins"></i> OPX</span><span class="text-[10px]">العملة</span></div>
                     <span class="balance-card-value"><span id="lblProfileOPXBalance">0.0000</span> <small>OPX</small></span>
-                    <span class="balance-card-note">رصيد OPX الداخلي</span>
+                    <span class="balance-card-note">مخصص للترقيات فقط — لا يسلّم للسحب</span>
                 </div>
             </div>
 
@@ -1697,9 +1708,9 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
         </button>
     </nav>
 
-    <!-- 6. النوافذ المنبثقة (Modals) -->
-
-    <div id="platformConfirmModal" class="hide fixed inset-0 glass-modal z-[60] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="platformConfirmTitle">
+                    <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-2"><span class="block text-slate-500">المستوى الأول</span><b class="mt-1 block text-emerald-300">+$1</b><span class="mt-1 block text-slate-400"><b id="lblTeamLevel1Count">0</b> شخص</span></div>
+                    <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-2"><span class="block text-slate-500">المستوى الثاني</span><b class="mt-1 block text-emerald-300">+$2</b><span class="mt-1 block text-slate-400"><b id="lblTeamLevel2Count">0</b> شخص</span></div>
+                    <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-2"><span class="block text-slate-500">المستوى الثالث</span><b class="mt-1 block text-emerald-300">+$5</b><span class="mt-1 block text-slate-400"><b id="lblTeamLevel3Count">0</b> شخص</span></div>
         <div class="glass-card w-full max-w-sm p-6 rounded-3xl space-y-4 border border-amber-500/30 shadow-2xl">
             <div class="flex items-start gap-3">
                 <div class="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-300 flex items-center justify-center shrink-0"><i class="fa-solid fa-shield-halved"></i></div>

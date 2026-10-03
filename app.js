@@ -161,7 +161,7 @@ if (document.readyState === 'loading') {
     initializePlatform();
 }
 
-let gameConfig = { spinMin: 1, spinMax: 10, boxMin: 5, boxMax: 25, referralsPerCycle: 25 };
+let gameConfig = { spinMin: 1, spinMax: 10, boxMin: 5, boxMax: 25, referralsPerCycle: 6 };
 
 async function loadGameConfig() {
     try {
@@ -1578,7 +1578,7 @@ function updateGameCredits(user = currentUserData) {
     });
     const wheelStatus = document.getElementById('wheelGameStatus');
     const boxStatus = document.getElementById('boxGameStatus');
-    const referralsPerCycle = Number(gameConfig.referralsPerCycle || 25);
+    const referralsPerCycle = Number(gameConfig.referralsPerCycle || 6);
     if (wheelStatus) wheelStatus.innerText = Number(user.wheelCredits || 0) > 0 ? 'الدورة متاحة الآن.' : `تحتاج إلى ${referralsPerCycle} إحالة نشطة للحصول على دورة.`;
     if (boxStatus) boxStatus.innerText = Number(user.mysteryBoxCredits || 0) > 0 ? 'الدورة متاحة الآن.' : `تحتاج إلى ${referralsPerCycle} إحالة نشطة للحصول على دورة.`;
 }
@@ -2025,6 +2025,24 @@ function renderDailyTaskDetail(data) {
     list.innerHTML = tasks.map(task => {
         const isExpanded = expandedDailyTaskKey === task.taskKey;
         const taskReward = Number(task.reward || (Number(data.tier?.dailyProfit || 0) / Math.max(1, Number(data.taskLimit || task.number || 1)))).toFixed(4);
+        const isCommunityTask = task.requirement === 'community_engagement';
+        const isEvaluationTask = task.requirement === 'evaluation';
+        const communityAction = isCommunityTask ? `<button type="button" onclick="switchTab('feed')" class="mt-2 w-full rounded-xl border border-cyan-400/20 bg-cyan-400/5 px-3 py-2 text-[10px] font-bold text-cyan-300"><i class="fa-solid fa-users mr-1"></i> فتح المجتمع للنشر والتفاعل</button>` : '';
+        const evaluationProfile = isEvaluationTask ? `<section class="mt-3 flex items-start gap-3 rounded-2xl border border-cyan-400/15 bg-slate-950/70 p-3" aria-label="بطاقة جهة التقييم">
+            ${task.targetImageUrl ? `<img src="${escapeAiHtml(task.targetImageUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer" class="h-12 w-12 shrink-0 rounded-xl bg-white object-contain p-1" onerror="this.classList.add('hidden')">` : `<span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-cyan-400/10 text-cyan-300"><i class="fa-solid ${task.targetCategory === 'crypto' ? 'fa-coins' : task.targetCategory === 'ai' ? 'fa-brain' : 'fa-building'}"></i></span>`}
+            <div class="min-w-0"><span class="text-[9px] font-bold text-cyan-300">${escapeAiHtml(task.targetCategoryLabel || 'جهة التقييم')}</span><h5 class="mt-0.5 text-xs font-black text-white">${escapeAiHtml(task.targetName || '')}</h5><p class="mt-1 text-[10px] leading-5 text-slate-400">${escapeAiHtml(task.targetSummary || '')}</p></div>
+        </section>` : '';
+        const evaluationForm = isEvaluationTask && isExpanded ? `<div class="mt-3 space-y-3 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3" data-evaluation-form="${escapeAiHtml(task.taskKey)}">
+            <p class="text-[10px] leading-5 text-cyan-100">قيّم هذه الخدمة بشكل سريع وصادق، فقط من خلال تجربتك أو ما رأيته عنها.</p>
+            <fieldset><legend class="text-[10px] text-slate-300">التقييم</legend><input data-evaluation-field="rating" type="hidden" value=""><div class="mt-1 flex flex-row-reverse justify-end gap-1" role="radiogroup" aria-label="التقييم من نجمة إلى خمس نجوم">${[1, 2, 3, 4, 5].map(rating => `<button type="button" role="radio" aria-checked="false" data-rating="${rating}" onclick="setDailyEvaluationRating('${escapeAiHtml(task.taskKey)}', ${rating})" class="rounded-lg p-1 text-2xl text-slate-600 transition-colors" aria-label="${rating} من 5 نجوم"><i class="fa-solid fa-star"></i></button>`).join('')}</div></fieldset>
+            <label class="block text-[10px] text-slate-300">جانب التقييم
+                <select data-evaluation-field="selectedTag" onchange="updateDailyEvaluationSubmit('${escapeAiHtml(task.taskKey)}')" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-xs text-white"><option value="">اختر جانبًا</option>${(task.tags || []).map(tag => `<option value="${escapeAiHtml(tag)}">${escapeAiHtml(tag)}</option>`).join('')}</select>
+            </label>
+            <label class="block text-[10px] text-slate-300">ملاحظة قصيرة (10–500 حرف)
+                <textarea data-evaluation-field="feedback" minlength="10" maxlength="500" rows="2" oninput="updateDailyEvaluationSubmit('${escapeAiHtml(task.taskKey)}')" placeholder="رأي مختصر ومباشر..." class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-xs text-white"></textarea>
+            </label>
+            <button type="button" data-evaluation-submit disabled onclick="submitDailyEvaluation('${escapeAiHtml(task.taskKey)}')" class="w-full rounded-xl bg-cyan-400 px-3 py-2.5 text-[10px] font-black text-slate-950 enabled:hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-40">إرسال التقييم</button>
+        </div>` : '';
         return `<article class="rounded-2xl border ${task.completed ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-slate-800 bg-slate-950/45'} p-3" data-task-card="${escapeAiHtml(task.taskKey)}">
             <div class="flex items-start gap-3">
                 <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${task.completed ? 'bg-emerald-400/10 text-emerald-300' : 'bg-amber-400/10 text-amber-300'}"><i class="fa-solid ${escapeAiHtml(task.icon)}"></i></span>
@@ -2034,17 +2052,19 @@ function renderDailyTaskDetail(data) {
                             <h4 class="text-xs font-bold text-white">${escapeAiHtml(task.number + '. ' + task.title)}</h4>
                             <p class="mt-1 text-[10px] leading-5 text-slate-500">${escapeAiHtml(task.description)}</p>
                         </div>
-                        <span class="text-[10px] font-bold ${task.completed ? 'text-emerald-300' : 'text-amber-300'}">${task.completed ? 'مكتملة' : task.locked ? 'مقفلة' : 'متاحة'}</span>
+                        <span class="text-[10px] font-bold ${task.completed ? 'text-emerald-300' : task.locked ? 'text-slate-500' : task.requirement && !task.requirementMet ? 'text-cyan-300' : 'text-amber-300'}">${task.completed ? 'مكتملة' : task.locked ? 'مقفلة' : task.requirement && !task.requirementMet ? isEvaluationTask ? 'التقييم مطلوب' : 'الإجراء مطلوب' : 'متاحة'}</span>
                     </div>
                     <div class="mt-3 flex items-center justify-between gap-2 text-[10px] text-slate-400">
                         <span>مكافأة المهمة: <strong class="text-amber-300">$${taskReward}</strong></span>
                         <span>${task.number} من ${Math.max(1, Number(data.taskLimit || task.number || 1))}</span>
                     </div>
                     <div class="mt-3 flex gap-2">
-                        <button type="button" data-task-key="${escapeAiHtml(task.taskKey)}" onclick="toggleDailyTaskDetails('${escapeAiHtml(task.taskKey)}')" class="flex-1 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-[10px] font-bold text-slate-200">${isExpanded ? 'إخفاء التعليمات' : 'بدء المهمة'} <i class="fa-solid ${isExpanded ? 'fa-chevron-up' : 'fa-arrow-left'} mr-1"></i></button>
-                        <button type="button" ${task.completed || task.locked ? 'disabled' : `onclick="completeTask('${escapeAiHtml(task.taskKey)}')"`} class="rounded-xl border px-3 py-2 text-[10px] font-bold ${task.completed || task.locked ? 'cursor-not-allowed border-slate-700 bg-slate-900 text-slate-500' : 'border-amber-500/25 bg-amber-500/10 text-amber-300'}">${task.completed ? 'تم الإنجاز' : task.locked ? 'تفعيل المستوى' : 'إتمام المهمة'} <i class="fa-solid ${task.completed ? 'fa-check' : task.locked ? 'fa-lock' : 'fa-arrow-left'} mr-1"></i></button>
+                        <button type="button" data-task-key="${escapeAiHtml(task.taskKey)}" onclick="toggleDailyTaskDetails('${escapeAiHtml(task.taskKey)}')" class="flex-1 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-[10px] font-bold text-slate-200">${isExpanded ? 'إخفاء' : 'فتح'} <i class="fa-solid ${isExpanded ? 'fa-chevron-up' : 'fa-arrow-left'} mr-1"></i></button>
+                        <button type="button" ${task.completed || task.locked ? 'disabled' : `onclick="${isEvaluationTask ? `toggleDailyTaskDetails('${escapeAiHtml(task.taskKey)}')` : `completeTask('${escapeAiHtml(task.taskKey)}')`}"`} class="rounded-xl border px-3 py-2 text-[10px] font-bold ${task.completed || task.locked ? 'cursor-not-allowed border-slate-700 bg-slate-900 text-slate-500' : 'border-amber-500/25 bg-amber-500/10 text-amber-300'}">${task.completed ? 'تم الإنجاز' : task.locked ? 'تفعيل المستوى' : isEvaluationTask ? isExpanded ? 'إخفاء النموذج' : 'ابدأ التقييم' : 'إتمام المهمة'} <i class="fa-solid ${task.completed ? 'fa-check' : task.locked ? 'fa-lock' : isEvaluationTask ? 'fa-clipboard-check' : 'fa-arrow-left'} mr-1"></i></button>
                     </div>
-                    ${isExpanded ? `<div class="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3"><div class="mb-2 text-[10px] font-bold text-amber-300">محتوى المهمة / التعليمات</div><ol class="space-y-1 text-[10px] leading-5 text-slate-300 list-decimal list-inside">${(task.instructions || []).map((instruction) => `<li>${escapeAiHtml(instruction)}</li>`).join('')}</ol></div>` : ''}
+                    ${isExpanded ? `<div class="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3"><div class="mb-2 text-[10px] font-bold text-amber-300">خطوات سريعة</div><ol class="space-y-1 text-[10px] leading-5 text-slate-300 list-decimal list-inside">${(task.instructions || []).slice(0, 2).map((instruction) => `<li>${escapeAiHtml(instruction)}</li>`).join('')}</ol></div>` : ''}
+                    ${evaluationProfile}
+                    ${evaluationForm}
                 </div>
             </div>
         </article>`;
@@ -2111,9 +2131,35 @@ async function saveProfileWallet() {
 
 /* --- 5. شجرة الفريق والرتب --- */
 function updateTeamTreeData(stats) {
-    const l1 = stats.l1 || 0;
-    const directCount = document.getElementById('lblDirectReferralCount');
-    if (directCount) directCount.innerText = l1.toLocaleString('ar');
+    stats = stats || {};
+    const counts = [
+        ['lblTeamLevel1ActiveCount', stats.l1Active],
+        ['lblTeamLevel1InactiveCount', stats.l1Inactive],
+        ['lblTeamLevel2ActiveCount', stats.l2Active],
+        ['lblTeamLevel2InactiveCount', stats.l2Inactive],
+        ['lblTeamLevel3ActiveCount', stats.l3Active],
+        ['lblTeamLevel3InactiveCount', stats.l3Inactive]
+    ];
+    counts.forEach(([elementId, count]) => {
+        const counter = document.getElementById(elementId);
+        if (counter) counter.innerText = Math.max(0, Number(count) || 0).toLocaleString('ar');
+    });
+
+    const milestoneTarget = 300;
+    const activeReferrals = Math.max(0, Number(stats.activeReferrals) || 0);
+    const progress = Math.min(activeReferrals, milestoneTarget);
+    const milestoneCount = document.getElementById('teamReferralMilestoneCount');
+    const milestoneBar = document.getElementById('teamReferralMilestoneBar');
+    const milestoneStatus = document.getElementById('teamReferralMilestoneStatus');
+    const milestoneProgressBar = milestoneBar?.parentElement;
+    if (milestoneCount) milestoneCount.innerText = `${progress.toLocaleString('ar')} / ${milestoneTarget.toLocaleString('ar')}`;
+    if (milestoneBar) milestoneBar.style.width = `${(progress / milestoneTarget) * 100}%`;
+    if (milestoneProgressBar) milestoneProgressBar.setAttribute('aria-valuenow', String(progress));
+    if (milestoneStatus) {
+        milestoneStatus.innerText = activeReferrals >= milestoneTarget
+            ? 'اكتمل الشرط: أصبحت مؤهلًا لتفعيل المستوى الرابع مجانًا مع مكافأة $100.'
+            : `يتبقى ${(milestoneTarget - activeReferrals).toLocaleString('ar')} إحالة فعّالة للوصول إلى الهدف.`;
+    }
 }
 
 /* --- 6. المهام والألعاب والمستشار الذكي --- */
@@ -2145,6 +2191,61 @@ async function completeTask(taskKey) {
     } finally {
         if (btn) btn.disabled = false;
         updateTaskAvailability(Number(currentUserData?.todayCompletedTasks || 0), getTaskLimitForTier());
+    }
+}
+
+function updateDailyEvaluationSubmit(taskKey) {
+    const form = document.querySelector(`[data-evaluation-form="${CSS.escape(taskKey)}"]`);
+    if (!form) return;
+    const rating = Number(form.querySelector('[data-evaluation-field="rating"]')?.value || 0);
+    const selectedTag = form.querySelector('[data-evaluation-field="selectedTag"]')?.value || '';
+    const feedback = form.querySelector('[data-evaluation-field="feedback"]')?.value.trim() || '';
+    const submitButton = form.querySelector('[data-evaluation-submit]');
+    if (submitButton) submitButton.disabled = !(rating >= 1 && rating <= 5 && selectedTag && feedback.length >= 10 && feedback.length <= 500);
+}
+
+function setDailyEvaluationRating(taskKey, rating) {
+    const form = document.querySelector(`[data-evaluation-form="${CSS.escape(taskKey)}"]`);
+    if (!form) return;
+    const ratingInput = form.querySelector('[data-evaluation-field="rating"]');
+    if (ratingInput) ratingInput.value = String(rating);
+    form.querySelectorAll('[data-rating]').forEach(button => {
+        const selected = Number(button.dataset.rating) <= rating;
+        button.setAttribute('aria-checked', String(Number(button.dataset.rating) === rating));
+        button.classList.toggle('text-amber-300', selected);
+        button.classList.toggle('text-slate-600', !selected);
+    });
+    updateDailyEvaluationSubmit(taskKey);
+}
+
+async function submitDailyEvaluation(taskKey) {
+    const form = document.querySelector(`[data-evaluation-form="${CSS.escape(taskKey)}"]`);
+    const token = localStorage.getItem('token');
+    if (!form || !token) return showToast('تعذر فتح نموذج التقييم. أعد تحميل المهمة وحاول مجددًا.');
+    updateDailyEvaluationSubmit(taskKey);
+    const payload = {
+        taskKey,
+        rating: Number(form.querySelector('[data-evaluation-field="rating"]')?.value || 0),
+        selectedTag: form.querySelector('[data-evaluation-field="selectedTag"]')?.value || '',
+        feedback: form.querySelector('[data-evaluation-field="feedback"]')?.value.trim() || ''
+    };
+    const submitButton = form.querySelector('[data-evaluation-submit]');
+    if (submitButton?.disabled) return showToast('أكمل التقييم والوسم والملاحظة المطلوبة أولًا.');
+    if (submitButton) { submitButton.disabled = true; submitButton.innerText = 'جارٍ التحقق وحفظ التقييم...'; }
+    try {
+        const response = await fetch('/api/tasks/submit-evaluation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'تعذر إرسال التقييم');
+        if (data.wallet) updateWalletData(data.wallet);
+        showToast(`تم حفظ التقييم وإنهاء المهمة، أضيف $${Number(data.grossAmount || 0).toFixed(4)} إلى المكافآت.`, 'win');
+        await Promise.all([loadUserProfile(), openDailyTasks()]);
+    } catch (error) {
+        showToast(error.message || 'تعذر الاتصال بالخادم');
+        if (submitButton) { submitButton.disabled = false; submitButton.innerText = 'إرسال التقييم وإنهاء المهمة'; }
     }
 }
 
@@ -2551,6 +2652,7 @@ function switchTab(tabName) {
         const maximum = getTaskLimitForTier();
         updateTaskAvailability(Number(currentUserData?.todayCompletedTasks || 0), maximum);
         startTaskResetCountdown();
+        if (!document.getElementById('dailyTaskDetailPanel')?.classList.contains('hidden')) openDailyTasks();
     }
     if (tabName === 'home') {
         loadReferralRewardHistory();

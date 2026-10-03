@@ -1,13 +1,63 @@
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const activityController = require('../src/controllers/activityController');
+const automation = require('../src/services/dailyTaskAutomation');
+const schema = fs.readFileSync(path.join(__dirname, '..', 'supabase/schema.sql'), 'utf8');
+const migration = fs.readFileSync(path.join(__dirname, '..', 'supabase/automated-daily-tasks.sql'), 'utf8');
+const adminController = fs.readFileSync(path.join(__dirname, '..', 'src/controllers/adminController.js'), 'utf8');
 
-const tasks = activityController.buildDailyTasks('A1', 8, new Set(), false);
+const assignments = [
+	{ entityKey: 'wiki:example-systems', entityName: 'Example Systems', category: 'technology', summary: 'شركة تقنية للاختبار.', imageUrl: '', submissionComplete: false },
+	{ entityKey: 'wiki:example-ai', entityName: 'Example AI', category: 'ai', summary: 'منصة ذكاء للاختبار.', imageUrl: 'https://images.example.test/ai.png', submissionComplete: false }
+];
+const tasks = activityController.buildDailyTasks('A1', assignments, new Set(), false, 1.5, { communityEngagement: true });
 
 assert.equal(Array.isArray(tasks), true, 'يجب أن تُعيد قائمة مهام');
-assert.equal(tasks.length, 8, 'يجب أن يكون عدد المهام مطابقًا لمستوى A1');
+assert.equal(tasks.length, 3, 'يجب أن تضم الخطة المهمة المجتمعية والتقييمات المخصصة فقط');
 assert.equal(typeof tasks[0].title, 'string', 'يجب أن تحتوي المهمة على عنوان');
 assert.equal(typeof tasks[0].instructions, 'object', 'يجب أن تحتوي المهمة على إرشادات');
 assert.equal(tasks[0].instructions.length > 0, true, 'يجب أن تحتوي المهمة على تعليمات');
 assert.equal(typeof tasks[0].reward, 'number', 'يجب أن تحتوي المهمة على قيمة مكافأة');
+assert.equal(tasks[0].taskKey, 'A1-community');
+assert.equal(tasks[0].requirement, 'community_engagement');
+assert.equal(tasks[0].requirementMet, true, 'المهمة الثابتة واحدة وتجمع النشر والتفاعل');
+assert.equal(tasks[1].taskKey, 'A1-task-02');
+assert.equal(tasks[1].requirement, 'evaluation');
+assert.equal(tasks[1].targetName, 'Example Systems');
+assert.equal(tasks[1].targetSummary, 'شركة تقنية للاختبار.');
+assert.ok(tasks[1].tags.includes('الخصوصية'));
+assert.equal(tasks[2].targetCategory, 'ai');
+assert.equal(tasks[2].targetImageUrl, 'https://images.example.test/ai.png');
+assert.ok(tasks.every(task => task.reward > 0));
+assert.deepEqual(automation.getEvaluationTags('crypto'), ['الأمان', 'الشفافية', 'المنفعة', 'اللامركزية', 'التقلب', 'الرسوم', 'الحوكمة']);
+
+const dayStart = new Date('2026-10-03T00:00:00.000Z');
+assert.equal(activityController.hasDailyPlatformPost([
+	{ authorId: 'user-1', status: 'visible', content: 'Hello OPERIX community', createdAt: '2026-10-03T10:00:00.000Z' }
+], 'user-1', dayStart), true, 'منشور اليوم الذي يذكر OPERIX يستوفي المهمة');
+assert.equal(activityController.hasDailyPlatformPost([
+	{ authorId: 'user-1', status: 'visible', content: 'Hello OPERIX community', createdAt: '2026-10-02T23:59:59.000Z' }
+], 'user-1', dayStart), false, 'المنشور القديم لا يستوفي المهمة اليومية');
+assert.equal(activityController.hasDailyCommunityInteraction([
+	{ authorId: 'author-2', status: 'visible', comments: [{ authorId: 'user-1', status: 'visible', createdAt: '2026-10-03T10:00:00.000Z' }] }
+], 'user-1', dayStart), true, 'تعليق اليوم على منشور مستخدم آخر يستوفي التفاعل');
+assert.equal(activityController.hasDailyCommunityInteraction([
+	{ authorId: 'author-2', status: 'visible', comments: [{ authorId: 'user-1', status: 'visible', createdAt: '2026-10-03T10:00:00.000Z' }] }
+], 'user-1', dayStart), true, 'التعليق الظاهر اليوم على منشور مستخدم آخر يستوفي التفاعل');
+assert.equal(activityController.hasDailyCommunityInteraction([
+	{ authorId: 'user-1', status: 'visible', likedBy: ['user-1'], comments: [{ authorId: 'user-1', status: 'visible', createdAt: '2026-10-03T10:00:00.000Z' }] }
+], 'user-1', dayStart), false, 'التفاعل مع المنشور الشخصي لا يستوفي المهمة');
+assert.match(schema, /COMMUNITY_TASK_REQUIRED/);
+assert.match(schema, /EVALUATION_REQUIRED/);
+assert.match(schema, /daily_task_submissions/);
+assert.match(schema, /daily_task_assignments/);
+assert.match(schema, /daily_task_entities/);
+assert.match(schema, /enable row level security/i);
+assert.match(schema, /grant execute on function public\.operix_daily_task_complete_atomic\(uuid, text\) to service_role/i);
+assert.match(migration, /create or replace function public\.operix_daily_task_complete_atomic/i);
+assert.match(migration, /COMMUNITY_TASK_REQUIRED/);
+assert.match(migration, /EVALUATION_REQUIRED/);
+assert.match(adminController, /evaluationCount \+ 1/, 'task count must follow the fixed community task plus the admin-controlled evaluation count');
 
 console.log('daily-task-board test: OK');

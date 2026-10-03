@@ -105,7 +105,10 @@ async function upgradeSupabase(req, res) {
     const currentActivated = Boolean(currentLevel && Number(user.wallet?.totalDeposits || 0) > 0);
     const initialActivation = !currentActivated;
     const referralMilestoneCount = await getActiveReferralMilestones(user.referralCode?.trim().toUpperCase());
-    const levelFourFreeActivationEligible = !fullFeatureAccess && targetLevel.code === 'A4' && user.tierCode !== 'A4' && referralMilestoneCount >= 300;
+    const milestoneAward = !fullFeatureAccess && targetLevel.code === 'A4'
+      ? await dataAccess.milestoneRewardAward.findOne({ userId: user.id || user._id, milestoneKey: 'active_referrals_300_a4' })
+      : null;
+    const levelFourFreeActivationEligible = !fullFeatureAccess && targetLevel.code === 'A4' && user.tierCode !== 'A4' && referralMilestoneCount >= 300 && !milestoneAward;
     if (!fullFeatureAccess && (targetIndex < currentIndex || (targetIndex === currentIndex && currentActivated))) return res.status(400).json({ error: 'يمكنك الترقية فقط إلى مستوى أعلى من مستواك الحالي' });
     const upgradeCost = initialActivation
       ? Number(targetLevel.price)
@@ -130,14 +133,9 @@ async function upgradeSupabase(req, res) {
       p_referral_commission: 0,
       p_target_name: targetLevel.name
     });
-    let finalWallet = result.wallet || user.wallet || {};
-    let rewardBonusApplied = 0;
-    if (levelFourFreeActivationEligible) {
-      const nextProfitBalance = Number((Number(finalWallet.profitBalance || 0) + 100).toFixed(2));
-      finalWallet = { ...finalWallet, profitBalance: nextProfitBalance, balance: Number((Number(finalWallet.depositBalance || 0) + nextProfitBalance).toFixed(2)) };
-      rewardBonusApplied = 100;
-      await dataAccess.user.updateOne({ id: user.id || user._id }, { wallet: finalWallet });
-    }
+    const finalWallet = result.wallet || user.wallet || {};
+    const freeTierFourActivation = Boolean(result.freeTierFourActivation);
+    const rewardBonusApplied = Number(result.instantProfitReward || 0);
     if (referrer && Number(result.referralRewardAwarded) > 0) {
       realtimeService.emit('user_data_changed', {
         reason: 'referral_reward_awarded',
@@ -147,10 +145,13 @@ async function upgradeSupabase(req, res) {
       }, { userId: referrer.id || referrer._id });
     }
     const updatedUser = result.user;
-    const tierFourNotice = levelFourFreeActivationEligible ? ' عند الوصول إلى 300 إحالة فعالة، يمكنك تفعيل المستوى الرابع مجانًا مع مكافأة فورية بقيمة $100 في رصيد الأرباح.' : '';
-    res.json({ success: true, message: `تمت الترقية بنجاح إلى ${targetLevel.name}.${tierFourNotice}`.trim(), tierCode: updatedUser.tierCode, wallet: finalWallet, OPX_balance: finalWallet?.OPX_balance, upgradeCost, opxAmount: payment.opxAmount, usdtAmount: payment.usdtAmount, initialActivation: payment.opxAmount === 0 && payment.usdtAmount === upgradeCost, referralRewardAwarded: Number(result.referralRewardAwarded) || 0, freeTierFourActivation: levelFourFreeActivationEligible, instantProfitReward: rewardBonusApplied });
+    const tierFourNotice = freeTierFourActivation ? ' تم تفعيل المستوى الرابع مجانًا وإضافة مكافأة فورية بقيمة $100 إلى رصيد الأرباح.' : '';
+    res.json({ success: true, message: `تمت الترقية بنجاح إلى ${targetLevel.name}.${tierFourNotice}`.trim(), tierCode: updatedUser.tierCode, wallet: finalWallet, OPX_balance: finalWallet?.OPX_balance, upgradeCost, opxAmount: payment.opxAmount, usdtAmount: payment.usdtAmount, initialActivation: payment.opxAmount === 0 && payment.usdtAmount === upgradeCost, referralRewardAwarded: Number(result.referralRewardAwarded) || 0, freeTierFourActivation, instantProfitReward: rewardBonusApplied });
   } catch (error) {
     console.error('Supabase upgrade error:', error.message);
+    if (error.message === 'A4_MILESTONE_NOT_ELIGIBLE') return res.status(400).json({ error: 'تفعيل A4 المجاني يتطلب 300 إحالة فعّالة مباشرة.' });
+    if (error.message === 'A4_MILESTONE_ALREADY_AWARDED') return res.status(409).json({ error: 'سبق منح مكافأة هذا الإنجاز لهذا الحساب.' });
+    if (error.message === 'INVALID_UPGRADE_PAYMENT' || error.message === 'INVALID_UPGRADE_COST' || error.message === 'OPX_SHARE_EXCEEDS_LIMIT' || error.message === 'INSUFFICIENT_OPX') return res.status(400).json({ error: 'بيانات الدفع أو رصيد OPX غير صالحين للترقية.' });
     res.status(500).json({ error: 'خطأ تقني أثناء معالجة الترقية' });
   }
 }
