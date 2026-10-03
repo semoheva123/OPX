@@ -1057,6 +1057,35 @@ body::before{content:'';position:fixed;inset:-12%;z-index:-1;pointer-events:none
                 </div>
             </div>
 
+            <section class="home-referral-campaign glass-card" aria-labelledby="homeCampaignTitle">
+                <div class="home-referral-header">
+                    <div>
+                        <span class="home-referral-kicker"><i class="fa-solid fa-sparkles" aria-hidden="true"></i> حملة النقاط والمكافآت</span>
+                        <h3 id="homeCampaignTitle" class="home-referral-title">شارك الحساب وحقق مكافآتك المباشرة</h3>
+                    </div>
+                    <span class="home-referral-status"><i class="fa-solid fa-award" aria-hidden="true"></i> فعال</span>
+                </div>
+
+                <div class="home-referral-highlight">
+                    <div class="home-referral-total-box">
+                        <span>إجمالي مكافآت الإحالات</span>
+                        <strong id="referralHomeRewardTotal">$0.00</strong>
+                    </div>
+                    <div class="home-referral-points-box">
+                        <span>نقاط الحملة</span>
+                        <strong id="referralHomePoints">0</strong>
+                    </div>
+                </div>
+
+                <div class="home-referral-tier-grid">
+                    <div class="home-referral-tier-item"><span>المستوى الأول</span><b>+$1</b></div>
+                    <div class="home-referral-tier-item"><span>المستوى الثاني</span><b>+$2</b></div>
+                    <div class="home-referral-tier-item"><span>المستوى الثالث</span><b>+$5</b></div>
+                </div>
+
+                <div id="referralHomeRewardsHistory" class="home-referral-history"><span>سيظهر سجل الحملة هنا بعد تفعيل إحالاتك.</span></div>
+            </section>
+
             <section class="opx-market-card glass-card rounded-3xl border border-cyan-400/20" aria-labelledby="opx-market-title">
                 <div class="opx-market-head">
                     <div>
@@ -1284,34 +1313,6 @@ body::before{content:'';position:fixed;inset:-12%;z-index:-1;pointer-events:none
                 <p class="text-[11px] text-slate-400 leading-5">كل دورة تمنح مكافأة فعلية تُسجل في سجل المعاملات. لا تُفتح الألعاب إلا بعد توفر دورة وإيداع مفعّل.</p>
                 <div class="flex flex-wrap gap-2 text-[10px]"><p id="gameConfigStatus" class="text-emerald-400">جاري تحميل قيم المكافآت...</p><span id="platformStatus" class="text-slate-500">الخدمة: جاري التحقق...</span></div>
             </div>
-            <section class="home-referral-campaign glass-card" aria-labelledby="homeCampaignTitle">
-                <div class="home-referral-header">
-                    <div>
-                        <span class="home-referral-kicker"><i class="fa-solid fa-sparkles" aria-hidden="true"></i> حملة النقاط والمكافآت</span>
-                        <h3 id="homeCampaignTitle" class="home-referral-title">شارك الحساب وحقق مكافآتك المباشرة</h3>
-                    </div>
-                    <span class="home-referral-status"><i class="fa-solid fa-award" aria-hidden="true"></i> فعال</span>
-                </div>
-
-                <div class="home-referral-highlight">
-                    <div class="home-referral-total-box">
-                        <span>إجمالي مكافآت الإحالات</span>
-                        <strong id="referralHomeRewardTotal">$0.00</strong>
-                    </div>
-                    <div class="home-referral-points-box">
-                        <span>نقاط الحملة</span>
-                        <strong id="referralHomePoints">0</strong>
-                    </div>
-                </div>
-
-                <div class="home-referral-tier-grid">
-                    <div class="home-referral-tier-item"><span>المستوى الأول</span><b>+$1</b></div>
-                    <div class="home-referral-tier-item"><span>المستوى الثاني</span><b>+$2</b></div>
-                    <div class="home-referral-tier-item"><span>المستوى الثالث</span><b>+$5</b></div>
-                </div>
-
-                <div id="referralHomeRewardsHistory" class="home-referral-history"><span>سيظهر سجل الحملة هنا بعد تفعيل إحالاتك.</span></div>
-            </section>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="glass-card p-5 rounded-3xl border border-amber-500/25 space-y-4 overflow-hidden relative">
                     <div class="flex justify-between items-start text-right"><div><h3 class="font-black text-white">عجلة الحظ</h3><p id="wheelRewardRange" class="text-[10px] text-slate-400 mt-1">جاري تحميل نطاق المكافأة...</p></div><span class="bg-amber-500/15 text-amber-400 border border-amber-500/25 rounded-full px-2.5 py-1 text-[10px] font-bold"><b id="lblWheelCredits">0</b> دورة</span></div>
