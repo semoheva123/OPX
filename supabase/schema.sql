@@ -13,8 +13,7 @@ create table if not exists public.users (
   tier_code text not null default 'A1',
   referral_code text,
   referred_by text,
-  wallet_address text default '',
-  campaign_points integer not null default 0 check (campaign_points >= 0),
+    wallet_address text default '',
   two_factor_enabled boolean not null default false,
   two_factor_secret text,
   admin_two_factor_enabled boolean not null default false,
@@ -46,23 +45,21 @@ alter table public.users add column if not exists profile_image text not null de
 alter table public.users add column if not exists cover_image text not null default '';
 alter table public.users add column if not exists social_bio text not null default '';
 alter table public.users add column if not exists push_subscription jsonb;
-alter table public.users add column if not exists campaign_points integer not null default 0;
-
-create table if not exists public.campaign_point_awards (
+create table if not exists public.referral_reward_awards (
   id uuid primary key default uuid_generate_v4(),
   referrer_id uuid not null references public.users(id) on delete cascade,
   referred_user_id uuid not null references public.users(id) on delete cascade,
   level_number integer not null check (level_number between 1 and 3),
   tier_code text not null,
-  points integer not null check (points > 0),
+  amount numeric(18,4) not null check (amount > 0),
   created_at timestamptz not null default now(),
   unique (referred_user_id, level_number)
 );
 
-create index if not exists campaign_point_awards_referrer_created_idx
-  on public.campaign_point_awards (referrer_id, created_at desc);
+create index if not exists referral_reward_awards_referrer_created_idx
+  on public.referral_reward_awards (referrer_id, created_at desc);
 create table if not exists public.wallet_balances (
-  id uuid primary key default uuid_generate_v4(),
+  amount numeric(18,4) not null check (amount > 0),
   user_id uuid not null references public.users(id) on delete cascade,
   balance numeric(18,4) not null default 0,
   deposit_balance numeric(18,4) not null default 0,
@@ -324,7 +321,6 @@ create table if not exists public.investment_vault_contracts (
 );
 
 create or replace function public.operix_vault_create_atomic(
-  p_user_id uuid,
   p_amount numeric,
   p_duration_days integer,
   p_expected_return_rate numeric,
@@ -640,9 +636,9 @@ declare
   upgrade_row transactions%rowtype;
   before_balance numeric;
   target_level_number integer;
-  points_for_level integer := 0;
-  points_awarded integer := 0;
-  referrer_campaign_points integer := 0;
+  referral_reward_amount numeric(18,4) := 0;
+  referral_reward_awarded numeric(18,4) := 0;
+  referrer_balance numeric(18,4) := 0;
   trusted_referrer_id uuid;
 begin
   select * into user_row from users where id = p_user_id for update;
@@ -655,7 +651,7 @@ begin
   ) ranked
   where ranked.code = p_target_tier;
   if target_level_number is null then raise exception using errcode = 'P0002', message = 'VIP_LEVEL_NOT_FOUND'; end if;
-  points_for_level := case target_level_number when 1 then 1 when 2 then 2 when 3 then 4 else 0 end;
+  referral_reward_amount := case target_level_number when 1 then 1 when 2 then 2 when 3 then 5 else 0 end;
   select * into wallet_row from wallet_balances where user_id = p_user_id for update;
   if wallet_row.id is null then raise exception using errcode = 'P0002', message = 'USER_WALLET_NOT_FOUND'; end if;
   if wallet_row.deposit_balance < p_usdt_amount then raise exception using errcode = 'P0001', message = 'INSUFFICIENT_DEPOSIT'; end if;
@@ -673,32 +669,37 @@ begin
     where id = p_referrer_id and upper(trim(referral_code)) = upper(trim(user_row.referred_by))
     for update;
   end if;
-  if trusted_referrer_id is not null and p_referral_commission > 0 then
+  if trusted_referrer_id is not null and referral_reward_amount > 0 and p_upgrade_cost > 0 then
     select * into ref_wallet from wallet_balances where user_id = trusted_referrer_id for update;
     if ref_wallet.id is not null then
-      update wallet_balances set profit_balance = profit_balance + (p_referral_commission * 0.7), opx_balance = opx_balance + (p_referral_commission * 0.3), balance = deposit_balance + profit_balance + (p_referral_commission * 0.7), updated_at = now() where user_id = trusted_referrer_id;
-      insert into transactions(user_id,type,status,amount,gross_amount,usdt_amount,opx_amount,wallet_address) values(trusted_referrer_id,'referral_commission','approved',p_referral_commission,p_referral_commission,p_referral_commission*0.7,p_referral_commission*0.3,'Commission from ' || user_row.email);
-    end if;
-  end if;
-  if trusted_referrer_id is not null and points_for_level > 0 and p_upgrade_cost > 0 then
-    insert into campaign_point_awards(referrer_id,referred_user_id,level_number,tier_code,points)
-    values(trusted_referrer_id,p_user_id,target_level_number,p_target_tier,points_for_level)
+      insert into referral_reward_awards(referrer_id,referred_user_id,level_number,tier_code,amount)
+      values(trusted_referrer_id,p_user_id,target_level_number,p_target_tier,referral_reward_amount)
     on conflict (referred_user_id,level_number) do nothing
-    returning points into points_awarded;
-    if points_awarded is not null then
-      update users
-      set campaign_points = campaign_points + points_awarded, updated_at = now()
-      where id = trusted_referrer_id
-      returning campaign_points into referrer_campaign_points;
-    else
-      select campaign_points into referrer_campaign_points from users where id = trusted_referrer_id;
+      returning amount into referral_reward_awarded;
+      if referral_reward_awarded is not null then
+        update wallet_balances
+        set profit_balance = profit_balance + referral_reward_awarded,
+            balance = deposit_balance + profit_balance + referral_reward_awarded,
+            usdt_balance = deposit_balance + profit_balance + referral_reward_awarded,
+            updated_at = now()
+        where user_id = trusted_referrer_id
+        returning balance into referrer_balance;
+        insert into transactions(user_id,type,status,amount,gross_amount,usdt_amount,wallet_address)
+        values(trusted_referrer_id,'referral_commission','approved',referral_reward_awarded,referral_reward_awarded,referral_reward_awarded,'Referral activation reward from ' || user_row.email);
+        insert into financial_ledger(user_id,type,currency,amount,net_amount,balance_before,balance_after,status,source,reference_id,notes)
+        values(trusted_referrer_id,'referral_commission','USDT',referral_reward_awarded,referral_reward_awarded,ref_wallet.balance,referrer_balance,'approved','referral_tier_activation',upgrade_row.id::text,'Tier ' || target_level_number::text || ' referral activation reward');
+        insert into notifications(user_id,title,body,type)
+        values(trusted_referrer_id,'مكافأة إحالة جديدة','تمت إضافة $' || to_char(referral_reward_awarded,'FM999999990.00') || ' إلى رصيد أرباحك بعد تفعيل إحالتك المباشرة للمستوى ' || target_level_number::text || '.','transaction');
+      else
+        select balance into referrer_balance from wallet_balances where user_id = trusted_referrer_id;
+      end if;
     end if;
   end if;
   return jsonb_build_object(
     'user',(select row_to_json(u) from users u where u.id=p_user_id),
     'wallet',(select row_to_json(w) from wallet_balances w where w.user_id=p_user_id),
-    'campaignPointsAwarded',coalesce(points_awarded,0),
-    'referrerCampaignPoints',coalesce(referrer_campaign_points,0)
+    'referralRewardAwarded',coalesce(referral_reward_awarded,0),
+    'referrerBalance',coalesce(referrer_balance,0)
   );
 end;
 $$;

@@ -13,7 +13,7 @@ const Notification = adminRepository(dataAccess.notification);
 const Session = adminRepository(dataAccess.session);
 const { supabaseAdmin } = require('../config/supabase');
 
-const ADMIN_USER_DETAIL_FIELDS = new Set(['id', '_id', 'email', 'role', 'emailVerified', 'isBanned', 'tierCode', 'referralCode', 'referredBy', 'walletAddress', 'campaignPoints', 'adminTwoFactorEnabled', 'assetWallet', 'createdAt', 'updatedAt', 'lastLoginAt', 'metadata', 'profileImage', 'coverImage', 'socialBio', 'wallet']);
+const ADMIN_USER_DETAIL_FIELDS = new Set(['id', '_id', 'email', 'role', 'emailVerified', 'isBanned', 'tierCode', 'referralCode', 'referredBy', 'walletAddress', 'adminTwoFactorEnabled', 'assetWallet', 'createdAt', 'updatedAt', 'lastLoginAt', 'metadata', 'profileImage', 'coverImage', 'socialBio', 'wallet']);
 
 function sanitizeAdminUserDetail(user) {
   return Object.fromEntries(Object.entries(user?.toObject?.() || user || {}).filter(([key]) => ADMIN_USER_DETAIL_FIELDS.has(key)));
@@ -547,19 +547,7 @@ async function updateUser(req, res) {
 
 async function updateUserTier(req, res) {
   try {
-    const { userId, tierCode } = req.body;
-    const normalizedTier = String(tierCode || '').trim().toUpperCase();
-    const [user, validTier] = await Promise.all([
-      dataAccess.user.findById(userId),
-      dataAccess.vipLevel.findOne({ code: normalizedTier })
-    ]);
-    if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
-    if (!validTier) return res.status(400).json({ error: 'المستوى المحدد غير موجود' });
-    const oldTier = user.tierCode;
-    await dataAccess.user.updateOne({ id: user.id || user._id }, { $set: { tierCode: normalizedTier } });
-    await createAudit(req, 'update_user_tier', String(user.id || user._id), { oldValue: oldTier, newValue: normalizedTier });
-    await emitUserDataChanged(user.id || user._id, 'tier_updated');
-    res.json({ success: true, message: 'تم تحديث مستوى المستخدم' });
+    res.status(409).json({ error: 'لا يمكن تعديل مستوى المستخدم يدويًا؛ تتم ترقية المستوى عبر عملية تفعيل مدفوعة موثقة.' });
   } catch (err) { res.status(500).json({ error: 'تعذر تحديث مستوى المستخدم' }); }
 }
 

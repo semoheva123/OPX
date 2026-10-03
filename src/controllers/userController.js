@@ -103,17 +103,16 @@ async function getReferrals(req, res) {
   } catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
 }
 
-async function getCampaignPoints(req, res) {
+async function getReferralRewards(req, res) {
   try {
-    const user = await dataAccess.user.findById(req.user.id);
-    if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
-    const awards = await dataAccess.campaignPointAward.find(
+    const rewards = await dataAccess.referralRewardAward.find(
       { referrerId: req.user.id },
-      { sort: { createdAt: -1 }, limit: 100, select: 'levelNumber tierCode points createdAt' }
+      { sort: { createdAt: -1 }, limit: 10000, select: 'levelNumber tierCode amount createdAt' }
     );
-    res.json({ success: true, points: Math.max(0, Number(user.campaignPoints) || 0), awards });
+    const total = rewards.reduce((sum, reward) => sum + Number(reward.amount || 0), 0);
+    res.json({ success: true, total: Number(total.toFixed(2)), rewards });
   } catch (error) {
-    res.status(500).json({ error: 'تعذر تحميل نقاط الحملة' });
+    res.status(500).json({ error: 'تعذر تحميل مكافآت الإحالات' });
   }
 }
 
@@ -166,33 +165,6 @@ async function getGrowth(req, res) {
 
 async function getUpgradeHistory(req, res) {
   try {
-    if (dataAccess.isSupabaseRuntime()) return res.json({ success: true, history: await dataAccess.transaction.find({ userId: req.user.id, type: { $in: ['upgrade_deduction', 'token_burn'] } }, { sort: { createdAt: -1 }, limit: 30, select: 'type amount usdtAmount opxAmount walletAddress createdAt status' }) });
-    const history = await Transaction.find({ userId: req.user.id, type: { $in: ['upgrade_deduction', 'token_burn'] } }).sort({ createdAt: -1 }).limit(30).select('type amount usdtAmount opxAmount walletAddress createdAt status').lean();
-    res.json({ success: true, history });
-  } catch (err) { res.status(500).json({ error: 'تعذر تحميل سجل الترقيات' }); }
-}
-
-async function getHomeSummary(req, res) {
-  try {
-    if (dataAccess.isSupabaseRuntime()) {
-      const user = await dataAccess.user.findById(req.user.id);
-      if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
-      const transactions = await dataAccess.transaction.find({ userId: req.user.id }, { sort: { createdAt: -1 }, limit: 100 });
-      const approvedTransactions = transactions.filter(transaction => ['approved', 'completed'].includes(transaction.status));
-      const referralCount = await dataAccess.user.countDocuments({ referredBy: user.referralCode?.trim().toUpperCase() });
-      const earningTransactions = approvedTransactions.filter(transaction => ['reward', 'staking_reward', 'referral_commission'].includes(transaction.type));
-      const todayStart = new Date(); todayStart.setUTCHours(0, 0, 0, 0);
-      const weekStart = new Date(todayStart); weekStart.setUTCDate(weekStart.getUTCDate() - 6);
-      const monthStart = new Date(todayStart); monthStart.setUTCDate(1);
-      const sumSince = (start) => earningTransactions.reduce((sum, transaction) => {
-        if (new Date(transaction.createdAt) < start) return sum;
-        return sum + Number(transaction.usdtAmount ?? transaction.amount ?? 0);
-      }, 0);
-      const earnings = { today: sumSince(todayStart), week: sumSince(weekStart), month: sumSince(monthStart) };
-      const pendingTransactions = transactions.filter(transaction => transaction.status === 'pending');
-      const healthChecks = { email: Boolean(user.email), twoFactor: Boolean(user.twoFactorEnabled), wallet: Boolean(user.walletAddress?.trim()), deposit: Number(user.wallet?.totalDeposits) > 0, activity: approvedTransactions.length > 0 };
-      return res.json({ success: true, summary: { todayEarned: Number(earnings.today.toFixed(2)), earnings: { today: Number(earnings.today.toFixed(2)), week: Number(earnings.week.toFixed(2)), month: Number(earnings.month.toFixed(2)) }, health: Object.values(healthChecks).filter(Boolean).length * 20, healthChecks, referralCount, pendingTransactions: pendingTransactions.length, pendingByType: { deposits: pendingTransactions.filter(item => item.type === 'deposit').length, withdrawals: pendingTransactions.filter(item => item.type === 'withdraw').length }, completedTasks: user.todayCompletedTasks || 0, teamStats: user.teamStats || {}, nextLevel: null, timeline: [{ type: 'registered', date: user.createdAt, title: 'إنشاء الحساب' }], recentActivity: approvedTransactions.slice(0, 10) } });
-    }
     const user = await User.findById(req.user.id).select('-password -resetOTP -twoFactorCode');
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     const transactions = await Transaction.find({ userId: user._id }).sort({ createdAt: -1 }).limit(25).select('type amount status createdAt');
@@ -328,4 +300,5 @@ async function subscribePush(req, res) {
   } catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
 }
 
-module.exports = { getProfile, setWalletAddress, updateProfileImage, updateSocialProfile, getReferrals, getCampaignPoints, getTeamNetwork, getGrowth, getUpgradeHistory, getHomeSummary, sendTwoFactorCode, toggleTwoFactor, setupTwoFactor, confirmTwoFactor, changePassword, subscribePush };
+module.exports = { getProfile, setWalletAddress, updateProfileImage, updateSocialProfile, getReferrals, getReferralRewards, getGrowth, getUpgradeHistory, getHomeSummary, sendTwoFactorCode, toggleTwoFactor, setupTwoFactor, confirmTwoFactor, changePassword, subscribePush };
+module.exports = { getProfile, setWalletAddress, updateProfileImage, updateSocialProfile, getReferrals, getReferralRewards, getGrowth, getUpgradeHistory, getHomeSummary, sendTwoFactorCode, toggleTwoFactor, setupTwoFactor, confirmTwoFactor, changePassword, subscribePush };

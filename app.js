@@ -648,6 +648,7 @@ function startRealtimeStream() {
     realtimeChannel.subscribe('user_data_changed', event => {
         const reason = event.data?.reason;
         loadUserProfile();
+        if (reason === 'referral_reward_awarded') loadReferralRewardHistory();
         if (document.getElementById('view-vault') && !document.getElementById('view-vault').classList.contains('hide')) loadInvestmentVaults();
         if (reason === 'vip_level_updated' || reason === 'vip_level_deleted') loadTiers();
         if (reason === 'game_settings_updated') loadGameConfig();
@@ -667,7 +668,7 @@ function startRealtimeSse(token = localStorage.getItem('token')) {
     if (!token || !window.EventSource || realtimeEventSource) return;
     realtimeEventSource = new EventSource(`/api/realtime/stream?token=${encodeURIComponent(token)}`);
     const refresh = () => loadUserProfile();
-    realtimeEventSource.addEventListener('user_data_changed', event => { refresh(); if (event.data) showToast('تم تحديث بيانات حسابك تلقائيًا'); });
+    realtimeEventSource.addEventListener('user_data_changed', event => { refresh(); try { if (JSON.parse(event.data || '{}').reason === 'referral_reward_awarded') loadReferralRewardHistory(); } catch (error) {} if (event.data) showToast('تم تحديث بيانات حسابك تلقائيًا'); });
     realtimeEventSource.addEventListener('account_status_changed', event => { try { showToast(JSON.parse(event.data).message || 'تم تحديث حالة الحساب'); } catch (error) {} refresh(); });
     realtimeEventSource.addEventListener('notification_created', () => fetchUnreadNotifications(true));
     realtimeEventSource.addEventListener('private_message_created', event => {
@@ -1317,7 +1318,7 @@ function updateProfileUI() {
     updateProfileAvatar(currentUserData.profileImage);
     updateVerificationStatus(currentUserData.twoFactorEnabled);
     updateProfileSecuritySummary();
-    updateCampaignPointsUI();
+    updateReferralRewardTotal();
 
     // البريد واسم المستخدم
     const displayNameEl = document.getElementById('lblProfileDisplayName');
@@ -1342,70 +1343,40 @@ function updateProfileUI() {
     if (totalWithdrawnEl) totalWithdrawnEl.innerText = `$${parseFloat(totalWithdrawn).toFixed(2)}`;
 }
 
-function updateCampaignPointsUI() {
-    const points = Math.max(0, Number(currentUserData?.campaignPoints) || 0);
-    const balance = document.getElementById('campaignPointsBalance');
-    const nextReward = document.getElementById('campaignPointsNextReward');
-    const progress = document.getElementById('campaignPointsProgress');
-    if (balance) balance.innerText = points.toLocaleString('ar');
-    if (!nextReward || !progress) return;
-
-    const milestones = [
-        { points: 200, label: 'هاتف Xiaomi' },
-        { points: 350, label: 'هاتف Samsung Galaxy' },
-        { points: 500, label: 'iPhone Duo' }
-    ];
-    const next = milestones.find(item => points < item.points);
-    if (!next) {
-        nextReward.innerText = 'وصلت إلى عتبة 500 نقطة؛ اعتماد الجائزة يخضع لشروط الحملة وترتيبها.';
-        progress.style.width = '100%';
-        return;
-    }
-    const nextIndex = milestones.indexOf(next);
-    const previousPoints = nextIndex ? milestones[nextIndex - 1].points : 0;
-    const segmentProgress = Math.max(0, Math.min(100, ((points - previousPoints) / (next.points - previousPoints)) * 100));
-    nextReward.innerText = `باقي ${Math.max(0, next.points - points)} نقطة لعتبة ${next.label} (${next.points} نقطة).`;
-    progress.style.width = `${segmentProgress}%`;
+function updateReferralRewardTotal(total = currentReferralRewardTotal) {
+    const balance = document.getElementById('referralRewardsTotal');
+    if (balance) balance.innerText = `$${Math.max(0, Number(total) || 0).toFixed(2)}`;
 }
 
-async function loadCampaignPointHistory() {
-    const list = document.getElementById('campaignPointsHistory');
+let currentReferralRewardTotal = 0;
+async function loadReferralRewardHistory() {
+    const list = document.getElementById('referralRewardsHistory');
+    const homeList = document.getElementById('referralHomeRewardsHistory');
+    const homeTotal = document.getElementById('referralHomeRewardTotal');
+    const homePoints = document.getElementById('referralHomePoints');
     const token = localStorage.getItem('token');
-    if (!list || !token) return;
+    if ((!list && !homeList) || !token) return;
     try {
-        const response = await fetch('/api/user/campaign-points', { headers: { Authorization: `Bearer ${token}` } });
+        const response = await fetch('/api/user/referral-rewards', { headers: { Authorization: `Bearer ${token}` } });
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'تعذر تحميل نقاط الحملة');
-        if (currentUserData) currentUserData.campaignPoints = Math.max(0, Number(data.points) || 0);
-        updateCampaignPointsUI();
+        if (!response.ok) throw new Error(data.error || 'تعذر تحميل مكافآت الإحالات');
+        currentReferralRewardTotal = Math.max(0, Number(data.total) || 0);
+        updateReferralRewardTotal(currentReferralRewardTotal);
+        if (homeTotal) homeTotal.innerText = `$${currentReferralRewardTotal.toFixed(2)}`;
+        const pointsTotal = Array.isArray(data.rewards) ? data.rewards.reduce((sum, reward) => sum + Number(reward.levelNumber || 0), 0) : 0;
+        if (homePoints) homePoints.innerText = String(pointsTotal);
         const levelLabels = { 1: 'المستوى الأول', 2: 'المستوى الثاني', 3: 'المستوى الثالث' };
-        list.innerHTML = data.awards?.length
-            ? data.awards.slice(0, 5).map(award => `<div class="flex items-center justify-between gap-2 border-t border-slate-800/70 pt-2"><span>${levelLabels[Number(award.levelNumber)] || 'مستوى'} · ${new Date(award.createdAt).toLocaleDateString('ar')}</span><strong class="text-emerald-300">+${Number(award.points) || 0}</strong></div>`).join('')
-            : '<span>ستظهر هنا نقاط إحالاتك بعد تفعيل مستوياتها.</span>';
+        const renderRewards = (node) => {
+            if (!node) return;
+            node.innerHTML = data.rewards?.length
+                ? data.rewards.slice(0, 8).map(reward => `<div class="flex items-center justify-between gap-2 border-t border-slate-800/70 pt-2"><span>${escapeAiHtml(levelLabels[Number(reward.levelNumber)] || 'تفعيل إحالة')} · ${new Date(reward.createdAt).toLocaleDateString('ar')}</span><strong class="text-emerald-300">+$${Number(reward.amount || 0).toFixed(2)}</strong></div>`).join('')
+                : '<span>ستظهر مكافآتك هنا بعد تفعيل إحالاتك.</span>';
+        };
+        renderRewards(list);
+        renderRewards(homeList);
     } catch (error) {
-        list.innerHTML = `<span class="text-rose-300">${escapeAiHtml(error.message)}</span>`;
-    }
-}
-
-async function loadCampaignLeaderboard() {
-    const list = document.getElementById('campaignLeaderboardList');
-    if (!list) return;
-    list.innerHTML = '<p class="text-slate-500">جارٍ تحميل ترتيب النقاط...</p>';
-    try {
-        const response = await fetch('/api/campaign/leaderboard');
-        if (!response.ok) throw new Error('CAMPAIGN_LEADERBOARD_UNAVAILABLE');
-        let data;
-        try {
-            data = await response.json();
-        } catch (parseError) {
-            throw new Error('CAMPAIGN_LEADERBOARD_UNAVAILABLE');
-        }
-        if (!data?.success || !Array.isArray(data.leaderboard)) throw new Error('CAMPAIGN_LEADERBOARD_UNAVAILABLE');
-        list.innerHTML = data.leaderboard?.length
-            ? data.leaderboard.map(item => `<div class="flex items-center justify-between gap-3 rounded-lg bg-slate-900/60 px-3 py-2"><span class="flex min-w-0 items-center gap-2"><b class="text-amber-300">${Number(item.rank)}.</b><span class="truncate">${escapeAiHtml(item.email)}</span></span><strong class="shrink-0 text-cyan-200">${Number(item.points) || 0} نقطة</strong></div>`).join('')
-            : '<p class="text-slate-500">لا توجد نقاط مسجلة بعد.</p>';
-    } catch (error) {
-        list.innerHTML = '<p class="text-slate-400">ترتيب الحملة غير متاح الآن. حاول مرة أخرى لاحقًا.</p>';
+        if (list) list.innerHTML = `<span class="text-rose-300">${escapeAiHtml(error.message)}</span>`;
+        if (homeList) homeList.innerHTML = `<span class="text-rose-300">${escapeAiHtml(error.message)}</span>`;
     }
 }
 
@@ -2132,60 +2103,8 @@ async function saveProfileWallet() {
 /* --- 5. شجرة الفريق والرتب --- */
 function updateTeamTreeData(stats) {
     const l1 = stats.l1 || 0;
-    const l2 = stats.l2 || 0;
-    const l3 = stats.l3 || 0;
-    const total = stats.total || (l1 + l2 + l3);
-    const activeReferrals = Number(stats.activeReferrals || 0);
-
-    document.getElementById('lblTeamL1Count').innerText = `${l1} شخص`;
-    document.getElementById('lblTeamL2Count').innerText = `${l2} شخص`;
-    document.getElementById('lblTeamL3Count').innerText = `${l3} شخص`;
-    document.getElementById('lblTotalTeamCount').innerText = `إجمالي الفريق: ${total}`;
-
-    const dailyEarnings = (l1 * 0.01) + (l2 * 0.005) + (l3 * 0.0025);
-    document.getElementById('lblDailyTeamEarnings').innerText = `${dailyEarnings.toFixed(4)} $ / يوم`;
-
-    const currentTierIndex = tiersData.findIndex(tier => tier.code === currentUserTier);
-    const nextTier = tiersData[currentTierIndex + 1];
-    const nextGoal = nextTier ? (currentTierIndex + 1) * 10 : currentTierIndex * 10;
-    const referralProgress = nextGoal ? Math.min(100, Math.round((activeReferrals / nextGoal) * 100)) : 100;
-    const activeLabel = document.getElementById('lblActiveReferrals');
-    const goalLabel = document.getElementById('lblNextTierReferralGoal');
-    const progress = document.getElementById('teamReferralProgress');
-    const referralMessage = document.getElementById('teamReferralMessage');
-    if (activeLabel) activeLabel.innerText = `الإحالات النشطة: ${activeReferrals}`;
-    if (goalLabel) goalLabel.innerText = nextTier ? `الهدف التالي: ${nextGoal}` : 'تم بلوغ أعلى مستوى';
-    if (progress) progress.style.width = `${referralProgress}%`;
-    if (referralMessage) referralMessage.innerText = nextTier
-        ? (activeReferrals >= nextGoal ? `اكتمل شرط الإحالات للترقية إلى ${nextTier.code}.` : `تحتاج إلى ${nextGoal - activeReferrals} إحالة نشطة للترقية إلى ${nextTier.code}.`)
-        : 'لا توجد ترقية أعلى من مستواك الحالي.';
-
-    updateRankStatus(1, total, 60, 'rankTier1', 'badgeRank1Status');
-    updateRankStatus(2, total, 120, 'rankTier2', 'badgeRank2Status');
-    updateRankStatus(3, total, 240, 'rankTier3', 'badgeRank3Status');
-    updateRankStatus(4, total, 500, 'rankTier4', 'badgeRank4Status');
-}
-
-let teamNetworkData = [];
-let selectedTeamLevel = 1;
-function setTeamLevel(level) { selectedTeamLevel = level; [1, 2, 3].forEach(item => { const button = document.getElementById(`teamFilter${item}`); if (button) button.className = item === level ? 'team-filter-active border rounded-lg py-2 text-[10px] font-bold' : 'border border-slate-800 rounded-lg py-2 text-[10px] text-slate-400 font-bold'; }); renderTeamLevel(); }
-async function loadTeamNetwork() { const list = document.getElementById('teamMembersList'); const token = localStorage.getItem('token'); if (!list || !token) return; list.innerHTML = '<p class="text-[11px] text-slate-500 text-center py-4">جاري تحديث شبكة الفريق...</p>'; try { const response = await fetch('/api/user/team-network', { headers: { Authorization: `Bearer ${token}` } }); const data = await response.json(); if (!response.ok) throw new Error(data.error || 'تعذر تحميل الشبكة'); teamNetworkData = data.levels || []; renderTeamLevel(); } catch (error) { list.innerHTML = `<p class="text-[11px] text-rose-300 text-center py-4">${escapeAiHtml(error.message)}</p>`; } }
-function renderTeamLevel() { const level = teamNetworkData.find(item => item.level === selectedTeamLevel); const list = document.getElementById('teamMembersList'); const summary = document.getElementById('teamLevelSummary'); const term = (document.getElementById('teamSearchInput')?.value || '').toLowerCase(); if (!list || !summary) return; const members = (level?.members || []).filter(member => member.email.toLowerCase().includes(term)); summary.innerText = `إجمالي المستوى: ${level?.total || 0} • نشطة: ${level?.active || 0}`; list.innerHTML = members.length ? members.map(member => `<div class="team-member flex items-center justify-between gap-3 rounded-xl p-3"><div><b class="block text-xs text-slate-200">${escapeAiHtml(member.email)}</b><span class="text-[10px] text-slate-500">${member.active ? `مستوى ${escapeAiHtml(member.tierCode || 'A1')}` : 'غير مفعّل'} • ${new Date(member.createdAt).toLocaleDateString('ar')}</span></div><span class="text-[10px] font-bold ${member.active ? 'text-emerald-300' : 'text-slate-500'}">${member.active ? 'نشطة' : member.isBanned ? 'محظورة' : 'غير مفعلة'}</span></div>`).join('') : '<p class="text-[11px] text-slate-500 text-center py-4">لا توجد إحالات في هذا المستوى.</p>'; }
-
-function updateRankStatus(rankId, currentTotal, targetCount, cardId, badgeId) {
-    const card = document.getElementById(cardId);
-    const badge = document.getElementById(badgeId);
-    if (!card || !badge) return;
-
-    if (currentTotal >= targetCount) {
-        card.className = "p-3 rounded-2xl bg-emerald-950/30 border border-emerald-500/50 flex justify-between items-center transition-all shadow-lg";
-        badge.className = "text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40";
-        badge.innerHTML = '<i class="fa-solid fa-check ml-1"></i> تم الإنجاز 🎉';
-    } else {
-        card.className = "p-3 rounded-2xl bg-slate-950 border border-slate-800 flex justify-between items-center transition-all opacity-80";
-        badge.className = "text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-900 text-slate-400 border border-slate-800";
-        badge.innerHTML = `${currentTotal} / ${targetCount}`;
-    }
+    const directCount = document.getElementById('lblDirectReferralCount');
+    if (directCount) directCount.innerText = l1.toLocaleString('ar');
 }
 
 /* --- 6. المهام والألعاب والمستشار الذكي --- */
@@ -2624,9 +2543,11 @@ function switchTab(tabName) {
         updateTaskAvailability(Number(currentUserData?.todayCompletedTasks || 0), maximum);
         startTaskResetCountdown();
     }
+    if (tabName === 'home') {
+        loadReferralRewardHistory();
+    }
     if (tabName === 'team') {
-        loadTeamNetwork();
-        loadCampaignPointHistory();
+        loadReferralRewardHistory();
     }
     if (tabName === 'feed') loadSocialCommunity();
 }

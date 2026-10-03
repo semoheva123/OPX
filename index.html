@@ -155,6 +155,194 @@
         .reward-prize-card--cash .reward-points { --reward-border:rgba(110,231,183,.25); --reward-pill:rgba(52,211,153,.08); --reward-color:#a7f3d0; }
         .reward-campaign-note { display:flex; align-items:flex-start; gap:8px; margin:14px 0 0; padding-top:12px; border-top:1px solid rgba(148,163,184,.12); color:#8391a6; font-size:9px; line-height:1.8; }
         .reward-campaign-note i { margin-top:3px; color:#f7b955; }
+        .home-referral-campaign {
+            position: relative;
+            overflow: hidden;
+            padding: 18px;
+            border: 1px solid rgba(247,185,85,.28);
+            border-radius: 28px;
+            background: linear-gradient(135deg, rgba(7,17,31,.98) 0%, rgba(11,22,38,.95) 26%, rgba(16,28,42,.96) 52%, rgba(12,18,30,.99) 100%);
+            box-shadow: 0 28px 75px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.06), 0 0 0 1px rgba(247,185,85,.08);
+        }
+        .home-referral-campaign::before {
+            content: '';
+            position: absolute;
+            inset: -20% -10% auto auto;
+            width: 220px;
+            height: 220px;
+            background: radial-gradient(circle, rgba(247,185,85,.18) 0%, rgba(247,185,85,0) 60%);
+            filter: blur(20px);
+            pointer-events: none;
+        }
+        .home-referral-campaign::after {
+            content: '';
+            position: absolute;
+            inset: auto auto -40% -10%;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(34,211,238,.12) 0%, rgba(34,211,238,0) 62%);
+            filter: blur(18px);
+            pointer-events: none;
+        }
+        .home-referral-header, .home-referral-highlight, .home-referral-tier-grid, .home-referral-history {
+            position: relative;
+            z-index: 1;
+        }
+        .home-referral-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .home-referral-kicker {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 12px;
+            border: 1px solid rgba(247,185,85,.28);
+            border-radius: 999px;
+            background: linear-gradient(135deg, rgba(247,185,85,.12), rgba(247,185,85,.04));
+            color: #f8d58d;
+            font-size: 10px;
+            font-weight: 900;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+        }
+        .home-referral-title {
+            margin: 10px 0 0;
+            color: #f8fafc;
+            font-size: 17px;
+            line-height: 1.5;
+            font-weight: 900;
+            text-shadow: 0 6px 18px rgba(0,0,0,.38);
+        }
+        .home-referral-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 10px;
+            border: 1px solid rgba(52,211,153,.35);
+            border-radius: 999px;
+            background: linear-gradient(135deg, rgba(52,211,153,.12), rgba(52,211,153,.04));
+            color: #a7f3d0;
+            font-size: 9px;
+            font-weight: 900;
+            white-space: nowrap;
+        }
+        .home-referral-highlight {
+            display: grid;
+            grid-template-columns: 1.5fr .8fr;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .home-referral-total-box,
+        .home-referral-points-box {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 8px;
+            min-height: 120px;
+            padding: 16px 18px;
+            border-radius: 18px;
+            border: 1px solid rgba(148,163,184,.12);
+            background: rgba(15, 23, 42, 0.62);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .home-referral-total-box {
+            background: linear-gradient(135deg, rgba(247,185,85,.12), rgba(12,19,31,.74));
+            border-color: rgba(247,185,85,.26);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 18px 35px rgba(247,185,85,.06);
+        }
+        .home-referral-total-box span,
+        .home-referral-points-box span {
+            color: #94a3b8;
+            font-size: 10px;
+            font-weight: 700;
+        }
+        .home-referral-total-box strong {
+            color: #f8d58d;
+            font-size: clamp(30px, 4vw, 42px);
+            line-height: 1;
+            font-weight: 900;
+            letter-spacing: -0.04em;
+        }
+        .home-referral-points-box {
+            background: linear-gradient(135deg, rgba(34,211,238,.10), rgba(8,18,31,.82));
+            border-color: rgba(34,211,238,.22);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 18px 35px rgba(34,211,238,.05);
+        }
+        .home-referral-points-box strong {
+            color: #a5f3fc;
+            font-size: clamp(26px, 4vw, 34px);
+            line-height: 1;
+            font-weight: 900;
+            letter-spacing: -0.04em;
+        }
+        .home-referral-tier-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+        .home-referral-tier-item {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 6px;
+            min-height: 82px;
+            padding: 10px 8px;
+            border-radius: 14px;
+            border: 1px solid rgba(148,163,184,.12);
+            background: linear-gradient(180deg, rgba(15,25,38,.75), rgba(12,16,28,.9));
+            text-align: center;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+        }
+        .home-referral-tier-item span {
+            color: #94a3b8;
+            font-size: 9px;
+            font-weight: 700;
+        }
+        .home-referral-tier-item b {
+            color: #a7f3d0;
+            font-size: 15px;
+            font-weight: 900;
+        }
+        .home-referral-history {
+            display: grid;
+            gap: 8px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(148,163,184,.10);
+            color: #94a3b8;
+            font-size: 10px;
+            line-height: 1.7;
+        }
+        .home-referral-history .flex {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        .home-referral-history strong {
+            color: #a7f3d0;
+            font-size: 10px;
+            font-weight: 900;
+        }
+        @media (max-width: 640px) {
+            .home-referral-campaign {
+                padding: 14px;
+            }
+            .home-referral-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .home-referral-highlight {
+                grid-template-columns: 1fr;
+            }
+            .home-referral-tier-grid {
+                grid-template-columns: 1fr;
+            }
+        }
         .reward-photo-credit { margin:6px 0 0; color:#718096; font-size:8px; line-height:1.8; }
         .reward-photo-credit a { color:#9fb0c5; text-decoration:underline; text-decoration-color:rgba(148,163,184,.4); text-underline-offset:2px; }
         .reward-photo-credit a:hover { color:#e2e8f0; }
@@ -621,35 +809,17 @@ body::before{content:'';position:fixed;inset:-12%;z-index:-1;pointer-events:none
                 <div class="reward-campaign-heading">
                     <div>
                         <span class="reward-campaign-kicker"><i class="fa-solid fa-sparkles" aria-hidden="true"></i> حملة نقاط ومكافآت</span>
-                        <h2 id="rewardsCampaignTitle" class="reward-campaign-title">اجمع النقاط. اختر جائزتك.</h2>
-                        <p class="reward-campaign-subtitle">مكافآت مميزة لأصحاب أعلى النقاط في الحملة.</p>
+                        <h2 id="rewardsCampaignTitle" class="reward-campaign-title">ادعُ أصدقاءك واكسب مكافآت مباشرة</h2>
+                        <p class="reward-campaign-subtitle">تُضاف مكافأة نقدية إلى رصيدك عند تفعيل إحالتك المباشرة لكل مستوى.</p>
                     </div>
                     <button type="button" onclick="showAuthView('register')" class="reward-campaign-cta">إنشاء حساب <i class="fa-solid fa-arrow-left" aria-hidden="true"></i></button>
                 </div>
-                <div class="reward-prize-grid">
-                    <article class="reward-prize-card reward-prize-card--grand">
-                        <div class="reward-prize-art reward-prize-art--gold"><img src="https://aitnews.com/wp-content/uploads/2026/09/Apple-Foldable-iPhone-Plan-780x470.jpg" alt="صورة iPhone Duo القابل للطي من الرابط المرسل" width="780" height="470" fetchpriority="high" referrerpolicy="no-referrer"></div>
-                        <div class="reward-prize-copy"><div class="reward-prize-meta"><span class="reward-prize-place">الجائزة الرئيسية</span><span class="reward-points"><i class="fa-solid fa-star" aria-hidden="true"></i> 500 نقطة</span></div><h3 class="reward-prize-name">iPhone Duo</h3><p class="reward-prize-detail">الصورة المرفقة لهاتف iPhone Duo القابل للطي.</p></div>
-                    </article>
-                    <article class="reward-prize-card reward-prize-card--galaxy">
-                        <div class="reward-prize-art reward-prize-art--cyan"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRdUBwnWFymDuYAsjmLsyxk3if6bUYsP3Ixdfbvu5lHXaoW3ALUetRwOZg&amp;s=10" alt="صورة لهاتفين من Samsung وفق الرابط المرسل" width="678" height="452" loading="eager" referrerpolicy="no-referrer"></div>
-                        <div class="reward-prize-copy"><div class="reward-prize-meta"><span class="reward-prize-place">الجائزة الثانية</span><span class="reward-points"><i class="fa-solid fa-star" aria-hidden="true"></i> 350 نقطة</span></div><h3 class="reward-prize-name">Samsung Galaxy</h3><p class="reward-prize-detail">S26 أو S25 Ultra، بحسب التوفر.</p></div>
-                    </article>
-                    <article class="reward-prize-card reward-prize-card--xiaomi">
-                        <div class="reward-prize-art reward-prize-art--violet"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTppIx-NvZGPMVl_Aj2GRPP0G6Ocaby2xFvHPCQRxM3NsnN6inQyxIWLj8&amp;s=10" alt="صورة لهاتف Redmi Note 14 وفق الرابط المرسل" width="414" height="483" loading="eager" referrerpolicy="no-referrer"></div>
-                        <div class="reward-prize-copy"><div class="reward-prize-meta"><span class="reward-prize-place">الجائزة الثالثة</span><span class="reward-points"><i class="fa-solid fa-star" aria-hidden="true"></i> 200 نقطة</span></div><h3 class="reward-prize-name">هاتف Xiaomi</h3><p class="reward-prize-detail">بقيمة معلنة قدرها 350 دولارًا.</p></div>
-                    </article>
-                    <article class="reward-prize-card reward-prize-card--cash">
-                        <div class="reward-prize-art reward-prize-art--cash"><span class="reward-cash-visual" aria-hidden="true"><i class="fa-solid fa-coins"></i></span></div>
-                        <div class="reward-prize-copy"><div class="reward-prize-meta"><span class="reward-prize-place">المراكز 4–10</span><span class="reward-points">حسب النقاط</span></div><h3 class="reward-prize-name">مكافآت مالية</h3><p class="reward-prize-detail">قابلة للسحب الفوري وفق النقاط المجمعة.</p></div>
-                    </article>
+                <div class="reward-prize-grid reward-tier-grid">
+                    <article class="reward-prize-card reward-prize-card--grand"><div class="reward-prize-art reward-prize-art--gold"><span class="reward-cash-visual" aria-hidden="true"><i class="fa-solid fa-user-plus"></i></span></div><div class="reward-prize-copy"><div class="reward-prize-meta"><span class="reward-prize-place">عند تفعيل المستوى الأول</span><span class="reward-points">$1</span></div><h3 class="reward-prize-name">مكافأة الإحالة الأولى</h3><p class="reward-prize-detail">تُمنح مرة واحدة عن كل إحالة مباشرة مؤهلة.</p></div></article>
+                    <article class="reward-prize-card reward-prize-card--galaxy"><div class="reward-prize-art reward-prize-art--cyan"><span class="reward-cash-visual" aria-hidden="true"><i class="fa-solid fa-arrow-trend-up"></i></span></div><div class="reward-prize-copy"><div class="reward-prize-meta"><span class="reward-prize-place">عند تفعيل المستوى الثاني</span><span class="reward-points">$2</span></div><h3 class="reward-prize-name">مكافأة الترقية</h3><p class="reward-prize-detail">مكافأة إضافية عند وصول الإحالة المباشرة للمستوى الثاني.</p></div></article>
+                    <article class="reward-prize-card reward-prize-card--cash"><div class="reward-prize-art reward-prize-art--cash"><span class="reward-cash-visual" aria-hidden="true"><i class="fa-solid fa-sack-dollar"></i></span></div><div class="reward-prize-copy"><div class="reward-prize-meta"><span class="reward-prize-place">عند تفعيل المستوى الثالث</span><span class="reward-points">$5</span></div><h3 class="reward-prize-name">مكافأة المستوى الثالث</h3><p class="reward-prize-detail">إجمالي المكافآت عن إحالة تبلغ المستوى الثالث: $8.</p></div></article>
                 </div>
-                <p class="reward-campaign-note"><i class="fa-solid fa-circle-info" aria-hidden="true"></i><span>تُحتسب الإحالة المباشرة عند نجاح تفعيل مدفوع: نقطة للمستوى الأول، نقطتان للثاني، و4 للثالث، مرة واحدة لكل مستوى. النقاط تظهر في حساب الداعي والترتيب؛ تسليم الجوائز وصرف المكافآت يخضع لشروط الحملة ومراجعة الإدارة.</span></p>
-                <details class="campaign-leaderboard mt-3 rounded-2xl border border-slate-700/70 bg-slate-950/35 p-3" ontoggle="if(this.open) loadCampaignLeaderboard()">
-                    <summary class="flex cursor-pointer list-none items-center justify-between gap-3 text-[11px] font-bold text-slate-200"><span><i class="fa-solid fa-ranking-star ml-2 text-amber-300" aria-hidden="true"></i>ترتيب الحملة — أعلى 10</span><i class="fa-solid fa-chevron-down text-[9px] text-slate-500" aria-hidden="true"></i></summary>
-                    <div id="campaignLeaderboardList" class="mt-3 space-y-1.5 text-[10px] text-slate-400"><p>افتح القائمة لعرض ترتيب النقاط الحالي.</p></div>
-                </details>
-                <p class="reward-photo-credit">مصدر صورة iPhone: <a href="https://aitnews.com/2026/09/16/%D8%A2%D8%A8%D9%84-%D8%AA%D8%AE%D8%B7%D8%B7-%D9%84%D8%A5%D8%B7%D9%84%D8%A7%D9%82-%D8%B3%D9%84%D8%B3%D9%84%D8%A9-%D9%85%D8%AA%D9%83%D8%A7%D9%85%D9%84%D8%A9-%D9%85%D9%86-%D9%87%D9%88%D8%A7%D8%AA%D9%81/" target="_blank" rel="noopener noreferrer">البوابة التقنية — الرابط المرسل</a> · صور Samsung وXiaomi من روابط المعاينة التي أرسلها المستخدم.</p>
+                <p class="reward-campaign-note"><i class="fa-solid fa-circle-info" aria-hidden="true"></i><span>تُضاف المكافآت إلى رصيد الأرباح القابل للسحب، وتُحتسب لكل مستوى مرة واحدة عن الإحالة المباشرة بعد نجاح التفعيل. تنطبق شروط السحب والتحقق المالي المعتادة.</span></p>
             </section>
             <div class="flex-1 grid lg:grid-cols-[1.1fr_.9fr] items-center gap-12 py-12 md:py-16">
                 <div class="intro-reveal space-y-6">
@@ -1096,6 +1266,34 @@ body::before{content:'';position:fixed;inset:-12%;z-index:-1;pointer-events:none
                 <p class="text-[11px] text-slate-400 leading-5">كل دورة تمنح مكافأة فعلية تُسجل في سجل المعاملات. لا تُفتح الألعاب إلا بعد توفر دورة وإيداع مفعّل.</p>
                 <div class="flex flex-wrap gap-2 text-[10px]"><p id="gameConfigStatus" class="text-emerald-400">جاري تحميل قيم المكافآت...</p><span id="platformStatus" class="text-slate-500">الخدمة: جاري التحقق...</span></div>
             </div>
+            <section class="home-referral-campaign glass-card" aria-labelledby="homeCampaignTitle">
+                <div class="home-referral-header">
+                    <div>
+                        <span class="home-referral-kicker"><i class="fa-solid fa-sparkles" aria-hidden="true"></i> حملة النقاط والمكافآت</span>
+                        <h3 id="homeCampaignTitle" class="home-referral-title">شارك الحساب وحقق مكافآتك المباشرة</h3>
+                    </div>
+                    <span class="home-referral-status"><i class="fa-solid fa-award" aria-hidden="true"></i> فعال</span>
+                </div>
+
+                <div class="home-referral-highlight">
+                    <div class="home-referral-total-box">
+                        <span>إجمالي مكافآت الإحالات</span>
+                        <strong id="referralHomeRewardTotal">$0.00</strong>
+                    </div>
+                    <div class="home-referral-points-box">
+                        <span>نقاط الحملة</span>
+                        <strong id="referralHomePoints">0</strong>
+                    </div>
+                </div>
+
+                <div class="home-referral-tier-grid">
+                    <div class="home-referral-tier-item"><span>المستوى الأول</span><b>+$1</b></div>
+                    <div class="home-referral-tier-item"><span>المستوى الثاني</span><b>+$2</b></div>
+                    <div class="home-referral-tier-item"><span>المستوى الثالث</span><b>+$5</b></div>
+                </div>
+
+                <div id="referralHomeRewardsHistory" class="home-referral-history"><span>سيظهر سجل الحملة هنا بعد تفعيل إحالاتك.</span></div>
+            </section>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="glass-card p-5 rounded-3xl border border-amber-500/25 space-y-4 overflow-hidden relative">
                     <div class="flex justify-between items-start text-right"><div><h3 class="font-black text-white">عجلة الحظ</h3><p id="wheelRewardRange" class="text-[10px] text-slate-400 mt-1">جاري تحميل نطاق المكافأة...</p></div><span class="bg-amber-500/15 text-amber-400 border border-amber-500/25 rounded-full px-2.5 py-1 text-[10px] font-bold"><b id="lblWheelCredits">0</b> دورة</span></div>
@@ -1129,72 +1327,21 @@ body::before{content:'';position:fixed;inset:-12%;z-index:-1;pointer-events:none
                     <button onclick="copyReferral()" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i></button>
                 </div>
                 <button onclick="copyProfileReferral()" class="w-full py-2.5 bg-amber-500 text-slate-950 rounded-xl text-xs font-black"><i class="fa-solid fa-link ml-1"></i> نسخ رابط الدعوة</button>
-                <p class="text-[10px] text-slate-500">كل إحالة نشطة تساعدك على فتح دورات ومتابعة تقدم الفريق.</p>
+                <p class="text-[10px] text-slate-500">اكسب مكافأة نقدية عند تفعيل إحالاتك المباشرة للمستويات.</p>
             </div>
 
-            <div class="campaign-points-card glass-card rounded-3xl border border-amber-400/20 p-5 text-right">
+            <div class="referral-rewards-card glass-card rounded-3xl border border-amber-400/20 p-5 text-right">
                 <div class="flex items-start justify-between gap-3">
-                    <div><span class="text-[10px] font-black tracking-wide text-amber-200">نقاط حملة الإحالات</span><h3 class="mt-1 text-sm font-black text-white">رصيد نقاطك</h3></div>
-                    <i class="fa-solid fa-trophy text-xl text-amber-300" aria-hidden="true"></i>
+                    <div><span class="text-[10px] font-black tracking-wide text-amber-200">مكافآت الإحالات المباشرة</span><h3 class="mt-1 text-sm font-black text-white">إجمالي ما كسبته</h3></div>
+                    <i class="fa-solid fa-sack-dollar text-xl text-amber-300" aria-hidden="true"></i>
                 </div>
-                <div class="mt-3 flex items-end gap-2"><strong id="campaignPointsBalance" class="text-4xl font-black text-amber-300">0</strong><span class="pb-1 text-[11px] text-slate-400">نقطة</span></div>
-                <p id="campaignPointsNextReward" class="mt-2 text-[10px] leading-5 text-slate-400">كل إحالة مباشرة تكسبك نقطة أو نقطتين أو 4 نقاط عند تفعيل مستوياتها الثلاثة.</p>
-                <div class="mt-3 h-2 overflow-hidden rounded-full bg-slate-950"><div id="campaignPointsProgress" class="h-full rounded-full bg-gradient-to-l from-amber-300 to-amber-600 transition-all" style="width:0%"></div></div>
-                <div id="campaignPointsHistory" class="mt-3 space-y-1.5 text-[10px] text-slate-400"><span>يُعرض سجل النقاط عند فتح هذا التبويب.</span></div>
-            </div>
-            
-            <div class="grid grid-cols-3 gap-2 text-center text-xs">
-                <div class="team-level-card bg-slate-900 p-3 rounded-2xl border border-slate-800">
-                    <span class="text-slate-400 block text-[10px]">المستوى 1</span>
-                    <b id="lblTeamL1Count" class="text-amber-400">0 شخص</b>
+                <div class="mt-3 flex items-end gap-2"><strong id="referralRewardsTotal" class="text-4xl font-black text-amber-300">$0.00</strong><span class="pb-1 text-[11px] text-slate-400">USDT</span></div>
+                <div class="mt-4 grid grid-cols-3 gap-2 text-center text-[10px]">
+                    <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-2"><span class="block text-slate-500">المستوى الأول</span><b class="mt-1 block text-emerald-300">+$1</b></div>
+                    <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-2"><span class="block text-slate-500">المستوى الثاني</span><b class="mt-1 block text-emerald-300">+$2</b></div>
+                    <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-2"><span class="block text-slate-500">المستوى الثالث</span><b class="mt-1 block text-emerald-300">+$5</b></div>
                 </div>
-                <div class="team-level-card bg-slate-900 p-3 rounded-2xl border border-slate-800">
-                    <span class="text-slate-400 block text-[10px]">المستوى 2</span>
-                    <b id="lblTeamL2Count" class="text-amber-400">0 شخص</b>
-                </div>
-                <div class="team-level-card bg-slate-900 p-3 rounded-2xl border border-slate-800">
-                    <span class="text-slate-400 block text-[10px]">المستوى 3</span>
-                    <b id="lblTeamL3Count" class="text-amber-400">0 شخص</b>
-                </div>
-            </div>
-
-            <div class="glass-card p-4 rounded-2xl space-y-2 text-xs">
-                <div class="flex justify-between text-slate-400">
-                    <span id="lblTotalTeamCount">إجمالي الفريق: 0</span>
-                    <span>الأرباح اليومية المقدرة: <b id="lblDailyTeamEarnings" class="text-emerald-400">0.0000 $</b></span>
-                </div>
-            </div>
-            <div class="glass-card p-4 rounded-2xl space-y-3"><div class="flex justify-between items-center"><div><h4 class="text-sm font-bold text-white">شبكة الفريق</h4><p class="text-[10px] text-slate-500 mt-1">تابع نشاط الإحالات عبر المستويات الثلاثة</p></div><button onclick="loadTeamNetwork()" title="تحديث الفريق" class="text-slate-400 hover:text-amber-400"><i class="fa-solid fa-arrows-rotate"></i></button></div><div class="grid grid-cols-3 gap-1.5"><button id="teamFilter1" onclick="setTeamLevel(1)" class="team-filter-active border rounded-lg py-2 text-[10px] font-bold">المستوى 1</button><button id="teamFilter2" onclick="setTeamLevel(2)" class="border border-slate-800 rounded-lg py-2 text-[10px] text-slate-400 font-bold">المستوى 2</button><button id="teamFilter3" onclick="setTeamLevel(3)" class="border border-slate-800 rounded-lg py-2 text-[10px] text-slate-400 font-bold">المستوى 3</button></div><input id="teamSearchInput" oninput="renderTeamLevel()" placeholder="ابحث بالبريد داخل المستوى" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none"><div id="teamLevelSummary" class="text-[10px] text-slate-500"></div><div id="teamMembersList" class="space-y-2"><p class="text-[11px] text-slate-500 text-center py-4">افتح التبويب لتحميل الفريق.</p></div></div>
-
-            <div class="glass-card p-4 rounded-2xl space-y-3 border border-amber-500/20">
-                <div class="flex justify-between items-center">
-                    <div><h4 class="text-xs font-bold text-white">تقدم إحالات الترقية</h4><p class="text-[10px] text-slate-500 mt-1">الإحالات النشطة المرتبطة بفريقك فقط تُحتسب للترقية</p></div>
-                    <i class="fa-solid fa-arrow-up-right-dots text-amber-400"></i>
-                </div>
-                <div class="flex justify-between items-center text-[10px] text-slate-400"><span id="lblActiveReferrals">الإحالات النشطة: 0</span><strong id="lblNextTierReferralGoal" class="text-amber-400">الهدف التالي: 10</strong></div>
-                <div class="h-2 bg-slate-950 rounded-full overflow-hidden"><div id="teamReferralProgress" class="h-full gold-gradient rounded-full" style="width:0%"></div></div>
-                <p id="teamReferralMessage" class="text-[10px] text-slate-400">تحتاج إلى 10 إحالات نشطة للترقية إلى A2.</p>
-            </div>
-
-            <!-- رتب الفريق -->
-            <div class="space-y-2">
-                <h4 class="text-xs font-bold text-slate-400">رتب الإنجاز</h4>
-                <div id="rankTier1" class="p-3 rounded-2xl bg-slate-950 border border-slate-800 flex justify-between items-center opacity-80">
-                    <span class="text-xs font-bold text-white">برونزي (60 عضو)</span>
-                    <span id="badgeRank1Status" class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-900 text-slate-400">0 / 60</span>
-                </div>
-                <div id="rankTier2" class="p-3 rounded-2xl bg-slate-950 border border-slate-800 flex justify-between items-center opacity-80">
-                    <span class="text-xs font-bold text-white">فضي (120 عضو)</span>
-                    <span id="badgeRank2Status" class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-900 text-slate-400">0 / 120</span>
-                </div>
-                <div id="rankTier3" class="p-3 rounded-2xl bg-slate-950 border border-slate-800 flex justify-between items-center opacity-80">
-                    <span class="text-xs font-bold text-white">ذهبي (240 عضو)</span>
-                    <span id="badgeRank3Status" class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-900 text-slate-400">0 / 240</span>
-                </div>
-                <div id="rankTier4" class="p-3 rounded-2xl bg-slate-950 border border-slate-800 flex justify-between items-center opacity-80">
-                    <span class="text-xs font-bold text-white">ماسي (500 عضو)</span>
-                    <span id="badgeRank4Status" class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-900 text-slate-400">0 / 500</span>
-                </div>
+                <div id="referralRewardsHistory" class="mt-4 space-y-2 text-[10px] text-slate-400"><span>سيظهر سجل المكافآت هنا بعد تفعيل إحالاتك.</span></div>
             </div>
         </div>
 

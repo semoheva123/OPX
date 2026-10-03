@@ -23,7 +23,7 @@ const modelMap = {
   InvestmentVaultContract: { table: 'investment_vault_contracts' },
   Staking: { table: 'stakings' },
   DailyTaskCompletion: { table: 'daily_task_completions' },
-  CampaignPointAward: { table: 'campaign_point_awards' },
+  ReferralRewardAward: { table: 'referral_reward_awards' },
   AuditLog: { table: 'audit_logs' }
 };
 
@@ -540,7 +540,7 @@ const dataAccess = {
   investmentVaultContract: createRepository('InvestmentVaultContract'),
   staking: createRepository('Staking'),
   dailyTaskCompletion: createRepository('DailyTaskCompletion'),
-  campaignPointAward: createRepository('CampaignPointAward'),
+  referralRewardAward: createRepository('ReferralRewardAward'),
   auditLog: createRepository('AuditLog'),
   transaction: {
     async create(data) {
