@@ -158,9 +158,9 @@
         .home-referral-campaign {
             position: relative;
             overflow: hidden;
-            padding: 18px;
+            padding: 14px 16px;
             border: 1px solid rgba(247,185,85,.28);
-            border-radius: 28px;
+            border-radius: 22px;
             background: linear-gradient(135deg, rgba(7,17,31,.98) 0%, rgba(11,22,38,.95) 26%, rgba(16,28,42,.96) 52%, rgba(12,18,30,.99) 100%);
             box-shadow: 0 28px 75px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.06), 0 0 0 1px rgba(247,185,85,.08);
         }
@@ -184,7 +184,7 @@
             filter: blur(18px);
             pointer-events: none;
         }
-        .home-referral-header, .home-referral-highlight, .home-referral-tier-grid, .home-referral-history {
+        .home-referral-header, .home-referral-highlight, .home-referral-tier-grid, .home-referral-history, .home-campaign-prizes {
             position: relative;
             z-index: 1;
         }
@@ -193,25 +193,25 @@
             align-items: flex-start;
             justify-content: space-between;
             gap: 12px;
-            margin-bottom: 16px;
+            margin-bottom: 10px;
         }
         .home-referral-kicker {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            padding: 7px 12px;
+            padding: 5px 9px;
             border: 1px solid rgba(247,185,85,.28);
             border-radius: 999px;
             background: linear-gradient(135deg, rgba(247,185,85,.12), rgba(247,185,85,.04));
             color: #f8d58d;
-            font-size: 10px;
+            font-size: 9px;
             font-weight: 900;
             box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
         }
         .home-referral-title {
-            margin: 10px 0 0;
+            margin: 6px 0 0;
             color: #f8fafc;
-            font-size: 17px;
+            font-size: 14px;
             line-height: 1.5;
             font-weight: 900;
             text-shadow: 0 6px 18px rgba(0,0,0,.38);
@@ -220,7 +220,7 @@
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 7px 10px;
+            padding: 5px 8px;
             border: 1px solid rgba(52,211,153,.35);
             border-radius: 999px;
             background: linear-gradient(135deg, rgba(52,211,153,.12), rgba(52,211,153,.04));
@@ -231,19 +231,20 @@
         }
         .home-referral-highlight {
             display: grid;
-            grid-template-columns: 1.5fr .8fr;
-            gap: 12px;
-            margin-bottom: 12px;
+            grid-template-columns: 1.2fr .8fr;
+            gap: 8px;
+            margin-bottom: 9px;
         }
         .home-referral-total-box,
         .home-referral-points-box {
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            gap: 8px;
-            min-height: 120px;
-            padding: 16px 18px;
-            border-radius: 18px;
+            gap: 5px;
+            box-sizing: border-box;
+            min-height: 76px;
+            padding: 10px 13px;
+            border-radius: 15px;
             border: 1px solid rgba(148,163,184,.12);
             background: rgba(15, 23, 42, 0.62);
             backdrop-filter: blur(12px);
@@ -257,12 +258,12 @@
         .home-referral-total-box span,
         .home-referral-points-box span {
             color: #94a3b8;
-            font-size: 10px;
+            font-size: 9px;
             font-weight: 700;
         }
         .home-referral-total-box strong {
             color: #f8d58d;
-            font-size: clamp(30px, 4vw, 42px);
+            font-size: clamp(25px, 3.2vw, 32px);
             line-height: 1;
             font-weight: 900;
             letter-spacing: -0.04em;
@@ -274,7 +275,7 @@
         }
         .home-referral-points-box strong {
             color: #a5f3fc;
-            font-size: clamp(26px, 4vw, 34px);
+            font-size: clamp(22px, 3vw, 27px);
             line-height: 1;
             font-weight: 900;
             letter-spacing: -0.04em;
@@ -282,30 +283,31 @@
         .home-referral-tier-grid {
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 8px;
-            margin-bottom: 14px;
+            gap: 6px;
+            margin-bottom: 9px;
         }
         .home-referral-tier-item {
             display: flex;
-            flex-direction: column;
-            justify-content: center;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
             gap: 6px;
-            min-height: 82px;
-            padding: 10px 8px;
-            border-radius: 14px;
+            min-height: 48px;
+            padding: 8px 10px;
+            border-radius: 12px;
             border: 1px solid rgba(148,163,184,.12);
             background: linear-gradient(180deg, rgba(15,25,38,.75), rgba(12,16,28,.9));
-            text-align: center;
+            text-align: right;
             box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
         }
         .home-referral-tier-item span {
             color: #94a3b8;
-            font-size: 9px;
+            font-size: 8px;
             font-weight: 700;
         }
         .home-referral-tier-item b {
             color: #a7f3d0;
-            font-size: 15px;
+            font-size: 13px;
             font-weight: 900;
         }
         .home-campaign-prizes-heading {
@@ -315,8 +317,14 @@
             align-items: end;
             justify-content: space-between;
             gap: 10px;
-            margin: 18px 0 10px;
+            margin: 5px 0 9px;
         }
+        .home-campaign-prizes { margin-top: 8px; }
+        .home-campaign-prizes > summary { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 11px; border:1px solid rgba(247,185,85,.16); border-radius:12px; background:rgba(8,18,31,.54); color:#f8d58d; cursor:pointer; font-size:9px; font-weight:900; list-style:none; }
+        .home-campaign-prizes > summary::-webkit-details-marker { display:none; }
+        .home-campaign-prizes > summary::after { content:'＋'; color:#f7b955; font-size:13px; }
+        .home-campaign-prizes[open] > summary::after { content:'−'; }
+        .home-campaign-prizes[open] > .home-campaign-prizes-content { padding-top:10px; }
         .home-campaign-prizes-heading h4 { margin: 4px 0 0; color: #f8fafc; font-size: 13px; font-weight: 900; }
         .home-campaign-prizes-heading p { margin: 0; color: #94a3b8; font-size: 9px; line-height: 1.6; text-align: left; }
         .home-campaign-prize-grid {
@@ -360,7 +368,7 @@
             justify-content: center;
             gap: 8px;
             margin-top: 12px;
-            padding: 11px 14px;
+            padding: 8px 12px;
             border: 1px solid rgba(255,225,161,.4);
             border-radius: 13px;
             background: linear-gradient(135deg,#ffe1a1,#f7b955 55%,#d88d31);
@@ -372,7 +380,9 @@
         .home-referral-history {
             display: grid;
             gap: 8px;
-            padding-top: 12px;
+            max-height: 88px;
+            overflow-y: auto;
+            padding-top: 8px;
             border-top: 1px solid rgba(148,163,184,.10);
             color: #94a3b8;
             font-size: 10px;
@@ -391,17 +401,27 @@
         }
         @media (max-width: 640px) {
             .home-referral-campaign {
-                padding: 14px;
+                padding: 12px;
             }
             .home-referral-header {
-                flex-direction: column;
-                align-items: flex-start;
+                align-items: center;
             }
             .home-referral-highlight {
-                grid-template-columns: 1fr;
+                grid-template-columns: 1.15fr .85fr;
             }
             .home-referral-tier-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+            .home-referral-tier-item {
+                flex-direction: column;
+                justify-content: center;
+                gap: 3px;
+                min-height: 46px;
+                padding: 6px 3px;
+                text-align: center;
+            }
+            .home-campaign-prizes-heading p {
+                display: none;
             }
         }
         .reward-photo-credit { margin:6px 0 0; color:#718096; font-size:8px; line-height:1.8; }
@@ -756,17 +776,27 @@
         }
         @media (min-width: 768px) {
             #view-feed > section:first-child { padding: 1.25rem; }
-            #socialFeedList { box-shadow: 0 24px 70px rgba(0,0,0,.2); }
+                padding: 12px;
         }
 
-        
+                align-items: center;
 
 
-
-
+                grid-template-columns: 1.15fr .85fr;
 /* ===== Safe CSS-only motion layer for OPERIX ===== */
 html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
-body::before{content:'';position:fixed;inset:-12%;z-index:-1;pointer-events:none;background-image:radial-gradient(circle at 68% 12%, rgba(247,185,85,0.12), transparent 16%), radial-gradient(circle at 18% 78%, rgba(69,214,176,0.08), transparent 12%), radial-gradient(circle at 56% 96%, rgba(34,211,238,0.08), transparent 18%);background-size:130% 130%;background-position:center center;transform:scale(1.08);opacity:0.75}
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+            .home-referral-tier-item {
+                flex-direction: column;
+                justify-content: center;
+                gap: 3px;
+                min-height: 46px;
+                padding: 6px 3px;
+                text-align: center;
+            }
+            .home-campaign-prizes-heading p {
+                display: none;
 @supports (animation-timeline: scroll()){body::before{animation:operixParallaxFloat linear both;animation-timeline:scroll(root block);animation-range:0% 100%}}
 @supports (animation-timeline: view()){.company-intro{animation:operixHeroScaleFade 1000ms cubic-bezier(.22,1,.36,1) both;animation-timeline:view();animation-range:entry 0% cover 85%}.product-preview{animation:operixPreviewScale 1000ms cubic-bezier(.22,1,.36,1) both;animation-timeline:view();animation-range:entry 0% cover 82%}.intro-reveal,.intro-feature,.about-panel,.glass-card,.opx-market-card{animation:operixRevealFadeUp 850ms cubic-bezier(.22,1,.36,1) both;animation-timeline:view();animation-range:entry 0% cover 78%}.intro-feature{animation-delay:80ms}.about-panel{animation-delay:150ms}.opx-market-card{animation-delay:120ms}}
 @keyframes operixHeroScaleFade{from{opacity:0.78;transform:scale(0.985)}to{opacity:1;transform:scale(1)}}
@@ -1144,6 +1174,9 @@ body::before{content:'';position:fixed;inset:-12%;z-index:-1;pointer-events:none
                     <div class="home-referral-tier-item"><span>المستوى الثالث</span><b>+$5</b></div>
                 </div>
 
+                <details class="home-campaign-prizes">
+                    <summary><span><i class="fa-solid fa-gift ml-1" aria-hidden="true"></i> عرض صور الجوائز والحملة</span><span class="text-slate-500">3 هواتف + جوائز مالية</span></summary>
+                    <div class="home-campaign-prizes-content">
                 <div class="home-campaign-prizes-heading">
                     <div><span class="home-referral-kicker"><i class="fa-solid fa-gift" aria-hidden="true"></i> جوائز الحملة</span><h4>مكافآت أصحاب أعلى النقاط</h4></div>
                     <p>نقاط الإحالات<br>الأولى والثانية والثالثة</p>
@@ -1167,6 +1200,8 @@ body::before{content:'';position:fixed;inset:-12%;z-index:-1;pointer-events:none
                     </article>
                 </div>
                 <button type="button" onclick="switchTab('team')" class="home-campaign-cta"><i class="fa-solid fa-user-plus" aria-hidden="true"></i> شارك رابط الدعوة وابدأ جمع النقاط</button>
+                    </div>
+                </details>
 
                 <div id="referralHomeRewardsHistory" class="home-referral-history"><span>سيظهر سجل الحملة هنا بعد تفعيل إحالاتك.</span></div>
             </section>

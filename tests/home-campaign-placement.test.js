@@ -16,6 +16,10 @@ assert.match(index, /home-campaign-prize-grid[\s\S]*?iPhone Duo[\s\S]*?Samsung G
   'authenticated home must show all campaign prize categories');
 assert.match(index, /Apple-Foldable-iPhone-Plan[\s\S]*?loading="lazy"/,
   'phone prize images in the authenticated home should load lazily');
+assert.match(index, /<details class="home-campaign-prizes">\s*<summary>/,
+  'the detailed prize showcase should be collapsed by default to keep the home card compact');
+assert.match(index, /box-sizing:\s*border-box;\s*min-height:\s*76px/,
+  'the home reward metrics should use compact, padding-inclusive sizing');
 assert.match(client, /if\s*\(tabName\s*===\s*'home'\)\s*\{\s*loadReferralRewardHistory\(\);/,
   'campaign totals and history must refresh when the home view opens');
 assert.match(client, /campaignPointsByLevel\s*=\s*\{\s*1:\s*1,\s*2:\s*2,\s*3:\s*4\s*\}/,
