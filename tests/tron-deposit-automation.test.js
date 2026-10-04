@@ -8,6 +8,7 @@ const read = relative => fs.readFileSync(path.join(__dirname, '..', relative), '
 const migration = read('supabase/automatic-trc20-deposits.sql');
 const trc20Only = read('supabase/trc20-only-financials.sql');
 const server = read('server.js');
+const financialReadiness = read('src/services/financialReadinessService.js');
 const queueWorkflow = read('.github/workflows/financial-queue-workers.yml');
 const blockchainService = read('src/services/blockchainService.js');
 const walletController = read('src/controllers/walletController.js');
@@ -20,6 +21,10 @@ assert.match(migration, /unique/i, 'deposit events must be idempotent');
 assert.match(migration, /revoke all privileges.*anon.*authenticated/is);
 assert.match(trc20Only, /TRC20_ONLY_SUPPORTED/);
 assert.match(server, /process-tron-deposits/);
+assert.match(server, /check-financial-readiness/);
+assert.match(financialReadiness, /payoutUsdtFunded/);
+assert.match(financialReadiness, /payoutTrxSufficient/);
+assert.doesNotMatch(financialReadiness, /sendRawTransaction|preparePayout|broadcastPreparedPayout/);
 assert.match(queueWorkflow, /\/api\/internal\/cron\/process-tron-deposits/);
 assert.doesNotMatch(blockchainService, /PLATFORM_(?:TRON|BSC)_DEPOSIT_ADDRESS|verifyDeposit|getDepositAddresses/);
 assert.match(walletController, /return res\.status\(410\)/, 'manual TxHash deposits must remain disabled');

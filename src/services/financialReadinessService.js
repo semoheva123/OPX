@@ -1,0 +1,75 @@
+const { TronWeb } = require('tronweb');
+const blockchainService = require('./blockchainService');
+const tronDepositService = require('./tronDepositService');
+const { checkSupabaseConnection } = require('../config/supabase');
+
+async function checkFinancialReadiness() {
+  const checks = {
+    supabaseReachable: false,
+    financialSchemaReady: false,
+    depositXpubDerivesAddress: false,
+    tronUsdtContractValid: false,
+    payoutKeyConfigured: false,
+    payoutKeyValid: false,
+    tronProviderReachable: false,
+    payoutUsdtFunded: false,
+    payoutTrxSufficient: false
+  };
+  const switches = {
+    depositsEnabled: String(process.env.TRON_DEPOSIT_AUTOMATION_ENABLED || '').toLowerCase() === 'true',
+    payoutsEnabled: String(process.env.WITHDRAWAL_PAYOUTS_ENABLED || '').toLowerCase() === 'true',
+    autoApprovalEnabled: String(process.env.WITHDRAWAL_AUTO_APPROVAL_ENABLED || '').toLowerCase() === 'true'
+  };
+
+  const database = await checkSupabaseConnection().catch(() => null);
+  checks.supabaseReachable = Boolean(database?.reachable);
+  checks.financialSchemaReady = Boolean(database?.financialSchema?.ready);
+
+  try {
+    checks.depositXpubDerivesAddress = Boolean(tronDepositService.deriveDepositAddress(0));
+  } catch {
+    checks.depositXpubDerivesAddress = false;
+  }
+
+  const config = blockchainService.getBlockchainConfig().TRC20;
+  const privateKey = String(process.env.TRON_WITHDRAWAL_PRIVATE_KEY || '').trim();
+  checks.payoutKeyConfigured = Boolean(privateKey);
+  const apiKey = String(process.env.TRONGRID_API_KEY || '').trim();
+  const headers = apiKey ? { 'TRON-PRO-API-KEY': apiKey } : {};
+
+  let tronWeb;
+  try {
+    tronWeb = new TronWeb({ fullHost: config.apiUrl, privateKey, headers });
+    checks.tronUsdtContractValid = tronWeb.isAddress(config.tokenContract);
+    checks.payoutKeyValid = Boolean(privateKey && tronWeb.defaultAddress.base58 && tronWeb.isAddress(tronWeb.defaultAddress.base58));
+  } catch {
+    checks.tronUsdtContractValid = false;
+    checks.payoutKeyValid = false;
+  }
+
+  if (checks.payoutKeyValid && checks.tronUsdtContractValid) {
+    try {
+      const senderAddress = tronWeb.defaultAddress.base58;
+      const token = await tronWeb.contract().at(config.tokenContract);
+      const [tokenBalance, trxBalance] = await Promise.all([
+        token.balanceOf(senderAddress).call(),
+        tronWeb.trx.getBalance(senderAddress)
+      ]);
+      checks.tronProviderReachable = true;
+      checks.payoutUsdtFunded = BigInt(String(tokenBalance)) > 0n;
+      const feeLimit = BigInt(process.env.TRON_WITHDRAWAL_FEE_LIMIT_SUN || '100000000');
+      const minTrx = BigInt(process.env.TRON_WITHDRAWAL_MIN_TRX_SUN || feeLimit.toString());
+      checks.payoutTrxSufficient = BigInt(String(trxBalance)) >= (minTrx > feeLimit ? minTrx : feeLimit);
+    } catch {
+      checks.tronProviderReachable = false;
+    }
+  }
+
+  const readyForControlledTest = checks.supabaseReachable && checks.financialSchemaReady &&
+    checks.depositXpubDerivesAddress && checks.tronUsdtContractValid && checks.payoutKeyConfigured &&
+    checks.payoutKeyValid && checks.tronProviderReachable && checks.payoutUsdtFunded && checks.payoutTrxSufficient;
+
+  return { readyForControlledTest, checks, switches };
+}
+
+module.exports = { checkFinancialReadiness };

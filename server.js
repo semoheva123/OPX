@@ -85,6 +85,7 @@ const app = createApp({
     'ai-announcer': generateOfficialAiPost,
     'process-broadcasts': () => processScheduledBroadcasts(webpush),
     'process-tron-deposits': () => require('./src/services/tronDepositService').processTronDepositQueue(),
+    'check-financial-readiness': () => require('./src/services/financialReadinessService').checkFinancialReadiness(),
     'process-withdrawal-payouts': async () => {
       const adminController = require('./src/controllers/adminController');
       let automaticApprovals;

@@ -59,6 +59,17 @@ jobs:
             'https://operix.website/api/health'
           jq -e '.success == true and .financialSchema.ready == true' "$health_file" > /dev/null
           echo 'Production database and financial migration tables are ready.'
+          readiness_file=$(mktemp)
+          trap 'rm -f "$health_file" "$readiness_file"' EXIT
+          curl --fail --silent --show-error --output "$readiness_file" --max-time 40 \
+            --request POST \
+            --header "Authorization: Bearer ${CRON_SECRET}" \
+            'https://operix.website/api/internal/cron/check-financial-readiness'
+          jq -c '{readyForControlledTest: .result.readyForControlledTest, checks: .result.checks, switches: .result.switches}' "$readiness_file"
+          jq -e '.success == true and .result.readyForControlledTest == true' "$readiness_file" > /dev/null || {
+            echo '::error::Read-only financial preflight failed. No deposit or payout worker was invoked.'
+            exit 1
+          }
 
       - name: Validate financial schema before processing queues
         id: schema
