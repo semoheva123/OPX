@@ -32,6 +32,7 @@ async function checkSupabaseConnection() {
   const financialSchema = {
     depositTablesReady: false,
     payoutTableReady: false,
+    missingDepositTables: ['tron_deposit_addresses', 'tron_deposit_address_sequences', 'tron_deposit_events'],
     ready: false
   };
   if (!supabaseAdmin) return { configured: false, reachable: false, financialSchema };
@@ -40,13 +41,17 @@ async function checkSupabaseConnection() {
   if (error) return { configured: true, reachable: false, error: error.message, financialSchema };
 
   const depositTables = ['tron_deposit_addresses', 'tron_deposit_address_sequences', 'tron_deposit_events'];
-  const depositChecks = await Promise.all(depositTables.map(table =>
-    supabaseAdmin.from(table).select('id').limit(0).then(({ error: tableError }) => !tableError).catch(() => false)
+  const depositChecks = await Promise.all(depositTables.map(async table => ({
+    table,
+    ready: await supabaseAdmin.from(table).select('id').limit(0)
+      .then(({ error: tableError }) => !tableError).catch(() => false)
+  })
   ));
   const payoutCheck = await supabaseAdmin.from('withdrawal_payouts').select('id').limit(0)
     .then(({ error: tableError }) => !tableError).catch(() => false);
-  financialSchema.depositTablesReady = depositChecks.every(Boolean);
+  financialSchema.depositTablesReady = depositChecks.every(check => check.ready);
   financialSchema.payoutTableReady = payoutCheck;
+  financialSchema.missingDepositTables = depositChecks.filter(check => !check.ready).map(check => check.table);
   financialSchema.ready = financialSchema.depositTablesReady && financialSchema.payoutTableReady;
   return { configured: true, reachable: true, error: null, financialSchema };
 }

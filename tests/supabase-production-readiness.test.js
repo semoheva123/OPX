@@ -50,6 +50,7 @@ for (const table of ['tron_deposit_addresses', 'tron_deposit_address_sequences',
 }
 assert.match(supabaseConfig, /depositTablesReady/);
 assert.match(supabaseConfig, /payoutTableReady/);
+assert.match(supabaseConfig, /missingDepositTables/);
 assert.match(app, /financialSchema: supabase\?\.financialSchema/);
 assert.match(sitemap, /<loc>https:\/\/operix\.website\//);
 assert.doesNotMatch(sitemap, /localhost|127\.0\.0\.1/);
