@@ -18,6 +18,7 @@ assert.match(workflow, /workflow_dispatch:/);
 assert.match(workflow, /push:/);
 assert.match(workflow, /paths:\s*\n\s+- '\.github\/workflows\/financial-queue-workers\.yml'/);
 assert.match(workflow, /- 'src\/services\/financialReadinessService\.js'/);
+assert.match(workflow, /- 'tests\/tron-deposit-automation\.test\.js'/);
 assert.match(workflow, /auth_only:/);
 assert.match(workflow, /\/api\/internal\/cron\/__auth_probe__/);
 assert.match(workflow, /\/api\/internal\/cron\/check-financial-readiness/);

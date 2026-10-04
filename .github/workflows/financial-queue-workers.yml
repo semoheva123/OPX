@@ -9,6 +9,7 @@ on:
       - 'server.js'
       - 'src/config/supabase.js'
       - 'src/services/financialReadinessService.js'
+      - 'tests/tron-deposit-automation.test.js'
   schedule:
     - cron: '*/5 * * * *'
   workflow_dispatch:
