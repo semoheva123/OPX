@@ -30,7 +30,7 @@ const { getDatabaseMode } = require('./config/database');
 
 function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
   const app = express();
-  app.locals.deploymentVersion = process.env.DEPLOYMENT_VERSION || 'socialfi-20260907-2';
+  app.locals.deploymentVersion = process.env.DEPLOYMENT_VERSION || process.env.VERCEL_GIT_COMMIT_SHA || 'local';
   const trustProxy = process.env.TRUST_PROXY;
   app.set('trust proxy', trustProxy === 'true' ? 1 : trustProxy === 'false' || trustProxy === undefined ? false : Number(trustProxy));
   app.locals.resend = resend;

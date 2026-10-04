@@ -5,6 +5,7 @@ const path = require('node:path');
 const read = relative => fs.readFileSync(path.join(__dirname, '..', relative), 'utf8');
 const vercel = JSON.parse(read('vercel.json'));
 const workflow = read('.github/workflows/financial-queue-workers.yml');
+const app = read('src/app.js');
 
 assert.ok(vercel.crons.every(job => !['* * * * *', '*/5 * * * *'].includes(job.schedule)),
   'Vercel Hobby must not be assigned unsupported sub-daily cron schedules');
@@ -16,7 +17,13 @@ assert.match(workflow, /secrets\.CRON_SECRET/);
 assert.match(workflow, /Authorization: Bearer \$\{CRON_SECRET\}/);
 assert.match(workflow, /\/api\/internal\/cron\/process-tron-deposits/);
 assert.match(workflow, /\/api\/internal\/cron\/process-withdrawal-payouts/);
-assert.match(workflow, /--output \/dev\/null/);
+assert.match(workflow, /--output "\$response_file"/);
 assert.match(workflow, /concurrency:/);
+assert.match(workflow, /--max-time 70/);
+assert.doesNotMatch(workflow, /--retry-all-errors|--retry\s+\d/);
+assert.match(workflow, /steps\.validate\.outputs\.configured == 'true'/);
+assert.match(workflow, /jq -e '\.success == true/);
+assert.match(app, /process\.env\.VERCEL_GIT_COMMIT_SHA/);
+assert.doesNotMatch(app, /socialfi-20260907-2/);
 
 console.log('Financial queue scheduler tests: ok');
