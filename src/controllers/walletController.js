@@ -1,4 +1,3 @@
-const blockchainService = require('../services/blockchainService');
 const { authenticator } = require('otplib');
 const emailFrom = String(process.env.EMAIL_FROM || '').trim();
 

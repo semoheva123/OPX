@@ -9,6 +9,9 @@ const migration = read('supabase/automatic-trc20-deposits.sql');
 const trc20Only = read('supabase/trc20-only-financials.sql');
 const server = read('server.js');
 const queueWorkflow = read('.github/workflows/financial-queue-workers.yml');
+const blockchainService = read('src/services/blockchainService.js');
+const walletController = read('src/controllers/walletController.js');
+const depositUi = read('index.html');
 
 assert.match(migration, /create table if not exists public\.tron_deposit_addresses/i);
 assert.match(migration, /create table if not exists public\.tron_deposit_events/i);
@@ -18,6 +21,10 @@ assert.match(migration, /revoke all privileges.*anon.*authenticated/is);
 assert.match(trc20Only, /TRC20_ONLY_SUPPORTED/);
 assert.match(server, /process-tron-deposits/);
 assert.match(queueWorkflow, /\/api\/internal\/cron\/process-tron-deposits/);
+assert.doesNotMatch(blockchainService, /PLATFORM_(?:TRON|BSC)_DEPOSIT_ADDRESS|verifyDeposit|getDepositAddresses/);
+assert.match(walletController, /return res\.status\(410\)/, 'manual TxHash deposits must remain disabled');
+assert.doesNotMatch(depositUi, /handleDepositSubmit|depositTxHash|platformWalletAddress|copyPlatformWalletAddress/);
+assert.match(depositUi, /userDepositAddress/);
 
 const originalXpub = process.env.TRON_DEPOSIT_XPUB;
 const originalEnabled = process.env.TRON_DEPOSIT_AUTOMATION_ENABLED;

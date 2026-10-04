@@ -1733,8 +1733,8 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
             <div class="bg-slate-950 p-3 rounded-2xl border border-slate-800 space-y-1.5">
                 <span class="text-[10px] text-slate-400 font-bold block">عنوان محفظة الإيداع:</span>
                 <div class="flex items-center space-x-2 space-x-reverse bg-slate-900 p-2 rounded-xl border border-slate-800">
-                    <input type="text" id="platformWalletAddress" readonly value="" class="w-full bg-transparent text-xs text-amber-400 outline-none dir-ltr font-mono">
-                    <button type="button" onclick="copyPlatformWalletAddress()" class="bg-amber-500 text-slate-950 font-black px-3 py-1 rounded-lg text-xs whitespace-nowrap active:scale-95 transition-all">
+                    <input type="text" id="userDepositAddress" readonly value="" class="w-full bg-transparent text-xs text-amber-400 outline-none dir-ltr font-mono">
+                    <button type="button" onclick="copyUserDepositAddress()" class="bg-amber-500 text-slate-950 font-black px-3 py-1 rounded-lg text-xs whitespace-nowrap active:scale-95 transition-all">
                         <i class="fa-regular fa-copy"></i> نسخ
                     </button>
                 </div>
@@ -1940,81 +1940,6 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
             if (statusMsg) statusMsg.innerText = '';
             const btn = document.getElementById('btnConfirmDeposit');
             if (btn) btn.disabled = false;
-        }
-
-        function copyPlatformWalletAddress() {
-            const input = document.getElementById('platformWalletAddress');
-            if (input) {
-                input.select();
-                navigator.clipboard.writeText(input.value);
-                if (typeof showToast === 'function') {
-                    showToast('تم نسخ عنوان المحفظة بنجاح');
-                }
-            }
-        }
-
-        async function handleDepositSubmit(event) {
-            event.preventDefault();
-            const amountInput = document.getElementById('depositAmount');
-            const txHashInput = document.getElementById('depositTxHash');
-            const statusMsg = document.getElementById('depositModalStatus');
-            const btn = document.getElementById('btnConfirmDeposit');
-
-            const amount = parseFloat(amountInput.value);
-            const txHash = txHashInput.value.trim();
-
-            if (!amount || amount <= 0) {
-                statusMsg.style.color = '#f87171';
-                statusMsg.innerText = 'يرجى إدخال مبلغ إيداع صحيح';
-                return;
-            }
-
-            btn.disabled = true;
-            statusMsg.style.color = '#fbbf24';
-            statusMsg.innerText = 'جاري إرسال الطلب للسيرفر...';
-
-            const token = localStorage.getItem('token') || localStorage.getItem('authToken');
-            if (!token) {
-                statusMsg.style.color = '#f87171';
-                statusMsg.innerText = 'يرجى تسجيل الدخول أولاً';
-                btn.disabled = false;
-                return;
-            }
-
-            try {
-                const response = await fetch('/api/wallet/deposit', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({
-                        amount: amount,
-                        network: document.getElementById('depositNetwork').value,
-                        txHash: txHash || 'مباشر من التطبيق'
-                    })
-                });
-
-                const data = await response.json();
-
-                if (response.ok && data.success) {
-                    statusMsg.style.color = '#34d399';
-                    statusMsg.innerText = data.message || 'تم إرسال طلب الإيداع بنجاح!';
-                    setTimeout(() => {
-                        closeDepositModal();
-                        if (typeof loadUserData === 'function') loadUserData();
-                    }, 2000);
-                } else {
-                    statusMsg.style.color = '#f87171';
-                    statusMsg.innerText = data.error || data.message || 'فشلت العملية، حاول مجدداً';
-                    btn.disabled = false;
-                }
-            } catch (err) {
-                console.error(err);
-                statusMsg.style.color = '#f87171';
-                statusMsg.innerText = 'تعذر الاتصال بالسيرفر';
-                btn.disabled = false;
-            }
         }
 
         // ==================== الدوال المضافة للتكامل التام مع السيرفر ==================== //

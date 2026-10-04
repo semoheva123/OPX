@@ -2421,8 +2421,8 @@ function copyProfileReferral() {
     executeCopyProcess(copyInput.value);
 }
 
-function copyPlatformWalletAddress() {
-    const walletInput = document.getElementById('platformWalletAddress');
+function copyUserDepositAddress() {
+    const walletInput = document.getElementById('userDepositAddress');
     if (!walletInput || !walletInput.value) return;
     executeCopyProcess(walletInput.value);
 }
@@ -3264,11 +3264,11 @@ async function loadDepositAddress() {
         const res = await fetch('/api/wallet/deposit-config', { headers: { Authorization: `Bearer ${token}` } });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'تعذر تجهيز عنوان الإيداع الآلي');
-        document.getElementById('platformWalletAddress').value = data.addresses?.TRC20 || 'العنوان غير مضبوط حالياً';
+        document.getElementById('userDepositAddress').value = data.addresses?.TRC20 || 'العنوان غير مضبوط حالياً';
         const status = document.getElementById('depositModalStatus');
         if (status) status.textContent = 'المراقبة الآلية مفعلة لهذا العنوان؛ الرصيد يضاف بعد تأكيد التحويل.';
     } catch (error) {
-        document.getElementById('platformWalletAddress').value = 'عنوان الإيداع غير متاح حالياً';
+        document.getElementById('userDepositAddress').value = 'عنوان الإيداع غير متاح حالياً';
         const status = document.getElementById('depositModalStatus');
         if (status) status.textContent = error.message || 'تعذر تحميل العنوان';
     }
