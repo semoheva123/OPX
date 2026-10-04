@@ -172,6 +172,70 @@ async function getGrowth(req, res) {
 
 async function getUpgradeHistory(req, res) {
   try {
+    if (dataAccess.isSupabaseRuntime()) {
+      const user = await dataAccess.user.findById(req.user.id);
+      if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
+
+      const todayStart = new Date();
+      todayStart.setUTCHours(0, 0, 0, 0);
+      const todayDate = todayStart.toISOString().slice(0, 10);
+      const weekStart = new Date(todayStart);
+      weekStart.setUTCDate(weekStart.getUTCDate() - 6);
+      const monthStart = new Date(todayStart);
+      monthStart.setUTCDate(1);
+      const [transactions, vipLevels, dailyCompletions, referralCount] = await Promise.all([
+        dataAccess.transaction.find({ userId: user.id || user._id }, {
+          sort: { createdAt: -1 },
+          limit: 10000,
+          select: 'type amount usdtAmount status createdAt'
+        }),
+        dataAccess.vipLevel.find({}, { sort: { price: 1 }, limit: 100 }),
+        dataAccess.dailyTaskCompletion.find({ userId: user.id || user._id, taskDate: todayDate }, { select: 'taskKey' }),
+        dataAccess.user.countDocuments({ referredBy: user.referralCode?.trim().toUpperCase() })
+      ]);
+      const approvedTransactions = transactions.filter(transaction => ['approved', 'completed'].includes(transaction.status));
+      const rewardTransactions = approvedTransactions.filter(transaction => ['reward', 'staking_reward', 'referral_commission'].includes(transaction.type));
+      const sumEarningsSince = start => rewardTransactions
+        .filter(transaction => new Date(transaction.createdAt) >= start)
+        .reduce((sum, transaction) => sum + Number(transaction.usdtAmount ?? transaction.amount ?? 0), 0);
+      const pendingTransactions = transactions.filter(transaction => transaction.status === 'pending');
+      const nextLevel = vipLevels.find(level => Number(level.price) > Number(user.wallet?.totalDeposits || 0)) || null;
+      const healthChecks = {
+        email: Boolean(user.email),
+        twoFactor: Boolean(user.twoFactorEnabled),
+        wallet: Boolean(user.walletAddress?.trim()),
+        deposit: Number(user.wallet?.totalDeposits) > 0,
+        activity: approvedTransactions.length > 0
+      };
+      const timeline = [
+        { type: 'registered', date: user.createdAt, title: 'إنشاء الحساب' },
+        ...approvedTransactions.slice(0, 6).map(transaction => ({ type: transaction.type, date: transaction.createdAt, amount: transaction.amount, title: transaction.type }))
+      ].sort((first, second) => new Date(first.date) - new Date(second.date)).slice(-7);
+      const todayEarned = Number(sumEarningsSince(todayStart).toFixed(2));
+      const summary = {
+        todayEarned,
+        earnings: {
+          today: todayEarned,
+          week: Number(sumEarningsSince(weekStart).toFixed(2)),
+          month: Number(sumEarningsSince(monthStart).toFixed(2))
+        },
+        health: Object.values(healthChecks).filter(Boolean).length * 20,
+        healthChecks,
+        referralCount,
+        pendingTransactions: pendingTransactions.length,
+        pendingByType: {
+          deposits: pendingTransactions.filter(transaction => transaction.type === 'deposit').length,
+          withdrawals: pendingTransactions.filter(transaction => transaction.type === 'withdraw').length
+        },
+        completedTasks: dailyCompletions.length,
+        teamStats: user.teamStats,
+        nextLevel,
+        timeline,
+        recentActivity: approvedTransactions.slice(0, 10)
+      };
+      return res.json({ success: true, summary });
+    }
+
     const user = await User.findById(req.user.id).select('-password -resetOTP -twoFactorCode');
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     const transactions = await Transaction.find({ userId: user._id }).sort({ createdAt: -1 }).limit(25).select('type amount status createdAt');

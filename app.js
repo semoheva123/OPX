@@ -505,6 +505,10 @@ function renderHomeSummary(summary) {
     const completedTasks = Number(summary.completedTasks || 0);
     const taskLimit = getTaskLimitForTier();
     const tierActive = Boolean(currentUserTierActive);
+    if (currentUserData && Number.isFinite(completedTasks)) {
+        currentUserData.todayCompletedTasks = Math.max(0, completedTasks);
+        updateTaskAvailability(currentUserData.todayCompletedTasks, taskLimit);
+    }
     const taskProgress = tierActive ? Math.min(100, Math.round((completedTasks / taskLimit) * 100)) : 0;
     const pulse = document.getElementById('homePulseMessage');
     const pulseMeta = document.getElementById('homePulseMeta');
@@ -1873,16 +1877,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function updateTaskAvailability(completed, maximum) {
     const button = document.getElementById('btnCompleteTask');
-    const finished = !currentUserTierActive || completed >= maximum;
+    const taskLimit = Math.max(1, Number(maximum) || 1);
+    const completedCount = Math.max(0, Math.min(Number(completed) || 0, taskLimit));
     if (button) {
-        button.disabled = finished;
-        button.innerText = !currentUserTierActive ? 'يتطلب تفعيل المستوى' : finished ? 'اكتملت مهام اليوم' : 'بدء المهمة اليومية';
-        button.classList.toggle('opacity-50', finished);
-        button.classList.toggle('cursor-not-allowed', finished);
+        button.disabled = !currentUserTierActive;
+        button.innerText = !currentUserTierActive ? 'يتطلب تفعيل المستوى' : completedCount >= taskLimit ? 'مراجعة مهام اليوم' : 'عرض مهام اليوم';
+        button.classList.toggle('opacity-50', !currentUserTierActive);
+        button.classList.toggle('cursor-not-allowed', !currentUserTierActive);
     }
     const remaining = document.getElementById('lblRemainingTasks');
-    if (remaining) remaining.innerText = currentUserTierActive ? Math.max(0, maximum - completed) : 'يتطلب التفعيل';
-    renderTaskBoard(completed, maximum);
+    if (remaining) remaining.innerText = currentUserTierActive ? Math.max(0, taskLimit - completedCount) : 'يتطلب التفعيل';
+    renderTaskBoard(completedCount, taskLimit);
 }
 
 function getActiveTaskTier() {
@@ -1962,7 +1967,7 @@ function renderTaskBoard(completed, maximum) {
         { id: 'email', category: 'priority', icon: 'fa-envelope-circle-check', title: 'أكد بريدك الإلكتروني', description: 'ارفع جاهزية الحساب واستقبل تنبيهات العمليات المهمة.', done: Boolean(currentUserData?.emailVerified), action: "switchTab('profile'); document.getElementById('btnVerifyEmailProfile')?.click()", status: 'جاهزية الحساب' },
         { id: 'twoFactor', category: 'priority', icon: 'fa-shield-halved', title: 'فعّل المصادقة الثنائية', description: 'أضف طبقة حماية قبل السحب والعمليات الحساسة.', done: Boolean(currentUserData?.twoFactorEnabled), action: "switchTab('profile'); document.getElementById('toggle2FA')?.focus()", status: 'جاهزية الحساب' },
         { id: 'wallet', category: 'priority', icon: 'fa-wallet', title: 'ثبّت محفظة السحب', description: 'أدخل عنوانًا صحيحًا لتجهيز مسار السحب الآمن.', done: Boolean((currentUserData?.walletAddress || currentUserData?.withdrawWallet || '').trim()), action: "switchTab('profile'); document.getElementById('profileWalletAddress')?.focus()", status: 'جاهزية الحساب' },
-        { id: 'daily', category: 'operations', icon: 'fa-bolt', title: currentUserTierActive ? tierTask.title : 'مهام المستوى اليومية', description: currentUserTierActive ? `${tierTask.description} الحد اليومي: ${maximum} مهمة.` : 'تتطلب هذه المهمة إيداعًا وتفعيل المستوى الأول.', done: completed >= maximum, locked: !currentUserTierActive, action: 'openDailyTasks()', status: currentUserTierActive ? 'تشغيلية' : 'غير متاحة' },
+        { id: 'daily', category: 'operations', icon: 'fa-bolt', title: currentUserTierActive && completed >= maximum ? 'راجع خطة مهام اليوم' : currentUserTierActive ? tierTask.title : 'مهام المستوى اليومية', description: currentUserTierActive ? `${tierTask.description} الحد اليومي: ${maximum} مهمة.` : 'تتطلب هذه المهمة إيداعًا وتفعيل المستوى الأول.', done: false, locked: !currentUserTierActive, action: 'openDailyTasks()', status: currentUserTierActive ? completed >= maximum ? 'خطة اليوم' : 'تشغيلية' : 'غير متاحة' },
     ];
     const pendingTasks = tasks.filter(task => !task.done);
     const visibleTasks = pendingTasks.filter(task => taskBoardFilter === 'all' || task.category === taskBoardFilter);

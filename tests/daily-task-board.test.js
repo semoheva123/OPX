@@ -6,6 +6,7 @@ const automation = require('../src/services/dailyTaskAutomation');
 const schema = fs.readFileSync(path.join(__dirname, '..', 'supabase/schema.sql'), 'utf8');
 const migration = fs.readFileSync(path.join(__dirname, '..', 'supabase/automated-daily-tasks.sql'), 'utf8');
 const adminController = fs.readFileSync(path.join(__dirname, '..', 'src/controllers/adminController.js'), 'utf8');
+const client = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
 
 const assignments = [
 	{ entityKey: 'wiki:example-systems', entityName: 'Example Systems', category: 'technology', summary: 'شركة تقنية للاختبار.', imageUrl: '', submissionComplete: false },
@@ -59,5 +60,7 @@ assert.match(migration, /create or replace function public\.operix_daily_task_co
 assert.match(migration, /COMMUNITY_TASK_REQUIRED/);
 assert.match(migration, /EVALUATION_REQUIRED/);
 assert.match(adminController, /evaluationCount \+ 1/, 'task count must follow the fixed community task plus the admin-controlled evaluation count');
+assert.match(client, /button\.disabled = !currentUserTierActive/, 'the daily task card must remain an entry to the plan after all tasks are marked complete');
+assert.match(client, /id: 'daily',[^\n]*done: false/, 'stale completion counters must not remove the daily-plan entry');
 
 console.log('daily-task-board test: OK');
