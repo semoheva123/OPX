@@ -41,5 +41,20 @@
   },
   "overrides": {
     "axios": "^1.20.0"
-  }
+  },
+  "directories": {
+    "test": "tests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/semoheva123/OPX.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/semoheva123/OPX/issues"
+  },
+  "homepage": "https://github.com/semoheva123/OPX#readme"
 }
