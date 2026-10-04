@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>http://localhost:5000/</loc></url>
-  <url><loc>http://localhost:5000/about.html</loc></url>
-  <url><loc>http://localhost:5000/transparency.html</loc></url>
-  <url><loc>http://localhost:5000/help.html</loc></url>
-  <url><loc>http://localhost:5000/status.html</loc></url>
-  <url><loc>http://localhost:5000/terms.html</loc></url>
-  <url><loc>http://localhost:5000/privacy.html</loc></url>
-  <url><loc>http://localhost:5000/changelog.html</loc></url>
+  <url><loc>https://operix.website/</loc></url>
+  <url><loc>https://operix.website/about.html</loc></url>
+  <url><loc>https://operix.website/transparency.html</loc></url>
+  <url><loc>https://operix.website/help.html</loc></url>
+  <url><loc>https://operix.website/status.html</loc></url>
+  <url><loc>https://operix.website/terms.html</loc></url>
+  <url><loc>https://operix.website/privacy.html</loc></url>
+  <url><loc>https://operix.website/changelog.html</loc></url>
 </urlset>

@@ -10,7 +10,7 @@
 - Monitor `/api/health`, process uptime, Supabase connectivity, email delivery, AI provider errors, and blockchain provider errors.
 - Configure alerts for repeated login failures, withdrawal backlog, failed email delivery, and health-check failures.
 - Put the app behind HTTPS and a reverse proxy with rate limiting and secure headers.
-- Replace the localhost URLs in `sitemap.xml` and `robots.txt` with the real canonical domain before deployment.
+- Keep `sitemap.xml` and `robots.txt` on the canonical HTTPS domain (`https://operix.website`).
 - Run a full production smoke test: authentication, wallet flow, withdrawal, rewards, admin operations, and realtime updates.
 
 ## Suggested checks
@@ -45,6 +45,7 @@ Deposits are assigned a deterministic, per-user TRON address derived from a publ
 - The scanner uses confirmed TRONGrid TRC20 transfer records, checks the configured official token contract and recipient address, and relies on unique transaction hashes plus an atomic wallet/ledger RPC to prevent duplicate credit. Monitor cron health, scanner lag, and deposit/payout balances.
 - Never reuse owner or user wallets as the payout hot wallet. Keep `TRON_WITHDRAWAL_PRIVATE_KEY` unchanged while any payout queue entries are pending because it also decrypts stored signed payloads used to rebroadcast the same transaction.
 - Previous deposits sent to the old shared platform address cannot be attributed automatically by this new monitor. Reconcile them manually; do not credit based only on amount or a user-submitted hash.
+- Never delete rows from `tron_deposit_addresses` or transaction/ledger history just to remove the retired shared-address flow; first inventory and reconcile confirmed on-chain activity.
 
 ### Safety and recovery
 

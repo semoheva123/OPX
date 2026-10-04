@@ -19,7 +19,8 @@ async function main() {
   const checks = [
     'users', 'wallet_balances', 'transactions', 'financial_ledger', 'sessions', 'security_events',
     'vip_levels', 'game_settings', 'daily_task_completions', 'daily_task_entities',
-    'daily_task_assignments', 'daily_task_submissions', 'referral_reward_awards', 'milestone_reward_awards'
+    'daily_task_assignments', 'daily_task_submissions', 'referral_reward_awards', 'milestone_reward_awards',
+    'tron_deposit_addresses', 'tron_deposit_address_sequences', 'tron_deposit_events', 'withdrawal_payouts'
   ];
   const results = [];
 

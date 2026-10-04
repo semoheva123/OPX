@@ -5,6 +5,8 @@ const path = require('node:path');
 const read = relativePath => fs.readFileSync(path.join(__dirname, '..', relativePath), 'utf8');
 const migration = read('supabase/production-readiness.sql');
 const canonicalSchema = read('supabase/schema.sql');
+const sitemap = read('sitemap.xml');
+const robots = read('robots.txt');
 const controller = read('src/controllers/publicController.js');
 const dataAccess = read('src/services/dataAccess.js');
 const validator = read('scripts/validate-supabase-readiness.js');
@@ -40,5 +42,12 @@ assert.doesNotMatch(upgradeBody, /dataAccess\.user\.updateOne/, 'the app must no
 assert.match(dataAccess, /MilestoneRewardAward: \{ table: 'milestone_reward_awards' \}/);
 assert.match(validator, /daily_task_entities/);
 assert.match(validator, /milestone_reward_awards/);
+for (const table of ['tron_deposit_addresses', 'tron_deposit_address_sequences', 'tron_deposit_events', 'withdrawal_payouts']) {
+  assert.ok(validator.includes(`'${table}'`), `${table} must be checked by the production readiness validator`);
+}
+assert.match(sitemap, /<loc>https:\/\/operix\.website\//);
+assert.doesNotMatch(sitemap, /localhost|127\.0\.0\.1/);
+assert.match(robots, /Sitemap: https:\/\/operix\.website\/sitemap\.xml/);
+assert.doesNotMatch(robots, /localhost|127\.0\.0\.1/);
 
 console.log('Supabase production readiness tests: ok');
