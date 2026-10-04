@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
     inputs:
       auth_only:
-        description: Verify CRON_SECRET against Production without processing queues
+        description: Verify Production auth, schema and wallet readiness without processing queues
         type: boolean
         required: false
         default: false
