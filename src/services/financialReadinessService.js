@@ -12,6 +12,7 @@ async function checkFinancialReadiness() {
     payoutKeyConfigured: false,
     payoutKeyValid: false,
     tronProviderReachable: false,
+    payoutBalancesReadable: false,
     payoutUsdtFunded: false,
     payoutTrxSufficient: false
   };
@@ -37,17 +38,36 @@ async function checkFinancialReadiness() {
   const apiKey = String(process.env.TRONGRID_API_KEY || '').trim();
   const headers = apiKey ? { 'TRON-PRO-API-KEY': apiKey } : {};
 
+  let readOnlyTronWeb;
+  try {
+    readOnlyTronWeb = new TronWeb({ fullHost: config.apiUrl, headers });
+    checks.tronUsdtContractValid = readOnlyTronWeb.isAddress(config.tokenContract);
+  } catch {
+    checks.tronUsdtContractValid = false;
+  }
+
+  try {
+    const response = await fetch(`${config.apiUrl}/wallet/getnowblock`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...headers },
+      body: '{}',
+      signal: AbortSignal.timeout(12000)
+    });
+    const block = await response.json().catch(() => ({}));
+    checks.tronProviderReachable = response.ok && Boolean(block.blockID || block.block_header?.raw_data?.number !== undefined);
+  } catch {
+    checks.tronProviderReachable = false;
+  }
+
   let tronWeb;
   try {
     tronWeb = new TronWeb({ fullHost: config.apiUrl, privateKey, headers });
-    checks.tronUsdtContractValid = tronWeb.isAddress(config.tokenContract);
     checks.payoutKeyValid = Boolean(privateKey && tronWeb.defaultAddress.base58 && tronWeb.isAddress(tronWeb.defaultAddress.base58));
   } catch {
-    checks.tronUsdtContractValid = false;
     checks.payoutKeyValid = false;
   }
 
-  if (checks.payoutKeyValid && checks.tronUsdtContractValid) {
+  if (checks.payoutKeyValid && checks.tronUsdtContractValid && checks.tronProviderReachable) {
     try {
       const senderAddress = tronWeb.defaultAddress.base58;
       const token = await tronWeb.contract().at(config.tokenContract);
@@ -55,7 +75,7 @@ async function checkFinancialReadiness() {
         token.balanceOf(senderAddress).call(),
         tronWeb.trx.getBalance(senderAddress)
       ]);
-      checks.tronProviderReachable = true;
+      checks.payoutBalancesReadable = true;
       checks.payoutUsdtFunded = BigInt(String(tokenBalance)) > 0n;
       const feeLimit = BigInt(process.env.TRON_WITHDRAWAL_FEE_LIMIT_SUN || '100000000');
       const minTrx = BigInt(process.env.TRON_WITHDRAWAL_MIN_TRX_SUN || feeLimit.toString());
@@ -67,7 +87,8 @@ async function checkFinancialReadiness() {
 
   const readyForControlledTest = checks.supabaseReachable && checks.financialSchemaReady &&
     checks.depositXpubDerivesAddress && checks.tronUsdtContractValid && checks.payoutKeyConfigured &&
-    checks.payoutKeyValid && checks.tronProviderReachable && checks.payoutUsdtFunded && checks.payoutTrxSufficient;
+    checks.payoutKeyValid && checks.tronProviderReachable && checks.payoutBalancesReadable &&
+    checks.payoutUsdtFunded && checks.payoutTrxSufficient;
 
   return { readyForControlledTest, checks, switches };
 }
