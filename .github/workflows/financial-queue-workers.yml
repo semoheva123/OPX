@@ -1,6 +1,11 @@
 name: Financial queue workers
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/financial-queue-workers.yml'
   schedule:
     - cron: '*/5 * * * *'
   workflow_dispatch:
@@ -33,7 +38,7 @@ jobs:
           echo "configured=true" >> "$GITHUB_OUTPUT"
 
       - name: Verify CRON_SECRET without processing queues
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.auth_only }}
+        if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.auth_only) }}
         shell: bash
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
@@ -48,9 +53,30 @@ jobs:
             exit 1
           fi
           echo 'Production accepted CRON_SECRET (HTTP 404 auth probe); no queue worker was invoked.'
+          health_file=$(mktemp)
+          trap 'rm -f "$health_file"' EXIT
+          curl --fail --silent --show-error --output "$health_file" --max-time 20 \
+            'https://operix.website/api/health'
+          jq -e '.success == true and .financialSchema.ready == true' "$health_file" > /dev/null
+          echo 'Production database and financial migration tables are ready.'
+
+      - name: Validate financial schema before processing queues
+        id: schema
+        if: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && !inputs.auth_only) }}
+        shell: bash
+        run: |
+          health_file=$(mktemp)
+          trap 'rm -f "$health_file"' EXIT
+          curl --fail --silent --show-error --output "$health_file" --max-time 20 \
+            'https://operix.website/api/health'
+          jq -e '.success == true and .financialSchema.ready == true' "$health_file" > /dev/null || {
+            echo '::error::Production database or required deposit/payout migration tables are not ready; financial processors were not called.'
+            exit 1
+          }
+          echo 'Production database and financial migration tables are ready.'
 
       - name: Process confirmed TRON deposits
-        if: ${{ !inputs.auth_only }}
+        if: ${{ steps.schema.outcome == 'success' }}
         shell: bash
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
@@ -67,7 +93,7 @@ jobs:
           jq -e '.success == true and (.result.skipped != true)' "$response_file" > /dev/null
 
       - name: Process authorized withdrawal payouts
-        if: ${{ always() && steps.validate.outputs.configured == 'true' && !inputs.auth_only }}
+        if: ${{ always() && steps.validate.outputs.configured == 'true' && steps.schema.outcome == 'success' }}
         shell: bash
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
