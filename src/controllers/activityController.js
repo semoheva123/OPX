@@ -2,7 +2,7 @@ const dataAccess = require('../services/dataAccess');
 const { syncGameCredits } = require('../services/gameAccess');
 const { hasPaidFeatureAccess, hasFullFeatureAccess } = require('../services/paidFeatureAccess');
 const { calculateDailyTaskRewardSplit } = require('../services/opxPricing');
-const { assignDailyEvaluationEntities, getEvaluationTags, getCategoryLabel, utcDateString } = require('../services/dailyTaskAutomation');
+const { assignDailyEvaluationEntities, getEvaluationTags, getCategoryLabel, getOfficialBrandLogoUrl, utcDateString } = require('../services/dailyTaskAutomation');
 
 function splitHybridReward(amount) {
   const value = Number(amount) || 0;
@@ -155,7 +155,7 @@ function buildDailyTasks(tierCode, adminTasks = [], completedKeys = new Set(), l
       targetCategoryLabel: isCommunityTask ? null : getCategoryLabel(template.category),
       targetName: isCommunityTask ? null : String(template.entityName || ''),
       targetSummary: isCommunityTask ? null : String(template.summary || ''),
-      targetImageUrl: isCommunityTask ? '' : String(template.imageUrl || ''),
+      targetImageUrl: isCommunityTask ? '' : getOfficialBrandLogoUrl(template.entityName) || String(template.imageUrl || ''),
       entityKey: isCommunityTask ? null : String(template.entityKey || ''),
       tags: isCommunityTask ? [] : getEvaluationTags(template.category),
       requirementMet: isCommunityTask ? Boolean(communityTaskStatus.communityEngagement) : Boolean(template.submissionComplete),

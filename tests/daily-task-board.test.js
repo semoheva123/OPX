@@ -30,6 +30,11 @@ assert.equal(tasks[1].targetSummary, 'شركة تقنية للاختبار.');
 assert.ok(tasks[1].tags.includes('الخصوصية'));
 assert.equal(tasks[2].targetCategory, 'ai');
 assert.equal(tasks[2].targetImageUrl, 'https://images.example.test/ai.png');
+const stripeTask = activityController.buildDailyTasks('A1', [
+	{ entityKey: 'finance:stripe', entityName: 'Stripe, Inc.', category: 'finance', summary: 'خدمة مالية.', imageUrl: '', submissionComplete: false }
+], new Set(), false, 1)[1];
+assert.equal(stripeTask.targetImageUrl, 'https://www.google.com/s2/favicons?domain=stripe.com&sz=128', 'known brands should use the favicon hosted by their official domain when task data has no image');
+assert.equal(automation.getOfficialBrandLogoUrl('Intel'), 'https://www.google.com/s2/favicons?domain=intel.com&sz=128');
 assert.ok(tasks.every(task => task.reward > 0));
 assert.deepEqual(automation.getEvaluationTags('crypto'), ['الأمان', 'الشفافية', 'المنفعة', 'اللامركزية', 'التقلب', 'الرسوم', 'الحوكمة']);
 

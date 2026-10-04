@@ -16,6 +16,29 @@ const CATEGORY_TAGS = {
   trading: ['الرسوم', 'السيولة', 'الواجهة', 'الأمان', 'السرعة', 'الدعم', 'الوثوقية'],
   finance: ['الشفافية', 'الرسوم', 'الخصوصية', 'الراحة', 'الأمان', 'الدعم', 'القيمة']
 };
+const OFFICIAL_BRAND_DOMAINS = {
+  apple: 'apple.com', microsoft: 'microsoft.com', nvidia: 'nvidia.com', amazon: 'amazon.com',
+  alphabet: 'abc.xyz', google: 'google.com', meta: 'meta.com', samsung: 'samsung.com', sony: 'sony.com',
+  intel: 'intel.com', amd: 'amd.com', cisco: 'cisco.com', oracle: 'oracle.com', ibm: 'ibm.com',
+  dell: 'dell.com', adobe: 'adobe.com', qualcomm: 'qualcomm.com', tsmc: 'tsmc.com', asml: 'asml.com',
+  netflix: 'netflix.com', spotify: 'spotify.com', salesforce: 'salesforce.com', sap: 'sap.com',
+  tencent: 'tencent.com', alibaba: 'alibaba.com', xiaomi: 'mi.com', shopify: 'shopify.com', uber: 'uber.com',
+  airbnb: 'airbnb.com', cloudflare: 'cloudflare.com', arm: 'arm.com', openai: 'openai.com', anthropic: 'anthropic.com',
+  perplexity: 'perplexity.ai', mistral: 'mistral.ai', deepseek: 'deepseek.com', xai: 'x.ai', midjourney: 'midjourney.com',
+  stability: 'stability.ai', github: 'github.com', runway: 'runwayml.com', cohere: 'cohere.com', huggingface: 'huggingface.co',
+  elevenlabs: 'elevenlabs.io', suno: 'suno.com', characterai: 'character.ai', replit: 'replit.com', cursor: 'cursor.com',
+  canva: 'canva.com', jasper: 'jasper.ai', descript: 'descript.com', chatgpt: 'openai.com', claude: 'anthropic.com',
+  gemini: 'google.com', copilot: 'microsoft.com', notebooklm: 'notebooklm.google', binance: 'binance.com', coinbase: 'coinbase.com',
+  kraken: 'kraken.com', bybit: 'bybit.com', okx: 'okx.com', etoro: 'etoro.com', tradingview: 'tradingview.com',
+  robinhood: 'robinhood.com', interactivebrokers: 'interactivebrokers.com', webull: 'webull.com', plus500: 'plus500.com',
+  xtb: 'xtb.com', saxobank: 'home.saxo', iggroup: 'ig.com', deribit: 'deribit.com', bitget: 'bitget.com', gateio: 'gate.io',
+  paypal: 'paypal.com', stripe: 'stripe.com', visa: 'visa.com', mastercard: 'mastercard.com', wise: 'wise.com',
+  revolut: 'revolut.com', payoneer: 'payoneer.com', block: 'block.xyz', plaid: 'plaid.com', klarna: 'klarna.com',
+  adyen: 'adyen.com', nubank: 'nubank.com.br', cashapp: 'cash.app', remitly: 'remitly.com', mercadopago: 'mercadopago.com',
+  skrill: 'skrill.com', westernunion: 'westernunion.com', moneygram: 'moneygram.com', chime: 'chime.com', sofi: 'sofi.com',
+  bitcoin: 'bitcoin.org', ethereum: 'ethereum.org', tether: 'tether.to', solana: 'solana.com', ripple: 'ripple.com',
+  dogecoin: 'dogecoin.com', cardano: 'cardano.org', chainlink: 'chain.link', avalanche: 'avax.network', polkadot: 'polkadot.com'
+};
 
 const TECH_ENTITIES = [
   'Apple Inc.', 'Microsoft', 'NVIDIA', 'Amazon (company)', 'Alphabet Inc.', 'Meta Platforms', 'Samsung Electronics', 'Sony', 'Intel', 'Advanced Micro Devices', 'Cisco', 'Oracle Corporation', 'IBM', 'Dell', 'Adobe Inc.', 'Qualcomm', 'Taiwan Semiconductor Manufacturing Company', 'ASML Holding', 'Netflix', 'Spotify', 'Salesforce', 'SAP', 'Tencent', 'Alibaba Group', 'Xiaomi', 'Shopify', 'Uber', 'Airbnb', 'Cloudflare', 'Arm Holdings'
@@ -72,6 +95,15 @@ function safeHttpsImage(value) {
   } catch {
     return '';
   }
+}
+
+function getOfficialBrandLogoUrl(name) {
+  const normalizedName = String(name || '').toLowerCase().replace(/\([^)]*\)/g, '').replace(/[^a-z0-9]/g, '');
+  const brand = Object.keys(OFFICIAL_BRAND_DOMAINS)
+    .sort((left, right) => right.length - left.length)
+    .find(key => normalizedName.includes(key));
+  const domain = brand ? OFFICIAL_BRAND_DOMAINS[brand] : '';
+  return domain ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128` : '';
 }
 
 function catalogFallback(category, title, date) {
@@ -336,6 +368,7 @@ module.exports = {
   CATEGORY_TAGS,
   CATEGORY_LABELS,
   utcDateString,
+  getOfficialBrandLogoUrl,
   refreshDailyEntityPool,
   buildCuratedDailyEntityPool,
   getDailyEntityPool,
