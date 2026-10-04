@@ -71,6 +71,6 @@ assert.match(client, /id: 'daily',[^\n]*done: false/, 'stale completion counters
 assert.match(client, /data\.taskLimit \?\? data\.tier\?\.taskLimit/, 'the task detail panel must read the total from the API tier payload');
 assert.match(client, /filter\(task => !task\.completed\)/, 'completed tasks must be filtered out before rendering the premium task list');
 assert.match(client, /targetImageUrl.*alt.*targetName|brand.*task\.targetName/, 'the paid-task panel must show the evaluation brand logo and company name in a premium card');
-assert.match(client, /h-12 w-24.*object-fit:contain/, 'the company logo should use a landscape tile and preserve the source aspect ratio');
+assert.match(client, /style="width:96px;height:48px".*object-fit:contain/, 'the company logo should use a fixed landscape tile and preserve the source aspect ratio');
 
 console.log('daily-task-board test: OK');
