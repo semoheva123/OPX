@@ -12,10 +12,25 @@ const originals = {
 
 (async () => {
   try {
+    const curatedRows = [];
+    dataAccess.dailyTaskEntity.find = async () => [];
+    dataAccess.dailyTaskEntity.upsert = async (rows, options) => {
+      assert.equal(options.onConflict, 'snapshot_date,entity_key');
+      assert.equal(options.ignoreDuplicates, true, 'the first curated seed must not overwrite existing daily entity data');
+      curatedRows.push(...rows);
+      return rows;
+    };
+    const curatedPool = await automation.getDailyEntityPool('2031-05-31');
+    assert.ok(curatedPool.length >= 100, 'a full task catalog should be available before the first cron refresh');
+    assert.ok(['technology', 'ai', 'crypto', 'trading', 'finance'].every(category => curatedPool.some(entity => entity.category === category)), 'the first-run catalog must cover every supported category');
+    assert.equal(curatedRows.length, curatedPool.length, 'the first-run curated pool should be persisted for later daily requests');
+    assert.ok(curatedPool.every(entity => entity.summary && entity.entityKey), 'curated tasks must include a usable summary and stable entity key');
+
     const savedEntities = [];
     dataAccess.dailyTaskEntity.upsert = async (rows, options) => {
       savedEntities.push(...rows);
       assert.equal(options.onConflict, 'snapshot_date,entity_key');
+      assert.equal(options.ignoreDuplicates, false, 'scheduled enrichment must update curated metadata with fresh provider data');
       return rows;
     };
     const fetcher = async url => ({

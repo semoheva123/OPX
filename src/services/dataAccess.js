@@ -253,10 +253,13 @@ async function supabaseInsert(table, payload) {
   return normalizeSupabaseResult(data?.[0] || null);
 }
 
-async function supabaseUpsert(table, payload, onConflict) {
+async function supabaseUpsert(table, payload, options = {}) {
   if (!supabaseAdmin) return null;
   const normalizedPayload = Array.isArray(payload) ? payload.map(normalizeSupabaseDoc) : normalizeSupabaseDoc(payload);
-  const { data, error } = await supabaseAdmin.from(table).upsert(normalizedPayload, { onConflict, ignoreDuplicates: true }).select('*');
+  const { data, error } = await supabaseAdmin.from(table).upsert(normalizedPayload, {
+    onConflict: options.onConflict,
+    ignoreDuplicates: options.ignoreDuplicates !== false
+  }).select('*');
   if (error) throw error;
   return normalizeSupabaseResult(data || []);
 }
@@ -370,7 +373,7 @@ const createRepository = (name) => {
       return data;
     },
     async upsert(data, options = {}) {
-      if (isSupabaseRuntime() && supabaseAdmin) return supabaseUpsert(target.table, data, options.onConflict);
+      if (isSupabaseRuntime() && supabaseAdmin) return supabaseUpsert(target.table, data, options);
       return [];
     },
     async countDocuments(query = {}) {

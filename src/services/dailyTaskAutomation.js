@@ -29,6 +29,18 @@ const TRADING_ENTITIES = [
 const FINANCE_ENTITIES = [
   'PayPal', 'Stripe, Inc.', 'Visa Inc.', 'Mastercard', 'Wise (company)', 'Revolut', 'Payoneer', 'Block, Inc.', 'Plaid (company)', 'Klarna', 'Adyen', 'Nubank', 'Cash App', 'Remitly', 'Mercado Pago', 'Skrill', 'Western Union', 'MoneyGram', 'Chime (company)', 'SoFi'
 ];
+const CURATED_CRYPTO_ENTITIES = [
+  ['bitcoin', 'Bitcoin (BTC)'], ['ethereum', 'Ethereum (ETH)'], ['tether', 'Tether (USDT)'],
+  ['binancecoin', 'BNB'], ['solana', 'Solana (SOL)'], ['usd-coin', 'USD Coin (USDC)'],
+  ['ripple', 'XRP'], ['dogecoin', 'Dogecoin (DOGE)'], ['cardano', 'Cardano (ADA)'],
+  ['avalanche-2', 'Avalanche (AVAX)'], ['chainlink', 'Chainlink (LINK)'], ['stellar', 'Stellar (XLM)'],
+  ['polkadot', 'Polkadot (DOT)'], ['uniswap', 'Uniswap (UNI)'], ['litecoin', 'Litecoin (LTC)'],
+  ['bitcoin-cash', 'Bitcoin Cash (BCH)'], ['near', 'NEAR Protocol'], ['aptos', 'Aptos (APT)'],
+  ['sui', 'Sui (SUI)'], ['internet-computer', 'Internet Computer (ICP)'], ['cosmos', 'Cosmos (ATOM)'],
+  ['ethereum-classic', 'Ethereum Classic (ETC)'], ['monero', 'Monero (XMR)'], ['filecoin', 'Filecoin (FIL)'],
+  ['hedera-hashgraph', 'Hedera (HBAR)'], ['arbitrum', 'Arbitrum (ARB)'], ['optimism', 'Optimism (OP)'],
+  ['maker', 'Maker (MKR)'], ['aave', 'Aave (AAVE)'], ['the-graph', 'The Graph (GRT)']
+];
 
 const DAY_ENTITY_CACHE = new Map();
 const ASSIGNMENT_CACHE = new Map();
@@ -67,6 +79,7 @@ function catalogFallback(category, title, date) {
   const summaries = {
     technology: `${title} — قيّم تجربة الاستخدام والاعتمادية والخصوصية وإمكانية الوصول استنادًا إلى معرفتك ومصادر موثوقة.`,
     ai: `${title} — قيّم الدقة والسلامة والخصوصية والشفافية والقيود استنادًا إلى تجربتك ومصادر موثوقة.`,
+    crypto: `${title} — راجع الاستخدام والشفافية والرسوم والمخاطر من مصادر موثوقة. هذه المهمة للتقييم المعلوماتي وليست توصية استثمارية.`,
     trading: `${title} — قيّم الرسوم والسيولة وسهولة الاستخدام والأمان، ثم قرر ما إذا كانت المنصة مناسبة للمستوى المطلوب.`,
     finance: `${title} — قيّم الشفافية والرسوم والأمان وسهولة الاستخدام وجودة الدعم والراحة في الاستخدام.`
   };
@@ -79,6 +92,35 @@ function catalogFallback(category, title, date) {
     source: 'curated-catalog',
     snapshotDate: date
   };
+}
+
+function buildCuratedDailyEntityPool(date) {
+  const groupedCatalog = [
+    ['technology', TECH_ENTITIES],
+    ['ai', AI_ENTITIES],
+    ['crypto', CURATED_CRYPTO_ENTITIES.map(([id]) => `coingecko:${id}`)],
+    ['trading', TRADING_ENTITIES],
+    ['finance', FINANCE_ENTITIES]
+  ];
+  const cryptoByKey = new Map(CURATED_CRYPTO_ENTITIES.map(([id, name]) => [`coingecko:${id}`, name]));
+  const entities = groupedCatalog.flatMap(([category, titles]) => titles.map(title => {
+    if (category === 'crypto') {
+      const [entityKey, id] = title.split(':');
+      const key = `${entityKey}:${id}`;
+      const name = cryptoByKey.get(key);
+      return {
+        entityKey: key,
+        category,
+        name,
+        summary: catalogFallback(category, name, date).summary,
+        imageUrl: '',
+        source: 'curated-catalog',
+        snapshotDate: date
+      };
+    }
+    return catalogFallback(category, title, date);
+  }));
+  return [...new Map(entities.map(entity => [entity.entityKey, entity])).values()];
 }
 
 async function fetchJson(fetcher, url, timeoutMs = 12000) {
@@ -181,7 +223,7 @@ async function refreshDailyEntityPool(options = {}) {
     const entities = [...technology, ...ai, ...crypto, ...trading, ...finance];
     const unique = [...new Map(entities.filter(item => item.entityKey).map(item => [item.entityKey, item])).values()];
     if (!unique.length) throw new Error('No daily evaluation entities could be generated');
-    await dataAccess.dailyTaskEntity.upsert(unique, { onConflict: 'snapshot_date,entity_key' });
+    await dataAccess.dailyTaskEntity.upsert(unique, { onConflict: 'snapshot_date,entity_key', ignoreDuplicates: false });
     return unique;
   })();
   DAY_ENTITY_CACHE.set(date, pending);
@@ -192,8 +234,17 @@ async function refreshDailyEntityPool(options = {}) {
 async function getDailyEntityPool(date) {
   let entities = await dataAccess.dailyTaskEntity.find({ snapshotDate: date }, { sort: { category: 1, entityKey: 1 }, limit: 500 });
   if (!entities.length) {
-    await refreshDailyEntityPool({ now: new Date(`${date}T12:00:00.000Z`) });
-    entities = await dataAccess.dailyTaskEntity.find({ snapshotDate: date }, { sort: { category: 1, entityKey: 1 }, limit: 500 });
+    const fallbackEntities = buildCuratedDailyEntityPool(date);
+    try {
+      await dataAccess.dailyTaskEntity.upsert(fallbackEntities, {
+        onConflict: 'snapshot_date,entity_key',
+        ignoreDuplicates: true
+      });
+      entities = await dataAccess.dailyTaskEntity.find({ snapshotDate: date }, { sort: { category: 1, entityKey: 1 }, limit: 500 });
+    } catch (error) {
+      console.warn('Daily entity fallback persistence failed; using in-memory catalog:', error.message);
+    }
+    if (!entities.length) entities = fallbackEntities;
   }
   return entities;
 }
@@ -286,6 +337,8 @@ module.exports = {
   CATEGORY_LABELS,
   utcDateString,
   refreshDailyEntityPool,
+  buildCuratedDailyEntityPool,
+  getDailyEntityPool,
   assignDailyEvaluationEntities,
   getEvaluationTags,
   getCategoryLabel
