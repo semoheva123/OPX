@@ -11,6 +11,7 @@ async function checkFinancialReadiness() {
     tronUsdtContractValid: false,
     payoutKeyConfigured: false,
     payoutKeyValid: false,
+    payoutKeyFailure: null,
     tronProviderReachable: false,
     payoutBalancesReadable: false,
     payoutUsdtFunded: false,
@@ -60,11 +61,17 @@ async function checkFinancialReadiness() {
   }
 
   let tronWeb;
-  try {
-    tronWeb = new TronWeb({ fullHost: config.apiUrl, privateKey, headers });
-    checks.payoutKeyValid = Boolean(privateKey && tronWeb.defaultAddress.base58 && tronWeb.isAddress(tronWeb.defaultAddress.base58));
-  } catch {
-    checks.payoutKeyValid = false;
+  if (!privateKey) {
+    checks.payoutKeyFailure = 'missing';
+  } else {
+    try {
+      tronWeb = new TronWeb({ fullHost: config.apiUrl, privateKey, headers });
+      const derivedPayoutAddress = tronWeb.defaultAddress.base58;
+      checks.payoutKeyValid = Boolean(derivedPayoutAddress && tronWeb.isAddress(derivedPayoutAddress));
+      if (!checks.payoutKeyValid) checks.payoutKeyFailure = 'address_derivation_failed';
+    } catch {
+      checks.payoutKeyFailure = 'private_key_format_rejected';
+    }
   }
 
   if (checks.payoutKeyValid && checks.tronUsdtContractValid && checks.tronProviderReachable) {
