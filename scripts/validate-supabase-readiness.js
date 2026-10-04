@@ -19,15 +19,17 @@ async function main() {
   const checks = [
     ...['users', 'wallet_balances', 'transactions', 'financial_ledger', 'sessions', 'security_events',
       'vip_levels', 'game_settings', 'daily_task_completions', 'daily_task_entities',
-      'daily_task_assignments', 'daily_task_submissions', 'referral_reward_awards', 'milestone_reward_awards',
-      'tron_deposit_address_sequences', 'tron_deposit_events', 'withdrawal_payouts']
-      .map(table => ({ table, keyColumn: 'id' })),
-    { table: 'tron_deposit_addresses', keyColumn: 'user_id' }
+      'daily_task_assignments', 'daily_task_submissions', 'referral_reward_awards', 'milestone_reward_awards']
+      .map(table => ({ table, columns: 'id' })),
+    { table: 'tron_deposit_addresses', columns: 'user_id,derivation_index,address,last_scanned_at' },
+    { table: 'tron_deposit_address_sequences', columns: 'id,next_index' },
+    { table: 'tron_deposit_events', columns: 'id,transaction_id,user_id,tx_hash,event_index,to_address,amount' },
+    { table: 'withdrawal_payouts', columns: 'id,transaction_id,network,status,tx_hash,signed_payload,next_attempt_at' }
   ];
   const results = [];
 
-  for (const { table, keyColumn } of checks) {
-    const { data, error } = await client.from(table).select(keyColumn).limit(1);
+  for (const { table, columns } of checks) {
+    const { data, error } = await client.from(table).select(columns).limit(1);
     if (error) {
       results.push({ table, ok: false, error: error.message });
     } else {

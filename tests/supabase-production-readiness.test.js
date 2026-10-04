@@ -44,7 +44,8 @@ assert.doesNotMatch(upgradeBody, /dataAccess\.user\.updateOne/, 'the app must no
 assert.match(dataAccess, /MilestoneRewardAward: \{ table: 'milestone_reward_awards' \}/);
 assert.match(validator, /daily_task_entities/);
 assert.match(validator, /milestone_reward_awards/);
-assert.match(validator, /table: 'tron_deposit_addresses', keyColumn: 'user_id'/);
+assert.match(validator, /table: 'tron_deposit_addresses', columns: 'user_id,derivation_index,address,last_scanned_at'/);
+assert.match(validator, /table: 'withdrawal_payouts', columns: 'id,transaction_id,network,status,tx_hash,signed_payload,next_attempt_at'/);
 for (const table of ['tron_deposit_addresses', 'tron_deposit_address_sequences', 'tron_deposit_events', 'withdrawal_payouts']) {
   assert.ok(validator.includes(`'${table}'`), `${table} must be checked by the production readiness validator`);
   assert.match(supabaseConfig, new RegExp(`'${table}'`), `${table} must be probed by production health`);

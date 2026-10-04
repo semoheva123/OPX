@@ -41,17 +41,18 @@ async function checkSupabaseConnection() {
   if (error) return { configured: true, reachable: false, error: error.message, financialSchema };
 
   const depositTables = [
-    { table: 'tron_deposit_addresses', keyColumn: 'user_id' },
-    { table: 'tron_deposit_address_sequences', keyColumn: 'id' },
-    { table: 'tron_deposit_events', keyColumn: 'id' }
+    { table: 'tron_deposit_addresses', requiredColumns: 'user_id,derivation_index,address,last_scanned_at' },
+    { table: 'tron_deposit_address_sequences', requiredColumns: 'id,next_index' },
+    { table: 'tron_deposit_events', requiredColumns: 'id,transaction_id,user_id,tx_hash,event_index,to_address,amount' }
   ];
-  const depositChecks = await Promise.all(depositTables.map(async ({ table, keyColumn }) => ({
+  const depositChecks = await Promise.all(depositTables.map(async ({ table, requiredColumns }) => ({
     table,
-    ready: await supabaseAdmin.from(table).select(keyColumn).limit(0)
+    ready: await supabaseAdmin.from(table).select(requiredColumns).limit(0)
       .then(({ error: tableError }) => !tableError).catch(() => false)
   })
   ));
-  const payoutCheck = await supabaseAdmin.from('withdrawal_payouts').select('id').limit(0)
+  const payoutCheck = await supabaseAdmin.from('withdrawal_payouts')
+    .select('id,transaction_id,network,status,tx_hash,signed_payload,next_attempt_at').limit(0)
     .then(({ error: tableError }) => !tableError).catch(() => false);
   financialSchema.depositTablesReady = depositChecks.every(check => check.ready);
   financialSchema.payoutTableReady = payoutCheck;
