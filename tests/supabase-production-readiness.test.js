@@ -10,6 +10,8 @@ const robots = read('robots.txt');
 const controller = read('src/controllers/publicController.js');
 const dataAccess = read('src/services/dataAccess.js');
 const validator = read('scripts/validate-supabase-readiness.js');
+const supabaseConfig = read('src/config/supabase.js');
+const app = read('src/app.js');
 
 for (const table of [
   'daily_task_entities',
@@ -44,7 +46,11 @@ assert.match(validator, /daily_task_entities/);
 assert.match(validator, /milestone_reward_awards/);
 for (const table of ['tron_deposit_addresses', 'tron_deposit_address_sequences', 'tron_deposit_events', 'withdrawal_payouts']) {
   assert.ok(validator.includes(`'${table}'`), `${table} must be checked by the production readiness validator`);
+  assert.match(supabaseConfig, new RegExp(`'${table}'`), `${table} must be probed by production health`);
 }
+assert.match(supabaseConfig, /depositTablesReady/);
+assert.match(supabaseConfig, /payoutTableReady/);
+assert.match(app, /financialSchema: supabase\?\.financialSchema/);
 assert.match(sitemap, /<loc>https:\/\/operix\.website\//);
 assert.doesNotMatch(sitemap, /localhost|127\.0\.0\.1/);
 assert.match(robots, /Sitemap: https:\/\/operix\.website\/sitemap\.xml/);

@@ -29,9 +29,26 @@ const supabaseAdmin = supabaseUrl && supabaseServiceRoleKey
   : null;
 
 async function checkSupabaseConnection() {
-  if (!supabaseAdmin) return { configured: false, reachable: false };
+  const financialSchema = {
+    depositTablesReady: false,
+    payoutTableReady: false,
+    ready: false
+  };
+  if (!supabaseAdmin) return { configured: false, reachable: false, financialSchema };
+
   const { error } = await supabaseAdmin.from('users').select('id').limit(1);
-  return { configured: true, reachable: !error, error: error ? error.message : null };
+  if (error) return { configured: true, reachable: false, error: error.message, financialSchema };
+
+  const depositTables = ['tron_deposit_addresses', 'tron_deposit_address_sequences', 'tron_deposit_events'];
+  const depositChecks = await Promise.all(depositTables.map(table =>
+    supabaseAdmin.from(table).select('id').limit(0).then(({ error: tableError }) => !tableError).catch(() => false)
+  ));
+  const payoutCheck = await supabaseAdmin.from('withdrawal_payouts').select('id').limit(0)
+    .then(({ error: tableError }) => !tableError).catch(() => false);
+  financialSchema.depositTablesReady = depositChecks.every(Boolean);
+  financialSchema.payoutTableReady = payoutCheck;
+  financialSchema.ready = financialSchema.depositTablesReady && financialSchema.payoutTableReady;
+  return { configured: true, reachable: true, error: null, financialSchema };
 }
 
 module.exports = { supabase, supabaseAdmin, checkSupabaseConnection };
