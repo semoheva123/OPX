@@ -1,12 +1,13 @@
 const { TronWeb } = require('tronweb');
 const blockchainService = require('./blockchainService');
 const tronDepositService = require('./tronDepositService');
-const { checkSupabaseConnection } = require('../config/supabase');
+const { checkSupabaseConnection, supabaseAdmin } = require('../config/supabase');
 
 async function checkFinancialReadiness() {
   const checks = {
     supabaseReachable: false,
     financialSchemaReady: false,
+    noUnresolvedPayouts: false,
     depositXpubDerivesAddress: false,
     tronUsdtContractValid: false,
     payoutKeyConfigured: false,
@@ -26,6 +27,22 @@ async function checkFinancialReadiness() {
   const database = await checkSupabaseConnection().catch(() => null);
   checks.supabaseReachable = Boolean(database?.reachable);
   checks.financialSchemaReady = Boolean(database?.financialSchema?.ready);
+  if (checks.supabaseReachable && supabaseAdmin) {
+    try {
+      const { data, error } = await supabaseAdmin.from('withdrawal_payouts')
+        .select('status,tx_hash')
+        .in('status', ['preparing', 'broadcast', 'manual_review', 'failed'])
+        .limit(1000);
+      if (!error) {
+        checks.noUnresolvedPayouts = !(data || []).some(row =>
+          ['preparing', 'broadcast', 'manual_review'].includes(row.status) ||
+          (row.status === 'failed' && Boolean(row.tx_hash))
+        );
+      }
+    } catch {
+      checks.noUnresolvedPayouts = false;
+    }
+  }
 
   try {
     checks.depositXpubDerivesAddress = Boolean(tronDepositService.deriveDepositAddress(0));
@@ -92,7 +109,7 @@ async function checkFinancialReadiness() {
     }
   }
 
-  const readyForControlledTest = checks.supabaseReachable && checks.financialSchemaReady &&
+  const readyForControlledTest = checks.supabaseReachable && checks.financialSchemaReady && checks.noUnresolvedPayouts &&
     checks.depositXpubDerivesAddress && checks.tronUsdtContractValid && checks.payoutKeyConfigured &&
     checks.payoutKeyValid && checks.tronProviderReachable && checks.payoutBalancesReadable &&
     checks.payoutUsdtFunded && checks.payoutTrxSufficient;
