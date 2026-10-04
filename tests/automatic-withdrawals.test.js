@@ -10,8 +10,8 @@ const migration = read('supabase/automatic-withdrawals.sql');
 const controller = read('src/controllers/adminController.js');
 const walletController = read('src/controllers/walletController.js');
 const server = read('server.js');
-const vercel = JSON.parse(read('vercel.json'));
 const adminHtml = read('admin.html');
+const queueWorkflow = read('.github/workflows/financial-queue-workers.yml');
 
 assert.equal(payout.parseTokenUnits('20', 6), 20_000_000n);
 assert.equal(payout.parseTokenUnits('1.250001', 6), 1_250_001n);
@@ -43,7 +43,7 @@ assert.match(controller, /recoveredStalePreparations/);
 assert.match(controller, /action === 'approve' && selected\.some\(item => item\.type === 'withdraw'\)/, 'bulk approval must not be able to dispatch withdrawal transfers');
 assert.match(adminHtml, /موافقة وإرسال/);
 assert.match(server, /process-withdrawal-payouts/);
-assert.ok(vercel.crons.some(job => job.path === '/api/internal/cron/process-withdrawal-payouts'));
+assert.match(queueWorkflow, /\/api\/internal\/cron\/process-withdrawal-payouts/);
 
 function responseRecorder() {
 	return { statusCode: 200, body: null, status(code) { this.statusCode = code; return this; }, json(body) { this.body = body; return this; } };

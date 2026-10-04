@@ -81,14 +81,6 @@
     {
       "path": "/api/internal/cron/refresh-daily-task-entities",
       "schedule": "5 0 * * *"
-    },
-    {
-      "path": "/api/internal/cron/process-withdrawal-payouts",
-      "schedule": "* * * * *"
-    },
-    {
-      "path": "/api/internal/cron/process-tron-deposits",
-      "schedule": "* * * * *"
     }
   ]
 }

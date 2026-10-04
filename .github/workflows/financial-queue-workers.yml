@@ -1,0 +1,49 @@
+name: Financial queue workers
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: financial-queue-workers
+  cancel-in-progress: false
+
+jobs:
+  process-queues:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Validate scheduler configuration
+        shell: bash
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [[ -z "$CRON_SECRET" ]]; then
+            echo "::error::Add CRON_SECRET as a GitHub Actions repository secret before enabling this workflow."
+            exit 1
+          fi
+
+      - name: Process confirmed TRON deposits
+        shell: bash
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl --fail --silent --show-error --output /dev/null \
+            --write-out 'TRON deposit worker HTTP %{http_code}\n' \
+            --max-time 180 --retry 2 --retry-delay 5 --retry-all-errors \
+            --request POST \
+            --header "Authorization: Bearer ${CRON_SECRET}" \
+            'https://operix.website/api/internal/cron/process-tron-deposits'
+
+      - name: Process authorized withdrawal payouts
+        shell: bash
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl --fail --silent --show-error --output /dev/null \
+            --write-out 'Withdrawal payout worker HTTP %{http_code}\n' \
+            --max-time 180 --retry 2 --retry-delay 5 --retry-all-errors \
+            --request POST \
+            --header "Authorization: Bearer ${CRON_SECRET}" \
+            'https://operix.website/api/internal/cron/process-withdrawal-payouts'

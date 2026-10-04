@@ -8,7 +8,7 @@ const read = relative => fs.readFileSync(path.join(__dirname, '..', relative), '
 const migration = read('supabase/automatic-trc20-deposits.sql');
 const trc20Only = read('supabase/trc20-only-financials.sql');
 const server = read('server.js');
-const vercel = JSON.parse(read('vercel.json'));
+const queueWorkflow = read('.github/workflows/financial-queue-workers.yml');
 
 assert.match(migration, /create table if not exists public\.tron_deposit_addresses/i);
 assert.match(migration, /create table if not exists public\.tron_deposit_events/i);
@@ -17,7 +17,7 @@ assert.match(migration, /unique/i, 'deposit events must be idempotent');
 assert.match(migration, /revoke all privileges.*anon.*authenticated/is);
 assert.match(trc20Only, /TRC20_ONLY_SUPPORTED/);
 assert.match(server, /process-tron-deposits/);
-assert.ok(vercel.crons.some(job => job.path === '/api/internal/cron/process-tron-deposits'));
+assert.match(queueWorkflow, /\/api\/internal\/cron\/process-tron-deposits/);
 
 const originalXpub = process.env.TRON_DEPOSIT_XPUB;
 const originalEnabled = process.env.TRON_DEPOSIT_AUTOMATION_ENABLED;
