@@ -13,6 +13,9 @@ create table if not exists public.daily_task_entities (
   unique(snapshot_date, entity_key)
 );
 create index if not exists daily_task_entities_snapshot_category_idx on public.daily_task_entities(snapshot_date, category);
+alter table public.daily_task_entities drop constraint if exists daily_task_entities_category_check;
+alter table public.daily_task_entities add constraint daily_task_entities_category_check
+  check (category in ('technology', 'ai', 'crypto', 'trading', 'finance'));
 alter table public.daily_task_entities enable row level security;
 revoke all on table public.daily_task_entities from public, anon, authenticated;
 grant all on table public.daily_task_entities to service_role;
@@ -35,6 +38,9 @@ create table if not exists public.daily_task_assignments (
   unique(user_id, task_date, entity_key)
 );
 create index if not exists daily_task_assignments_user_recent_idx on public.daily_task_assignments(user_id, task_date desc);
+alter table public.daily_task_assignments drop constraint if exists daily_task_assignments_category_check;
+alter table public.daily_task_assignments add constraint daily_task_assignments_category_check
+  check (category in ('technology', 'ai', 'crypto', 'trading', 'finance'));
 alter table public.daily_task_assignments enable row level security;
 revoke all on table public.daily_task_assignments from public, anon, authenticated;
 grant all on table public.daily_task_assignments to service_role;
@@ -43,6 +49,9 @@ alter table public.daily_task_submissions add column if not exists assignment_id
 alter table public.daily_task_submissions add column if not exists entity_key text not null default '';
 alter table public.daily_task_submissions add column if not exists selected_tag text not null default '';
 alter table public.daily_task_submissions add column if not exists feedback text not null default '';
+alter table public.daily_task_submissions drop constraint if exists daily_task_submissions_target_category_check;
+alter table public.daily_task_submissions add constraint daily_task_submissions_target_category_check
+  check (target_category in ('technology', 'ai', 'crypto', 'trading', 'finance'));
 alter table public.daily_task_submissions enable row level security;
 revoke all on table public.daily_task_submissions from public, anon, authenticated;
 grant all on table public.daily_task_submissions to service_role;

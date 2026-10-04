@@ -39,6 +39,9 @@ create table if not exists public.daily_task_entities (
 );
 create index if not exists daily_task_entities_snapshot_category_idx
   on public.daily_task_entities(snapshot_date, category);
+alter table public.daily_task_entities drop constraint if exists daily_task_entities_category_check;
+alter table public.daily_task_entities add constraint daily_task_entities_category_check
+  check (category in ('technology', 'ai', 'crypto', 'trading', 'finance'));
 
 create table if not exists public.daily_task_assignments (
   id uuid primary key default uuid_generate_v4(),
@@ -59,6 +62,9 @@ create table if not exists public.daily_task_assignments (
 );
 create index if not exists daily_task_assignments_user_recent_idx
   on public.daily_task_assignments(user_id, task_date desc);
+alter table public.daily_task_assignments drop constraint if exists daily_task_assignments_category_check;
+alter table public.daily_task_assignments add constraint daily_task_assignments_category_check
+  check (category in ('technology', 'ai', 'crypto', 'trading', 'finance'));
 
 create table if not exists public.daily_task_submissions (
   id uuid primary key default uuid_generate_v4(),
@@ -87,6 +93,9 @@ alter table public.daily_task_submissions add column if not exists concerns text
 alter table public.daily_task_submissions add column if not exists evidence_url text not null default 'in-app-daily-entity-review';
 create index if not exists daily_task_submissions_user_date_idx
   on public.daily_task_submissions(user_id, task_date);
+alter table public.daily_task_submissions drop constraint if exists daily_task_submissions_target_category_check;
+alter table public.daily_task_submissions add constraint daily_task_submissions_target_category_check
+  check (target_category in ('technology', 'ai', 'crypto', 'trading', 'finance'));
 
 create table if not exists public.referral_reward_awards (
   id uuid primary key default uuid_generate_v4(),

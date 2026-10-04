@@ -4,6 +4,7 @@ const path = require('node:path');
 
 const read = relativePath => fs.readFileSync(path.join(__dirname, '..', relativePath), 'utf8');
 const migration = read('supabase/production-readiness.sql');
+const canonicalSchema = read('supabase/schema.sql');
 const controller = read('src/controllers/publicController.js');
 const dataAccess = read('src/services/dataAccess.js');
 const validator = read('scripts/validate-supabase-readiness.js');
@@ -21,6 +22,9 @@ for (const table of [
 
 assert.match(migration, /referrals_per_cycle\)\s*values\s*\('default',\s*6\)/i, 'game cycle threshold must be six');
 assert.match(migration, /length\(trim\(submission\.feedback\)\) between 10 and 500/i, 'database and app evaluation note limits must agree');
+for (const source of [migration, canonicalSchema]) {
+  assert.match(source, /'technology',\s*'ai',\s*'crypto',\s*'trading',\s*'finance'/i, 'all generated task categories must pass database constraints');
+}
 assert.match(migration, /active_referrals_count\s*<\s*300/i, 'A4 eligibility must be verified in SQL');
 assert.match(migration, /unique\(user_id, milestone_key\)/i, 'the milestone reward must be one-time per user');
 assert.match(migration, /instantProfitReward/i, 'the atomic upgrade RPC must return the awarded bonus');
