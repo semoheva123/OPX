@@ -24,6 +24,7 @@ assert.match(workflow, /--retry 3 --retry-delay 8 --retry-all-errors/);
 assert.match(workflow, /expected auth-probe HTTP 404/);
 assert.match(workflow, /financialSchema\.ready == true/);
 assert.match(workflow, /readyForControlledTest/);
+assert.match(workflow, /error title=Read-only financial preflight blocked/);
 assert.match(workflow, /secrets\.CRON_SECRET/);
 assert.match(workflow, /Authorization: Bearer \$\{CRON_SECRET\}/);
 assert.match(workflow, /\/api\/internal\/cron\/process-tron-deposits/);

@@ -68,7 +68,9 @@ jobs:
             'https://operix.website/api/internal/cron/check-financial-readiness'
           jq -c '{readyForControlledTest: .result.readyForControlledTest, checks: .result.checks, switches: .result.switches}' "$readiness_file"
           jq -e '.success == true and .result.readyForControlledTest == true' "$readiness_file" > /dev/null || {
-            echo '::error::Read-only financial preflight failed. Check the safe checks/switches summary above; no deposit or payout worker was invoked.'
+            safe_checks=$(jq -c '{readyForControlledTest: .result.readyForControlledTest, checks: .result.checks, switches: .result.switches}' "$readiness_file")
+            echo "::error title=Read-only financial preflight blocked::$safe_checks"
+            echo 'No deposit or payout worker was invoked.'
             exit 1
           }
 
