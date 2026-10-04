@@ -40,10 +40,14 @@ async function checkSupabaseConnection() {
   const { error } = await supabaseAdmin.from('users').select('id').limit(1);
   if (error) return { configured: true, reachable: false, error: error.message, financialSchema };
 
-  const depositTables = ['tron_deposit_addresses', 'tron_deposit_address_sequences', 'tron_deposit_events'];
-  const depositChecks = await Promise.all(depositTables.map(async table => ({
+  const depositTables = [
+    { table: 'tron_deposit_addresses', keyColumn: 'user_id' },
+    { table: 'tron_deposit_address_sequences', keyColumn: 'id' },
+    { table: 'tron_deposit_events', keyColumn: 'id' }
+  ];
+  const depositChecks = await Promise.all(depositTables.map(async ({ table, keyColumn }) => ({
     table,
-    ready: await supabaseAdmin.from(table).select('id').limit(0)
+    ready: await supabaseAdmin.from(table).select(keyColumn).limit(0)
       .then(({ error: tableError }) => !tableError).catch(() => false)
   })
   ));

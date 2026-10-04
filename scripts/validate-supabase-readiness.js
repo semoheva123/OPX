@@ -17,15 +17,17 @@ async function main() {
   });
 
   const checks = [
-    'users', 'wallet_balances', 'transactions', 'financial_ledger', 'sessions', 'security_events',
-    'vip_levels', 'game_settings', 'daily_task_completions', 'daily_task_entities',
-    'daily_task_assignments', 'daily_task_submissions', 'referral_reward_awards', 'milestone_reward_awards',
-    'tron_deposit_addresses', 'tron_deposit_address_sequences', 'tron_deposit_events', 'withdrawal_payouts'
+    ...['users', 'wallet_balances', 'transactions', 'financial_ledger', 'sessions', 'security_events',
+      'vip_levels', 'game_settings', 'daily_task_completions', 'daily_task_entities',
+      'daily_task_assignments', 'daily_task_submissions', 'referral_reward_awards', 'milestone_reward_awards',
+      'tron_deposit_address_sequences', 'tron_deposit_events', 'withdrawal_payouts']
+      .map(table => ({ table, keyColumn: 'id' })),
+    { table: 'tron_deposit_addresses', keyColumn: 'user_id' }
   ];
   const results = [];
 
-  for (const table of checks) {
-    const { data, error } = await client.from(table).select('id').limit(1);
+  for (const { table, keyColumn } of checks) {
+    const { data, error } = await client.from(table).select(keyColumn).limit(1);
     if (error) {
       results.push({ table, ok: false, error: error.message });
     } else {
