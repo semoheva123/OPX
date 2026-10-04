@@ -35,6 +35,7 @@ const stripeTask = activityController.buildDailyTasks('A1', [
 ], new Set(), false, 1)[1];
 assert.equal(stripeTask.targetImageUrl, 'https://www.google.com/s2/favicons?domain=stripe.com&sz=128', 'known brands should use the favicon hosted by their official domain when task data has no image');
 assert.equal(automation.getOfficialBrandLogoUrl('Intel'), 'https://www.google.com/s2/favicons?domain=intel.com&sz=128');
+assert.equal(automation.getOfficialBrandLogoUrl('MetaTrader'), 'https://www.google.com/s2/favicons?domain=metatrader5.com&sz=128');
 assert.ok(tasks.every(task => task.reward > 0));
 assert.deepEqual(automation.getEvaluationTags('crypto'), ['الأمان', 'الشفافية', 'المنفعة', 'اللامركزية', 'التقلب', 'الرسوم', 'الحوكمة']);
 

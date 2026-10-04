@@ -30,6 +30,7 @@ const OFFICIAL_BRAND_DOMAINS = {
   canva: 'canva.com', jasper: 'jasper.ai', descript: 'descript.com', chatgpt: 'openai.com', claude: 'anthropic.com',
   gemini: 'google.com', copilot: 'microsoft.com', notebooklm: 'notebooklm.google', binance: 'binance.com', coinbase: 'coinbase.com',
   kraken: 'kraken.com', bybit: 'bybit.com', okx: 'okx.com', etoro: 'etoro.com', tradingview: 'tradingview.com',
+  metatrader: 'metatrader5.com',
   robinhood: 'robinhood.com', interactivebrokers: 'interactivebrokers.com', webull: 'webull.com', plus500: 'plus500.com',
   xtb: 'xtb.com', saxobank: 'home.saxo', iggroup: 'ig.com', deribit: 'deribit.com', bitget: 'bitget.com', gateio: 'gate.io',
   paypal: 'paypal.com', stripe: 'stripe.com', visa: 'visa.com', mastercard: 'mastercard.com', wise: 'wise.com',
@@ -101,7 +102,7 @@ function getOfficialBrandLogoUrl(name) {
   const normalizedName = String(name || '').toLowerCase().replace(/\([^)]*\)/g, '').replace(/[^a-z0-9]/g, '');
   const brand = Object.keys(OFFICIAL_BRAND_DOMAINS)
     .sort((left, right) => right.length - left.length)
-    .find(key => normalizedName.includes(key));
+    .find(key => normalizedName.startsWith(key));
   const domain = brand ? OFFICIAL_BRAND_DOMAINS[brand] : '';
   return domain ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128` : '';
 }
