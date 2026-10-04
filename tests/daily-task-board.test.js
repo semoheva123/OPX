@@ -35,7 +35,7 @@ const stripeTask = activityController.buildDailyTasks('A1', [
 ], new Set(), false, 1)[1];
 assert.equal(stripeTask.targetImageUrl, 'https://www.google.com/s2/favicons?domain=stripe.com&sz=128', 'known brands should use the favicon hosted by their official domain when task data has no image');
 assert.equal(automation.getOfficialBrandLogoUrl('Intel'), 'https://www.google.com/s2/favicons?domain=intel.com&sz=128');
-assert.equal(automation.getOfficialBrandLogoUrl('MetaTrader'), 'https://www.google.com/s2/favicons?domain=metatrader5.com&sz=128');
+assert.equal(automation.getOfficialBrandLogoUrl('MetaTrader'), 'https://www.metatrader5.com/i/metatrader-5-logo.png');
 assert.ok(tasks.every(task => task.reward > 0));
 assert.deepEqual(automation.getEvaluationTags('crypto'), ['الأمان', 'الشفافية', 'المنفعة', 'اللامركزية', 'التقلب', 'الرسوم', 'الحوكمة']);
 
@@ -71,5 +71,6 @@ assert.match(client, /id: 'daily',[^\n]*done: false/, 'stale completion counters
 assert.match(client, /data\.taskLimit \?\? data\.tier\?\.taskLimit/, 'the task detail panel must read the total from the API tier payload');
 assert.match(client, /filter\(task => !task\.completed\)/, 'completed tasks must be filtered out before rendering the premium task list');
 assert.match(client, /targetImageUrl.*alt.*targetName|brand.*task\.targetName/, 'the paid-task panel must show the evaluation brand logo and company name in a premium card');
+assert.match(client, /h-14 w-20.*object-contain/, 'the company logo should use a larger landscape tile without cropping the source image');
 
 console.log('daily-task-board test: OK');

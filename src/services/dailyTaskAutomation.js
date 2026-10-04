@@ -40,6 +40,9 @@ const OFFICIAL_BRAND_DOMAINS = {
   bitcoin: 'bitcoin.org', ethereum: 'ethereum.org', tether: 'tether.to', solana: 'solana.com', ripple: 'ripple.com',
   dogecoin: 'dogecoin.com', cardano: 'cardano.org', chainlink: 'chain.link', avalanche: 'avax.network', polkadot: 'polkadot.com'
 };
+const OFFICIAL_BRAND_LOGO_ASSETS = {
+  metatrader: 'https://www.metatrader5.com/i/metatrader-5-logo.png'
+};
 
 const TECH_ENTITIES = [
   'Apple Inc.', 'Microsoft', 'NVIDIA', 'Amazon (company)', 'Alphabet Inc.', 'Meta Platforms', 'Samsung Electronics', 'Sony', 'Intel', 'Advanced Micro Devices', 'Cisco', 'Oracle Corporation', 'IBM', 'Dell', 'Adobe Inc.', 'Qualcomm', 'Taiwan Semiconductor Manufacturing Company', 'ASML Holding', 'Netflix', 'Spotify', 'Salesforce', 'SAP', 'Tencent', 'Alibaba Group', 'Xiaomi', 'Shopify', 'Uber', 'Airbnb', 'Cloudflare', 'Arm Holdings'
@@ -103,6 +106,7 @@ function getOfficialBrandLogoUrl(name) {
   const brand = Object.keys(OFFICIAL_BRAND_DOMAINS)
     .sort((left, right) => right.length - left.length)
     .find(key => normalizedName.startsWith(key));
+  if (brand && OFFICIAL_BRAND_LOGO_ASSETS[brand]) return OFFICIAL_BRAND_LOGO_ASSETS[brand];
   const domain = brand ? OFFICIAL_BRAND_DOMAINS[brand] : '';
   return domain ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128` : '';
 }
