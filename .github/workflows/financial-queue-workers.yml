@@ -4,6 +4,12 @@ on:
   schedule:
     - cron: '*/5 * * * *'
   workflow_dispatch:
+    inputs:
+      auth_only:
+        description: Verify CRON_SECRET against Production without processing queues
+        type: boolean
+        required: false
+        default: false
 
 concurrency:
   group: financial-queue-workers
@@ -26,7 +32,25 @@ jobs:
           fi
           echo "configured=true" >> "$GITHUB_OUTPUT"
 
+      - name: Verify CRON_SECRET without processing queues
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.auth_only }}
+        shell: bash
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          status=$(curl --silent --show-error --output /dev/null \
+            --write-out '%{http_code}' --max-time 70 \
+            --request GET \
+            --header "Authorization: Bearer ${CRON_SECRET}" \
+            'https://operix.website/api/internal/cron/__auth_probe__')
+          if [[ "$status" != "404" ]]; then
+            echo "::error::Production did not accept CRON_SECRET (expected auth-probe HTTP 404; received ${status})."
+            exit 1
+          fi
+          echo 'Production accepted CRON_SECRET (HTTP 404 auth probe); no queue worker was invoked.'
+
       - name: Process confirmed TRON deposits
+        if: ${{ !inputs.auth_only }}
         shell: bash
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
@@ -43,7 +67,7 @@ jobs:
           jq -e '.success == true' "$response_file" > /dev/null
 
       - name: Process authorized withdrawal payouts
-        if: ${{ always() && steps.validate.outputs.configured == 'true' }}
+        if: ${{ always() && steps.validate.outputs.configured == 'true' && !inputs.auth_only }}
         shell: bash
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}

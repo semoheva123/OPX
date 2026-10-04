@@ -13,6 +13,9 @@ assert.ok(!vercel.crons.some(job => job.path === '/api/internal/cron/process-tro
 assert.ok(!vercel.crons.some(job => job.path === '/api/internal/cron/process-withdrawal-payouts'));
 assert.match(workflow, /cron:\s*['"]\*\/5 \* \* \* \*['"]/);
 assert.match(workflow, /workflow_dispatch:/);
+assert.match(workflow, /auth_only:/);
+assert.match(workflow, /\/api\/internal\/cron\/__auth_probe__/);
+assert.match(workflow, /expected auth-probe HTTP 404/);
 assert.match(workflow, /secrets\.CRON_SECRET/);
 assert.match(workflow, /Authorization: Bearer \$\{CRON_SECRET\}/);
 assert.match(workflow, /\/api\/internal\/cron\/process-tron-deposits/);
@@ -22,6 +25,7 @@ assert.match(workflow, /concurrency:/);
 assert.match(workflow, /--max-time 70/);
 assert.doesNotMatch(workflow, /--retry-all-errors|--retry\s+\d/);
 assert.match(workflow, /steps\.validate\.outputs\.configured == 'true'/);
+assert.match(workflow, /!inputs\.auth_only/);
 assert.match(workflow, /jq -e '\.success == true/);
 assert.match(app, /process\.env\.VERCEL_GIT_COMMIT_SHA/);
 assert.doesNotMatch(app, /socialfi-20260907-2/);
