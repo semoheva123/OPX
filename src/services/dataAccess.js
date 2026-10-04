@@ -7,6 +7,7 @@ const modelMap = {
   Session: { table: 'sessions' },
   SecurityEvent: { table: 'security_events' },
   Transaction: { table: 'transactions' },
+  WithdrawalPayout: { table: 'withdrawal_payouts' },
   FinancialLedger: { table: 'financial_ledger' },
   VipLevel: { table: 'vip_levels' },
   GameSetting: { table: 'game_settings' },

@@ -83,7 +83,8 @@ const app = createApp({
     'reset-daily-tasks': resetDailyTasks,
     'refresh-daily-task-entities': generateDailyTaskEntities,
     'ai-announcer': generateOfficialAiPost,
-    'process-broadcasts': () => processScheduledBroadcasts(webpush)
+    'process-broadcasts': () => processScheduledBroadcasts(webpush),
+    'process-withdrawal-payouts': () => require('./src/controllers/adminController').processWithdrawalPayoutQueue(resend)
   }
 });
 

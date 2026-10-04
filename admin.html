@@ -304,7 +304,7 @@ body.modal-open{overflow:hidden}
                 <div class="flex items-center justify-between border-b border-slate-800 p-4"><div><h3 class="text-sm font-black text-white">خزائن المستخدمين</h3><p class="mt-1 text-[10px] text-slate-500">الفتح الاضطراري يعيد 70% ويحوّل غرامة 30% إلى حساب المالك.</p></div><button onclick="fetchInvestmentVaultList()" title="تحديث الخزائن" class="text-slate-400 hover:text-cyan-300"><i class="fa-solid fa-arrows-rotate"></i></button></div>
                 <div class="overflow-x-auto"><table class="w-full text-right text-xs"><thead class="bg-slate-900/80 text-slate-400"><tr><th class="p-4">المستخدم</th><th class="p-4">الأصل</th><th class="p-4">الاستحقاق</th><th class="p-4">الحالة</th><th class="p-4">الإجراء</th></tr></thead><tbody id="tblInvestmentVaultsBody" class="divide-y divide-slate-800/50"></tbody></table></div>
             </div>
-            <div class="flex flex-wrap items-center gap-2"><button onclick="bulkWithdrawalAction('approve')" class="px-3 py-2 bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 rounded-xl text-[10px] font-bold">قبول المحدد</button><button onclick="bulkWithdrawalAction('reject')" class="px-3 py-2 bg-rose-500/15 text-rose-300 border border-rose-500/20 rounded-xl text-[10px] font-bold">رفض المحدد</button><button onclick="clearTransactionSelection()" class="px-3 py-2 bg-slate-900 text-slate-300 rounded-xl text-[10px]">إلغاء التحديد</button><span id="transactionSelectionCount" class="text-[10px] text-slate-500">لم يتم تحديد معاملات</span></div>
+            <div class="flex flex-wrap items-center gap-2"><button onclick="bulkWithdrawalAction('approve')" class="px-3 py-2 bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 rounded-xl text-[10px] font-bold">قبول المحدد (باستثناء السحب)</button><button onclick="bulkWithdrawalAction('reject')" class="px-3 py-2 bg-rose-500/15 text-rose-300 border border-rose-500/20 rounded-xl text-[10px] font-bold">رفض المحدد</button><button onclick="clearTransactionSelection()" class="px-3 py-2 bg-slate-900 text-slate-300 rounded-xl text-[10px]">إلغاء التحديد</button><span id="transactionSelectionCount" class="text-[10px] text-slate-500">لم يتم تحديد معاملات</span></div>
 
             <div class="glass-card rounded-3xl overflow-hidden border border-slate-800">
                 <div class="overflow-x-auto">
@@ -1109,9 +1109,11 @@ body.modal-open{overflow:hidden}
                             ? `<span class="px-2 py-1 rounded bg-emerald-500/20 text-emerald-400 font-bold text-[10px]">مقبول</span>`
                             : `<span class="px-2 py-1 rounded bg-rose-500/20 text-rose-400 font-bold text-[10px]">مرفوض</span>`;
 
+                        const payoutState = tx.payout?.status || '';
+                        const payoutLabels = { preparing: 'تجهيز توقيع التحويل', broadcast: 'مرسل · بانتظار تأكيد الشبكة', paid: 'تم التحويل والتأكيد', failed: 'تعذر التحويل', manual_review: 'يتطلب مراجعة يدوية', cancelled: 'أُلغي التحويل' };
+                        const payoutBadge = tx.type === 'withdraw' && payoutState ? `<span class="mt-1 block text-[9px] ${payoutState === 'paid' ? 'text-emerald-300' : payoutState === 'manual_review' ? 'text-rose-300' : 'text-cyan-300'}">${escapeAdminHtml(payoutLabels[payoutState] || payoutState)}</span>` : '';
                         const actionButtons = tx.status === 'pending' ? `
-                            <button onclick="handleWithdrawalAction('${tx._id}', 'approve')" class="px-3 py-1 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/40 rounded-lg font-bold ml-1 transition-all">موافقة</button>
-                            <button onclick="handleWithdrawalAction('${tx._id}', 'reject')" class="px-3 py-1 bg-rose-600/20 text-rose-400 hover:bg-rose-600/40 rounded-lg font-bold transition-all">رفض</button>
+                            ${payoutState === 'broadcast' ? `<span class="text-cyan-300 text-[10px]">بانتظار الشبكة</span>` : payoutState === 'manual_review' ? `<button onclick="reconcileWithdrawalPayoutAdmin('${tx._id}')" class="px-2 py-1 bg-cyan-500/15 text-cyan-300 rounded-lg text-[10px]">فحص الشبكة</button>` : `${!(payoutState === 'failed' && tx.payout?.txHash) ? `<button onclick="handleWithdrawalAction('${tx._id}', 'approve')" class="px-3 py-1 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/40 rounded-lg font-bold ml-1 transition-all">${payoutState === 'failed' ? 'إعادة التجهيز' : 'موافقة وإرسال'}</button>` : ''}<button onclick="handleWithdrawalAction('${tx._id}', 'reject')" class="px-3 py-1 bg-rose-600/20 text-rose-400 hover:bg-rose-600/40 rounded-lg font-bold transition-all">رفض</button>`}
                         ` : `<span class="text-slate-500 text-[10px]">تم اتخاذ الإجراء</span>`;
 
                         return `
@@ -1119,9 +1121,9 @@ body.modal-open{overflow:hidden}
                                 <td class="p-4"><input type="checkbox" class="transaction-select-checkbox" value="${tx._id}" onchange="updateTransactionSelectionCount()" aria-label="تحديد المعاملة"></td>
                                 <td class="p-4 font-bold text-white">${escapeAdminHtml(tx.userId ? tx.userId.email : 'غير معروف')}</td>
                                 <td class="p-4 font-semibold text-slate-300">${({ withdraw: 'سحب رصيد', deposit: 'شحن/إيداع', vault_lock: 'قفل خزنة', vault_release: 'فك خزنة', vault_early_release: 'فتح اضطراري', vault_penalty: 'غرامة فتح مبكر', token_burn: 'حرق OPX' }[tx.type] || tx.type)}<span class="block text-[9px] text-slate-500">${escapeAdminHtml(tx.network || '-')}</span>${tx.type === 'withdraw' && tx.riskLevel !== 'low' ? `<span class="inline-block mt-1 px-2 py-0.5 rounded bg-rose-500/15 text-rose-300 text-[9px] font-bold">خطر ${escapeAdminHtml(tx.riskLevel === 'high' ? 'مرتفع' : 'متوسط')} (${Number(tx.riskScore || 0)})</span>` : ''}</td>
-                                <td class="p-4 text-amber-400 font-mono font-bold">${Number(tx.amount || 0).toFixed(2)} $</td>
+                                <td class="p-4 text-amber-400 font-mono font-bold">${Number(tx.amount || 0).toFixed(2)} $${tx.type === 'withdraw' ? `<span class="block text-[9px] text-slate-500">الصافي المحوّل: ${Number(tx.netAmount || 0).toFixed(2)} USDT</span>` : ''}</td>
                                 <td class="p-4 text-slate-300 font-mono text-[11px] select-all">${escapeAdminHtml(tx.walletAddress || tx.hash || 'غير محدد')}</td>
-                                <td class="p-4">${statusBadge}</td>
+                                <td class="p-4">${statusBadge}${payoutBadge}</td>
                                 <td class="p-4 space-x-1 space-x-reverse"><button onclick="showTransactionDetails('${tx._id}')" class="px-2 py-1 bg-cyan-500/15 text-cyan-300 rounded-lg text-[10px]">تفاصيل</button>${actionButtons}</td>
                             </tr>
                         `;
@@ -1153,7 +1155,7 @@ body.modal-open{overflow:hidden}
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.error || 'تعذر تحميل التفاصيل');
                 const tx = data.transaction;
-                content.innerHTML = `<div class="grid grid-cols-2 gap-2"><span>المستخدم<br><b>${escapeAdminHtml(tx.userId?.email || '-')}</b></span><span>المبلغ<br><b class="text-amber-300">${Number(tx.amount || 0).toFixed(2)} $</b></span><span>النوع<br><b>${escapeAdminHtml(tx.type)}</b></span><span>الحالة<br><b>${escapeAdminHtml(tx.status)}</b></span><span>الشبكة<br><b>${escapeAdminHtml(tx.network || '-')}</b></span><span>التاريخ<br><b>${escapeAdminHtml(new Date(tx.createdAt).toLocaleString('ar'))}</b></span></div><p class="mt-3 break-all">الهاش: ${escapeAdminHtml(tx.txHash || '-')}</p><p class="break-all">المحفظة: ${escapeAdminHtml(tx.walletAddress || '-')}</p>`;
+                content.innerHTML = `<div class="grid grid-cols-2 gap-2"><span>المستخدم<br><b>${escapeAdminHtml(tx.userId?.email || '-')}</b></span><span>المبلغ الإجمالي<br><b class="text-amber-300">${Number(tx.amount || 0).toFixed(2)} $</b></span><span>صافي التحويل<br><b class="text-emerald-300">${Number(tx.netAmount || 0).toFixed(2)} USDT</b></span><span>النوع<br><b>${escapeAdminHtml(tx.type)}</b></span><span>حالة الطلب<br><b>${escapeAdminHtml(tx.status)}</b></span><span>حالة الدفع<br><b>${escapeAdminHtml(tx.payout?.status || 'لم يبدأ')}</b></span><span>الشبكة<br><b>${escapeAdminHtml(tx.network || '-')}</b></span><span>تاريخ الطلب<br><b>${escapeAdminHtml(new Date(tx.createdAt).toLocaleString('ar'))}</b></span></div><p class="mt-3 break-all">هاش التحويل: ${escapeAdminHtml(tx.payout?.txHash || tx.txHash || '-')}</p><p class="break-all">محفظة الإرسال: ${escapeAdminHtml(tx.payout?.senderAddress || '-')}</p><p class="break-all">محفظة الاستلام: ${escapeAdminHtml(tx.walletAddress || '-')}</p><p class="mt-2 break-words text-rose-300">ملاحظة التنفيذ: ${escapeAdminHtml(tx.payout?.lastError || '-')}</p>`;
                 audit.innerHTML = data.auditLogs?.length ? `<h4 class="font-bold text-white mt-4">سجل القرار</h4>${data.auditLogs.map(item => `<div class="border-b border-slate-800 pb-2">${escapeAdminHtml(item.action)} · ${escapeAdminHtml(item.adminId?.email || 'مدير')} · ${escapeAdminHtml(new Date(item.createdAt).toLocaleString('ar'))}</div>`).join('')}` : '';
             } catch (error) { content.innerHTML = `<span class="text-rose-300">${escapeAdminHtml(error.message)}</span>`; }
         }
@@ -1164,7 +1166,10 @@ body.modal-open{overflow:hidden}
 
         async function handleWithdrawalAction(transactionId, action) {
             const actionText = action === 'approve' ? 'الموافقة على' : 'رفض';
-            if (!await showAdminConfirm(`هل أنت متأكد من رغبتك في ${actionText} هذا الطلب؟`, `${actionText} طلب`)) return;
+            const confirmationMessage = action === 'approve'
+                ? 'ستبدأ هذه الموافقة تحويل صافي مبلغ USDT إلى عنوان المستخدم على الشبكة المسجلة. التحويل بعد بثه لا يمكن إلغاؤه. هل راجعت العنوان والشبكة والمبلغ؟'
+                : `هل أنت متأكد من رغبتك في ${actionText} هذا الطلب؟ سيعاد مبلغ الطلب إلى رصيد المستخدم إذا لم يكن تحويله قد بُث.`;
+            if (!await showAdminConfirm(confirmationMessage, action === 'approve' ? 'موافقة وإرسال تحويل' : `${actionText} طلب`)) return;
 
             const token = getAdminAuthToken();
             try {
@@ -1182,6 +1187,24 @@ body.modal-open{overflow:hidden}
                     showToast(data.error || 'حدث خطأ في معالجة الطلب');
                 }
             } catch (e) { showToast('خطأ في الاتصال بالسيرفر'); }
+        }
+
+        async function reconcileWithdrawalPayoutAdmin(transactionId) {
+            try {
+                const endpoint = `/api/admin/withdrawals/${encodeURIComponent(transactionId)}/payout-reconcile`;
+                let response = await fetch(endpoint, { method: 'POST', headers: adminJsonHeaders(), body: JSON.stringify({}) });
+                let data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'تعذر فحص حالة التحويل');
+                if (data.canRebroadcastSameHash) {
+                    const hash = data.payout?.txHash || '';
+                    if (!await showAdminConfirm(`لم يظهر تأكيد نهائي للهاش ${hash}. سيُعاد بث المعاملة الموقعة نفسها فقط؛ لن يتم إنشاء تحويل جديد. هل تريد المتابعة؟`, 'إعادة بث آمنة لنفس المعاملة')) return;
+                    response = await fetch(endpoint, { method: 'POST', headers: adminJsonHeaders(), body: JSON.stringify({ rebroadcast: true }) });
+                    data = await response.json();
+                    if (!response.ok) throw new Error(data.error || 'تعذرت إعادة بث المعاملة نفسها');
+                }
+                showToast(data.message || 'تم تحديث حالة التحويل');
+                fetchTransactionsList(txCurrentPage);
+            } catch (error) { showToast(error.message || 'تعذر فحص التحويل'); }
         }
 
         function openEditUser(id, tier, balance, role = 'user') {

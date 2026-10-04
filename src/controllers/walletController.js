@@ -142,7 +142,8 @@ async function withdrawSupabase(req, res) {
       p_idempotency_key: idempotencyKey,
       p_risk_score: risk.riskScore,
       p_risk_level: risk.riskLevel,
-      p_risk_flags: risk.riskFlags
+      p_risk_flags: risk.riskFlags,
+      p_network: String(walletNetwork).trim().toUpperCase()
     });
     const withdrawal = result.transaction;
     await realtimeService.publish('user_data_changed', { reason: 'withdrawal_created', timestamp: new Date().toISOString() }, { userId: req.user.id });

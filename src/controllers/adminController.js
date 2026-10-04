@@ -1,6 +1,7 @@
 const { withdrawalCompletedTemplate, withdrawalRejectedTemplate } = require('../services/emailTemplates');
 const realtimeService = require('../services/realtimeService');
 const dataAccess = require('../services/dataAccess');
+const withdrawalPayoutService = require('../services/withdrawalPayoutService');
 const User = adminRepository(dataAccess.user);
 const Transaction = adminRepository(dataAccess.transaction);
 const InvestmentVault = adminRepository(dataAccess.investmentVault);
@@ -637,6 +638,10 @@ async function listWithdrawals(req, res) {
     const allTransactions = await findAdminFinancialTransactions(req.query);
     const total = allTransactions.length;
     const withdrawals = allTransactions.slice((page - 1) * limit, page * limit);
+    const withdrawalIds = withdrawals.filter(item => item.type === 'withdraw').map(item => item.id || item._id);
+    const payouts = withdrawalIds.length ? await dataAccess.withdrawalPayout.find({ transactionId: { $in: withdrawalIds } }, { limit: withdrawalIds.length }) : [];
+    const payoutByTransaction = new Map(payouts.map(item => [String(item.transactionId), safePayout(item)]));
+    withdrawals.forEach(item => { if (item.type === 'withdraw') item.payout = payoutByTransaction.get(String(item.id || item._id)) || null; });
     res.json({ success: true, withdrawals, page, totalPages: Math.max(1, Math.ceil(total / limit)), total });
   }
   catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
@@ -648,8 +653,9 @@ async function transactionDetails(req, res) {
       const transaction = await dataAccess.transaction.findOne({ id: req.params.transactionId });
       if (!transaction) return res.status(404).json({ error: 'المعاملة غير موجودة' });
       const user = transaction.userId ? await dataAccess.user.findById(transaction.userId) : null;
+      const payout = transaction.type === 'withdraw' ? await dataAccess.withdrawalPayout.findOne({ transactionId: transaction.id || transaction._id }) : null;
       const auditLogs = await dataAccess.auditLog.find({ entity: String(transaction.id || transaction._id) }, { sort: { createdAt: -1 }, limit: 20 });
-      return res.json({ success: true, transaction: { ...transaction, userId: user ? { id: user.id || user._id, email: user.email, tierCode: user.tierCode, walletAddress: user.walletAddress } : transaction.userId }, auditLogs });
+      return res.json({ success: true, transaction: { ...transaction, payout: safePayout(payout), userId: user ? { id: user.id || user._id, email: user.email, tierCode: user.tierCode, walletAddress: user.walletAddress } : transaction.userId }, auditLogs });
     }
     const transaction = await Transaction.findById(req.params.transactionId).populate('userId', 'email tierCode wallet walletAddress').lean();
     if (!transaction) return res.status(404).json({ error: 'المعاملة غير موجودة' });
@@ -751,7 +757,7 @@ async function sendWithdrawalDecisionEmail(req, transaction, action) {
   const user = await dataAccess.user.findById(transaction.userId);
   if (!user?.email) return false;
   const values = {
-    amount: Number(transaction.amount || 0).toFixed(2),
+    amount: Number(action === 'approve' ? (transaction.netAmount || transaction.amount || 0) : (transaction.amount || 0)).toFixed(2),
     transactionId: transaction.id || transaction._id,
     walletAddress: transaction.walletAddress || '',
     ...(action === 'approve'
@@ -774,6 +780,8 @@ function transactionErrorResponse(res, err) {
   if (err.message === 'ADMIN_FINANCE_RPC_REQUIRED') return res.status(503).json({ error: 'معالجة المعاملات الإدارية متوقفة حتى تطبيق RPC الإدارة الذرية في Supabase' });
   if (err.message === 'TRANSACTION_NOT_FOUND' || errorCode === 'P0002') return res.status(404).json({ error: 'المعاملة غير موجودة أو تمت إزالتها' });
   if (err.message === 'PROCESSED') return res.status(409).json({ error: 'تمت معالجة هذه المعاملة سابقًا' });
+  if (['PAYOUT_MAY_HAVE_BEEN_SENT', 'PAYOUT_ALREADY_PREPARED', 'WITHDRAWAL_NOT_PENDING', 'PAYOUT_HASH_MISMATCH'].includes(err.message)) return res.status(409).json({ error: 'حالة التحويل تغيرت؛ لا يمكن إعادة الإرسال أو رد الرصيد قبل حسم حالة الشبكة' });
+  if (err.message === 'FINANCE_PERMISSION_REQUIRED' || errorCode === '42501') return res.status(403).json({ error: 'ليس لديك صلاحية تنفيذ هذا الإجراء المالي' });
   if (err.message === 'INVALID_ACTION' || errorCode === 'P0001') return res.status(400).json({ error: 'الإجراء المطلوب غير صالح أو لا يمكن تنفيذه على هذه المعاملة' });
   if (err.message === 'USER_WALLET_NOT_FOUND') return res.status(409).json({ error: 'محفظة المستخدم غير موجودة ولا يمكن اعتماد المعاملة' });
   if (err.statusCode) return res.status(err.statusCode).json({ error: err.message === 'NOT_FOUND' ? 'المعاملة غير موجودة' : err.message === 'PROCESSED' ? 'تمت معالجة هذه المعاملة سابقاً' : 'الإجراء المطلوب غير صالح' });
@@ -782,22 +790,232 @@ function transactionErrorResponse(res, err) {
 
 async function withdrawalAction(req, res) {
   try {
-    const result = await applyWithdrawalAction(req.body.transactionId, req.body.action, req);
+    const transactionId = String(req.body.transactionId || '').trim();
+    const action = String(req.body.action || '').trim();
+    const transaction = await dataAccess.transaction.findOne({ id: transactionId });
+    if (!transaction) return res.status(404).json({ error: 'المعاملة غير موجودة' });
+    let result;
+    if (transaction.type === 'withdraw' && action === 'approve') {
+      return await approveAndBroadcastWithdrawal(req, res, transactionId);
+    }
+    if (transaction.type === 'withdraw' && action === 'reject') {
+      result = await dataAccess.callSupabaseRpc('operix_admin_withdrawal_reject_atomic', {
+        p_transaction_id: transactionId,
+        p_admin_user_id: req.user?.id || null,
+        p_note: String(req.body?.note || '')
+      });
+    } else {
+      result = await applyWithdrawalAction(transactionId, action, req);
+    }
     let emailSent = false;
-    try { emailSent = await sendWithdrawalDecisionEmail(req, result.transaction, req.body.action); }
+    try { emailSent = await sendWithdrawalDecisionEmail(req, result.transaction, action); }
     catch (emailError) { console.error('Withdrawal decision email failed:', emailError.message); }
-    res.json({ success: true, emailSent, message: `تمت عملية (${req.body.action === 'approve' ? 'الموافقة' : 'الرفض'}) بنجاح` });
+    res.json({ success: true, emailSent, message: `تمت عملية (${action === 'approve' ? 'الموافقة' : 'الرفض'}) بنجاح` });
   } catch (err) { transactionErrorResponse(res, err); }
+}
+
+async function approveAndBroadcastWithdrawal(req, res, transactionId) {
+  if (String(process.env.WITHDRAWAL_PAYOUTS_ENABLED || '').toLowerCase() !== 'true') {
+    return res.status(503).json({ success: false, error: 'الإرسال الآلي متوقف افتراضيًا. فعّله بعد تطبيق ترحيل قاعدة البيانات وتمويل محفظة الإرسال والتحقق منها.' });
+  }
+  let payout;
+  try {
+    const claim = await dataAccess.callSupabaseRpc('operix_admin_withdrawal_claim_atomic', {
+      p_transaction_id: transactionId,
+      p_admin_user_id: req.user?.id || null
+    });
+    payout = claim.payout;
+    if (!payout) throw new Error('PAYOUT_CLAIM_FAILED');
+    if (payout.status === 'paid') return res.json({ success: true, duplicate: true, payout: safePayout(payout), message: 'تم إرسال هذا السحب وتأكيده مسبقًا' });
+    if (payout.status === 'broadcast') return res.status(202).json({ success: true, duplicate: true, payout: safePayout(payout), message: 'المعاملة قيد التأكيد؛ لن يتم إرسال تحويل مكرر' });
+    if (payout.status === 'manual_review' || (payout.status === 'failed' && payout.txHash)) {
+      return res.status(409).json({ error: 'تحتاج هذه الدفعة إلى مراجعة قبل أي إعادة إرسال', payout: safePayout(payout) });
+    }
+
+    let prepared;
+    try {
+      prepared = await withdrawalPayoutService.preparePayout(claim.transaction);
+    } catch (error) {
+      await dataAccess.callSupabaseRpc('operix_admin_withdrawal_payout_failed_atomic', {
+        p_transaction_id: transactionId, p_tx_hash: null, p_error: safePayoutError(error)
+      });
+      throw error;
+    }
+
+    payout = await dataAccess.callSupabaseRpc('operix_admin_withdrawal_record_broadcast_atomic', {
+      p_transaction_id: transactionId,
+      p_admin_user_id: req.user?.id || null,
+      p_tx_hash: prepared.txHash,
+      p_sender_address: prepared.senderAddress,
+      p_signed_payload: prepared.encryptedPayload,
+      p_payload_expires_at: prepared.payloadExpiresAt
+    });
+    if (String(payout.txHash || '').toLowerCase() !== String(prepared.txHash).toLowerCase()) {
+      return res.status(409).json({ error: 'تم حجز طلب السحب بواسطة عملية أخرى؛ لم يتم بث المعاملة التي أُنشئت الآن' });
+    }
+
+    try {
+      await withdrawalPayoutService.broadcastPreparedPayout(payout.network, payout.signedPayload);
+      payout = await dataAccess.callSupabaseRpc('operix_admin_withdrawal_payout_retry_atomic', { p_transaction_id: transactionId, p_error: '' });
+    } catch (broadcastError) {
+      // The signed transaction and its hash are durable before network broadcast. Cron can safely rebroadcast the exact same payload.
+      payout = await dataAccess.callSupabaseRpc('operix_admin_withdrawal_payout_retry_atomic', { p_transaction_id: transactionId, p_error: safePayoutError(broadcastError) });
+      console.error('Withdrawal broadcast deferred to retry worker:', safePayoutError(broadcastError));
+    }
+    return res.status(202).json({ success: true, payout: safePayout(payout), message: 'تم اعتماد الطلب وبث تحويل USDT؛ يجري التحقق من تأكيد الشبكة تلقائيًا' });
+  } catch (error) {
+    if (error.statusCode) return transactionErrorResponse(res, error);
+    console.error('Withdrawal approval/payout failed:', safePayoutError(error));
+    return res.status(503).json({ success: false, error: publicPayoutError(error) });
+  }
+}
+
+function safePayout(payout) {
+  if (!payout) return null;
+  const { signedPayload, ...safe } = payout;
+  return safe;
+}
+
+function safePayoutError(error) {
+  return String(error?.message || 'PAYOUT_PROVIDER_ERROR').replace(/[\r\n\t]+/g, ' ').slice(0, 300);
+}
+
+function publicPayoutError(error) {
+  const message = safePayoutError(error);
+  if (/NOT_CONFIGURED|not configured/i.test(message)) return 'الإرسال الآلي غير مهيأ: أضف مفاتيح المحفظة وعنوان RPC إلى إعدادات الخادم';
+  if (/BALANCE_INSUFFICIENT/.test(message)) return 'رصيد محفظة الإرسال أو رصيد رسوم الشبكة غير كافٍ';
+  if (/INVALID_.*RECIPIENT|INVALID_WITHDRAWAL_NETWORK|WITHDRAWAL_NETWORK_REQUIRED|PAYOUT_AMOUNT/.test(message)) return 'بيانات الشبكة أو عنوان الاستلام أو المبلغ غير صالح';
+  return 'تعذر تجهيز التحويل. لم يتم إرسال الأموال، ويمكن إعادة المحاولة بعد معالجة إعداد المحفظة';
+}
+
+async function processWithdrawalPayoutQueue(resendClient) {
+  if (String(process.env.WITHDRAWAL_PAYOUTS_ENABLED || '').toLowerCase() !== 'true') return { processed: 0, skipped: true, reason: 'WITHDRAWAL_PAYOUTS_DISABLED' };
+  if (!dataAccess.isSupabaseRuntime()) return { processed: 0, skipped: true };
+  const stalePreparing = await dataAccess.withdrawalPayout.find({ status: 'preparing', txHash: null, updatedAt: { $lt: new Date(Date.now() - 5 * 60 * 1000) } }, { sort: { updatedAt: 1 }, limit: 2 });
+  let recovered = 0;
+  for (const payout of stalePreparing) {
+    try {
+      const result = await dataAccess.callSupabaseRpc('operix_admin_withdrawal_payout_recover_stale_preparing_atomic', { p_transaction_id: payout.transactionId });
+      if (result) recovered++;
+    } catch (error) {
+      console.error(`Stale withdrawal preparation recovery failed (${payout.transactionId}):`, safePayoutError(error));
+    }
+  }
+  const payouts = await dataAccess.withdrawalPayout.find({ status: 'broadcast', nextAttemptAt: { $lte: new Date() } }, { sort: { nextAttemptAt: 1 }, limit: 2 });
+  const results = [];
+  for (const payout of payouts) {
+    try {
+      const inspection = await withdrawalPayoutService.inspectPayout(payout.network, payout.txHash, payout.signedPayload);
+      if (inspection.state === 'confirmed') {
+        const result = await dataAccess.callSupabaseRpc('operix_admin_withdrawal_payout_paid_atomic', {
+          p_transaction_id: payout.transactionId, p_tx_hash: payout.txHash, p_confirmations: inspection.confirmations || 0
+        });
+        if (!result.duplicate) {
+          try { await realtimeService.publish('user_data_changed', { reason: 'withdrawal_paid', timestamp: new Date().toISOString() }, { userId: result.transaction.userId }); } catch (error) { }
+          try { await realtimeService.publish('admin_transaction_updated', { transactionId: result.transaction.id, type: 'withdraw', status: 'approved' }, { scope: 'admin' }); } catch (error) { }
+          try { await sendWithdrawalDecisionEmail({ app: { locals: { resend: resendClient } } }, result.transaction, 'approve'); }
+          catch (error) { console.error('Confirmed payout email failed:', safePayoutError(error)); }
+        }
+        results.push({ transactionId: payout.transactionId, state: 'paid' });
+        continue;
+      }
+      if (inspection.state === 'expired') {
+        await dataAccess.callSupabaseRpc('operix_admin_withdrawal_payout_manual_review_atomic', { p_transaction_id: payout.transactionId, p_error: 'SIGNED_TRANSACTION_EXPIRED_AND_NOT_FOUND_ON_EITHER_TRON_NODE' });
+        results.push({ transactionId: payout.transactionId, state: 'manual_review' });
+        continue;
+      }
+      if (inspection.state === 'failed') {
+        await dataAccess.callSupabaseRpc('operix_admin_withdrawal_payout_failed_atomic', {
+          p_transaction_id: payout.transactionId, p_tx_hash: payout.txHash,
+          p_error: inspection.state === 'expired' ? 'SIGNED_TRANSACTION_EXPIRED_NOT_CONFIRMED' : 'ON_CHAIN_TRANSACTION_REVERTED'
+        });
+        results.push({ transactionId: payout.transactionId, state: 'failed' });
+        continue;
+      }
+      if (inspection.state === 'confirming' || inspection.state === 'confirming_failure') {
+        await dataAccess.callSupabaseRpc('operix_admin_withdrawal_payout_defer_atomic', { p_transaction_id: payout.transactionId });
+        results.push({ transactionId: payout.transactionId, state: 'confirming' });
+        continue;
+      }
+      if (Number(payout.broadcastAttempts || 0) >= withdrawalPayoutService.getMaxBroadcastAttempts()) {
+        await dataAccess.callSupabaseRpc('operix_admin_withdrawal_payout_manual_review_atomic', { p_transaction_id: payout.transactionId, p_error: 'MAX_SAME_HASH_BROADCAST_ATTEMPTS_REACHED' });
+        results.push({ transactionId: payout.transactionId, state: 'manual_review' });
+        continue;
+      }
+      try {
+        await withdrawalPayoutService.broadcastPreparedPayout(payout.network, payout.signedPayload);
+        await dataAccess.callSupabaseRpc('operix_admin_withdrawal_payout_retry_atomic', { p_transaction_id: payout.transactionId, p_error: '' });
+      } catch (error) {
+        await dataAccess.callSupabaseRpc('operix_admin_withdrawal_payout_retry_atomic', { p_transaction_id: payout.transactionId, p_error: safePayoutError(error) });
+      }
+      results.push({ transactionId: payout.transactionId, state: 'broadcast' });
+    } catch (error) {
+      console.error(`Withdrawal payout reconciliation failed (${payout.transactionId}):`, safePayoutError(error));
+      try { await dataAccess.callSupabaseRpc('operix_admin_withdrawal_payout_defer_atomic', { p_transaction_id: payout.transactionId }); }
+      catch (deferError) { console.error(`Withdrawal payout reschedule failed (${payout.transactionId}):`, safePayoutError(deferError)); }
+      results.push({ transactionId: payout.transactionId, state: 'error' });
+    }
+  }
+  return { processed: results.length, recoveredStalePreparations: recovered, results };
+}
+
+async function reconcileWithdrawalPayout(req, res) {
+  try {
+    const transactionId = String(req.params.transactionId || '').trim();
+    const payout = await dataAccess.withdrawalPayout.findOne({ transactionId });
+    if (!payout || !payout.txHash) return res.status(404).json({ error: 'لا توجد دفعة موقعة لهذا الطلب' });
+    if (!['broadcast', 'manual_review'].includes(payout.status)) return res.status(409).json({ error: 'حالة الدفعة لا تحتاج إلى فحص يدوي', payout: safePayout(payout) });
+    const inspection = await withdrawalPayoutService.inspectPayout(payout.network, payout.txHash, payout.signedPayload);
+    if (inspection.state === 'confirmed') {
+      const result = await dataAccess.callSupabaseRpc('operix_admin_withdrawal_payout_paid_atomic', {
+        p_transaction_id: transactionId, p_tx_hash: payout.txHash, p_confirmations: inspection.confirmations || 0
+      });
+      if (!result.duplicate) {
+        try { await realtimeService.publish('user_data_changed', { reason: 'withdrawal_paid', timestamp: new Date().toISOString() }, { userId: result.transaction.userId }); } catch (error) { }
+        try { await sendWithdrawalDecisionEmail({ app: { locals: { resend: req.app.locals.resend } } }, result.transaction, 'approve'); } catch (error) { console.error('Reconciled payout email failed:', safePayoutError(error)); }
+      }
+      return res.json({ success: true, payout: safePayout(result.payout), message: 'تم تأكيد التحويل على الشبكة وتحديث الطلب' });
+    }
+    if (inspection.state === 'failed' || inspection.state === 'expired') {
+      const failed = await dataAccess.callSupabaseRpc('operix_admin_withdrawal_payout_failed_atomic', {
+        p_transaction_id: transactionId, p_tx_hash: payout.txHash,
+        p_error: inspection.state === 'expired' ? 'SIGNED_TRANSACTION_EXPIRED_AND_ABSENT' : 'ON_CHAIN_TRANSACTION_REVERTED_FINAL'
+      });
+      return res.json({ success: true, payout: safePayout(failed), message: 'أكدت الشبكة عدم نجاح التحويل؛ أصبح الطلب قابلًا للرفض وإعادة الرصيد' });
+    }
+    if (req.body?.rebroadcast === true && payout.status === 'manual_review' && inspection.state === 'pending') {
+      const resumed = await dataAccess.callSupabaseRpc('operix_admin_withdrawal_payout_resume_atomic', {
+        p_transaction_id: transactionId, p_admin_user_id: req.user?.id || null
+      });
+      try {
+        await withdrawalPayoutService.broadcastPreparedPayout(resumed.network, resumed.signedPayload);
+        const updated = await dataAccess.callSupabaseRpc('operix_admin_withdrawal_payout_retry_atomic', { p_transaction_id: transactionId, p_error: '' });
+        return res.status(202).json({ success: true, payout: safePayout(updated), message: 'أُعيد بث نفس المعاملة والهاش، دون إنشاء تحويل جديد' });
+      } catch (error) {
+        const updated = await dataAccess.callSupabaseRpc('operix_admin_withdrawal_payout_retry_atomic', { p_transaction_id: transactionId, p_error: safePayoutError(error) });
+        return res.status(202).json({ success: true, payout: safePayout(updated), message: 'بقيت المعاملة نفسها في قائمة إعادة المحاولة الآمنة' });
+      }
+    }
+    return res.json({ success: true, state: inspection.state, canRebroadcastSameHash: payout.status === 'manual_review' && inspection.state === 'pending', payout: safePayout(payout), message: inspection.state === 'confirming' || inspection.state === 'confirming_failure' ? 'التحويل ظاهر على الشبكة وما زال ينتظر التأكيد النهائي' : 'لم يظهر تأكيد نهائي بعد؛ لم نغيّر حالة الطلب' });
+  } catch (error) {
+    console.error('Manual payout reconciliation failed:', safePayoutError(error));
+    return transactionErrorResponse(res, error);
+  }
 }
 
 async function bulkWithdrawalAction(req, res) {
   const transactionIds = Array.isArray(req.body.transactionIds) ? req.body.transactionIds.map(String).slice(0, 50) : [];
   const action = req.body.action;
   if (!transactionIds.length || !['approve', 'reject'].includes(action)) return res.status(400).json({ error: 'حدد معاملات وإجراءً صالحًا' });
+  const selected = await dataAccess.transaction.find({ id: { $in: transactionIds } }, { limit: transactionIds.length });
+  if (action === 'approve' && selected.some(item => item.type === 'withdraw')) return res.status(400).json({ error: 'لأمان التحويلات، يجب اعتماد كل طلب سحب منفردًا من زر الموافقة الخاص به' });
   const results = [];
   for (const transactionId of transactionIds) {
     try {
-      const result = await applyWithdrawalAction(transactionId, action, req);
+      const transaction = selected.find(item => String(item.id || item._id) === transactionId);
+      const result = transaction?.type === 'withdraw' && action === 'reject'
+        ? await dataAccess.callSupabaseRpc('operix_admin_withdrawal_reject_atomic', { p_transaction_id: transactionId, p_admin_user_id: req.user?.id || null, p_note: String(req.body?.note || '') })
+        : await applyWithdrawalAction(transactionId, action, req);
       let emailSent = false;
       try { emailSent = await sendWithdrawalDecisionEmail(req, result.transaction, action); }
       catch (emailError) { console.error('Withdrawal decision email failed:', emailError.message); }
@@ -881,4 +1099,4 @@ async function processScheduledBroadcasts(webpush) {
   return [];
 }
 
-module.exports = { saveVipLevel, listVipLevels, deleteVipLevel, overview, analytics, financialSummary, investmentVaultSummary, getInvestmentVaultContracts, updateInvestmentVaultContracts, listInvestmentVaults, emergencyReleaseInvestmentVault, riskSummary, listUsers, userDetails, resetDailyTasks, toggleBan, bulkToggleBan, revokeUserSessions, verifyUserEmail, disableUserTwoFactor, updateUser, updateUserAccount, updateUserRole, updateUserTier, listWithdrawals, transactionDetails, exportTransactions, listAuditLogs, listReferrals, referralTree, withdrawalAction, bulkWithdrawalAction, gameSettings, updateGameSettings, broadcast, listBroadcasts, processScheduledBroadcasts, sendAdminAuditBroadcast };
+module.exports = { saveVipLevel, listVipLevels, deleteVipLevel, overview, analytics, financialSummary, investmentVaultSummary, getInvestmentVaultContracts, updateInvestmentVaultContracts, listInvestmentVaults, emergencyReleaseInvestmentVault, riskSummary, listUsers, userDetails, resetDailyTasks, toggleBan, bulkToggleBan, revokeUserSessions, verifyUserEmail, disableUserTwoFactor, updateUser, updateUserAccount, updateUserRole, updateUserTier, listWithdrawals, transactionDetails, exportTransactions, listAuditLogs, listReferrals, referralTree, withdrawalAction, reconcileWithdrawalPayout, bulkWithdrawalAction, gameSettings, updateGameSettings, broadcast, listBroadcasts, processScheduledBroadcasts, processWithdrawalPayoutQueue, sendAdminAuditBroadcast };

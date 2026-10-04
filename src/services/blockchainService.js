@@ -91,4 +91,4 @@ function getDepositAddresses() {
   return { TRC20: blockchainConfig.TRC20.depositAddress || null, BEP20: blockchainConfig.BEP20.depositAddress || null };
 }
 
-module.exports = { verifyDeposit, getDepositAddresses };
+module.exports = { verifyDeposit, getDepositAddresses, getBlockchainConfig: () => blockchainConfig };

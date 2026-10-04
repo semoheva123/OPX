@@ -5,6 +5,7 @@
       "src": "server.js",
       "use": "@vercel/node",
       "config": {
+        "maxDuration": 60,
         "includeFiles": [
           "*.html",
           "app.js",
@@ -80,6 +81,10 @@
     {
       "path": "/api/internal/cron/refresh-daily-task-entities",
       "schedule": "5 0 * * *"
+    },
+    {
+      "path": "/api/internal/cron/process-withdrawal-payouts",
+      "schedule": "* * * * *"
     }
   ]
 }

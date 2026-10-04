@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "build:css": "tailwindcss -i ./styles/tailwind.input.css -o ./dist/tailwind.css --minify",
-    "test": "node --check app.js && node --check server.js && node --check src/app.js && node --check src/controllers/authController.js && node --check src/controllers/adminController.js && node --check src/controllers/activityController.js && node --check src/controllers/publicController.js && node --check src/controllers/userController.js && node --check src/controllers/notificationController.js && node --check src/controllers/supportController.js && node --check src/controllers/couponController.js && node --check src/controllers/socialFeedController.js && node --check src/controllers/messageController.js && node --check src/services/dataAccess.js && node --check src/services/dailyTaskAutomation.js && node --check src/routes/activityRoutes.js && node --check src/jobs/dailyTaskGeneration.js && node --check src/jobs/aiAnnouncer.js && node --check src/models/SocialPost.js && node --check src/models/Message.js && node --check src/routes/socialFeedRoutes.js && node --check src/routes/messageRoutes.js && node --check src/routes/adminRoutes.js && node tests/social-feed-unit.test.js && node tests/identity-verification-removed.test.js && node tests/referral-campaign-points.test.js && node tests/tier-upgrade-eligibility.test.js && node tests/home-campaign-placement.test.js && node tests/tier-four-free-activation.test.js && node tests/team-member-counts.test.js && node tests/game-referral-cycles.test.js && node tests/daily-task-board.test.js && node tests/daily-evaluation-submission.test.js && node tests/daily-task-automation.test.js && node tests/supabase-production-readiness.test.js && node tests/home-summary-supabase.test.js"
+    "test": "node --check app.js && node --check server.js && node --check src/app.js && node --check src/controllers/authController.js && node --check src/controllers/adminController.js && node --check src/controllers/activityController.js && node --check src/controllers/publicController.js && node --check src/controllers/userController.js && node --check src/controllers/walletController.js && node --check src/controllers/notificationController.js && node --check src/controllers/supportController.js && node --check src/controllers/couponController.js && node --check src/controllers/socialFeedController.js && node --check src/controllers/messageController.js && node --check src/services/dataAccess.js && node --check src/services/dailyTaskAutomation.js && node --check src/services/withdrawalPayoutService.js && node --check src/routes/activityRoutes.js && node --check src/jobs/dailyTaskGeneration.js && node --check src/jobs/aiAnnouncer.js && node --check src/models/SocialPost.js && node --check src/models/Message.js && node --check src/routes/socialFeedRoutes.js && node --check src/routes/messageRoutes.js && node --check src/routes/adminRoutes.js && node tests/social-feed-unit.test.js && node tests/identity-verification-removed.test.js && node tests/referral-campaign-points.test.js && node tests/tier-upgrade-eligibility.test.js && node tests/home-campaign-placement.test.js && node tests/tier-four-free-activation.test.js && node tests/team-member-counts.test.js && node tests/game-referral-cycles.test.js && node tests/daily-task-board.test.js && node tests/daily-evaluation-submission.test.js && node tests/daily-task-automation.test.js && node tests/supabase-production-readiness.test.js && node tests/home-summary-supabase.test.js && node tests/automatic-withdrawals.test.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",
@@ -14,6 +14,7 @@
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
+    "ethers": "^6.17.0",
     "express": "^5.2.1",
     "express-rate-limit": "^7.2.0",
     "groq-sdk": "^0.3.0",
@@ -26,6 +27,7 @@
     "qrcode": "^1.5.4",
     "resend": "^3.2.0",
     "tailwindcss": "^3.4.17",
+    "tronweb": "^6.5.1",
     "web-push": "^3.6.6"
   },
   "engines": {
@@ -36,5 +38,8 @@
     "baseline-browser-mapping": "^2.11.20",
     "browserslist": "^4.28.8",
     "caniuse-lite": "^1.0.30001810"
+  },
+  "overrides": {
+    "axios": "^1.20.0"
   }
 }

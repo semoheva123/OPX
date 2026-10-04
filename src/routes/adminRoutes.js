@@ -35,6 +35,7 @@ router.post('/users/role', requireFullAdmin, adminController.updateUserRole);
 router.get('/withdrawals', requirePermission('finance'), adminController.listWithdrawals);
 router.get('/withdrawals/export', requirePermission('finance'), adminController.exportTransactions);
 router.get('/withdrawals/:transactionId', requirePermission('finance'), adminController.transactionDetails);
+router.post('/withdrawals/:transactionId/payout-reconcile', requirePermission('finance'), adminController.reconcileWithdrawalPayout);
 router.get('/audit-logs', requirePermission('read_audit'), adminController.listAuditLogs);
 router.get('/referrals', requirePermission('read_referrals'), adminController.listReferrals);
 router.get('/referrals/tree/:userId', requirePermission('read_referrals'), adminController.referralTree);

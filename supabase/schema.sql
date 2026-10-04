@@ -584,7 +584,8 @@ create or replace function public.operix_withdraw_atomic(
   p_idempotency_key text,
   p_risk_score integer,
   p_risk_level text,
-  p_risk_flags jsonb
+  p_risk_flags jsonb,
+  p_network text
 ) returns jsonb
 language plpgsql
 security definer
@@ -594,7 +595,9 @@ declare
   wallet_row wallet_balances%rowtype;
   transaction_row transactions%rowtype;
   before_balance numeric;
+  normalized_network text := upper(trim(coalesce(p_network, '')));
 begin
+  if normalized_network not in ('TRC20', 'BEP20') then raise exception using errcode = 'P0001', message = 'INVALID_WITHDRAWAL_NETWORK'; end if;
   if p_idempotency_key is not null and exists (select 1 from transactions where user_id = p_user_id and type = 'withdraw' and idempotency_key = p_idempotency_key) then
     select * into transaction_row from transactions where user_id = p_user_id and type = 'withdraw' and idempotency_key = p_idempotency_key limit 1;
     return jsonb_build_object('duplicate', true, 'transaction', row_to_json(transaction_row));
@@ -609,11 +612,11 @@ begin
       balance = deposit_balance + profit_balance - p_amount,
       updated_at = now()
   where user_id = p_user_id;
-  insert into transactions (user_id, type, status, amount, fee_amount, net_amount, wallet_address, idempotency_key, risk_score, risk_level, risk_flags)
-  values (p_user_id, 'withdraw', 'pending', p_amount, p_fee, p_net_amount, p_wallet_address, nullif(p_idempotency_key, ''), p_risk_score, p_risk_level, coalesce(p_risk_flags, '[]'::jsonb))
+  insert into transactions (user_id, type, status, amount, fee_amount, net_amount, wallet_address, network, idempotency_key, risk_score, risk_level, risk_flags)
+  values (p_user_id, 'withdraw', 'pending', p_amount, p_fee, p_net_amount, p_wallet_address, normalized_network, nullif(p_idempotency_key, ''), p_risk_score, p_risk_level, coalesce(p_risk_flags, '[]'::jsonb))
   returning * into transaction_row;
   insert into financial_ledger (user_id, type, currency, amount, fee_amount, net_amount, balance_before, balance_after, status, source, reference_id, metadata)
-  values (p_user_id, 'withdraw', 'USDT', p_amount, p_fee, p_net_amount, before_balance, before_balance - p_amount, 'pending', 'withdrawal_request', transaction_row.id::text, jsonb_build_object('walletAddress', p_wallet_address, 'riskLevel', p_risk_level));
+  values (p_user_id, 'withdraw', 'USDT', p_amount, p_fee, p_net_amount, before_balance, before_balance - p_amount, 'pending', 'withdrawal_request', transaction_row.id::text, jsonb_build_object('walletAddress', p_wallet_address, 'network', normalized_network, 'riskLevel', p_risk_level));
   return jsonb_build_object('duplicate', false, 'transaction', row_to_json(transaction_row), 'wallet', (select row_to_json(w) from wallet_balances w where w.user_id = p_user_id));
 end;
 $$;
