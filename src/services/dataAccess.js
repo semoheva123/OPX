@@ -8,6 +8,7 @@ const modelMap = {
   SecurityEvent: { table: 'security_events' },
   Transaction: { table: 'transactions' },
   WithdrawalPayout: { table: 'withdrawal_payouts' },
+  TronDepositAddress: { table: 'tron_deposit_addresses' },
   FinancialLedger: { table: 'financial_ledger' },
   VipLevel: { table: 'vip_levels' },
   GameSetting: { table: 'game_settings' },
@@ -411,6 +412,8 @@ const createRepository = (name) => {
 const dataAccess = {
   isSupabaseRuntime,
   callSupabaseRpc,
+  withdrawalPayout: createRepository('WithdrawalPayout'),
+  tronDepositAddress: createRepository('TronDepositAddress'),
   user: {
     async findByEmail(email) {
       if (isSupabaseRuntime() && supabaseAdmin) {

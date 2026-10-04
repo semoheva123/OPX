@@ -59,12 +59,13 @@ function responseRecorder() {
 	const calls = [];
 	let currentPayoutStatus = 'preparing';
 	try {
-		dataAccess.transaction.findOne = async () => ({ id: 'withdraw-1', type: 'withdraw', status: 'pending' });
+		await assert.rejects(payout.preparePayout({ network: 'BEP20', walletAddress: '0x1111111111111111111111111111111111111111', amount: 20 }), /UNSUPPORTED_WITHDRAWAL_NETWORK/);
+		dataAccess.transaction.findOne = async () => ({ id: 'withdraw-1', type: 'withdraw', status: 'pending', network: 'TRC20' });
 		dataAccess.callSupabaseRpc = async (name, args) => {
 			calls.push(name);
-			if (name === 'operix_admin_withdrawal_claim_atomic') return { transaction: { id: 'withdraw-1', network: 'BEP20', walletAddress: '0x1111111111111111111111111111111111111111', netAmount: 20 }, payout: { transactionId: 'withdraw-1', status: currentPayoutStatus, network: 'BEP20' } };
-			if (name === 'operix_admin_withdrawal_record_broadcast_atomic') { currentPayoutStatus = 'broadcast'; return { transactionId: 'withdraw-1', status: 'broadcast', network: 'BEP20', txHash: args.p_tx_hash, signedPayload: args.p_signed_payload }; }
-			if (name === 'operix_admin_withdrawal_payout_retry_atomic') return { transactionId: 'withdraw-1', status: 'broadcast', network: 'BEP20', txHash: '0xhash', signedPayload: 'encrypted' };
+			if (name === 'operix_admin_withdrawal_claim_atomic') return { transaction: { id: 'withdraw-1', network: 'TRC20', walletAddress: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8', netAmount: 20 }, payout: { transactionId: 'withdraw-1', status: currentPayoutStatus, network: 'TRC20' } };
+			if (name === 'operix_admin_withdrawal_record_broadcast_atomic') { currentPayoutStatus = 'broadcast'; return { transactionId: 'withdraw-1', status: 'broadcast', network: 'TRC20', txHash: args.p_tx_hash, signedPayload: args.p_signed_payload }; }
+			if (name === 'operix_admin_withdrawal_payout_retry_atomic') return { transactionId: 'withdraw-1', status: 'broadcast', network: 'TRC20', txHash: '0xhash', signedPayload: 'encrypted' };
 			throw new Error(`Unexpected RPC: ${name}`);
 		};
 		payout.preparePayout = async () => { calls.push('prepare'); return { txHash: '0xhash', senderAddress: '0x2222222222222222222222222222222222222222', encryptedPayload: 'encrypted', payloadExpiresAt: null }; };

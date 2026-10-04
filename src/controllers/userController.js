@@ -43,7 +43,7 @@ async function setWalletAddress(req, res) {
   try {
     const { walletAddress, walletNetwork } = req.body;
     if (!walletAddress || typeof walletAddress !== 'string' || !walletAddress.trim()) return res.status(400).json({ error: 'يرجى إدخال عنوان محفظة صالح' });
-    if (!['TRC20', 'BEP20'].includes(String(walletNetwork || '').trim().toUpperCase())) return res.status(400).json({ error: 'اختر شبكة سحب صالحة' });
+    if (String(walletNetwork || '').trim().toUpperCase() !== 'TRC20') return res.status(400).json({ error: 'الشبكة المدعومة حاليًا هي TRC20 فقط' });
     const user = await dataAccess.user.findById(req.user.id);
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     if (user.walletAddress && user.walletAddress.trim()) return res.status(400).json({ error: 'عنوان المحفظة مثبت سابقاً، لا يمكنك تعديله إلا عن طريق التواصل مع الأدمن.' });

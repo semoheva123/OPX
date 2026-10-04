@@ -818,6 +818,10 @@ async function approveAndBroadcastWithdrawal(req, res, transactionId) {
   if (String(process.env.WITHDRAWAL_PAYOUTS_ENABLED || '').toLowerCase() !== 'true') {
     return res.status(503).json({ success: false, error: 'الإرسال الآلي متوقف افتراضيًا. فعّله بعد تطبيق ترحيل قاعدة البيانات وتمويل محفظة الإرسال والتحقق منها.' });
   }
+  const requestedTransaction = await dataAccess.transaction.findOne({ id: transactionId });
+  if (!requestedTransaction || requestedTransaction.network !== 'TRC20') {
+    return res.status(409).json({ success: false, error: 'تم إيقاف التحويلات المالية على الشبكات غير TRC20.' });
+  }
   let payout;
   try {
     const claim = await dataAccess.callSupabaseRpc('operix_admin_withdrawal_claim_atomic', {
@@ -888,6 +892,63 @@ function publicPayoutError(error) {
   return 'تعذر تجهيز التحويل. لم يتم إرسال الأموال، ويمكن إعادة المحاولة بعد معالجة إعداد المحفظة';
 }
 
+async function processAutomaticWithdrawalApprovals() {
+  if (String(process.env.WITHDRAWAL_AUTO_APPROVAL_ENABLED || '').toLowerCase() !== 'true') {
+    return { processed: 0, skipped: true, reason: 'WITHDRAWAL_AUTO_APPROVAL_DISABLED' };
+  }
+  if (String(process.env.WITHDRAWAL_PAYOUTS_ENABLED || '').toLowerCase() !== 'true') {
+    return { processed: 0, skipped: true, reason: 'WITHDRAWAL_PAYOUTS_DISABLED' };
+  }
+  if (!dataAccess.isSupabaseRuntime()) return { processed: 0, skipped: true, reason: 'SUPABASE_RUNTIME_REQUIRED' };
+
+  const automationAdminId = String(process.env.WITHDRAWAL_AUTO_APPROVAL_ADMIN_ID || '').trim();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(automationAdminId)) {
+    return { processed: 0, skipped: true, reason: 'WITHDRAWAL_AUTO_APPROVAL_ADMIN_ID_NOT_CONFIGURED' };
+  }
+  const maxSingle = Math.min(5000, Math.max(20, Number(process.env.WITHDRAWAL_AUTO_MAX_SINGLE_USDT || 100)));
+  const maxDaily = Math.max(maxSingle, Number(process.env.WITHDRAWAL_AUTO_DAILY_LIMIT_USDT || 250));
+  const maxRiskScore = Math.min(39, Math.max(0, Number(process.env.WITHDRAWAL_AUTO_MAX_RISK_SCORE || 20)));
+  const delayMinutes = Math.max(10, Number(process.env.WITHDRAWAL_AUTO_DELAY_MINUTES || 30));
+  const eligibleBefore = new Date(Date.now() - delayMinutes * 60 * 1000);
+  const pending = await dataAccess.transaction.find({
+    type: 'withdraw', status: 'pending', network: 'TRC20', riskLevel: 'low',
+    riskScore: { $lte: maxRiskScore }, amount: { $lte: maxSingle }, createdAt: { $lte: eligibleBefore }
+  }, { sort: { createdAt: 1 }, limit: 5 });
+
+  const results = [];
+  for (const transaction of pending) {
+    try {
+      const user = await dataAccess.user.findById(transaction.userId);
+      const amount = Number(transaction.amount || 0);
+      if (!user || user.isBanned || !user.emailVerified || !user.twoFactorEnabled ||
+          String(user.walletNetwork || '').toUpperCase() !== 'TRC20' ||
+          String(user.walletAddress || '').trim() !== String(transaction.walletAddress || '').trim() ||
+          !/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(String(transaction.walletAddress || '').trim())) {
+        results.push({ transactionId: transaction.id, state: 'manual_review', reason: 'ACCOUNT_OR_DESTINATION_NOT_ELIGIBLE' });
+        continue;
+      }
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const recent = await dataAccess.transaction.find({ userId: transaction.userId, type: 'withdraw', status: { $in: ['pending', 'approved'] }, createdAt: { $gte: since } }, { limit: 100 });
+      const dailyTotal = recent.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+      if (!Number.isFinite(amount) || amount <= 0 || dailyTotal > maxDaily) {
+        results.push({ transactionId: transaction.id, state: 'manual_review', reason: 'AUTO_DAILY_LIMIT_EXCEEDED' });
+        continue;
+      }
+      const response = {
+        statusCode: 200,
+        status(code) { this.statusCode = code; return this; },
+        json(body) { this.body = body; return this; }
+      };
+      await approveAndBroadcastWithdrawal({ user: { id: automationAdminId } }, response, transaction.id);
+      results.push({ transactionId: transaction.id, state: response.statusCode < 400 ? 'dispatched' : 'deferred', statusCode: response.statusCode });
+    } catch (error) {
+      console.error(`Automatic withdrawal approval failed (${transaction.id}):`, safePayoutError(error));
+      results.push({ transactionId: transaction.id, state: 'error' });
+    }
+  }
+  return { processed: results.length, results };
+}
+
 async function processWithdrawalPayoutQueue(resendClient) {
   if (String(process.env.WITHDRAWAL_PAYOUTS_ENABLED || '').toLowerCase() !== 'true') return { processed: 0, skipped: true, reason: 'WITHDRAWAL_PAYOUTS_DISABLED' };
   if (!dataAccess.isSupabaseRuntime()) return { processed: 0, skipped: true };
@@ -905,6 +966,13 @@ async function processWithdrawalPayoutQueue(resendClient) {
   const results = [];
   for (const payout of payouts) {
     try {
+      if (payout.network !== 'TRC20') {
+        await dataAccess.callSupabaseRpc('operix_admin_withdrawal_payout_manual_review_atomic', {
+          p_transaction_id: payout.transactionId, p_error: 'UNSUPPORTED_WITHDRAWAL_NETWORK_TRC20_ONLY'
+        });
+        results.push({ transactionId: payout.transactionId, state: 'manual_review' });
+        continue;
+      }
       const inspection = await withdrawalPayoutService.inspectPayout(payout.network, payout.txHash, payout.signedPayload);
       if (inspection.state === 'confirmed') {
         const result = await dataAccess.callSupabaseRpc('operix_admin_withdrawal_payout_paid_atomic', {
@@ -1099,4 +1167,4 @@ async function processScheduledBroadcasts(webpush) {
   return [];
 }
 
-module.exports = { saveVipLevel, listVipLevels, deleteVipLevel, overview, analytics, financialSummary, investmentVaultSummary, getInvestmentVaultContracts, updateInvestmentVaultContracts, listInvestmentVaults, emergencyReleaseInvestmentVault, riskSummary, listUsers, userDetails, resetDailyTasks, toggleBan, bulkToggleBan, revokeUserSessions, verifyUserEmail, disableUserTwoFactor, updateUser, updateUserAccount, updateUserRole, updateUserTier, listWithdrawals, transactionDetails, exportTransactions, listAuditLogs, listReferrals, referralTree, withdrawalAction, reconcileWithdrawalPayout, bulkWithdrawalAction, gameSettings, updateGameSettings, broadcast, listBroadcasts, processScheduledBroadcasts, processWithdrawalPayoutQueue, sendAdminAuditBroadcast };
+module.exports = { saveVipLevel, listVipLevels, deleteVipLevel, overview, analytics, financialSummary, investmentVaultSummary, getInvestmentVaultContracts, updateInvestmentVaultContracts, listInvestmentVaults, emergencyReleaseInvestmentVault, riskSummary, listUsers, userDetails, resetDailyTasks, toggleBan, bulkToggleBan, revokeUserSessions, verifyUserEmail, disableUserTwoFactor, updateUser, updateUserAccount, updateUserRole, updateUserTier, listWithdrawals, transactionDetails, exportTransactions, listAuditLogs, listReferrals, referralTree, withdrawalAction, reconcileWithdrawalPayout, bulkWithdrawalAction, gameSettings, updateGameSettings, broadcast, listBroadcasts, processScheduledBroadcasts, processAutomaticWithdrawalApprovals, processWithdrawalPayoutQueue, sendAdminAuditBroadcast };

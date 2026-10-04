@@ -85,6 +85,10 @@
     {
       "path": "/api/internal/cron/process-withdrawal-payouts",
       "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/internal/cron/process-tron-deposits",
+      "schedule": "* * * * *"
     }
   ]
 }

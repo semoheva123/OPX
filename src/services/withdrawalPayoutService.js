@@ -50,7 +50,8 @@ function decryptSignedPayload(network, privateKey, value) {
 }
 
 function getPrivateKey(network) {
-  const keyName = network === 'TRC20' ? 'TRON_WITHDRAWAL_PRIVATE_KEY' : 'BSC_WITHDRAWAL_PRIVATE_KEY';
+  if (String(network || '').toUpperCase() !== 'TRC20') throw new Error('UNSUPPORTED_WITHDRAWAL_NETWORK');
+  const keyName = 'TRON_WITHDRAWAL_PRIVATE_KEY';
   const privateKey = String(process.env[keyName] || '').trim();
   if (!privateKey) throw new Error(`${keyName}_NOT_CONFIGURED`);
   return privateKey;
@@ -163,22 +164,16 @@ async function prepareTrc20Payout({ recipient, amount }) {
 async function preparePayout(withdrawal) {
   const network = String(withdrawal.network || '').toUpperCase();
   const amount = Number(withdrawal.netAmount ?? withdrawal.amount);
-  if (!['TRC20', 'BEP20'].includes(network)) throw new Error('WITHDRAWAL_NETWORK_REQUIRED');
+  if (network !== 'TRC20') throw new Error('UNSUPPORTED_WITHDRAWAL_NETWORK');
   if (!Number.isFinite(amount) || amount <= 0 || amount > MAX_PAYOUT_AMOUNT) throw new Error('PAYOUT_AMOUNT_LIMIT');
-  if (network === 'TRC20') return prepareTrc20Payout({ recipient: withdrawal.walletAddress, amount });
-  return prepareBep20Payout({ recipient: withdrawal.walletAddress, amount });
+  return prepareTrc20Payout({ recipient: withdrawal.walletAddress, amount });
 }
 
 async function broadcastPreparedPayout(network, encryptedPayload) {
   const normalizedNetwork = String(network || '').toUpperCase();
+  if (normalizedNetwork !== 'TRC20') throw new Error('UNSUPPORTED_WITHDRAWAL_NETWORK');
   const privateKey = getPrivateKey(normalizedNetwork);
   const payload = decryptSignedPayload(normalizedNetwork, privateKey, encryptedPayload);
-  if (normalizedNetwork === 'BEP20') {
-    const config = blockchainService.getBlockchainConfig().BEP20;
-    const provider = new JsonRpcProvider(config.rpcUrl, Number(BSC_CHAIN_ID), { staticNetwork: true });
-    const response = await provider.broadcastTransaction(payload.rawTransaction);
-    return { accepted: true, txHash: response.hash };
-  }
   const { tronWeb } = createTronWeb(normalizedNetwork, privateKey);
   const result = await tronWeb.trx.sendRawTransaction(payload.signedTransaction);
   if (result?.result !== true && String(result?.code || '').toUpperCase() !== 'DUP_TRANSACTION_ERROR') {
@@ -189,6 +184,7 @@ async function broadcastPreparedPayout(network, encryptedPayload) {
 
 async function inspectPayout(network, txHash, encryptedPayload) {
   const normalizedNetwork = String(network || '').toUpperCase();
+  if (normalizedNetwork !== 'TRC20') throw new Error('UNSUPPORTED_WITHDRAWAL_NETWORK');
   if (normalizedNetwork === 'BEP20') {
     const config = blockchainService.getBlockchainConfig().BEP20;
     const provider = new JsonRpcProvider(config.rpcUrl, Number(BSC_CHAIN_ID), { staticNetwork: true });

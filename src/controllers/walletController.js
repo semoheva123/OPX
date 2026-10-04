@@ -8,6 +8,7 @@ const { withdrawalRequestTemplate } = require('../services/emailTemplates');
 const { recordLedgerEntry } = require('../services/financialLedger');
 const { hasFullFeatureAccess } = require('../services/paidFeatureAccess');
 const dataAccess = require('../services/dataAccess');
+const tronDepositService = require('../services/tronDepositService');
 const SecurityEvent = dataAccess.securityEvent;
 
 const HYBRID_WITHDRAWAL_RATE = 0.05;
@@ -61,27 +62,7 @@ async function deposit(req, res) {
 }
 
 async function depositSupabase(req, res) {
-  try {
-    const { amount, network, txHash } = req.body;
-    const verifiedDeposit = await blockchainService.verifyDeposit(amount, network, txHash);
-    const result = await dataAccess.callSupabaseRpc('operix_deposit_atomic', {
-      p_user_id: req.user.id,
-      p_amount: verifiedDeposit.amount,
-      p_network: verifiedDeposit.network,
-      p_tx_hash: verifiedDeposit.txHash,
-      p_wallet_address: verifiedDeposit.config.depositAddress
-    });
-    const transaction = result.transaction;
-    const wallet = result.wallet;
-    await realtimeService.publish('user_data_changed', { reason: 'deposit_created', timestamp: new Date().toISOString() }, { userId: req.user.id });
-    await realtimeService.publish('admin_transaction_created', { transactionId: transaction.id, type: 'deposit', userId: req.user.id }, { scope: 'admin' });
-    return res.status(201).json({ success: true, message: 'تم التحقق من الإيداع وشحن رصيدك بنجاح', wallet, deposit: transaction, transaction });
-  } catch (error) {
-    if (error?.code === '23505' || error?.message === 'DUPLICATE_DEPOSIT') return res.status(409).json({ success: false, error: 'تمت معالجة هذه المعاملة مسبقاً' });
-    if (error?.message?.startsWith('Invalid') || error?.message?.includes('Unsupported') || error?.message?.includes('does not match') || error?.message?.includes('not confirmed') || error?.message?.includes('not successful') || error?.message?.includes('not configured')) return res.status(400).json({ success: false, error: 'تعذر التحقق من المعاملة أو بياناتها غير صحيحة' });
-    console.error('Supabase deposit error:', error.message);
-    return res.status(500).json({ success: false, error: 'حدث خطأ في السيرفر أثناء تقديم الطلب' });
-  }
+  return res.status(410).json({ success: false, error: 'أوقفنا إدخال TxHash اليدوي؛ تتم مطابقة الإيداعات تلقائيًا مع عنوان TRON المخصص لحسابك بعد تفعيل المراقبة.' });
 }
 
 async function getMyHistory(req, res) {
@@ -109,7 +90,7 @@ async function withdrawSupabase(req, res) {
     const feeSummary = calculateHybridWithdrawalFee(withdrawNum);
     if (!Number.isFinite(withdrawNum) || withdrawNum < MIN_WITHDRAWAL_AMOUNT) return res.status(400).json({ error: `الحد الأدنى للسحب هو ${MIN_WITHDRAWAL_AMOUNT}$ USDT` });
     if (!walletAddress || typeof walletAddress !== 'string' || !walletAddress.trim()) return res.status(400).json({ error: 'يرجى إدخال عنوان المحفظة' });
-    if (!['TRC20', 'BEP20'].includes(String(walletNetwork || '').trim().toUpperCase())) return res.status(400).json({ error: 'اختر شبكة السحب' });
+    if (String(walletNetwork || '').trim().toUpperCase() !== 'TRC20') return res.status(400).json({ error: 'السحب متاح حاليًا على شبكة TRC20 فقط' });
     if (feeSummary.netAmount <= 0) return res.status(400).json({ error: 'مبلغ السحب غير صالح بعد احتساب الرسوم' });
     if (idempotencyKey) {
       const existing = await dataAccess.transaction.findOne({ userId: req.user.id, type: 'withdraw', idempotencyKey });
@@ -180,8 +161,18 @@ async function withdrawSupabase(req, res) {
   }
 }
 
-function getDepositConfig(req, res) {
-  res.json({ addresses: blockchainService.getDepositAddresses() });
+async function getDepositConfig(req, res) {
+  try {
+    if (String(process.env.TRON_DEPOSIT_AUTOMATION_ENABLED || '').toLowerCase() !== 'true') {
+      return res.status(503).json({ success: false, error: 'الإيداع الآلي قيد التجهيز ولم يُفعّل بعد.' });
+    }
+    const address = await tronDepositService.ensureUserDepositAddress(req.user.id);
+    return res.json({ success: true, network: 'TRC20', addresses: { TRC20: address }, automatic: true });
+  } catch (error) {
+    console.error('TRON deposit address provisioning failed:', error.message);
+    const status = /NOT_CONFIGURED|REQUIRES_SUPABASE/.test(error.message) ? 503 : 500;
+    return res.status(status).json({ success: false, error: status === 503 ? 'إعداد عنوان الإيداع الآلي غير مكتمل.' : 'تعذر تجهيز عنوان الإيداع الآن.' });
+  }
 }
 
 module.exports = { deposit, withdraw, getMyHistory, getDepositConfig };

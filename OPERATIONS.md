@@ -24,26 +24,27 @@ GET /api/realtime/token
 
 The repository includes application-level protections and endpoints, but backups, external monitoring, DNS, TLS, and provider credentials must be configured in the hosting and infrastructure accounts.
 
-## Automatic USDT withdrawals
+## Automatic TRC20 deposits and withdrawals
 
-Automatic transfers are triggered only by an authorized, individual admin approval in the Finance room. Bulk approval deliberately refuses withdrawals. The server transfers the request's `net_amount` to the saved destination on the saved `TRC20` or `BEP20` network. A withdrawal remains pending until the chain transaction is confirmed; only then is it marked approved and a completion email sent.
+Deposits are assigned a deterministic, per-user TRON address derived from a public extended key. The server scans confirmed USDT TRC20 transfers and credits the matching account once using an atomic Supabase function. Do not restore the old shared-address/manual-TxHash workflow: it cannot safely attribute a transfer to a user automatically. New withdrawal requests are restricted to TRC20. Admin approval remains the default; optional auto-approval is limited to verified, low-risk requests and is independently disabled by default. All payouts remain pending until the TRON network confirms them.
 
-### Required setup — do this before deploying the payout code
+### Required setup — keep all switches off until validation
 
-1. Apply `supabase/automatic-withdrawals.sql` to the production Supabase project after the current canonical schema. The withdrawal RPC signature changed to persist network selection; the new table and restricted RPCs are required.
-2. Create a dedicated low-balance hot wallet for each network; do not reuse an owner/deposit wallet. Fund each with USDT and the network's native gas asset (TRX for TRC20; BNB for BEP20).
-3. Add these secrets directly in the hosting provider's encrypted environment-variable settings (never commit them or paste them in chat):
-	- `TRON_WITHDRAWAL_PRIVATE_KEY`
-	- `BSC_WITHDRAWAL_PRIVATE_KEY`
-	- `BSC_RPC_URL` (BSC mainnet; the signer refuses a chain ID other than 56)
-	- `CRON_SECRET` (required by the existing protected cron endpoint)
-	- `TRONGRID_API_KEY` (recommended for rate limits)
-4. Optional limits/tuning: `WITHDRAWAL_MAX_SINGLE_USDT` (default `5000`), `BSC_WITHDRAWAL_MIN_CONFIRMATIONS` (default `12`), `BSC_WITHDRAWAL_MAX_GAS_PRICE_GWEI` (default `10`), `TRON_WITHDRAWAL_FEE_LIMIT_SUN` (default `100000000`, capped at `1000000000`), `TRON_WITHDRAWAL_MIN_TRX_SUN` (default: at least the full TRON fee limit), and `TRONGRID_SOLIDITY_API_URL`.
-5. Deploy, then run a small-value end-to-end test on each enabled network using a destination you control. Verify the Finance room shows the correct network, amount, sender, recipient, payout state, and explorer hash before enabling normal use.
+1. Apply `supabase/automatic-withdrawals.sql`, then `supabase/automatic-trc20-deposits.sql`, then `supabase/trc20-only-financials.sql` to production Supabase, in that order. The migrations use service-role-only RPCs and must be applied after the canonical schema.
+2. Create a NEW dedicated TRON deposit wallet offline. Run `node scripts/create-tron-deposit-xpub.js` on a trusted offline computer and enter its recovery phrase only into that local hidden prompt. Put the resulting **public** extended key in `TRON_DEPOSIT_XPUB`; never place the seed/private keys in Vercel or Supabase. Keep the seed offline for recovery and manual consolidation of the derived deposit addresses.
+3. Create a separate, low-balance TRON payout wallet. Fund it with USDT TRC20 and TRX for network fees. Put only its private key in Vercel's encrypted Production variable `TRON_WITHDRAWAL_PRIVATE_KEY`; never paste it in chat or commit it.
+4. Configure `TRONGRID_API_URL` (mainnet endpoint), `TRONGRID_API_KEY` (recommended), and `CRON_SECRET`. Keep `TRON_DEPOSIT_AUTOMATION_ENABLED=false`, `WITHDRAWAL_PAYOUTS_ENABLED=false`, and `WITHDRAWAL_AUTO_APPROVAL_ENABLED=false` while applying migrations, deploying, and validating.
+5. Deploy the application. Confirm both protected minute crons run: `/api/internal/cron/process-tron-deposits` and `/api/internal/cron/process-withdrawal-payouts`. The Vercel plan must support minute-level schedules; otherwise configure an equivalent trusted scheduler with `Authorization: Bearer <CRON_SECRET>`.
+6. Test the derived address against the expected offline wallet derivation, send a tiny TRC20 deposit to a test account, and verify one ledger credit after confirmation. Then test a tiny payout to an address you control and verify its explorer hash and final status. Do not enable unattended approvals before these checks.
+7. Enable deposit scanning with `TRON_DEPOSIT_AUTOMATION_ENABLED=true`. Only after the payout test passes, enable `WITHDRAWAL_PAYOUTS_ENABLED=true`. To allow unattended approval, additionally set `WITHDRAWAL_AUTO_APPROVAL_ENABLED=true` and `WITHDRAWAL_AUTO_APPROVAL_ADMIN_ID` to an existing finance-admin UUID. Defaults cap automatic payouts at `100` USDT each and `250` USDT per user per day, require low risk (score at most `20`) and a 30-minute delay. Higher-risk/ineligible withdrawals remain for manual review.
 
-Keep `WITHDRAWAL_PAYOUTS_ENABLED=false` during migration, deployment, and wallet verification. Set it to `true` only after the small-value test succeeds; leaving it unset or false blocks both admin-triggered broadcasts and cron processing.
+### Important custody and recovery notes
 
-The Vercel cron `/api/internal/cron/process-withdrawal-payouts` runs every minute and requires a Vercel plan that supports minute-level cron schedules. If the plan does not, configure an equivalent trusted scheduler to call it with `Authorization: Bearer <CRON_SECRET>`.
+- Each user's deposit USDT lands at that user's derived TRON address. This code does **not** sweep funds from those addresses into the payout wallet; keep the deposit seed offline and consolidate through a controlled, separately tested operation. The payout wallet must be funded independently for withdrawals.
+- `WITHDRAWAL_PAYOUTS_ENABLED` and `WITHDRAWAL_AUTO_APPROVAL_ENABLED` are separate controls. The former allows broadcasting an already authorized payout; the latter removes the human approval step only for eligible requests.
+- The scanner uses confirmed TRONGrid TRC20 transfer records, checks the configured official token contract and recipient address, and relies on unique transaction hashes plus an atomic wallet/ledger RPC to prevent duplicate credit. Monitor cron health, scanner lag, and deposit/payout balances.
+- Never reuse owner or user wallets as the payout hot wallet. Keep `TRON_WITHDRAWAL_PRIVATE_KEY` unchanged while any payout queue entries are pending because it also decrypts stored signed payloads used to rebroadcast the same transaction.
+- Previous deposits sent to the old shared platform address cannot be attributed automatically by this new monitor. Reconcile them manually; do not credit based only on amount or a user-submitted hash.
 
 ### Safety and recovery
 

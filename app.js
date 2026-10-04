@@ -3207,28 +3207,36 @@ async function checkPendingDepositStatus() {
 async function openDepositModal() { 
     document.getElementById('depositModal').classList.remove('hide');
     await loadDepositAddress();
-    const btn = document.getElementById('btnConfirmDeposit');
-    
-    // فحص الطلبات المعلقة عند فتح المودال
-    await checkPendingDepositStatus();
-
-    if (hasPendingDeposit) {
-        if (btn) {
-            btn.disabled = true;
-            btn.innerText = 'لديك طلب إيداع سابق قيد المعالجة';
-            btn.className = "w-full py-3 bg-slate-800 text-slate-500 font-bold rounded-xl text-xs cursor-not-allowed";
-        }
-        showToast('⚠️ لديك طلب إيداع سابق قيد المعالجة، يرجى انتظار قبوله أولاً');
-    } else {
-        if (btn) {
-            btn.disabled = false;
-            btn.innerText = 'تأكيد طلب الإيداع';
-            btn.className = "w-full py-3 gold-gradient text-slate-950 font-black rounded-xl text-xs shadow-lg active:scale-95 transition-all";
-        }
-    }
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch('/api/transactions/my-history', { headers: { Authorization: `Bearer ${token}` } });
+        const data = await response.json();
+        const latest = (data.transactions || data.history || []).find(item => item.type === 'deposit');
+        window.lastSeenAutomaticDepositId = latest?.id || latest?._id || null;
+    } catch (_) { window.lastSeenAutomaticDepositId = null; }
+    if (window.depositMonitorTimer) clearInterval(window.depositMonitorTimer);
+    window.depositMonitorTimer = setInterval(async () => {
+        try {
+            const response = await fetch('/api/transactions/my-history', { headers: { Authorization: `Bearer ${token}` } });
+            const data = await response.json();
+            const latest = (data.transactions || data.history || []).find(item => item.type === 'deposit');
+            const latestId = latest?.id || latest?._id || null;
+            if (latestId && window.lastSeenAutomaticDepositId && latestId !== window.lastSeenAutomaticDepositId) {
+                window.lastSeenAutomaticDepositId = latestId;
+                showToast('تم تأكيد إيداع TRC20 وإضافة الرصيد تلقائيًا', 'win');
+                await loadUserProfile();
+            } else if (latestId && !window.lastSeenAutomaticDepositId) {
+                window.lastSeenAutomaticDepositId = latestId;
+            }
+        } catch (_) { }
+    }, 15000);
 }
 
-function closeDepositModal() { document.getElementById('depositModal').classList.add('hide'); }
+function closeDepositModal() {
+    document.getElementById('depositModal').classList.add('hide');
+    if (window.depositMonitorTimer) clearInterval(window.depositMonitorTimer);
+    window.depositMonitorTimer = null;
+}
 async function openNotificationsModal() {
     document.getElementById('notificationsModal').classList.remove('hide');
     const list = document.getElementById('notificationsList');
@@ -3252,57 +3260,24 @@ function closeWithdrawModal() { document.getElementById('withdrawModal').classLi
 
 async function loadDepositAddress() {
     try {
-        const network = document.getElementById('depositNetwork').value;
-        const res = await fetch('/api/wallet/deposit-config');
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/wallet/deposit-config', { headers: { Authorization: `Bearer ${token}` } });
         const data = await res.json();
-        document.getElementById('platformWalletAddress').value = data.addresses?.[network] || 'العنوان غير مضبوط حالياً';
-    } catch (err) {
-        document.getElementById('platformWalletAddress').value = 'تعذر تحميل العنوان';
+        if (!res.ok) throw new Error(data.error || 'تعذر تجهيز عنوان الإيداع الآلي');
+        document.getElementById('platformWalletAddress').value = data.addresses?.TRC20 || 'العنوان غير مضبوط حالياً';
+        const status = document.getElementById('depositModalStatus');
+        if (status) status.textContent = 'المراقبة الآلية مفعلة لهذا العنوان؛ الرصيد يضاف بعد تأكيد التحويل.';
+    } catch (error) {
+        document.getElementById('platformWalletAddress').value = 'عنوان الإيداع غير متاح حالياً';
+        const status = document.getElementById('depositModalStatus');
+        if (status) status.textContent = error.message || 'تعذر تحميل العنوان';
     }
 }
 
 async function confirmDeposit(event) {
     event?.preventDefault();
-    if (hasPendingDeposit) {
-        showToast('❌ لا يمكنك تقديم طلب إيداع جديد حتى يتم قبول أو رفض الطلب المعلق الحالي');
-        return false;
-    }
-
-    const token = localStorage.getItem('token');
-    const amount = parseFloat(document.getElementById('depositAmount').value) || 50;
-    const network = document.getElementById('depositNetwork').value;
-    const txHash = document.getElementById('depositTxHash').value.trim();
-    const btn = document.getElementById('btnConfirmDeposit');
-
-    btn.disabled = true;
-    btn.innerText = 'جاري الإرسال...';
-
-    try {
-        const res = await fetch('/api/wallet/deposit', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
-            body: JSON.stringify({ amount, network, txHash })
-        });
-        const data = await res.json();
-        if(res.ok) {
-            hasPendingDeposit = data.deposit?.status === 'pending';
-            showToast(`تم شحن ${amount}$ بنجاح`, 'win');
-            closeDepositModal();
-            if (data.wallet) updateWalletData(data.wallet);
-            await loadUserProfile();
-            return false;
-        } else {
-            showToast('❌ ' + (data.error || 'خطأ في عملية الإيداع'));
-            btn.disabled = false;
-            btn.innerText = 'تأكيد طلب الإيداع';
-            return false;
-        }
-    } catch(err) {
-        showToast('❌ خطأ في الاتصال بالخادم');
-        btn.disabled = false;
-        btn.innerText = 'تأكيد طلب الإيداع';
-        return false;
-    }
+    showToast('يتم اكتشاف إيداعات TRC20 وإضافتها تلقائيًا بعد تأكيد الشبكة.');
+    return false;
 }
 
 async function sendWithdraw2FACode() {
@@ -3526,14 +3501,14 @@ function changeLanguage(language) {
     const translations = {
         ar: {
             displayName: 'User', email: 'user@domain.com', earnings: 'إجمالي الأرباح المكتسبة', withdrawn: 'السحوبات الناجحة',
-            referral: 'رابط الدعوة السريع', copy: 'نسخ', walletTitle: 'محفظة السحب المعتمدة', walletLabel: 'عنوان المحفظة (TRC20 / BEP20)',
+            referral: 'رابط الدعوة السريع', copy: 'نسخ', walletTitle: 'محفظة السحب المعتمدة', walletLabel: 'عنوان المحفظة (TRC20)',
             security: 'الأمان والحماية', changePassword: 'تغيير كلمة المرور', twoFactor: 'المصادقة الثنائية (2FA)',
             sessions: 'الأجهزة والجلسات النشطة', preferences: 'إعدادات المنصة والدعم', sounds: 'الأصوات والتنبيهات', language: 'لغة التطبيق',
             support: 'الدعم الفني المباشر (Telegram)', terms: 'شروط الاستخدام', privacy: 'سياسة الخصوصية', logout: 'تسجيل الخروج من الحساب'
         },
         en: {
             displayName: 'User', email: 'user@domain.com', earnings: 'Total earnings', withdrawn: 'Successful withdrawals',
-            referral: 'Quick referral link', copy: 'Copy', walletTitle: 'Approved withdrawal wallet', walletLabel: 'Wallet address (TRC20 / BEP20)',
+            referral: 'Quick referral link', copy: 'Copy', walletTitle: 'Approved withdrawal wallet', walletLabel: 'Wallet address (TRC20)',
             security: 'Security', changePassword: 'Change password', twoFactor: 'Two-factor authentication (2FA)',
             sessions: 'Active devices and sessions', preferences: 'Platform settings and support', sounds: 'Sounds and alerts', language: 'Application language',
             support: 'Technical support (Telegram)', terms: 'Terms of use', privacy: 'Privacy policy', logout: 'Log out of account'

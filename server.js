@@ -84,7 +84,18 @@ const app = createApp({
     'refresh-daily-task-entities': generateDailyTaskEntities,
     'ai-announcer': generateOfficialAiPost,
     'process-broadcasts': () => processScheduledBroadcasts(webpush),
-    'process-withdrawal-payouts': () => require('./src/controllers/adminController').processWithdrawalPayoutQueue(resend)
+    'process-tron-deposits': () => require('./src/services/tronDepositService').processTronDepositQueue(),
+    'process-withdrawal-payouts': async () => {
+      const adminController = require('./src/controllers/adminController');
+      let automaticApprovals;
+      try { automaticApprovals = await adminController.processAutomaticWithdrawalApprovals(); }
+      catch (error) {
+        console.error('Automatic withdrawal approvals worker failed:', error.message);
+        automaticApprovals = { processed: 0, error: error.message };
+      }
+      const payouts = await adminController.processWithdrawalPayoutQueue(resend);
+      return { automaticApprovals, payouts };
+    }
   }
 });
 
