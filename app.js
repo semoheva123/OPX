@@ -2023,20 +2023,33 @@ function renderDailyTaskDetail(data) {
     const meta = document.getElementById('dailyTaskDetailMeta');
     const list = document.getElementById('dailyTaskList');
     if (!title || !meta || !list) return;
-    const tasks = Array.isArray(data.tasks) ? data.tasks : [];
-    window.__latestDailyTasks = tasks;
+    const allTasks = Array.isArray(data.tasks) ? data.tasks : [];
+    const tasks = allTasks.filter(task => !task.completed);
+    const taskLimit = Math.max(1, Number(data.taskLimit ?? data.tier?.taskLimit ?? allTasks.length ?? 1));
+    window.__latestDailyTasks = allTasks;
     title.innerText = `${data.tier?.name || data.tier?.code || 'المستوى'} - مهام اليوم`;
-    meta.innerText = data.active ? `${data.completedCount || 0} من ${data.taskLimit || 0} مكتملة • الربح اليومي الإجمالي $${Number(data.tier?.dailyProfit || 0).toFixed(2)}` : 'فعّل المستوى لفتح المهام المدفوعة';
+    meta.innerText = data.active ? `${Math.min(Number(data.completedCount || 0), taskLimit)} من ${taskLimit} مكتملة • ${tasks.length} مهمة متبقية • الربح اليومي الإجمالي $${Number(data.tier?.dailyProfit || 0).toFixed(2)}` : 'فعّل المستوى لفتح المهام المدفوعة';
     list.innerHTML = tasks.map(task => {
         const isExpanded = expandedDailyTaskKey === task.taskKey;
-        const taskReward = Number(task.reward || (Number(data.tier?.dailyProfit || 0) / Math.max(1, Number(data.taskLimit || task.number || 1)))).toFixed(4);
+        const taskReward = Number(task.reward || (Number(data.tier?.dailyProfit || 0) / taskLimit)).toFixed(4);
         const isCommunityTask = task.requirement === 'community_engagement';
         const isEvaluationTask = task.requirement === 'evaluation';
+        const evaluationBrand = isEvaluationTask ? `<div class="mt-3 overflow-hidden rounded-2xl border border-cyan-400/20 bg-gradient-to-br from-slate-900 via-slate-950 to-cyan-900/25">
+            <div class="flex items-center gap-3 border-b border-cyan-400/15 bg-slate-950/70 p-3">
+                ${task.targetImageUrl ? `<img src="${escapeAiHtml(task.targetImageUrl)}" alt="${escapeAiHtml(task.targetName || 'علامة الشركة')}" loading="lazy" referrerpolicy="no-referrer" class="h-12 w-12 shrink-0 rounded-xl border border-slate-700 bg-white object-contain p-1.5" onerror="this.classList.add('hidden')">` : `<span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-cyan-400/10 text-cyan-300"><i class="fa-solid ${task.targetCategory === 'crypto' ? 'fa-coins' : task.targetCategory === 'ai' ? 'fa-brain' : 'fa-building'}"></i></span>`}
+                <div class="min-w-0">
+                    <p class="text-[9px] font-bold uppercase tracking-[0.18em] text-cyan-300">${escapeAiHtml(task.targetCategoryLabel || 'Brand Review')}</p>
+                    <h5 class="mt-0.5 text-xs font-black text-white">${escapeAiHtml(task.targetName || 'Entity')}</h5>
+                </div>
+            </div>
+            <div class="p-3">
+                <p class="text-[10px] leading-5 text-slate-300">${escapeAiHtml(task.targetSummary || 'مراجعة موثوقة تستند إلى ما يظهر على المنصة وتفاصيل الشركة أو المنتج.')}</p>
+                <div class="mt-3 flex flex-wrap gap-1.5">
+                    ${(task.tags || []).slice(0, 4).map(tag => `<span class="rounded-full border border-cyan-400/20 bg-cyan-400/5 px-2 py-1 text-[9px] font-bold text-cyan-200">${escapeAiHtml(tag)}</span>`).join('')}
+                </div>
+            </div>
+        </div>` : '';
         const communityAction = isCommunityTask ? `<button type="button" onclick="switchTab('feed')" class="mt-2 w-full rounded-xl border border-cyan-400/20 bg-cyan-400/5 px-3 py-2 text-[10px] font-bold text-cyan-300"><i class="fa-solid fa-users mr-1"></i> فتح المجتمع للنشر والتفاعل</button>` : '';
-        const evaluationProfile = isEvaluationTask ? `<section class="mt-3 flex items-start gap-3 rounded-2xl border border-cyan-400/15 bg-slate-950/70 p-3" aria-label="بطاقة جهة التقييم">
-            ${task.targetImageUrl ? `<img src="${escapeAiHtml(task.targetImageUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer" class="h-12 w-12 shrink-0 rounded-xl bg-white object-contain p-1" onerror="this.classList.add('hidden')">` : `<span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-cyan-400/10 text-cyan-300"><i class="fa-solid ${task.targetCategory === 'crypto' ? 'fa-coins' : task.targetCategory === 'ai' ? 'fa-brain' : 'fa-building'}"></i></span>`}
-            <div class="min-w-0"><span class="text-[9px] font-bold text-cyan-300">${escapeAiHtml(task.targetCategoryLabel || 'جهة التقييم')}</span><h5 class="mt-0.5 text-xs font-black text-white">${escapeAiHtml(task.targetName || '')}</h5><p class="mt-1 text-[10px] leading-5 text-slate-400">${escapeAiHtml(task.targetSummary || '')}</p></div>
-        </section>` : '';
         const evaluationForm = isEvaluationTask && isExpanded ? `<div class="mt-3 space-y-3 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3" data-evaluation-form="${escapeAiHtml(task.taskKey)}">
             <p class="text-[10px] leading-5 text-cyan-100">قيّم هذه الخدمة بشكل سريع وصادق، فقط من خلال تجربتك أو ما رأيته عنها.</p>
             <fieldset><legend class="text-[10px] text-slate-300">التقييم</legend><input data-evaluation-field="rating" type="hidden" value=""><div class="mt-1 flex flex-row-reverse justify-end gap-1" role="radiogroup" aria-label="التقييم من نجمة إلى خمس نجوم">${[1, 2, 3, 4, 5].map(rating => `<button type="button" role="radio" aria-checked="false" data-rating="${rating}" onclick="setDailyEvaluationRating('${escapeAiHtml(task.taskKey)}', ${rating})" class="rounded-lg p-1 text-2xl text-slate-600 transition-colors" aria-label="${rating} من 5 نجوم"><i class="fa-solid fa-star"></i></button>`).join('')}</div></fieldset>
@@ -2061,14 +2074,15 @@ function renderDailyTaskDetail(data) {
                     </div>
                     <div class="mt-3 flex items-center justify-between gap-2 text-[10px] text-slate-400">
                         <span>مكافأة المهمة: <strong class="text-amber-300">$${taskReward}</strong></span>
-                        <span>${task.number} من ${Math.max(1, Number(data.taskLimit || task.number || 1))}</span>
+                        <span>${task.number} من ${taskLimit}</span>
                     </div>
+                    ${evaluationBrand}
+                    ${isExpanded ? `<div class="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3"><div class="mb-2 text-[10px] font-bold text-amber-300">خطوات سريعة</div><ol class="space-y-1 text-[10px] leading-5 text-slate-300 list-decimal list-inside">${(task.instructions || []).slice(0, 2).map((instruction) => `<li>${escapeAiHtml(instruction)}</li>`).join('')}</ol></div>` : ''}
                     <div class="mt-3 flex gap-2">
                         <button type="button" data-task-key="${escapeAiHtml(task.taskKey)}" onclick="toggleDailyTaskDetails('${escapeAiHtml(task.taskKey)}')" class="flex-1 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-[10px] font-bold text-slate-200">${isExpanded ? 'إخفاء' : 'فتح'} <i class="fa-solid ${isExpanded ? 'fa-chevron-up' : 'fa-arrow-left'} mr-1"></i></button>
                         <button type="button" ${task.completed || task.locked ? 'disabled' : `onclick="${isEvaluationTask ? `toggleDailyTaskDetails('${escapeAiHtml(task.taskKey)}')` : `completeTask('${escapeAiHtml(task.taskKey)}')`}"`} class="rounded-xl border px-3 py-2 text-[10px] font-bold ${task.completed || task.locked ? 'cursor-not-allowed border-slate-700 bg-slate-900 text-slate-500' : 'border-amber-500/25 bg-amber-500/10 text-amber-300'}">${task.completed ? 'تم الإنجاز' : task.locked ? 'تفعيل المستوى' : isEvaluationTask ? isExpanded ? 'إخفاء النموذج' : 'ابدأ التقييم' : 'إتمام المهمة'} <i class="fa-solid ${task.completed ? 'fa-check' : task.locked ? 'fa-lock' : isEvaluationTask ? 'fa-clipboard-check' : 'fa-arrow-left'} mr-1"></i></button>
                     </div>
-                    ${isExpanded ? `<div class="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3"><div class="mb-2 text-[10px] font-bold text-amber-300">خطوات سريعة</div><ol class="space-y-1 text-[10px] leading-5 text-slate-300 list-decimal list-inside">${(task.instructions || []).slice(0, 2).map((instruction) => `<li>${escapeAiHtml(instruction)}</li>`).join('')}</ol></div>` : ''}
-                    ${evaluationProfile}
+                    ${communityAction}
                     ${evaluationForm}
                 </div>
             </div>
