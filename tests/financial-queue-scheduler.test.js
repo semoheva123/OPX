@@ -26,7 +26,8 @@ assert.match(workflow, /--max-time 70/);
 assert.doesNotMatch(workflow, /--retry-all-errors|--retry\s+\d/);
 assert.match(workflow, /steps\.validate\.outputs\.configured == 'true'/);
 assert.match(workflow, /!inputs\.auth_only/);
-assert.match(workflow, /jq -e '\.success == true/);
+assert.match(workflow, /jq -e '\.success == true and \(\.result\.skipped != true\)/);
+assert.match(workflow, /\.result\.payouts\.skipped != true/);
 assert.match(app, /process\.env\.VERCEL_GIT_COMMIT_SHA/);
 assert.doesNotMatch(app, /socialfi-20260907-2/);
 

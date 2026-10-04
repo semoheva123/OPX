@@ -64,7 +64,7 @@ jobs:
             --header "Authorization: Bearer ${CRON_SECRET}" \
             'https://operix.website/api/internal/cron/process-tron-deposits'
           jq -c '{success, job, processed: .result.processed, skipped: (.result.skipped // false), reason: (.result.reason // null)}' "$response_file"
-          jq -e '.success == true' "$response_file" > /dev/null
+          jq -e '.success == true and (.result.skipped != true)' "$response_file" > /dev/null
 
       - name: Process authorized withdrawal payouts
         if: ${{ always() && steps.validate.outputs.configured == 'true' && !inputs.auth_only }}
@@ -81,4 +81,4 @@ jobs:
             --header "Authorization: Bearer ${CRON_SECRET}" \
             'https://operix.website/api/internal/cron/process-withdrawal-payouts'
           jq -c '{success, job, automaticApprovalsProcessed: (.result.automaticApprovals.processed // null), payoutsProcessed: (.result.payouts.processed // null), skipped: (.result.payouts.skipped // false), reason: (.result.payouts.reason // null)}' "$response_file"
-          jq -e '.success == true and ((.result.automaticApprovals.error // "") == "")' "$response_file" > /dev/null
+          jq -e '.success == true and (.result.payouts.skipped != true) and ((.result.automaticApprovals.error // "") == "")' "$response_file" > /dev/null
