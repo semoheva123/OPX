@@ -22,6 +22,7 @@ declare
   usdt_reward numeric;
   opx_reward numeric;
   balance_before numeric;
+  total_daily_reward numeric;
   completion_id uuid;
   reward_transaction_id uuid;
 begin
@@ -107,6 +108,12 @@ begin
   );
   usdt_reward := round(gross_reward - opx_reward, 4);
   balance_before := wallet_row.balance;
+  select coalesce(sum(gross_amount), 0) into total_daily_reward
+  from daily_task_completions
+  where user_id = p_user_id and task_date = current_date;
+  if total_daily_reward + gross_reward > coalesce(level_row.daily_profit, 0) then
+    raise exception using errcode = 'P0001', message = 'DAILY_CAP_REACHED';
+  end if;
 
   insert into daily_task_completions(user_id, task_key, task_date, gross_amount, usdt_amount, opx_amount)
   values(p_user_id, p_task_key, current_date, gross_reward, usdt_reward, opx_reward)

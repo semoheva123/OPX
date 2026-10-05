@@ -82,6 +82,8 @@ assert.match(migration, /operix_enforce_daily_task_sequence_and_cooldown/i);
 assert.match(ratingCooldownMigration, /TASK_COOLDOWN_ACTIVE/i);
 assert.match(ratingCooldownMigration, /interval '3 hours'/i);
 assert.doesNotMatch(ratingCooldownMigration, /length\(trim\(submission\.feedback\)\) between 10 and 500/i);
+assert.match(ratingCooldownMigration, /total_daily_reward \+ gross_reward > coalesce\(level_row\.daily_profit, 0\)/i, 'the replacement task RPC must preserve the fixed daily reward cap');
+assert.match(ratingCooldownMigration, /DAILY_CAP_REACHED/i, 'the database must reject task rewards that exceed the daily cap');
 assert.match(schema, /daily_task_submissions/);
 assert.match(schema, /daily_task_assignments/);
 assert.match(schema, /daily_task_entities/);
