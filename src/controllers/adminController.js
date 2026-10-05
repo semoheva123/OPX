@@ -1345,6 +1345,66 @@ async function listEmailVerificationReminderCampaigns(req, res) {
   }
 }
 
+async function recoverRejectedEmailVerificationReminders(req, res) {
+  if (req.body?.confirmed !== true || req.body?.confirmation !== 'استعادة العناوين المرفوضة') {
+    return res.status(400).json({ success: false, error: 'اكتب عبارة «استعادة العناوين المرفوضة» لتأكيد الاستعادة.' });
+  }
+  try {
+    const campaigns = await dataAccess.emailVerificationReminderCampaign.find(
+      { status: 'partial', sentCount: 0 },
+      { sort: { createdAt: -1 }, limit: 20 }
+    );
+    const rejectedCampaign = campaigns.find(campaign =>
+      Number(campaign.sentCount || 0) === 0 && Number(campaign.failedCount || 0) > 0 &&
+      /invalid\s+`?to`?\s+field/i.test(String(campaign.lastError || ''))
+    );
+    if (!rejectedCampaign) {
+      return res.status(409).json({ success: false, error: 'لا توجد دفعة مرفوضة بالكامل يمكن استعادتها بأمان.' });
+    }
+
+    const campaignId = String(rejectedCampaign.id || rejectedCampaign._id);
+    const recipients = await dataAccess.emailVerificationReminderRecipient.find(
+      { campaignId, status: 'failed' },
+      { limit: emailVerificationReminderService.MAX_RECIPIENTS }
+    );
+    let recoveredCount = 0;
+    for (const recipient of recipients) {
+      const userId = String(recipient.userId || recipient.user_id || '');
+      const recipientEmail = String(recipient.email || '').trim().toLowerCase();
+      if (!userId || !emailVerificationReminderService.isAllowedRecipientEmail(recipientEmail)) continue;
+      const user = await dataAccess.user.findOne({ id: userId });
+      if (!user || String(user.email || '').trim().toLowerCase() !== recipientEmail ||
+          user.role !== 'user' || user.isBanned || user.emailVerified || user.emailUpdatesOptOut ||
+          !user.emailVerificationReminderSentAt) continue;
+      const updated = await dataAccess.user.updateOne(
+        { id: userId, email: recipientEmail, emailVerificationReminderSentAt: user.emailVerificationReminderSentAt },
+        { $set: { emailVerificationReminderSentAt: null } }
+      );
+      if (updated?.id) recoveredCount++;
+    }
+    let auditRecorded = false;
+    if (supabaseAdmin) {
+      try {
+        await createAudit(req, 'recover_rejected_email_verification_reminders', campaignId, { recoveredCount });
+        auditRecorded = true;
+      } catch (auditError) {
+        console.error('Email verification reminder recovery audit failed:', auditError.message);
+      }
+    }
+    return res.json({
+      success: true,
+      recoveredCount,
+      auditRecorded,
+      message: recoveredCount
+        ? `أُعيدت أهلية ${recoveredCount} عناوين مسموحة فقط؛ لم يُرسل أي بريد بهذا الإجراء.`
+        : 'لم توجد عناوين مسموحة ما زالت مؤهلة للاستعادة؛ لم يُرسل أي بريد.'
+    });
+  } catch (error) {
+    console.error('Email verification reminder recovery failed:', error.message);
+    return res.status(503).json({ success: false, error: 'تعذرت استعادة أهلية العناوين المرفوضة.' });
+  }
+}
+
 async function processEmailVerificationReminders(resend) {
   return emailVerificationReminderService.processQueue(resend);
 }
@@ -1406,4 +1466,4 @@ async function processScheduledBroadcasts(webpush) {
   return [];
 }
 
-module.exports = { saveVipLevel, listVipLevels, deleteVipLevel, overview, analytics, financialSummary, financialReadiness, financialAccounting, investmentVaultSummary, getInvestmentVaultContracts, updateInvestmentVaultContracts, listInvestmentVaults, emergencyReleaseInvestmentVault, riskSummary, listUsers, exportUsers, userDetails, resetDailyTasks, toggleBan, bulkToggleBan, revokeUserSessions, verifyUserEmail, disableUserTwoFactor, updateUser, updateUserAccount, updateUserRole, updateUserTier, listWithdrawals, transactionDetails, exportTransactions, listAuditLogs, listReferrals, exportReferrals, referralTree, withdrawalAction, reconcileWithdrawalPayout, bulkWithdrawalAction, gameSettings, updateGameSettings, previewEmailBroadcast, createEmailBroadcast, listEmailBroadcasts, processAdminEmailBroadcasts, previewEmailVerificationReminders, createEmailVerificationReminders, listEmailVerificationReminderCampaigns, processEmailVerificationReminders, broadcast, listBroadcasts, processScheduledBroadcasts, processAutomaticWithdrawalApprovals, processWithdrawalPayoutQueue, sendAdminAuditBroadcast };
+module.exports = { saveVipLevel, listVipLevels, deleteVipLevel, overview, analytics, financialSummary, financialReadiness, financialAccounting, investmentVaultSummary, getInvestmentVaultContracts, updateInvestmentVaultContracts, listInvestmentVaults, emergencyReleaseInvestmentVault, riskSummary, listUsers, exportUsers, userDetails, resetDailyTasks, toggleBan, bulkToggleBan, revokeUserSessions, verifyUserEmail, disableUserTwoFactor, updateUser, updateUserAccount, updateUserRole, updateUserTier, listWithdrawals, transactionDetails, exportTransactions, listAuditLogs, listReferrals, exportReferrals, referralTree, withdrawalAction, reconcileWithdrawalPayout, bulkWithdrawalAction, gameSettings, updateGameSettings, previewEmailBroadcast, createEmailBroadcast, listEmailBroadcasts, processAdminEmailBroadcasts, previewEmailVerificationReminders, createEmailVerificationReminders, listEmailVerificationReminderCampaigns, recoverRejectedEmailVerificationReminders, processEmailVerificationReminders, broadcast, listBroadcasts, processScheduledBroadcasts, processAutomaticWithdrawalApprovals, processWithdrawalPayoutQueue, sendAdminAuditBroadcast };

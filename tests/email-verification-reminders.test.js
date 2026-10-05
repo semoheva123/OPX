@@ -14,6 +14,7 @@ const schema = read('supabase/schema.sql');
 const routes = read('src/routes/adminRoutes.js');
 const server = read('server.js');
 const worker = read('.github/workflows/admin-email-broadcast-worker.yml');
+const reminderOnlyWorker = read('.github/workflows/email-verification-reminder-worker.yml');
 const adminUi = read('admin.html');
 const authController = read('src/controllers/authController.js');
 const emailTemplates = read('src/services/emailTemplates.js');
@@ -43,6 +44,9 @@ assert.match(migration, /for update skip locked/i);
 assert.match(migration, /revoke all privileges on table public\.email_verification_reminder_campaigns from public, anon, authenticated/i);
 assert.match(routes, /email-verification-reminders\/preview', requirePermission\('broadcast'/);
 assert.match(routes, /email-verification-reminders', requirePermission\('broadcast'/);
+assert.match(routes, /email-verification-reminders\/recover-rejected', requirePermission\('broadcast'/);
+assert.match(reminderOnlyWorker, /process-email-verification-reminders/);
+assert.doesNotMatch(reminderOnlyWorker, /process-email-broadcasts/);
 assert.match(server, /process-email-verification-reminders/);
 assert.match(worker, /process-email-verification-reminders/);
 assert.match(adminUi, /تذكير توثيق البريد للحسابات غير الموثّقة/);
@@ -74,6 +78,7 @@ function responseRecorder() {
     findRecipients: dataAccess.user.findEmailVerificationReminderRecipients,
     rpc: dataAccess.callSupabaseRpc,
     campaignFind: dataAccess.emailVerificationReminderCampaign.find,
+    recipientFind: dataAccess.emailVerificationReminderRecipient.find,
     campaignUpdate: dataAccess.emailVerificationReminderCampaign.updateOne,
     recipientCount: dataAccess.emailVerificationReminderRecipient.countDocuments,
     recipientUpdate: dataAccess.emailVerificationReminderRecipient.updateMany,
@@ -91,6 +96,36 @@ function responseRecorder() {
     process.env.EMAIL_FROM = 'OPERIX <verify@operix.website>';
     process.env.APP_URL = 'https://operix.website';
     dataAccess.isSupabaseRuntime = () => true;
+    const failedCampaign = { id: campaignId, status: 'partial', recipientCount: 2, sentCount: 0, failedCount: 2, lastError: 'Invalid `to` field. Please use our testing email address instead of domains like example.com.' };
+    const recoverableUsers = new Map([
+      ['recover-1', { id: 'recover-1', email: 'valid@gmail.com', role: 'user', isBanned: false, emailVerified: false, emailUpdatesOptOut: false, emailVerificationReminderSentAt: new Date() }],
+      ['recover-2', { id: 'recover-2', email: 'qa@example.com', role: 'user', isBanned: false, emailVerified: false, emailUpdatesOptOut: false, emailVerificationReminderSentAt: new Date() }]
+    ]);
+    const recoveredUsers = [];
+    dataAccess.emailVerificationReminderCampaign.find = async () => [failedCampaign];
+    dataAccess.emailVerificationReminderRecipient.find = async () => [
+      { id: 'recipient-1', userId: 'recover-1', email: 'valid@gmail.com', status: 'failed' },
+      { id: 'recipient-2', userId: 'recover-2', email: 'qa@example.com', status: 'failed' }
+    ];
+    dataAccess.user.findOne = async query => recoverableUsers.get(query.id) || null;
+    dataAccess.user.updateOne = async query => {
+      recoveredUsers.push(query.id);
+      return { id: query.id };
+    };
+
+    const recoveryNoConfirmation = responseRecorder();
+    await adminController.recoverRejectedEmailVerificationReminders({ body: {} }, recoveryNoConfirmation);
+    assert.equal(recoveryNoConfirmation.statusCode, 400);
+
+    const recovery = responseRecorder();
+    await adminController.recoverRejectedEmailVerificationReminders({
+      body: { confirmed: true, confirmation: 'استعادة العناوين المرفوضة' },
+      user: { id: '323e4567-e89b-42d3-a456-426614174000' }
+    }, recovery);
+    assert.equal(recovery.statusCode, 200);
+    assert.equal(recovery.body.recoveredCount, 1, 'only failed recipients on allowed real-provider domains can have cooldown reset');
+    assert.deepEqual(recoveredUsers, ['recover-1']);
+
     dataAccess.user.findEmailVerificationReminderRecipients = async () => [
       { id: recipient.userId, email: recipient.email },
       { id: '523e4567-e89b-42d3-a456-426614174000', email: 'PENDING@gmail.com' },
@@ -190,6 +225,7 @@ function responseRecorder() {
     dataAccess.user.findEmailVerificationReminderRecipients = originals.findRecipients;
     dataAccess.callSupabaseRpc = originals.rpc;
     dataAccess.emailVerificationReminderCampaign.find = originals.campaignFind;
+    dataAccess.emailVerificationReminderRecipient.find = originals.recipientFind;
     dataAccess.emailVerificationReminderCampaign.updateOne = originals.campaignUpdate;
     dataAccess.emailVerificationReminderRecipient.countDocuments = originals.recipientCount;
     dataAccess.emailVerificationReminderRecipient.updateMany = originals.recipientUpdate;

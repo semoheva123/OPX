@@ -1,0 +1,39 @@
+name: Email verification reminder worker
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: email-verification-reminder-worker
+  cancel-in-progress: false
+
+jobs:
+  send-reminder-batch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Validate scheduler configuration
+        shell: bash
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [[ -z "$CRON_SECRET" ]]; then
+            echo "::error::Add CRON_SECRET as a GitHub Actions repository secret before enabling the email worker."
+            exit 1
+          fi
+
+      - name: Process one bounded email verification reminder batch
+        shell: bash
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          response_file=$(mktemp)
+          trap 'rm -f "$response_file"' EXIT
+          curl --fail --silent --show-error --output "$response_file" \
+            --write-out 'Email verification reminder worker HTTP %{http_code}\n' \
+            --max-time 70 \
+            --request POST \
+            --header "Authorization: Bearer ${CRON_SECRET}" \
+            'https://operix.website/api/internal/cron/process-email-verification-reminders'
+          jq -c '{success, job, processed: .result.processed, status: .result.status, sent: .result.sentCount, failed: .result.failedCount, suppressed: .result.suppressedCount, unknown: .result.unknownCount, skipped: (.result.skipped // false), reason: (.result.reason // null)}' "$response_file"
+          jq -e '.success == true' "$response_file" > /dev/null

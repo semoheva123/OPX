@@ -475,7 +475,7 @@ body.modal-open{overflow:hidden}
 
             <section class="glass-card rounded-3xl border border-amber-500/20 p-5 sm:p-6 space-y-4" aria-labelledby="emailVerificationReminderHeading">
                 <div class="flex items-start gap-3"><span class="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-amber-400/20 bg-amber-400/10 text-amber-300"><i class="fa-solid fa-envelope-circle-check"></i></span><div><h3 id="emailVerificationReminderHeading" class="text-base font-black text-white">تذكير توثيق البريد للحسابات غير الموثّقة</h3><p class="mt-1 text-[10px] leading-5 text-slate-400">يرسل رابط توثيق آمنًا وفريدًا صالحًا لمدة 24 ساعة للحسابات العادية غير المحظورة التي لم توثّق بريدها ولم تلغِ الاشتراك. لا يتضمن إعلانًا؛ لا يعاد التذكير للحساب نفسه قبل مرور 7 أيام.</p></div></div>
-                <div class="flex flex-col sm:flex-row sm:items-center gap-2"><button id="emailVerificationReminderPreviewButton" type="button" onclick="previewEmailVerificationReminders()" class="rounded-xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-xs font-bold text-amber-200"><i class="fa-solid fa-users-viewfinder ml-1"></i>احتساب الحسابات غير الموثّقة</button><span id="emailVerificationReminderStatus" class="text-[10px] text-slate-500" aria-live="polite">لم تُحسب الحسابات المؤهلة بعد.</span></div>
+                <div class="flex flex-col sm:flex-row sm:items-center gap-2"><button id="emailVerificationReminderPreviewButton" type="button" onclick="previewEmailVerificationReminders()" class="rounded-xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-xs font-bold text-amber-200"><i class="fa-solid fa-users-viewfinder ml-1"></i>احتساب الحسابات غير الموثّقة</button><button id="emailVerificationReminderRecoveryButton" type="button" onclick="recoverRejectedEmailVerificationReminders()" class="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-xs font-bold text-slate-300">استعادة العناوين المرفوضة بأمان</button><span id="emailVerificationReminderStatus" class="text-[10px] text-slate-500" aria-live="polite">لم تُحسب الحسابات المؤهلة بعد.</span></div>
                 <div id="emailVerificationReminderPreview" class="hidden rounded-2xl border border-amber-500/20 bg-slate-950/70 p-4" aria-live="polite"></div>
                 <div class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 border-t border-slate-800 pt-4">
                     <label class="block text-[10px] text-slate-400">للتأكيد، اكتب: <strong class="text-amber-300">إرسال تذكيرات التوثيق</strong><input id="emailVerificationReminderConfirmation" oninput="updateEmailVerificationReminderButton()" autocomplete="off" placeholder="إرسال تذكيرات التوثيق" class="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-xs text-white outline-none focus:border-amber-400"></label>
@@ -2002,6 +2002,27 @@ body.modal-open{overflow:hidden}
             } finally {
                 emailVerificationReminderSubmitting = false;
                 updateEmailVerificationReminderButton();
+            }
+        }
+
+        async function recoverRejectedEmailVerificationReminders() {
+            const confirmed = await showAdminConfirm('سيُعاد فتح مهلة التذكير للعناوين المسموحة فقط من دفعة رفضتها Resend بالكامل ولم تُرسل منها أي رسالة. لن يُرسل بريد الآن. هل تريد المتابعة؟', 'استعادة عناوين فشلت');
+            if (!confirmed) return;
+            const button = document.getElementById('emailVerificationReminderRecoveryButton');
+            if (button) button.disabled = true;
+            try {
+                const response = await fetch('/api/admin/email-verification-reminders/recover-rejected', {
+                    method: 'POST', headers: adminJsonHeaders(),
+                    body: JSON.stringify({ confirmed: true, confirmation: 'استعادة العناوين المرفوضة' })
+                });
+                const data = await response.json();
+                if (!response.ok || !data.success) throw new Error(data.error || 'تعذرت استعادة العناوين');
+                showToast(data.message || 'اكتملت استعادة الأهلية دون إرسال بريد.');
+                await previewEmailVerificationReminders();
+            } catch (error) {
+                showToast(error.message || 'تعذرت استعادة العناوين المرفوضة.');
+            } finally {
+                if (button) button.disabled = false;
             }
         }
 

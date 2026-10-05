@@ -55,6 +55,7 @@ router.get('/email-broadcasts', requirePermission('broadcast'), adminController.
 router.post('/email-verification-reminders/preview', requirePermission('broadcast'), adminController.previewEmailVerificationReminders);
 router.post('/email-verification-reminders', requirePermission('broadcast'), adminController.createEmailVerificationReminders);
 router.get('/email-verification-reminders', requirePermission('broadcast'), adminController.listEmailVerificationReminderCampaigns);
+router.post('/email-verification-reminders/recover-rejected', requirePermission('broadcast'), adminController.recoverRejectedEmailVerificationReminders);
 router.get('/social-feed/reports', requirePermission('manage_users'), socialFeedController.listReportedPosts);
 router.post('/social-feed/:postId/moderate', requirePermission('manage_users'), socialFeedController.moderatePost);
 router.get('/support/tickets', requirePermission('manage_users'), supportController.listAdmin);
