@@ -18,6 +18,7 @@ async function ensureOfficialCommunityAccount() {
   if (!official) {
     official = await dataAccess.user.create({
       email: OFFICIAL_EMAIL,
+      username: 'operix_official',
       password: await bcrypt.hash(process.env.OFFICIAL_PLATFORM_PASSWORD || crypto.randomBytes(32).toString('hex'), 12),
       role: 'admin',
       referralCode: OFFICIAL_REFERRAL_CODE,
@@ -29,6 +30,7 @@ async function ensureOfficialCommunityAccount() {
   } else {
     official = await dataAccess.user.updateOne({ id: official.id }, {
       email: OFFICIAL_EMAIL,
+      username: 'operix_official',
       role: 'admin',
       referralCode: OFFICIAL_REFERRAL_CODE,
       emailVerified: true,

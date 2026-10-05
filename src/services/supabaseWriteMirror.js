@@ -78,6 +78,7 @@ async function mapUserToSupabaseRow(doc) {
   const userRow = {
     id: userId,
     email: doc.email || `legacy-${String(doc._id || crypto.randomUUID())}@migrated.local`,
+    username: doc.username || `user_${userId.replace(/-/g, '')}`,
     password_hash: doc.password || '',
     role: ['user', 'admin', 'financial_admin', 'support_admin', 'monitor'].includes(doc.role) ? doc.role : 'user',
     email_verified: Boolean(doc.emailVerified),

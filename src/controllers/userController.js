@@ -16,6 +16,7 @@ const Session = dataAccess.session;
 const emailFrom = String(process.env.EMAIL_FROM || '').trim();
 const imgbbStorage = require('../services/imgbbStorage');
 const { hasPaidFeatureAccess } = require('../services/paidFeatureAccess');
+const { normalizeUsername, isValidUsername } = require('../services/username');
 
 async function getProfile(req, res) {
   try {
@@ -37,6 +38,25 @@ async function getProfile(req, res) {
     const isTierActivated = paidFeatureAccess || Number(user.wallet?.totalDeposits || 0) > 0;
     res.status(200).json({ success: true, user: { ...user, password: undefined, passwordHash: undefined, resetOtp: undefined, twoFactorCode: undefined, isTierActivated, paidFeatureAccess, wheelCredits: paidFeatureAccess ? Number.MAX_SAFE_INTEGER : user.wheelCredits, mysteryBoxCredits: paidFeatureAccess ? Number.MAX_SAFE_INTEGER : user.mysteryBoxCredits, teamStats: { l1: levelCounts[0].total, l1Active: levelCounts[0].active, l1Inactive: levelCounts[0].inactive, l2: levelCounts[1].total, l2Active: levelCounts[1].active, l2Inactive: levelCounts[1].inactive, l3: levelCounts[2].total, l3Active: levelCounts[2].active, l3Inactive: levelCounts[2].inactive, total: referrals.length + secondLevel.length + thirdLevel.length, activeReferrals } } });
   } catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
+}
+
+async function updateUsername(req, res) {
+  const username = normalizeUsername(req.body?.username);
+  if (!isValidUsername(username)) return res.status(400).json({ error: 'اسم المستخدم يجب أن يبدأ بحرف إنجليزي ويتكون من 3 إلى 24 حرفًا أو رقمًا أو _' });
+  try {
+    const existing = await dataAccess.user.findOne({ username });
+    if (existing && String(existing.id || existing._id) !== String(req.user.id)) {
+      return res.status(409).json({ error: 'اسم المستخدم مستخدم بالفعل، اختر اسمًا آخر' });
+    }
+    const updated = await dataAccess.user.updateOne({ id: req.user.id }, { username });
+    if (!updated) return res.status(404).json({ error: 'المستخدم غير موجود' });
+    return res.json({ success: true, username: updated.username || username, message: 'تم تحديث اسم المستخدم بنجاح' });
+  } catch (error) {
+    if (error.code === '23505' || String(error.message || '').includes('users_username_lower_unique_idx')) {
+      return res.status(409).json({ error: 'اسم المستخدم مستخدم بالفعل، اختر اسمًا آخر' });
+    }
+    return res.status(500).json({ error: 'تعذر تحديث اسم المستخدم' });
+  }
 }
 
 async function setWalletAddress(req, res) {
@@ -375,4 +395,4 @@ async function subscribePush(req, res) {
   } catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
 }
 
-module.exports = { getProfile, setWalletAddress, updateProfileImage, updateSocialProfile, getReferrals, getReferralRewards, getGrowth, getUpgradeHistory, getHomeSummary, sendTwoFactorCode, toggleTwoFactor, setupTwoFactor, confirmTwoFactor, changePassword, subscribePush };
+module.exports = { getProfile, updateUsername, setWalletAddress, updateProfileImage, updateSocialProfile, getReferrals, getReferralRewards, getGrowth, getUpgradeHistory, getHomeSummary, sendTwoFactorCode, toggleTwoFactor, setupTwoFactor, confirmTwoFactor, changePassword, subscribePush };

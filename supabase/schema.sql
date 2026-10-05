@@ -6,6 +6,7 @@ create extension if not exists "uuid-ossp";
 create table if not exists public.users (
   id uuid primary key default uuid_generate_v4(),
   email text not null unique,
+  username text,
   password_hash text not null,
   role text not null default 'user' check (role in ('user','admin','financial_admin','support_admin','monitor')),
   email_verified boolean not null default false,
@@ -45,6 +46,18 @@ alter table public.users add column if not exists profile_image text not null de
 alter table public.users add column if not exists cover_image text not null default '';
 alter table public.users add column if not exists social_bio text not null default '';
 alter table public.users add column if not exists push_subscription jsonb;
+alter table public.users add column if not exists username text;
+update public.users
+set username = case
+  when lower(coalesce(email, '')) = 'official@operix.website' then 'operix_official'
+  else 'user_' || replace(id::text, '-', '')
+end
+where username is null or btrim(username) = '';
+update public.users set username = lower(btrim(username)) where username <> lower(btrim(username));
+alter table public.users drop constraint if exists users_username_format_check;
+alter table public.users add constraint users_username_format_check check (username ~ '^[a-z][a-z0-9_]{2,39}$');
+create unique index if not exists users_username_lower_unique_idx on public.users (lower(username));
+alter table public.users alter column username set not null;
 create table if not exists public.referral_reward_awards (
   id uuid primary key default uuid_generate_v4(),
   referrer_id uuid not null references public.users(id) on delete cascade,

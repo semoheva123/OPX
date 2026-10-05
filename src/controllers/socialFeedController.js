@@ -73,6 +73,7 @@ async function listPosts(req, res) {
       post.authorProfileImage = author?.profileImage || '';
       post.authorCoverImage = author?.coverImage || '';
       post.authorBio = author?.socialBio || '';
+      post.authorUsername = author?.username || '';
       post.authorIsOfficial = isOfficialUser(author);
       post.isSaved = Array.isArray(post.savedBy) && post.savedBy.some(id => String(id) === String(req.user.id));
       delete post.savedBy;
@@ -95,7 +96,7 @@ async function createPost(req, res) {
     if (await dataAccess.socialPost.exists({ authorId: req.user.id, createdAt: { $gte: new Date(Date.now() - 5 * 60 * 1000) } })) return res.status(429).json({ error: 'انتظر خمس دقائق قبل نشر منشور جديد' });
     const user = await dataAccess.user.findById(req.user.id);
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
-    const authorLabel = isOfficialUser(user) ? 'OPERIX Official' : user.referralCode ? `عضو ${user.referralCode}` : `عضو ${String(user.email || '').slice(0, 2)}•••`;
+    const authorLabel = isOfficialUser(user) ? 'OPERIX Official' : user.username ? `@${user.username}` : user.referralCode ? `عضو ${user.referralCode}` : 'عضو OPERIX';
     const post = await dataAccess.socialPost.create({ authorId: getId(user), authorLabel, content, hashtags: extractHashtags(content), imageUrl, isOfficialAi: false, source: 'user', status: moderation.status, moderationReason: moderation.matchedWord ? 'banned_word' : '' });
     await realtimeService.publish('social_post_created', { postId: getId(post), status: post.status }, { scope: 'user' });
     res.status(201).json({ success: true, message: moderation.allowed ? 'تم نشر المنشور' : 'تم حجب المنشور تلقائياً لمخالفته قواعد الجدار', post: toClientPost(post) });
@@ -123,7 +124,7 @@ async function listLikes(req, res) {
     const post = await visiblePost(req.params.postId);
     if (!post) return res.status(404).json({ error: 'المنشور غير موجود' });
     const users = post.likedBy?.length ? await dataAccess.user.find({ id: { $in: post.likedBy }, isBanned: false }, { limit: 100 }) : [];
-    res.json({ success: true, users: users.map(user => ({ id: getId(user), label: user.referralCode ? `عضو ${user.referralCode}` : `عضو ${String(user.email || '').slice(0, 2)}•••` })) });
+    res.json({ success: true, users: users.map(user => ({ id: getId(user), label: user.username ? `@${user.username}` : user.referralCode ? `عضو ${user.referralCode}` : 'عضو OPERIX' })) });
   } catch (error) { res.status(500).json({ error: 'تعذر تحميل قائمة الإعجابات' }); }
 }
 

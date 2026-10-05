@@ -14,7 +14,7 @@ const Notification = adminRepository(dataAccess.notification);
 const Session = adminRepository(dataAccess.session);
 const { supabaseAdmin } = require('../config/supabase');
 
-const ADMIN_USER_DETAIL_FIELDS = new Set(['id', '_id', 'email', 'role', 'emailVerified', 'isBanned', 'tierCode', 'referralCode', 'referredBy', 'walletAddress', 'adminTwoFactorEnabled', 'assetWallet', 'createdAt', 'updatedAt', 'lastLoginAt', 'metadata', 'profileImage', 'coverImage', 'socialBio', 'wallet']);
+const ADMIN_USER_DETAIL_FIELDS = new Set(['id', '_id', 'username', 'email', 'role', 'emailVerified', 'isBanned', 'tierCode', 'referralCode', 'referredBy', 'walletAddress', 'adminTwoFactorEnabled', 'assetWallet', 'createdAt', 'updatedAt', 'lastLoginAt', 'metadata', 'profileImage', 'coverImage', 'socialBio', 'wallet']);
 
 function sanitizeAdminUserDetail(user) {
   return Object.fromEntries(Object.entries(user?.toObject?.() || user || {}).filter(([key]) => ADMIN_USER_DETAIL_FIELDS.has(key)));
@@ -380,7 +380,7 @@ async function listUsers(req, res) {
     if (req.query.verified === 'yes') filter.emailVerified = true;
     if (req.query.verified === 'no') filter.emailVerified = false;
     const allUsers = await dataAccess.user.find(filter, { sort: { createdAt: -1 }, limit: 10000 });
-    const searchedUsers = search ? allUsers.filter(user => `${user.email || ''} ${user.referralCode || ''}`.toLowerCase().includes(search.toLowerCase())) : allUsers;
+    const searchedUsers = search ? allUsers.filter(user => `${user.username || ''} ${user.email || ''} ${user.referralCode || ''}`.toLowerCase().includes(search.toLowerCase())) : allUsers;
     const total = searchedUsers.length;
     const users = searchedUsers.slice((page - 1) * limit, page * limit);
     res.json({ success: true, users, page, totalPages: Math.max(1, Math.ceil(total / limit)), total });
@@ -623,7 +623,7 @@ async function findAdminFinancialTransactions(query = {}) {
   const search = String(query.search || '').trim().toLowerCase().slice(0, 120);
   if (search) {
     const users = await dataAccess.user.find({}, { limit: 10000 });
-    const matchingUserIds = new Set(users.filter(user => String(user.email || '').toLowerCase().includes(search)).map(user => String(user.id || user._id)));
+    const matchingUserIds = new Set(users.filter(user => `${user.username || ''} ${user.email || ''} ${user.referralCode || ''}`.toLowerCase().includes(search)).map(user => String(user.id || user._id)));
     transactions = transactions.filter(transaction => String(transaction.txHash || '').toLowerCase().includes(search) || String(transaction.walletAddress || '').toLowerCase().includes(search) || matchingUserIds.has(String(transaction.userId)));
   }
   const users = await dataAccess.user.find({}, { limit: 10000 });
@@ -655,9 +655,9 @@ async function transactionDetails(req, res) {
       const user = transaction.userId ? await dataAccess.user.findById(transaction.userId) : null;
       const payout = transaction.type === 'withdraw' ? await dataAccess.withdrawalPayout.findOne({ transactionId: transaction.id || transaction._id }) : null;
       const auditLogs = await dataAccess.auditLog.find({ entity: String(transaction.id || transaction._id) }, { sort: { createdAt: -1 }, limit: 20 });
-      return res.json({ success: true, transaction: { ...transaction, payout: safePayout(payout), userId: user ? { id: user.id || user._id, email: user.email, tierCode: user.tierCode, walletAddress: user.walletAddress } : transaction.userId }, auditLogs });
+      return res.json({ success: true, transaction: { ...transaction, payout: safePayout(payout), userId: user ? { id: user.id || user._id, username: user.username, email: user.email, tierCode: user.tierCode, walletAddress: user.walletAddress } : transaction.userId }, auditLogs });
     }
-    const transaction = await Transaction.findById(req.params.transactionId).populate('userId', 'email tierCode wallet walletAddress').lean();
+    const transaction = await Transaction.findById(req.params.transactionId).populate('userId', 'username email tierCode wallet walletAddress').lean();
     if (!transaction) return res.status(404).json({ error: 'المعاملة غير موجودة' });
     const auditLogs = await AuditLog.find({ entity: transaction._id.toString() }).populate('adminId', 'email').sort({ createdAt: -1 }).limit(20).lean();
     res.json({ success: true, transaction, auditLogs });

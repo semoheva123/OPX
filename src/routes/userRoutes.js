@@ -5,6 +5,7 @@ const { verifyToken } = require('../middlewares/auth');
 const router = express.Router();
 
 router.get('/profile', verifyToken, userController.getProfile);
+router.put('/username', verifyToken, userController.updateUsername);
 router.post('/wallet-address', verifyToken, userController.setWalletAddress);
 router.post('/profile-image', verifyToken, userController.updateProfileImage);
 router.post('/social-profile', verifyToken, userController.updateSocialProfile);

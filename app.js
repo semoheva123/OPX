@@ -895,12 +895,15 @@ async function handleLogin(e) {
 async function handleRegister(e) {
     e.preventDefault();
     const email = document.getElementById('regEmail').value.trim();
+    const rawUsername = String(document.getElementById('regUsername')?.value || '').trim().replace(/^@/, '').toLowerCase();
+    const username = rawUsername || undefined;
     const password = document.getElementById('regPassword').value;
     const passwordConfirm = document.getElementById('regPasswordConfirm').value;
     const referralCode = document.getElementById('regReferralCode').value.trim();
     const btn = document.getElementById('btnRegisterSubmit');
 
     if (password !== passwordConfirm) { showToast('كلمتا المرور غير متطابقتين'); return; }
+    if (username && !/^[a-z][a-z0-9_]{2,23}$/.test(username)) { showToast('اسم المستخدم يجب أن يبدأ بحرف إنجليزي ويتكون من 3 إلى 24 حرفًا أو رقمًا أو _'); return; }
 
     btn.disabled = true;
     btn.innerText = 'جاري إنشاء الحساب...';
@@ -909,7 +912,7 @@ async function handleRegister(e) {
         const res = await fetch('/api/auth/register', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({email, password, referralCode, acceptTerms: document.getElementById('regTermsConsent')?.checked === true})
+            body: JSON.stringify({email, username, password, referralCode, acceptTerms: document.getElementById('regTermsConsent')?.checked === true})
         });
         const data = await res.json();
         if(res.ok) {
@@ -926,6 +929,39 @@ async function handleRegister(e) {
     } finally {
         btn.disabled = false;
         btn.innerText = 'إنشاء حساب ومحفظة خاصة';
+    }
+}
+
+async function saveUsername(event) {
+    event.preventDefault();
+    const input = document.getElementById('profileUsernameInput');
+    const status = document.getElementById('profileUsernameStatus');
+    const username = String(input?.value || '').trim().replace(/^@/, '').toLowerCase();
+    if (!/^[a-z][a-z0-9_]{2,23}$/.test(username)) {
+        if (status) status.innerText = 'استخدم 3–24 حرفًا أو رقمًا أو _، وابدأ بحرف إنجليزي.';
+        return;
+    }
+    const token = localStorage.getItem('token');
+    if (!token) return showToast('انتهت الجلسة، سجّل الدخول مجددًا');
+    const button = event.submitter;
+    if (button) { button.disabled = true; button.innerText = 'جارٍ الحفظ...'; }
+    if (status) status.innerText = '';
+    try {
+        const response = await fetch('/api/user/username', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ username })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'تعذر تحديث اسم المستخدم');
+        if (currentUserData) currentUserData.username = data.username || username;
+        updateProfileUI();
+        if (status) status.innerText = data.message || 'تم تحديث اسم المستخدم.';
+        showToast(data.message || 'تم تحديث اسم المستخدم');
+    } catch (error) {
+        if (status) status.innerText = error.message;
+    } finally {
+        if (button) { button.disabled = false; button.innerText = 'حفظ الاسم'; }
     }
 }
 
@@ -1324,7 +1360,12 @@ function updateProfileUI() {
     // البريد واسم المستخدم
     const displayNameEl = document.getElementById('lblProfileDisplayName');
     const emailEl = document.getElementById('lblProfileEmail');
-    if (displayNameEl) displayNameEl.innerText = (currentUserData.email || '').split('@')[0] || 'User';
+    const username = String(currentUserData.username || '').trim().toLowerCase();
+    if (displayNameEl) displayNameEl.innerText = username ? `@${username}` : 'User';
+    const usernameEl = document.getElementById('lblProfileUsername');
+    if (usernameEl) usernameEl.innerText = username ? `@${username}` : '';
+    const usernameInput = document.getElementById('profileUsernameInput');
+    if (usernameInput && username) usernameInput.value = username;
     if (emailEl) emailEl.innerText = currentUserData.email || '';
 
     // كود ورابط الدعوة
@@ -1684,7 +1725,7 @@ async function loadUserProfileInternal() {
                 console.error('Realtime initialization failed:', error);
             }
             
-            document.getElementById('lblUserEmail').innerText = data.user.email;
+            document.getElementById('lblUserEmail').innerText = data.user.username ? `@${data.user.username}` : data.user.email;
             document.getElementById('lblCompletedTasks').innerText = data.user.todayCompletedTasks || 0;
             document.getElementById('lblReferralCode').innerText = data.user.referralCode || 'OPERIX99';
             const twoFactorToggle = document.getElementById('toggle2FA');
@@ -2931,7 +2972,7 @@ document.addEventListener('keydown', (event) => {
 function renderSocialPostCard(post) {
     const isOfficialAi = Boolean(post.isOfficialAi || post.is_official_ai);
     const isOfficialPlatform = Boolean(post.authorIsOfficial);
-    const authorLabel = String(post.authorLabel || post.username_display || post.author?.email || 'OPERIX').trim() || 'OPERIX';
+    const authorLabel = String(post.authorUsername ? `@${post.authorUsername}` : post.authorLabel || post.username_display || post.author?.username || post.author?.email || 'OPERIX').trim() || 'OPERIX';
     const content = String(post.content || post.post_text || '').trim() || 'محتوى منشور';
     const formattedContent = escapeSocialHtml(content).replace(/(^|\s)#([\p{L}\p{N}_-]{2,40})/gu, '$1<button type="button" class="social-hashtag" onclick="searchSocialHashtag(\'$2\')">#$2</button>');
     const postId = String(post._id || post.id || '');
@@ -2939,7 +2980,7 @@ function renderSocialPostCard(post) {
     const avatar = post.authorProfileImage ? `<img src="${escapeSocialHtml(post.authorProfileImage)}" alt="" class="twitter-avatar-image">` : initials;
     const image = post.image_url ? `<div class="twitter-post-media"><img src="${escapeSocialHtml(post.image_url)}" alt="صورة مرفقة من ${escapeSocialHtml(authorLabel)}" loading="lazy"></div>` : '';
     const createdAt = post.createdAt ? new Date(post.createdAt).toLocaleString('ar') : 'إعلان رسمي';
-    const handle = isOfficialAi ? '@operix_ai' : '@' + escapeSocialHtml(authorLabel.toLowerCase().replace(/\s+/g, ''));
+    const handle = isOfficialAi ? '@operix_ai' : post.authorUsername ? `@${escapeSocialHtml(post.authorUsername)}` : '@' + escapeSocialHtml(authorLabel.toLowerCase().replace(/\s+/g, ''));
     return `<article data-social-post-id="${escapeSocialHtml(postId)}" class="twitter-post ${isOfficialAi ? 'border-amber-400/20' : ''}">
         <div class="twitter-post-inner">
             <div class="twitter-avatar"><div class="twitter-avatar-badge ${isOfficialAi ? 'bg-amber-400/15 text-amber-300' : ''}">${isOfficialAi ? '<i class="fa-solid fa-robot"></i>' : avatar}</div></div>
