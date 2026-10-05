@@ -468,6 +468,17 @@ body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) th { col
     box-shadow: 0 14px 32px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.065);
 }
 #view-home .balance-usdt { border-top-color: rgba(103,232,249,.52); }
+
+/* Keep the complete withdrawal flow reachable on short and mobile viewports. */
+#withdrawModal > div {
+    max-height: calc(100vh - 32px);
+    max-height: calc(100dvh - 32px);
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(247,185,85,.42) transparent;
+}
 #view-home .balance-deposit { border-top-color: rgba(52,211,153,.52); }
 #view-home .balance-profit { border-top-color: rgba(255,231,176,.58); }
 #view-home .balance-opx { border-top-color: rgba(167,139,250,.5); }
