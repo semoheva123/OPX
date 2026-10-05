@@ -39,15 +39,55 @@
             --operix-panel: rgba(11, 24, 39, 0.82);
             --operix-line: rgba(148, 163, 184, 0.16);
             --operix-gold: #f7b955;
+            --ui-pro-glow: rgba(247, 185, 85, 0.18);
+            --ui-pro-panel: rgba(9, 16, 26, 0.9);
         }
         * {
             font-family: 'IBM Plex Sans Arabic', sans-serif;
             -webkit-tap-highlight-color: transparent;
             letter-spacing: 0;
         }
+        html { scroll-behavior: smooth; }
         body {
-            background-color: var(--operix-ink);
+            background:
+                radial-gradient(circle at top right, rgba(247, 185, 85, 0.12), transparent 22%),
+                radial-gradient(circle at bottom left, rgba(34, 211, 238, 0.08), transparent 25%),
+                linear-gradient(180deg, #040a14 0%, #07111f 36%, #040b16 100%);
             color: #f3f4f6;
+            text-rendering: optimizeLegibility;
+        }
+        .operix-app-shell,
+        .glass-card,
+        .about-panel,
+        .campaign-shell,
+        .opx-market-card,
+        .promo-panel,
+        .profile-card,
+        .stats-card,
+        .wallet-panel,
+        .mission-card,
+        .social-post,
+        .modal-shell > div {
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.85), rgba(9, 14, 24, 0.94));
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            box-shadow: 0 18px 50px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255,255,255,0.03);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+        }
+        .glass-card:hover,
+        .about-panel:hover,
+        .campaign-shell:hover,
+        .profile-card:hover,
+        .mission-card:hover {
+            border-color: rgba(247, 185, 85, 0.25);
+            box-shadow: 0 24px 58px rgba(2, 8, 18, 0.52), 0 0 0 1px rgba(247,185,85,0.05);
+        }
+        .gold-gradient {
+            background: linear-gradient(135deg, #f9d77f 0%, #f7b955 35%, #d9862f 100%);
+            box-shadow: 0 18px 38px rgba(247, 185, 85, 0.22);
+        }
+        .cyan-gradient {
+            background: linear-gradient(135deg, rgba(34, 211, 238, 0.2), rgba(14, 116, 144, 0.18), rgba(15, 23, 42, 0.7));
         }
         .hide { display: none !important; }
         .modal-shell { opacity: 1; visibility: visible; transition: opacity .22s ease, visibility .22s ease; }
@@ -440,6 +480,66 @@
         .glass-card:hover { border-color: rgba(247,185,85,.24); box-shadow: 0 22px 60px rgba(0,0,0,.22); }
         .operix-app-header { background: linear-gradient(105deg, rgba(16,35,54,.92), rgba(8,18,31,.86)); border-color: rgba(247,185,85,.18); box-shadow: 0 16px 45px rgba(0,0,0,.2); }
         .operix-wallet { background-image: radial-gradient(circle at 100% 0%, rgba(247,185,85,.2), transparent 18rem), linear-gradient(135deg, rgba(247,185,85,.13), rgba(8,18,31,.94) 58%); }
+        .premium-status-strip {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+            padding: 0;
+            margin: 0 0 14px;
+        }
+        .status-pill {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            min-height: 68px;
+            padding: 10px 12px;
+            border: 1px solid rgba(148,163,184,.14);
+            border-radius: 18px;
+            background: linear-gradient(180deg, rgba(15,23,42,.9), rgba(9,14,24,.92));
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 10px 20px rgba(0,0,0,.12);
+        }
+        .status-pill::before {
+            content: '';
+            position: absolute;
+            inset: auto auto 0 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, rgba(247,185,85,.7), rgba(34,211,238,.2), transparent);
+            opacity: 0.8;
+        }
+        .status-pill i {
+            display: grid;
+            place-items: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 12px;
+            background: rgba(247,185,85,.08);
+            color: var(--status-color, #f7b955);
+            font-size: 12px;
+        }
+        .status-pill span {
+            display: block;
+            color: #94a3b8;
+            font-size: 9px;
+            font-weight: 700;
+        }
+        .status-pill strong {
+            display: block;
+            margin-top: 2px;
+            color: #f8fafc;
+            font-size: 16px;
+            line-height: 1.1;
+            font-weight: 900;
+            letter-spacing: -0.04em;
+        }
+        .status-pill--cyan { --status-color: #67e8f9; }
+        .status-pill--gold { --status-color: #f7b955; }
+        .status-pill--green { --status-color: #4ade80; }
+        @media (max-width: 640px) {
+            .premium-status-strip { grid-template-columns: 1fr; }
+        }
         .operix-wallet .bg-slate-950\/60 { background: rgba(3,10,19,.46); border-color: rgba(255,255,255,.09); }
         .operix-wallet .wallet-summary-surface { position: relative; isolation: isolate; }
         .operix-wallet .wallet-summary-surface::before { content: ''; position: absolute; inset: -1px; border-radius: 24px; background: linear-gradient(135deg, transparent, rgba(247,185,85,.08), transparent); filter: blur(24px); opacity: .8; z-index: -1; }
@@ -453,6 +553,70 @@
         .app-nav-item { position: relative; border-radius: 14px; padding: 5px 4px; }
         .app-nav-item.is-active { background: rgba(247,185,85,.1); box-shadow: inset 0 -2px 0 rgba(247,185,85,.85); }
         .app-nav-item:not(.is-active):hover { background: rgba(148,163,184,.07); }
+        #view-home .balance-summary-card,
+        #view-profile .balance-summary-card {
+            position: relative;
+            overflow: hidden;
+            border-radius: 18px;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.045), 0 12px 28px rgba(0,0,0,.15);
+            transition: transform .22s ease, border-color .22s ease, box-shadow .22s ease;
+        }
+        #view-home .balance-summary-card:hover,
+        #view-profile .balance-summary-card:hover { transform: translateY(-2px); border-color: rgba(247,185,85,.28); box-shadow: 0 18px 34px rgba(0,0,0,.22); }
+        #view-home .operix-wallet > .grid button {
+            min-height: 44px;
+            border-radius: 14px;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+        }
+        #view-travel .task-hero {
+            background: radial-gradient(ellipse at 100% 0%, rgba(247,185,85,.18), transparent 52%), linear-gradient(145deg, rgba(18,28,42,.96), rgba(7,13,23,.98));
+            box-shadow: 0 24px 56px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.05);
+        }
+        #view-travel .task-hero [class*="grid-cols-3"] > div {
+            border-color: rgba(148,163,184,.16);
+            background: linear-gradient(160deg, rgba(4,11,21,.82), rgba(13,22,35,.72));
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+        }
+        #taskLevelPanel {
+            background: radial-gradient(ellipse at 100% 0%, rgba(34,211,238,.09), transparent 60%), rgba(8,17,29,.78);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.035);
+        }
+        #view-travel .task-filter-active {
+            background: linear-gradient(135deg, rgba(247,185,85,.2), rgba(247,185,85,.07));
+            border-color: rgba(247,185,85,.45);
+            box-shadow: 0 7px 20px rgba(247,185,85,.08), inset 0 1px 0 rgba(255,255,255,.05);
+        }
+        #taskBoard .task-card,
+        #dailyTaskList [data-task-card] {
+            position: relative;
+            overflow: hidden;
+            border-radius: 18px;
+            background: linear-gradient(145deg, rgba(15,24,39,.9), rgba(5,12,22,.94));
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.035), 0 12px 24px rgba(0,0,0,.13);
+            transition: border-color .22s ease, transform .22s ease, box-shadow .22s ease;
+        }
+        #taskBoard .task-card:hover,
+        #dailyTaskList [data-task-card]:hover { transform: translateY(-2px); border-color: rgba(247,185,85,.32); box-shadow: 0 18px 34px rgba(0,0,0,.22); }
+        #dailyTaskList [data-task-card] > div > div > div:first-child > span { white-space: nowrap; }
+        #view-profile > .glass-card:first-child {
+            background: radial-gradient(ellipse at 50% 0%, rgba(247,185,85,.12), transparent 48%), linear-gradient(160deg, rgba(15,23,42,.9), rgba(7,13,23,.97));
+        }
+        #view-profile .profile-section > summary { min-height: 34px; }
+        #view-profile .profile-section[open] > summary > i:last-child { transform: rotate(180deg); }
+        #view-profile .profile-section > div { padding-top: 8px; }
+        #view-profile #profileCompletionProgress { box-shadow: 0 0 18px rgba(247,185,85,.28); }
+        #appNavBar {
+            border-color: rgba(148,163,184,.16);
+            background: linear-gradient(180deg, rgba(7,13,23,.91), rgba(3,7,14,.98));
+            backdrop-filter: blur(22px);
+            -webkit-backdrop-filter: blur(22px);
+        }
+        #appNavBar .app-nav-item.is-active { color: #f7c45e; }
+        @media (max-width: 640px) {
+            #view-travel .task-hero { padding: 1rem; }
+            #view-home .operix-wallet > .grid button { font-size: 10px; }
+            #view-profile .balance-summary-card { min-width: 0; }
+        }
         .app-tab-view { animation: none !important; }
         @keyframes tabReveal { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         .app-tab-view > .glass-card { border-color: rgba(148,163,184,.14); }
@@ -806,6 +970,7 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
 @media (max-width: 640px){body{overflow-x:hidden}}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 </style>
+<link rel="stylesheet" href="/styles/operix-premium.css?v=20261005-3">
 </head>
 <body class="min-h-screen flex flex-col justify-between pb-28">
 <div class="tech-grid-bg"></div>
@@ -1103,6 +1268,29 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
 
         <!-- 4.1 تبويب الرئيسية (Home View) -->
         <div id="view-home" class="space-y-5">
+            <div class="premium-status-strip" aria-label="مؤشرات سريعة لحالة الحساب">
+                <div class="status-pill status-pill--gold">
+                    <div>
+                        <span>المهام اليوم</span>
+                        <strong id="quickTaskStatus">0 / 0</strong>
+                    </div>
+                    <i class="fa-solid fa-list-check" aria-hidden="true"></i>
+                </div>
+                <div class="status-pill status-pill--cyan">
+                    <div>
+                        <span>التدرج</span>
+                        <strong id="quickTierStatus">A1</strong>
+                    </div>
+                    <i class="fa-solid fa-arrow-trend-up" aria-hidden="true"></i>
+                </div>
+                <div class="status-pill status-pill--green">
+                    <div>
+                        <span>الأرباح</span>
+                        <strong id="quickProfitStatus">$0.00</strong>
+                    </div>
+                    <i class="fa-solid fa-sack-dollar" aria-hidden="true"></i>
+                </div>
+            </div>
             <!-- كارت المحفظة الرئيسي المحدث (تفصيل الأرباح والإيداع) -->
             <div class="operix-wallet glass-card p-5 rounded-3xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 to-slate-900 relative overflow-hidden shadow-xl space-y-4">
                 <div class="flex items-center justify-between gap-3 text-xs text-slate-400">
@@ -1645,7 +1833,7 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
                         </select>
                     </div>
                     <a id="platformSupportLink" href="#support" target="_blank" rel="noopener noreferrer" class="w-full py-2.5 bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 font-bold rounded-xl text-xs flex justify-between items-center px-3.5 transition-all block">
-                        <span><i class="fa-brands fa-telegram text-sky-400 mr-2"></i> الدعم الفني المباشر (Telegram)</span>
+                        <span><i class="fa-solid fa-headset text-cyan-300 mr-2"></i> الدعم الفني الخارجي</span>
                         <i class="fa-solid fa-arrow-up-right-from-square text-[10px] text-slate-500"></i>
                     </a>
                     <button onclick="openSupportModal()" class="w-full py-2.5 bg-cyan-500/10 border border-cyan-500/20 hover:border-cyan-400/40 text-cyan-300 font-bold rounded-xl text-xs flex justify-between items-center px-3.5 transition-all"><span><i class="fa-solid fa-ticket mr-2"></i> فتح تذكرة دعم</span><i class="fa-solid fa-chevron-left text-[10px]"></i></button>
@@ -2069,6 +2257,6 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
     </script>
 
     <!-- استدعاء ملف الجافاسكربت المفصول الأساسي -->
-    <script src="app.js?v=auth-loop-fix-20260914-2"></script>
+    <script src="app.js?v=support-links-cleanup-20261005"></script>
 </body>
 </html>

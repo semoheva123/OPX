@@ -1,0 +1,510 @@
+/* OPERIX premium design layer: visual-only overrides shared by every HTML page. */
+:root {
+    color-scheme: dark;
+    --opx-ink: #040a14;
+    --opx-panel: rgba(10, 18, 31, .88);
+    --opx-line: rgba(148, 163, 184, .16);
+    --opx-gold: #f7b955;
+    --opx-cyan: #67e8f9;
+    --opx-muted: #9aabc0;
+}
+html { scroll-behavior: smooth; }
+body:not(:has(.cert-container)) { font-family: 'IBM Plex Sans Arabic', 'Tajawal', Arial, sans-serif; }
+body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) {
+    background-color: var(--opx-ink);
+    background-image: radial-gradient(ellipse at 88% 0%, rgba(247,185,85,.13), transparent 34rem), radial-gradient(ellipse at 8% 82%, rgba(34,211,238,.09), transparent 32rem), linear-gradient(180deg, #040a14, #07111f 48%, #040a14);
+    color: #e5e7eb;
+    background-attachment: fixed;
+}
+body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) main {
+    position: relative;
+    isolation: isolate;
+}
+body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) main > nav,
+body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) .hero,
+body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) .faq,
+body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) .contact,
+body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) .release,
+body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) .item,
+body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) .status,
+body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) .table,
+body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) .note,
+body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) .panel,
+body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) main > section {
+    border-color: var(--opx-line);
+    background-color: rgba(10, 18, 31, .7);
+    box-shadow: 0 22px 58px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.035);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+}
+body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) .hero,
+body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) .panel {
+    background-image: radial-gradient(ellipse at 100% 0%, rgba(247,185,85,.1), transparent 60%), linear-gradient(150deg, rgba(17,28,44,.94), rgba(6,13,23,.97));
+}
+body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) h1,
+body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) h2,
+body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) h3 { text-wrap: balance; }
+body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) a { transition: color .2s ease, opacity .2s ease; }
+body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) a:hover { color: #ffe1a1; }
+body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) button,
+body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) input,
+body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) select { transition: border-color .2s ease, background-color .2s ease, box-shadow .2s ease, transform .2s ease; }
+body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) button:focus-visible,
+body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) a:focus-visible { outline: 2px solid var(--opx-gold); outline-offset: 3px; }
+body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) table { border-color: var(--opx-line); }
+body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) th { color: #f8d58d; }
+
+/* Authenticated app: consistent surfaces across every in-page view. */
+#appView { max-width: 820px; }
+#appView .glass-card,
+#appView .mission-card,
+#appView .stats-card,
+#appView .wallet-panel,
+#appView .profile-card,
+#appView .social-post-card,
+#appView .opx-market-card {
+    border-color: rgba(148,163,184,.16);
+    box-shadow: 0 18px 48px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.035);
+}
+#appView .glass-card:hover,
+#appView .mission-card:hover,
+#appView .social-post-card:hover { border-color: rgba(247,185,85,.28); }
+#appView input:not([type="checkbox"]):not([type="radio"]),
+#appView select,
+#appView textarea {
+    border-color: rgba(148,163,184,.2);
+    background-color: rgba(3,9,18,.78);
+}
+#appView input:focus,
+#appView select:focus,
+#appView textarea:focus { border-color: rgba(247,185,85,.72); box-shadow: 0 0 0 3px rgba(247,185,85,.1), 0 0 24px rgba(247,185,85,.06); }
+#appView button:not(:disabled):focus-visible { outline: 2px solid var(--opx-gold); outline-offset: 2px; }
+#appView [id^="view-"] > section,
+#appView [id^="view-"] > .glass-card { backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+#appView .opx-market-card,
+#appView .task-hero,
+#appView .team-code-card { position: relative; isolation: isolate; }
+#appView .opx-market-card::before,
+#appView .task-hero::before,
+#appView .team-code-card::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    background: radial-gradient(ellipse at 100% 0%, rgba(103,232,249,.08), transparent 58%);
+}
+#appNavBar { border-color: rgba(148,163,184,.18) !important; box-shadow: 0 -18px 48px rgba(0,0,0,.36); }
+
+/* Community: composer's surface, member cards, tabs and post interactions. */
+#view-feed .social-feed-tabs { padding: 5px; border: 1px solid rgba(103,232,249,.14); border-radius: 17px; background: linear-gradient(145deg, rgba(12,24,39,.96), rgba(4,10,19,.96)); box-shadow: inset 0 1px 0 rgba(255,255,255,.04); }
+#view-feed .social-feed-tab { min-height: 42px; border-radius: 13px; }
+#view-feed .social-feed-mode-active,
+#view-feed .social-feed-tab:hover { background: linear-gradient(135deg, rgba(34,211,238,.17), rgba(34,211,238,.06)); box-shadow: inset 0 1px 0 rgba(255,255,255,.04); }
+#view-feed .social-post-card,
+#view-feed .twitter-feed { background: linear-gradient(155deg, rgba(13,22,36,.98), rgba(4,9,17,.98)); border-color: rgba(103,232,249,.15); box-shadow: 0 24px 64px rgba(0,0,0,.27), inset 0 1px 0 rgba(255,255,255,.035); }
+#view-feed .twitter-compose,
+#view-feed .social-post-card > header { background: linear-gradient(120deg, rgba(14,28,44,.82), rgba(4,10,19,.88)); }
+#view-feed .twitter-composer-box textarea { min-height: 104px; border-radius: 20px; background: rgba(3,9,18,.88); }
+#view-feed .social-community-card { border-color: rgba(103,232,249,.14); background: linear-gradient(150deg, rgba(13,24,39,.92), rgba(4,10,19,.94)); box-shadow: 0 12px 26px rgba(0,0,0,.16); transition: transform .2s ease, border-color .2s ease; }
+#view-feed .social-community-card:hover { transform: translateY(-2px); border-color: rgba(103,232,249,.32); }
+#view-feed .social-post-actions button,
+#view-feed .social-post-button-group button,
+#view-feed .social-post-menu-group button { transition: color .2s ease, background .2s ease, border-color .2s ease; }
+#view-feed .social-floating-compose { width: 54px; height: 54px; background: linear-gradient(145deg, #a5f3fc, #22d3ee 58%, #0891b2); box-shadow: 0 16px 36px rgba(8,145,178,.32), inset 0 1px 0 rgba(255,255,255,.42); }
+#view-feed .twitter-post { background: rgba(7,13,23,.74); }
+#view-feed .twitter-post:hover { background: rgba(14,24,39,.96); }
+
+/* Financial modals: premium shells, clear hierarchy; all existing inputs/actions retained. */
+#depositModal,
+#withdrawModal,
+#historyModal,
+#platformConfirmModal,
+#privateMessagesModal,
+#notificationsModal,
+#supportModal,
+#forgotPasswordModal,
+#changePasswordModal,
+#activeSessionsModal,
+#authenticatorSetupModal,
+#gameResultModal {
+    background: rgba(2,7,15,.78);
+    backdrop-filter: blur(18px) saturate(125%);
+    -webkit-backdrop-filter: blur(18px) saturate(125%);
+}
+#depositModal > div,
+#withdrawModal > div,
+#historyModal > div,
+#platformConfirmModal > div,
+#privateMessagesModal > div,
+#notificationsModal > div,
+#supportModal > div,
+#forgotPasswordModal > div,
+#changePasswordModal > div,
+#activeSessionsModal > div,
+#authenticatorSetupModal > div,
+#gameResultModal > div {
+    border: 1px solid rgba(247,185,85,.23) !important;
+    background: radial-gradient(ellipse at 100% 0%, rgba(247,185,85,.1), transparent 46%), linear-gradient(155deg, rgba(16,26,42,.98), rgba(5,11,20,.99)) !important;
+    box-shadow: 0 30px 90px rgba(0,0,0,.56), 0 0 0 1px rgba(255,255,255,.025), inset 0 1px 0 rgba(255,255,255,.055) !important;
+}
+#depositModal > div > div:first-child,
+#withdrawModal > div > div:first-child { border-color: rgba(148,163,184,.16); }
+#depositModal .bg-slate-950,
+#withdrawModal .bg-slate-950,
+#historyModal #historyList { background-color: rgba(2,7,15,.72); }
+#depositModal [class*="border-emerald-500"],
+#withdrawModal [class*="border-amber-500"] { box-shadow: inset 0 1px 0 rgba(255,255,255,.035); }
+#depositModal button,
+#withdrawModal button,
+#historyModal button { min-height: 42px; }
+#depositModal input,
+#withdrawModal input,
+#withdrawModal select { min-height: 44px; border-radius: 13px; }
+#historyModal #historyList > * { border-color: rgba(148,163,184,.12); border-radius: 14px; }
+#privateMessagesModal > div { border-color: rgba(103,232,249,.25) !important; }
+#socialUserCardModal > div,
+#socialCoverCropModal > div { border-color: rgba(103,232,249,.24) !important; background: linear-gradient(155deg, rgba(16,26,42,.98), rgba(5,11,20,.99)) !important; box-shadow: 0 30px 90px rgba(0,0,0,.56); }
+
+/* Admin workspace: preserve permission states and responsive table handling. */
+#sidebar { background: linear-gradient(180deg, rgba(11,20,33,.97), rgba(5,11,20,.99)); border-color: rgba(148,163,184,.15); }
+#sidebar nav button { min-height: 46px; border: 1px solid transparent; }
+#sidebar nav button:not(.bg-amber-500):hover { background: rgba(148,163,184,.07); border-color: rgba(148,163,184,.14); }
+#admin-overview .glass-card,
+#admin-analytics .glass-card,
+#admin-users .glass-card,
+#admin-withdrawals .glass-card { border-color: rgba(148,163,184,.16); }
+#admin-users table tbody tr,
+#admin-withdrawals table tbody tr,
+#admin-audit table tbody tr,
+#admin-referrals table tbody tr { transition: background-color .18s ease; }
+#admin-users table tbody tr:hover,
+#admin-withdrawals table tbody tr:hover,
+#admin-audit table tbody tr:hover,
+#admin-referrals table tbody tr:hover { background: rgba(247,185,85,.05); }
+#adminConfirmModal,
+.admin-modal { backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+
+@media (max-width: 640px) {
+    #appView { padding-inline: 12px; }
+    #view-feed .social-floating-compose { inset-inline-end: 14px; }
+    #depositModal,
+    #withdrawModal,
+    #historyModal { align-items: flex-end; padding: 12px !important; }
+    #depositModal > div,
+    #withdrawModal > div,
+    #historyModal > div { width: 100%; max-height: calc(100dvh - 24px); overflow-y: auto; border-radius: 26px 26px 18px 18px !important; }
+    body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) main { padding-inline: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+/* High-visibility refinement pass: stronger hierarchy, brighter edge lighting, and richer surfaces. */
+.company-intro { position: relative; }
+.company-intro > div > header {
+    position: sticky;
+    top: 10px;
+    z-index: 20;
+    padding: 12px 16px;
+    border: 1px solid rgba(247,185,85,.24);
+    border-radius: 22px;
+    background: rgba(5,11,20,.84);
+    box-shadow: 0 16px 42px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.07);
+    backdrop-filter: blur(22px);
+}
+.company-intro .trust-strip {
+    gap: 2px;
+    padding: 2px;
+    border-color: rgba(103,232,249,.3);
+    background: linear-gradient(110deg, rgba(34,211,238,.38), rgba(247,185,85,.38), rgba(34,211,238,.18));
+    box-shadow: 0 14px 36px rgba(0,0,0,.26), 0 0 35px rgba(34,211,238,.07);
+}
+.company-intro .trust-item { min-height: 66px; background: linear-gradient(135deg, rgba(8,22,34,.98), rgba(5,12,22,.98)); }
+.company-intro .rewards-campaign {
+    border: 1px solid rgba(255,211,128,.48);
+    border-radius: 32px;
+    padding: clamp(22px, 4vw, 42px);
+    background: radial-gradient(ellipse at 100% 0%, rgba(247,185,85,.2), transparent 40%), radial-gradient(ellipse at 0% 100%, rgba(34,211,238,.12), transparent 38%), linear-gradient(145deg, #11192a 0%, #090f1d 54%, #071822 100%);
+    box-shadow: 0 30px 90px rgba(0,0,0,.42), 0 0 55px rgba(247,185,85,.08), inset 0 1px 0 rgba(255,255,255,.1);
+}
+.company-intro .reward-campaign-heading { align-items: center; padding-bottom: 22px; border-bottom: 1px solid rgba(148,163,184,.16); }
+.company-intro .reward-campaign-kicker { padding: 9px 14px; border-color: rgba(255,211,128,.42); background: rgba(247,185,85,.13); font-size: 11px; box-shadow: 0 0 24px rgba(247,185,85,.08); }
+.company-intro .reward-campaign-title { font-size: clamp(26px,4vw,38px); letter-spacing: -.025em; }
+.company-intro .reward-campaign-subtitle { font-size: 14px; }
+.company-intro .reward-prize-grid { gap: 16px; }
+.company-intro .reward-prize-card {
+    border-color: rgba(148,163,184,.24);
+    border-radius: 24px;
+    background: linear-gradient(155deg, rgba(22,32,50,.98), rgba(5,12,23,.98));
+    box-shadow: 0 18px 42px rgba(0,0,0,.27), inset 0 1px 0 rgba(255,255,255,.07);
+}
+.company-intro .reward-prize-card--grand { border-color: rgba(255,211,128,.55); box-shadow: 0 20px 48px rgba(0,0,0,.3), 0 0 28px rgba(247,185,85,.1), inset 0 1px 0 rgba(255,255,255,.1); }
+.company-intro .reward-prize-art { height: 178px; background-color: rgba(3,8,16,.7); }
+.company-intro .reward-prize-art img { height: 168px; }
+.company-intro .reward-prize-copy { padding: 18px; }
+.company-intro .reward-prize-name { font-size: 17px; }
+.company-intro .reward-prize-detail { font-size: 11px; }
+.company-intro .reward-points { padding: 8px 12px; font-size: 11px; }
+.company-intro .about-panel,
+.company-intro .intro-feature { border-color: rgba(148,163,184,.2); background: linear-gradient(145deg, rgba(15,27,43,.92), rgba(5,12,22,.96)); }
+.company-intro .product-preview { border-color: rgba(247,185,85,.4); box-shadow: 0 35px 90px rgba(0,0,0,.48), 0 0 44px rgba(34,211,238,.08); }
+.company-intro .intro-feature { min-height: 96px; padding: 20px; border-radius: 22px; }
+
+#authView .auth-panel {
+    padding: clamp(24px,5vw,36px);
+    border-color: rgba(247,185,85,.34);
+    background: radial-gradient(ellipse at 50% 0%, rgba(247,185,85,.14), transparent 44%), linear-gradient(155deg, rgba(15,24,39,.98), rgba(4,10,19,.99));
+    box-shadow: 0 32px 90px rgba(0,0,0,.46), 0 0 45px rgba(247,185,85,.07), inset 0 1px 0 rgba(255,255,255,.08);
+}
+#authView input { min-height: 48px; border-radius: 14px; }
+#authView #tabLoginBtn, #authView #tabRegisterBtn { min-height: 44px; }
+
+#appView { max-width: 860px; padding-top: 18px; }
+#appView .operix-app-header {
+    min-height: 72px;
+    padding: 14px 18px;
+    border: 1px solid rgba(247,185,85,.32);
+    border-radius: 22px;
+    background: radial-gradient(ellipse at 100% 0%, rgba(247,185,85,.16), transparent 48%), linear-gradient(110deg, rgba(13,29,45,.98), rgba(5,12,22,.98));
+    box-shadow: 0 18px 44px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.08);
+}
+#view-home .operix-wallet {
+    border: 1px solid rgba(255,211,128,.48) !important;
+    border-radius: 30px !important;
+    padding: clamp(18px,3.5vw,28px) !important;
+    box-shadow: 0 28px 72px rgba(0,0,0,.35), 0 0 42px rgba(247,185,85,.1), inset 0 1px 0 rgba(255,255,255,.09) !important;
+}
+#view-home .operix-wallet #lblWalletBalance { font-size: clamp(42px,8vw,58px); letter-spacing: -.05em; text-shadow: 0 0 32px rgba(247,185,85,.18); }
+#view-home .balance-summary-card,
+#view-profile .balance-summary-card {
+    min-height: 98px;
+    padding: 14px;
+    border: 1px solid rgba(148,163,184,.22);
+    background: linear-gradient(145deg, rgba(15,28,44,.95), rgba(4,11,21,.98));
+}
+#view-home .balance-card-value,
+#view-profile .balance-card-value { font-size: clamp(17px,3vw,22px); }
+#view-home .operix-wallet > .grid button { min-height: 50px; font-size: 12px; font-weight: 900; }
+#view-home .home-referral-campaign { border-color: rgba(255,211,128,.36); box-shadow: 0 24px 58px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.07); }
+#view-home .opx-market-card { border-color: rgba(103,232,249,.3); box-shadow: 0 22px 56px rgba(0,0,0,.28), 0 0 34px rgba(34,211,238,.06); }
+#appView [id^="view-"] > .glass-card,
+#appView [id^="view-"] > section.glass-card { border-radius: 24px; }
+#view-travel .task-hero { border: 1px solid rgba(255,211,128,.4); border-radius: 28px; }
+#view-travel #taskBoard .task-card,
+#view-travel #dailyTaskList [data-task-card] { border-color: rgba(148,163,184,.23); }
+#view-profile > .glass-card:first-child { border-color: rgba(255,211,128,.34); border-radius: 28px; }
+
+#view-feed .twitter-shell { max-width: 800px; }
+#view-feed .social-feed-tabs { border-color: rgba(103,232,249,.3); box-shadow: 0 12px 28px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.06); }
+#view-feed > section.glass-card { border-color: rgba(103,232,249,.24); border-radius: 24px; box-shadow: 0 20px 48px rgba(0,0,0,.26), inset 0 1px 0 rgba(255,255,255,.055); }
+#view-feed .twitter-post { border-bottom-color: rgba(103,232,249,.12); }
+#view-feed .twitter-post-inner { padding: 20px; }
+#view-feed .twitter-user-meta strong { font-size: 14px; }
+#view-feed .twitter-post-body p { font-size: 14px; line-height: 1.9; }
+#view-feed .twitter-composer-box textarea { border-color: rgba(103,232,249,.24); box-shadow: inset 0 1px 0 rgba(255,255,255,.035); }
+#view-feed .twitter-submit { background: linear-gradient(135deg, #a5f3fc, #22d3ee 58%, #0891b2); box-shadow: 0 10px 26px rgba(8,145,178,.2); }
+
+#depositModal > div,
+#withdrawModal > div,
+#historyModal > div {
+    position: relative;
+    overflow: hidden;
+    border-radius: 28px !important;
+    padding: 24px !important;
+}
+#depositModal > div::before,
+#withdrawModal > div::before,
+#historyModal > div::before,
+#privateMessagesModal > div::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 7%;
+    left: 7%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #ffe1a1 28%, #f7b955 52%, #67e8f9 76%, transparent);
+    box-shadow: 0 0 20px rgba(247,185,85,.38);
+}
+#depositModal > div > div:first-child,
+#withdrawModal > div > div:first-child { padding-bottom: 14px; }
+#depositModal > div > div:first-child h3,
+#withdrawModal > div > div:first-child h3 { font-size: 16px; }
+#depositModal .bg-slate-950,
+#withdrawModal .bg-slate-950 { border-color: rgba(148,163,184,.24); border-radius: 18px; }
+#depositModal [class*="border-emerald-500"] { padding: 14px; border-color: rgba(52,211,153,.32); background: linear-gradient(130deg, rgba(16,185,129,.12), rgba(3,16,21,.76)); font-size: 12px; line-height: 1.9; }
+#withdrawModal #withdrawFeeSummary { padding: 9px 11px; border: 1px solid rgba(247,185,85,.22); border-radius: 12px; background: rgba(247,185,85,.06); color: #f8d58d; }
+#depositModal button.gold-gradient,
+#withdrawModal button.gold-gradient,
+#withdrawModal #btnSubmitWithdraw { min-height: 50px; border-radius: 15px; box-shadow: 0 12px 28px rgba(247,185,85,.18); }
+#privateMessagesModal > div { position: relative; overflow: hidden; border-radius: 28px; box-shadow: 0 34px 95px rgba(0,0,0,.58), 0 0 38px rgba(34,211,238,.08); }
+
+#sidebar { border-inline-start: 1px solid rgba(247,185,85,.22); }
+#sidebar nav button.bg-amber-500 { border-radius: 15px; }
+#admin-overview .ops-status { border-color: rgba(52,211,153,.25); background: linear-gradient(120deg, rgba(16,185,129,.1), rgba(3,10,19,.7)); }
+#admin-overview > .grid .glass-card { border-radius: 24px; }
+#admin-users .glass-card, #admin-withdrawals .glass-card { border-radius: 24px; }
+
+@media (max-width: 640px) {
+    .company-intro .rewards-campaign { padding: 18px 14px; border-radius: 24px; }
+    .company-intro .reward-campaign-title { font-size: 25px; }
+    .company-intro .reward-prize-art { min-height: 134px; }
+    .company-intro .reward-prize-card { min-height: 138px; }
+    #appView .operix-app-header { border-radius: 19px; }
+    #view-home .operix-wallet { border-radius: 24px !important; }
+    #view-feed .twitter-post-inner { padding: 15px; }
+    #depositModal > div, #withdrawModal > div, #historyModal > div { padding: 20px !important; }
+}
+
+/* OPERIX Signature Reserve: final luxury polish. */
+:root {
+    --opx-champagne: #ffe7b0;
+    --opx-gold-bright: #f6c76d;
+    --opx-gold-deep: #9b672b;
+    --opx-velvet: #070b13;
+    --opx-surface: #0c1421;
+}
+.company-intro > div > header {
+    border-color: rgba(255,231,176,.34);
+    background: linear-gradient(110deg, rgba(7,11,19,.95), rgba(13,20,31,.88));
+    box-shadow: 0 18px 54px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.1), 0 1px 0 rgba(255,231,176,.08);
+}
+.company-intro .rewards-campaign {
+    isolation: isolate;
+    overflow: hidden;
+    border-color: rgba(255,231,176,.56);
+    background: radial-gradient(ellipse at 80% -10%, rgba(255,231,176,.18), transparent 34%), radial-gradient(ellipse at 0% 100%, rgba(34,211,238,.1), transparent 36%), linear-gradient(145deg, #111722 0%, #080d16 52%, #0a1720 100%);
+    box-shadow: 0 36px 100px rgba(0,0,0,.5), 0 0 0 1px rgba(255,231,176,.06), 0 0 68px rgba(247,185,85,.11), inset 0 1px 0 rgba(255,255,255,.12);
+}
+.company-intro .rewards-campaign::after {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: 9px;
+    border: 1px solid rgba(255,231,176,.1);
+    border-radius: 25px;
+    pointer-events: none;
+}
+.company-intro .reward-campaign-heading { border-bottom-color: rgba(255,231,176,.18); }
+.company-intro .reward-campaign-kicker {
+    color: var(--opx-champagne);
+    border-color: rgba(255,231,176,.45);
+    background: linear-gradient(110deg, rgba(247,185,85,.16), rgba(247,185,85,.045));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 6px 22px rgba(247,185,85,.08);
+}
+.company-intro .reward-campaign-title { color: #fffaf0; text-shadow: 0 5px 28px rgba(255,231,176,.13); }
+.company-intro .reward-campaign-cta,
+#view-home .operix-wallet > .grid button:nth-child(2),
+#depositModal button.gold-gradient,
+#withdrawModal #btnSubmitWithdraw {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255,244,214,.62);
+    background: linear-gradient(135deg, #fff0c7 0%, #f5ca76 26%, #d99b44 62%, #b9792d 100%);
+    color: #21170b;
+    box-shadow: 0 14px 32px rgba(185,121,45,.24), inset 0 1px 0 rgba(255,255,255,.72), inset 0 -1px 0 rgba(111,66,20,.24);
+}
+.company-intro .reward-campaign-cta::after,
+#view-home .operix-wallet > .grid button:nth-child(2)::after,
+#depositModal button.gold-gradient::after,
+#withdrawModal #btnSubmitWithdraw::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    bottom: -50%;
+    left: -70%;
+    width: 42%;
+    transform: rotate(22deg);
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.38), transparent);
+    transition: left .55s cubic-bezier(.22,1,.36,1);
+    pointer-events: none;
+}
+.company-intro .reward-campaign-cta:hover::after,
+#view-home .operix-wallet > .grid button:nth-child(2):hover::after,
+#depositModal button.gold-gradient:hover::after,
+#withdrawModal #btnSubmitWithdraw:hover::after { left: 130%; }
+.company-intro .reward-prize-card {
+    border-color: rgba(255,231,176,.18);
+    background: linear-gradient(155deg, rgba(21,29,42,.98), rgba(6,11,19,.99));
+    box-shadow: 0 20px 48px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.085);
+}
+.company-intro .reward-prize-art {
+    position: relative;
+    background: radial-gradient(ellipse at 50% 100%, rgba(247,185,85,.18), transparent 65%), linear-gradient(180deg, rgba(12,19,30,.9), rgba(4,8,15,.95));
+}
+.company-intro .reward-prize-art::after {
+    content: '';
+    position: absolute;
+    inset: 10px;
+    border: 1px solid rgba(255,255,255,.055);
+    border-radius: 15px;
+    pointer-events: none;
+}
+.company-intro .reward-prize-card--grand .reward-prize-art { background: radial-gradient(ellipse at 50% 100%, rgba(247,185,85,.3), transparent 65%), linear-gradient(180deg, rgba(30,25,18,.88), rgba(8,10,15,.98)); }
+.company-intro .reward-prize-card:hover {
+    transform: translateY(-6px);
+    border-color: rgba(255,231,176,.54);
+    box-shadow: 0 28px 64px rgba(0,0,0,.42), 0 0 34px rgba(247,185,85,.13), inset 0 1px 0 rgba(255,255,255,.12);
+}
+.company-intro .reward-prize-card--grand .reward-prize-name { color: var(--opx-champagne); }
+.company-intro .reward-points { border-color: rgba(255,231,176,.35); background: rgba(247,185,85,.1); color: var(--opx-champagne); }
+.company-intro .about-panel,
+.company-intro .intro-feature { box-shadow: 0 20px 55px rgba(0,0,0,.29), inset 0 1px 0 rgba(255,255,255,.06); }
+.company-intro footer { padding-top: 20px; }
+
+#authView .auth-panel,
+#view-home .operix-wallet,
+#view-feed > section.glass-card,
+#view-travel .task-hero,
+#view-profile > .glass-card:first-child {
+    box-shadow: 0 30px 84px rgba(0,0,0,.4), 0 0 46px rgba(247,185,85,.075), inset 0 1px 0 rgba(255,255,255,.095) !important;
+}
+#appView .operix-app-header { border-color: rgba(255,231,176,.34); }
+#view-home .balance-summary-card,
+#view-profile .balance-summary-card {
+    background: linear-gradient(145deg, rgba(19,29,43,.98), rgba(5,10,18,.99));
+    box-shadow: 0 14px 32px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.065);
+}
+#view-home .balance-usdt { border-top-color: rgba(103,232,249,.52); }
+#view-home .balance-deposit { border-top-color: rgba(52,211,153,.52); }
+#view-home .balance-profit { border-top-color: rgba(255,231,176,.58); }
+#view-home .balance-opx { border-top-color: rgba(167,139,250,.5); }
+#view-home .operix-wallet > .grid button:first-child { border-color: rgba(52,211,153,.38); background: linear-gradient(140deg, rgba(16,185,129,.2), rgba(6,20,24,.88)); }
+#view-home .operix-wallet > .grid button:last-child { border-color: rgba(148,163,184,.24); background: linear-gradient(140deg, rgba(30,41,59,.9), rgba(7,13,22,.96)); }
+#view-feed .twitter-feed,
+#view-feed .social-community-card { box-shadow: 0 24px 64px rgba(0,0,0,.36), inset 0 1px 0 rgba(255,255,255,.065); }
+#view-feed .social-community-avatar { border-color: rgba(255,231,176,.35); background: linear-gradient(145deg, rgba(247,185,85,.17), rgba(34,211,238,.12)); color: var(--opx-champagne); }
+#view-feed .twitter-post-actions button:hover { color: var(--opx-champagne); text-shadow: 0 0 18px rgba(247,185,85,.26); }
+#view-feed .social-floating-compose { border: 1px solid rgba(255,255,255,.42); background: linear-gradient(145deg, #e6fbff, #67e8f9 48%, #0891b2); box-shadow: 0 18px 42px rgba(8,145,178,.38), inset 0 1px 0 rgba(255,255,255,.72); }
+
+#depositModal > div,
+#withdrawModal > div,
+#historyModal > div,
+#privateMessagesModal > div {
+    border-color: rgba(255,231,176,.38) !important;
+    box-shadow: 0 38px 110px rgba(0,0,0,.68), 0 0 50px rgba(247,185,85,.1), inset 0 1px 0 rgba(255,255,255,.1) !important;
+}
+#depositModal input, #withdrawModal input, #withdrawModal select { border-color: rgba(255,231,176,.18); background: linear-gradient(145deg, rgba(4,9,16,.96), rgba(10,18,29,.98)); }
+#depositModal [class*="border-emerald-500"] { border-inline-start: 3px solid #4ade80; }
+#withdrawModal [class*="border-amber-500"] { border-inline-start: 3px solid var(--opx-gold-bright); }
+#historyModal #historyList > div { padding: 12px; background: linear-gradient(120deg, rgba(16,26,40,.9), rgba(5,10,18,.92)); }
+#appNavBar { border-top-color: rgba(255,231,176,.2) !important; background: linear-gradient(180deg, rgba(10,15,24,.94), rgba(3,6,12,.99)) !important; }
+#appNavBar .app-nav-item.is-active { box-shadow: inset 0 -2px 0 var(--opx-champagne), 0 0 24px rgba(247,185,85,.08); }
+
+#sidebar { box-shadow: 14px 0 54px rgba(0,0,0,.24), inset -1px 0 rgba(255,231,176,.08); }
+#sidebar nav button.bg-amber-500 { background: linear-gradient(135deg, #fff0c7, #f5ca76 52%, #d99b44); color: #21170b; }
+#admin-overview .glass-card,
+#admin-analytics .glass-card,
+#admin-users .glass-card,
+#admin-withdrawals .glass-card { box-shadow: 0 20px 52px rgba(0,0,0,.29), inset 0 1px 0 rgba(255,255,255,.055); }
+
+@media (prefers-reduced-motion: no-preference) {
+    .company-intro .reward-prize-art img { transition: transform .45s cubic-bezier(.22,1,.36,1), filter .45s ease; }
+    .company-intro .reward-prize-card:hover .reward-prize-art img { transform: translateY(-4px) scale(1.045); filter: drop-shadow(0 17px 18px rgba(0,0,0,.42)); }
+}
+@media (max-width: 640px) {
+    .company-intro .rewards-campaign::after { inset: 6px; border-radius: 19px; }
+    .company-intro .reward-prize-card:hover { transform: none; }
+}

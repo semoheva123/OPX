@@ -17,8 +17,21 @@
     <script src="https://cdn.ably.com/lib/ably.min-2.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap');
-        :root { --operix-ink: #07111f; --operix-panel: rgba(11, 24, 39, 0.88); --operix-line: rgba(148, 163, 184, 0.16); --operix-gold: #f7b955; }
-        body { font-family: 'IBM Plex Sans Arabic', sans-serif; background-color: var(--operix-ink); background-image: linear-gradient(rgba(69, 214, 176, 0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(69, 214, 176, 0.035) 1px, transparent 1px), radial-gradient(circle at 90% 0%, rgba(247, 185, 85, 0.12), transparent 30rem); background-size: 42px 42px, 42px 42px, auto; color: #f3f4f6; }
+        :root { --operix-ink: #07111f; --operix-panel: rgba(11, 24, 39, 0.88); --operix-line: rgba(148, 163, 184, 0.16); --operix-gold: #f7b955; --ui-pro-glow: rgba(247,185,85,0.18); --ui-pro-panel: rgba(12,20,33,0.92); }
+        body { font-family: 'IBM Plex Sans Arabic', sans-serif; background:
+            radial-gradient(circle at top left, rgba(247,185,85,0.12), transparent 22%),
+            radial-gradient(circle at bottom right, rgba(34,211,238,0.09), transparent 25%),
+            linear-gradient(180deg, #040b14 0%, #07111f 32%, #050d18 100%);
+            background-attachment: fixed;
+            color: #f3f4f6; }
+        .glass-card {
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.82), rgba(10, 15, 24, 0.96));
+            border: 1px solid rgba(148,163,184,0.18);
+            box-shadow: 0 20px 50px rgba(2, 8, 18, 0.36), inset 0 1px 0 rgba(255,255,255,0.03);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+        }
+        .glass-card:hover { border-color: rgba(247,185,85,0.26); box-shadow: 0 24px 66px rgba(2, 8, 18, 0.48), 0 0 0 1px rgba(247,185,85,0.04); }
         .glass-card { background: var(--operix-panel); backdrop-filter: blur(16px); border: 1px solid var(--operix-line); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.16); }
         .gold-gradient { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
         .purple-gradient { background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); }
@@ -38,6 +51,21 @@
         #sidebar { box-shadow: -18px 0 50px rgba(0,0,0,.16); }
         .glass-card { border-radius: 20px; transition: border-color .25s ease, box-shadow .25s ease, transform .25s ease; }
         .glass-card:hover { border-color: rgba(247,185,85,.24); box-shadow: 0 22px 60px rgba(0,0,0,.22); }
+        #sidebar nav button { position: relative; min-height: 44px; border: 1px solid transparent; }
+        #sidebar nav button:not(.bg-amber-500):hover { border-color: rgba(148,163,184,.12); background: rgba(148,163,184,.07); }
+        #sidebar nav button.bg-amber-500 { box-shadow: 0 10px 24px rgba(247,185,85,.15), inset 0 1px 0 rgba(255,255,255,.32); }
+        #sidebar > div:first-child > div:first-child { padding: 12px; border: 1px solid var(--operix-line); border-radius: 18px; background: linear-gradient(135deg, rgba(247,185,85,.08), rgba(8,18,31,.54)); }
+        main > div[id^="admin-"] > .grid > .glass-card,
+        #admin-overview > .grid > .glass-card { position: relative; overflow: hidden; }
+        #admin-overview > .grid > .glass-card { min-height: 108px; background: linear-gradient(155deg, rgba(15,25,40,.94), rgba(7,13,23,.96)); }
+        #admin-overview > .grid > .glass-card::after { content: ''; position: absolute; inset: auto 0 0; height: 2px; background: linear-gradient(90deg, rgba(247,185,85,.7), rgba(34,211,238,.12), transparent); }
+        #admin-overview > .grid > .glass-card:hover { transform: translateY(-2px); }
+        #admin-users input, #admin-users select, #admin-withdrawals input, #admin-withdrawals select { min-height: 40px; }
+        #admin-users table thead, #admin-withdrawals table thead, #admin-referrals table thead, #admin-audit table thead { position: sticky; top: 0; z-index: 2; backdrop-filter: blur(12px); }
+        #admin-users tbody tr:hover, #admin-withdrawals tbody tr:hover, #admin-referrals tbody tr:hover, #admin-audit tbody tr:hover { background: rgba(247,185,85,.055); }
+        #admin-users .glass-card, #admin-withdrawals .glass-card, #admin-referrals .glass-card, #admin-audit .glass-card { border-color: rgba(148,163,184,.15); }
+        #admin-analytics .glass-card strong { text-shadow: 0 0 26px currentColor; }
+        #admin-security .glass-card, #admin-plans .glass-card { background: linear-gradient(150deg, rgba(14,24,39,.92), rgba(6,12,21,.96)); }
         .ops-chart { display:flex; align-items:end; gap:5px; height:150px; padding:12px 4px 0; border-bottom:1px solid var(--operix-line); }
         .ops-bar { min-width:8px; flex:1; max-width:24px; border-radius:5px 5px 0 0; background:linear-gradient(#45d6b0,#137d70); opacity:.9; }
         .ops-bar:hover { opacity:1; background:linear-gradient(#f7c45e,#b56d1b); }
@@ -80,6 +108,7 @@ body.modal-open{overflow:hidden}
 .admin-modal{overscroll-behavior:contain}
 @media (max-width:767px){.admin-modal>.glass-card{width:100%;max-height:calc(100dvh - 1.5rem);overflow-y:auto;border-radius:1.5rem 1.5rem 1rem 1rem}}
 </style>
+<link rel="stylesheet" href="/styles/operix-premium.css?v=20261005-3">
 </head>
 <body class="min-h-screen bg-slate-950 text-slate-100 flex flex-col md:flex-row">
 <div class="tech-grid-bg"></div>
@@ -173,7 +202,7 @@ body.modal-open{overflow:hidden}
         <div id="admin-overview" class="space-y-6">
             <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3"><div><span class="text-[10px] text-emerald-300 font-bold tracking-widest">OPERIX OPERATIONS CENTER</span><h2 class="text-xl font-black text-white mt-1">نظرة عامة والسرعة</h2><p class="text-[10px] text-slate-500 mt-1">قراءة تشغيلية سريعة لأهم مؤشرات المنصة</p></div><div class="flex items-center gap-2"><span class="ops-status text-[10px] text-emerald-300"><i class="ops-dot"></i>الخدمات الأساسية متصلة</span><button onclick="refreshOverviewDashboard()" title="تحديث البيانات" class="px-3 py-2 bg-slate-900 text-slate-300 rounded-xl"><i id="overviewRefreshIcon" class="fa-solid fa-arrows-rotate"></i></button></div></div>
             <div class="flex items-center justify-between"><span id="overviewLastSync" class="text-[10px] text-slate-500">آخر مزامنة: --</span><select id="overviewPeriod" onchange="refreshOverviewDashboard()" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-slate-300"><option value="7">آخر 7 أيام</option><option value="30" selected>آخر 30 يومًا</option></select></div>
-            <section class="glass-card rounded-3xl border border-cyan-500/20 p-4"><div class="flex items-center justify-between gap-3"><div><h3 class="text-sm font-black text-white">رابط الدعم الفني</h3><p class="mt-1 text-[10px] text-slate-500">يظهر هذا الرابط للمستخدمين داخل قسم حسابي.</p></div><i class="fa-solid fa-headset text-cyan-300"></i></div><div class="mt-3 flex gap-2"><input id="platformSupportUrlInput" type="url" placeholder="https://t.me/your-support" class="min-w-0 flex-1 rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-400 dir-ltr"><button type="button" onclick="savePlatformSupportUrl()" class="rounded-xl bg-cyan-400 px-4 py-2.5 text-xs font-black text-slate-950">حفظ الرابط</button></div><p id="platformSupportUrlStatus" class="mt-2 text-[10px] text-slate-500"></p></section>
+            <section class="glass-card rounded-3xl border border-cyan-500/20 p-4"><div class="flex items-center justify-between gap-3"><div><h3 class="text-sm font-black text-white">رابط الدعم الخارجي</h3><p class="mt-1 text-[10px] text-slate-500">يظهر هذا الرابط للمستخدمين داخل قسم حسابي. لا يمكن استخدام روابط Telegram.</p></div><i class="fa-solid fa-headset text-cyan-300"></i></div><div class="mt-3 flex gap-2"><input id="platformSupportUrlInput" type="url" placeholder="https://example.com/support" class="min-w-0 flex-1 rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-400 dir-ltr"><button type="button" onclick="savePlatformSupportUrl()" class="rounded-xl bg-cyan-400 px-4 py-2.5 text-xs font-black text-slate-950">حفظ الرابط</button></div><p id="platformSupportUrlStatus" class="mt-2 text-[10px] text-slate-500"></p></section>
             
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="glass-card p-5 rounded-3xl border border-slate-800 space-y-2">
@@ -574,6 +603,7 @@ body.modal-open{overflow:hidden}
             const status = document.getElementById('platformSupportUrlStatus');
             const supportUrl = input.value.trim();
             if (!/^https?:\/\//i.test(supportUrl)) { status.innerText = 'أدخل رابطًا صالحًا يبدأ بـ https:// أو http://'; return; }
+            if (/(^|\/\/)([^/]*\.)?(t\.me|telegram\.me|telegram\.org|telegram\.dog|tgram\.me)(?:[/:?#]|$)/i.test(supportUrl)) { status.innerText = 'روابط Telegram غير متاحة كرابط دعم للمنصة.'; return; }
             status.innerText = 'جاري الحفظ...';
             const response = await fetch('/api/settings/admin', { method: 'POST', headers: adminJsonHeaders(), body: JSON.stringify({ supportUrl }) });
             const data = await response.json();

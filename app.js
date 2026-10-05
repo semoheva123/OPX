@@ -8,6 +8,7 @@ let soundEnabled = true;
 let currentUserData = null; // الاحتفاظ ببيانات المستخدم محلياً لسهولة الوصول
 let hasPendingDeposit = false; // متغير لتتبع وجود طلب إيداع معلق
 let taskCountdownTimer = null;
+let dailyTaskCooldownTimer = null;
 let taskBoardFilter = 'all';
 let expandedDailyTaskKey = null;
 let growthChartPoints = [];
@@ -50,7 +51,7 @@ async function loadPlatformSupportSettings() {
         const data = await response.json();
         const url = String(data.settings?.supportUrl || '').trim();
         const link = document.getElementById('platformSupportLink');
-        if (!response.ok || !/^https:\/\//i.test(url)) {
+        if (!response.ok || !/^https:\/\//i.test(url) || /(^|\/\/)([^/]*\.)?(t\.me|telegram\.me|telegram\.org|telegram\.dog|tgram\.me)(?:[/:?#]|$)/i.test(url)) {
             link?.classList.add('hidden');
             return;
         }
@@ -505,6 +506,14 @@ function renderHomeSummary(summary) {
     const completedTasks = Number(summary.completedTasks || 0);
     const taskLimit = getTaskLimitForTier();
     const tierActive = Boolean(currentUserTierActive);
+    const quickTaskStatus = document.getElementById('quickTaskStatus');
+    const quickTierStatus = document.getElementById('quickTierStatus');
+    const quickProfitStatus = document.getElementById('quickProfitStatus');
+
+    if (quickTaskStatus) quickTaskStatus.innerText = `${completedTasks} / ${taskLimit}`;
+    if (quickTierStatus) quickTierStatus.innerText = currentUserTier || 'A1';
+    if (quickProfitStatus) quickProfitStatus.innerText = `$${Number(summary.todayEarned || 0).toFixed(2)}`;
+
     if (currentUserData && Number.isFinite(completedTasks)) {
         currentUserData.todayCompletedTasks = Math.max(0, completedTasks);
         updateTaskAvailability(currentUserData.todayCompletedTasks, taskLimit);
@@ -2026,9 +2035,10 @@ function renderDailyTaskDetail(data) {
     const allTasks = Array.isArray(data.tasks) ? data.tasks : [];
     const tasks = allTasks.filter(task => !task.completed);
     const taskLimit = Math.max(1, Number(data.taskLimit ?? data.tier?.taskLimit ?? allTasks.length ?? 1));
+    const completedCount = Math.min(Number(data.completedCount || 0), taskLimit);
     window.__latestDailyTasks = allTasks;
     title.innerText = `${data.tier?.name || data.tier?.code || 'المستوى'} - مهام اليوم`;
-    meta.innerText = data.active ? `${Math.min(Number(data.completedCount || 0), taskLimit)} من ${taskLimit} مكتملة • ${tasks.length} مهمة متبقية • الربح اليومي الإجمالي $${Number(data.tier?.dailyProfit || 0).toFixed(2)}` : 'فعّل المستوى لفتح المهام المدفوعة';
+    meta.innerText = data.active ? `${completedCount} من ${taskLimit} مكتملة • ${Math.max(0, taskLimit - completedCount)} مهمة متبقية • تظهر مهمة واحدة كل مرة • الربح اليومي الإجمالي $${Number(data.tier?.dailyProfit || 0).toFixed(2)}` : 'فعّل المستوى لفتح المهام المدفوعة';
     list.innerHTML = tasks.map(task => {
         const isExpanded = expandedDailyTaskKey === task.taskKey;
         const taskReward = Number(task.reward || (Number(data.tier?.dailyProfit || 0) / taskLimit)).toFixed(4);
@@ -2050,17 +2060,19 @@ function renderDailyTaskDetail(data) {
             </div>
         </div>` : '';
         const communityAction = isCommunityTask ? `<button type="button" onclick="switchTab('feed')" class="mt-2 w-full rounded-xl border border-cyan-400/20 bg-cyan-400/5 px-3 py-2 text-[10px] font-bold text-cyan-300"><i class="fa-solid fa-users mr-1"></i> فتح المجتمع للنشر والتفاعل</button>` : '';
-        const evaluationForm = isEvaluationTask && isExpanded ? `<div class="mt-3 space-y-3 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3" data-evaluation-form="${escapeAiHtml(task.taskKey)}">
+        const evaluationForm = isEvaluationTask && isExpanded && !task.locked ? `<div class="mt-3 space-y-3 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3" data-evaluation-form="${escapeAiHtml(task.taskKey)}">
             <p class="text-[10px] leading-5 text-cyan-100">قيّم هذه الخدمة بشكل سريع وصادق، فقط من خلال تجربتك أو ما رأيته عنها.</p>
             <fieldset><legend class="text-[10px] text-slate-300">التقييم</legend><input data-evaluation-field="rating" type="hidden" value=""><div class="mt-1 flex flex-row-reverse justify-end gap-1" role="radiogroup" aria-label="التقييم من نجمة إلى خمس نجوم">${[1, 2, 3, 4, 5].map(rating => `<button type="button" role="radio" aria-checked="false" data-rating="${rating}" onclick="setDailyEvaluationRating('${escapeAiHtml(task.taskKey)}', ${rating})" class="rounded-lg p-1 text-2xl text-slate-600 transition-colors" aria-label="${rating} من 5 نجوم"><i class="fa-solid fa-star"></i></button>`).join('')}</div></fieldset>
             <label class="block text-[10px] text-slate-300">جانب التقييم
                 <select data-evaluation-field="selectedTag" onchange="updateDailyEvaluationSubmit('${escapeAiHtml(task.taskKey)}')" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-xs text-white"><option value="">اختر جانبًا</option>${(task.tags || []).map(tag => `<option value="${escapeAiHtml(tag)}">${escapeAiHtml(tag)}</option>`).join('')}</select>
             </label>
-            <label class="block text-[10px] text-slate-300">ملاحظة قصيرة (10–500 حرف)
-                <textarea data-evaluation-field="feedback" minlength="10" maxlength="500" rows="2" oninput="updateDailyEvaluationSubmit('${escapeAiHtml(task.taskKey)}')" placeholder="رأي مختصر ومباشر..." class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-xs text-white"></textarea>
-            </label>
             <button type="button" data-evaluation-submit disabled onclick="submitDailyEvaluation('${escapeAiHtml(task.taskKey)}')" class="w-full rounded-xl bg-cyan-400 px-3 py-2.5 text-[10px] font-black text-slate-950 enabled:hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-40">إرسال التقييم</button>
         </div>` : '';
+        const cooldownRemaining = Number(task.cooldownRemainingSeconds || 0);
+        const cooldownStatus = task.lockReason === 'cooldown' && cooldownRemaining > 0
+            ? `<span data-task-cooldown data-unlock-at="${escapeAiHtml(task.availableAt || '')}" class="text-[10px] font-bold text-cyan-300">تفتح بعد ${Math.ceil(cooldownRemaining / 3600)} ساعة</span>`
+            : '';
+        const statusLabel = task.lockReason === 'cooldown' ? cooldownStatus : task.lockReason === 'tier_inactive' ? 'مقفلة حتى تفعيل المستوى' : task.requirement && !task.requirementMet ? isEvaluationTask ? 'التقييم مطلوب' : 'الإجراء مطلوب' : 'متاحة';
         return `<article class="rounded-2xl border ${task.completed ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-slate-800 bg-slate-950/45'} p-3" data-task-card="${escapeAiHtml(task.taskKey)}">
             <div class="flex items-start gap-3">
                 <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${task.completed ? 'bg-emerald-400/10 text-emerald-300' : 'bg-amber-400/10 text-amber-300'}"><i class="fa-solid ${escapeAiHtml(task.icon)}"></i></span>
@@ -2070,7 +2082,7 @@ function renderDailyTaskDetail(data) {
                             <h4 class="text-xs font-bold text-white">${escapeAiHtml(task.number + '. ' + task.title)}</h4>
                             <p class="mt-1 text-[10px] leading-5 text-slate-500">${escapeAiHtml(task.description)}</p>
                         </div>
-                        <span class="text-[10px] font-bold ${task.completed ? 'text-emerald-300' : task.locked ? 'text-slate-500' : task.requirement && !task.requirementMet ? 'text-cyan-300' : 'text-amber-300'}">${task.completed ? 'مكتملة' : task.locked ? 'مقفلة' : task.requirement && !task.requirementMet ? isEvaluationTask ? 'التقييم مطلوب' : 'الإجراء مطلوب' : 'متاحة'}</span>
+                        <span class="text-[10px] font-bold ${task.completed ? 'text-emerald-300' : task.locked ? 'text-slate-500' : task.requirement && !task.requirementMet ? 'text-cyan-300' : 'text-amber-300'}">${task.completed ? 'مكتملة' : statusLabel}</span>
                     </div>
                     <div class="mt-3 flex items-center justify-between gap-2 text-[10px] text-slate-400">
                         <span>مكافأة المهمة: <strong class="text-amber-300">$${taskReward}</strong></span>
@@ -2080,7 +2092,7 @@ function renderDailyTaskDetail(data) {
                     ${isExpanded ? `<div class="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3"><div class="mb-2 text-[10px] font-bold text-amber-300">خطوات سريعة</div><ol class="space-y-1 text-[10px] leading-5 text-slate-300 list-decimal list-inside">${(task.instructions || []).slice(0, 2).map((instruction) => `<li>${escapeAiHtml(instruction)}</li>`).join('')}</ol></div>` : ''}
                     <div class="mt-3 flex gap-2">
                         <button type="button" data-task-key="${escapeAiHtml(task.taskKey)}" onclick="toggleDailyTaskDetails('${escapeAiHtml(task.taskKey)}')" class="flex-1 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-[10px] font-bold text-slate-200">${isExpanded ? 'إخفاء' : 'فتح'} <i class="fa-solid ${isExpanded ? 'fa-chevron-up' : 'fa-arrow-left'} mr-1"></i></button>
-                        <button type="button" ${task.completed || task.locked ? 'disabled' : `onclick="${isEvaluationTask ? `toggleDailyTaskDetails('${escapeAiHtml(task.taskKey)}')` : `completeTask('${escapeAiHtml(task.taskKey)}')`}"`} class="rounded-xl border px-3 py-2 text-[10px] font-bold ${task.completed || task.locked ? 'cursor-not-allowed border-slate-700 bg-slate-900 text-slate-500' : 'border-amber-500/25 bg-amber-500/10 text-amber-300'}">${task.completed ? 'تم الإنجاز' : task.locked ? 'تفعيل المستوى' : isEvaluationTask ? isExpanded ? 'إخفاء النموذج' : 'ابدأ التقييم' : 'إتمام المهمة'} <i class="fa-solid ${task.completed ? 'fa-check' : task.locked ? 'fa-lock' : isEvaluationTask ? 'fa-clipboard-check' : 'fa-arrow-left'} mr-1"></i></button>
+                        <button type="button" ${task.completed || task.locked ? 'disabled' : `onclick="${isEvaluationTask ? `toggleDailyTaskDetails('${escapeAiHtml(task.taskKey)}')` : `completeTask('${escapeAiHtml(task.taskKey)}')`}"`} class="rounded-xl border px-3 py-2 text-[10px] font-bold ${task.completed || task.locked ? 'cursor-not-allowed border-slate-700 bg-slate-900 text-slate-500' : 'border-amber-500/25 bg-amber-500/10 text-amber-300'}">${task.completed ? 'تم الإنجاز' : task.lockReason === 'cooldown' ? 'انتظر 3 ساعات' : task.locked ? 'تفعيل المستوى' : isEvaluationTask ? isExpanded ? 'إخفاء النموذج' : 'ابدأ التقييم' : 'إتمام المهمة'} <i class="fa-solid ${task.completed ? 'fa-check' : task.locked ? 'fa-lock' : isEvaluationTask ? 'fa-clipboard-check' : 'fa-arrow-left'} mr-1"></i></button>
                     </div>
                     ${communityAction}
                     ${evaluationForm}
@@ -2088,10 +2100,31 @@ function renderDailyTaskDetail(data) {
             </div>
         </article>`;
     }).join('') || '<p class="rounded-xl border border-slate-800 p-4 text-center text-[10px] text-slate-500">لا توجد مهام متاحة.</p>';
+    if (dailyTaskCooldownTimer) clearInterval(dailyTaskCooldownTimer);
+    const cooldownElement = list.querySelector('[data-task-cooldown]');
+    if (cooldownElement) {
+        const updateCooldown = () => {
+            const remaining = Math.max(0, Math.ceil((new Date(cooldownElement.dataset.unlockAt).getTime() - Date.now()) / 1000));
+            if (remaining <= 0) {
+                clearInterval(dailyTaskCooldownTimer);
+                dailyTaskCooldownTimer = null;
+                openDailyTasks();
+                return;
+            }
+            const hours = Math.floor(remaining / 3600);
+            const minutes = Math.floor((remaining % 3600) / 60);
+            const seconds = remaining % 60;
+            cooldownElement.textContent = `تفتح بعد ${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        };
+        updateCooldown();
+        dailyTaskCooldownTimer = setInterval(updateCooldown, 1000);
+    }
 }
 
 function closeDailyTasks() {
     expandedDailyTaskKey = null;
+    if (dailyTaskCooldownTimer) clearInterval(dailyTaskCooldownTimer);
+    dailyTaskCooldownTimer = null;
     document.getElementById('dailyTaskDetailPanel')?.classList.add('hidden');
     document.getElementById('taskBoard')?.classList.remove('hidden');
 }
@@ -2218,9 +2251,8 @@ function updateDailyEvaluationSubmit(taskKey) {
     if (!form) return;
     const rating = Number(form.querySelector('[data-evaluation-field="rating"]')?.value || 0);
     const selectedTag = form.querySelector('[data-evaluation-field="selectedTag"]')?.value || '';
-    const feedback = form.querySelector('[data-evaluation-field="feedback"]')?.value.trim() || '';
     const submitButton = form.querySelector('[data-evaluation-submit]');
-    if (submitButton) submitButton.disabled = !(rating >= 1 && rating <= 5 && selectedTag && feedback.length >= 10 && feedback.length <= 500);
+    if (submitButton) submitButton.disabled = !(rating >= 1 && rating <= 5 && selectedTag);
 }
 
 function setDailyEvaluationRating(taskKey, rating) {
@@ -2245,11 +2277,10 @@ async function submitDailyEvaluation(taskKey) {
     const payload = {
         taskKey,
         rating: Number(form.querySelector('[data-evaluation-field="rating"]')?.value || 0),
-        selectedTag: form.querySelector('[data-evaluation-field="selectedTag"]')?.value || '',
-        feedback: form.querySelector('[data-evaluation-field="feedback"]')?.value.trim() || ''
+        selectedTag: form.querySelector('[data-evaluation-field="selectedTag"]')?.value || ''
     };
     const submitButton = form.querySelector('[data-evaluation-submit]');
-    if (submitButton?.disabled) return showToast('أكمل التقييم والوسم والملاحظة المطلوبة أولًا.');
+    if (submitButton?.disabled) return showToast('اختر التقييم بالنجوم وجانب التقييم أولًا.');
     if (submitButton) { submitButton.disabled = true; submitButton.innerText = 'جارٍ التحقق وحفظ التقييم...'; }
     try {
         const response = await fetch('/api/tasks/submit-evaluation', {
@@ -2944,7 +2975,7 @@ function enhanceSocialPostCards(posts) {
                 <button type="button" class="social-like-button"><i class="fa-regular fa-heart"></i><span>${Number(post.likeCount || 0)}</span></button>
                 <button type="button" class="social-comment-button"><i class="fa-regular fa-comment"></i><span>تعليق</span></button>
                 <button type="button" class="social-mini-button social-save-button"><i class="fa-regular fa-bookmark"></i><span>${post.isSaved ? 'محفوظ' : 'حفظ'}</span></button>
-                <div class="relative"><button type="button" class="social-mini-button social-share-button"><i class="fa-solid fa-arrow-up-from-bracket"></i><span>مشاركة</span></button><div class="social-share-menu hidden"><button type="button" data-share-target="native"><i class="fa-solid fa-share-nodes"></i> مشاركة الهاتف</button><button type="button" data-share-target="whatsapp"><i class="fa-brands fa-whatsapp"></i> WhatsApp</button><button type="button" data-share-target="facebook"><i class="fa-brands fa-facebook"></i> Facebook</button><button type="button" data-share-target="telegram"><i class="fa-brands fa-telegram"></i> Telegram</button><button type="button" data-share-target="x"><i class="fa-brands fa-x-twitter"></i> X</button><button type="button" data-share-target="instagram"><i class="fa-brands fa-instagram"></i> Instagram / نسخ الرابط</button></div></div>
+                <div class="relative"><button type="button" class="social-mini-button social-share-button"><i class="fa-solid fa-arrow-up-from-bracket"></i><span>مشاركة</span></button><div class="social-share-menu hidden"><button type="button" data-share-target="native"><i class="fa-solid fa-share-nodes"></i> مشاركة الهاتف</button><button type="button" data-share-target="whatsapp"><i class="fa-brands fa-whatsapp"></i> WhatsApp</button><button type="button" data-share-target="facebook"><i class="fa-brands fa-facebook"></i> Facebook</button><button type="button" data-share-target="x"><i class="fa-brands fa-x-twitter"></i> X</button><button type="button" data-share-target="instagram"><i class="fa-brands fa-instagram"></i> Instagram / نسخ الرابط</button></div></div>
             </div>
             <div class="social-post-menu-group"></div>
             <div class="social-comments hidden">
@@ -3027,7 +3058,7 @@ async function shareSocialPost(postId, target, menu) {
     const response = await fetch(`/api/social-feed/${encodeURIComponent(postId)}/share`, { method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
     if (!response.ok) return showToast('تعذر تسجيل المشاركة');
     if (target === 'native' && navigator.share) { try { await navigator.share({ title: 'OPERIX Community', text, url }); return; } catch (error) {} }
-    const targets = { whatsapp: `https://wa.me/?text=${encodeURIComponent(`${text} ${url}`)}`, facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, telegram: `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`, x: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}` };
+    const targets = { whatsapp: `https://wa.me/?text=${encodeURIComponent(`${text} ${url}`)}`, facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, x: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}` };
     if (target === 'instagram') {
         if (navigator.clipboard) await navigator.clipboard.writeText(url);
         return showToast('تم نسخ الرابط؛ افتح Instagram والصقه في المنشور أو الرسالة');
@@ -3508,14 +3539,14 @@ function changeLanguage(language) {
             referral: 'رابط الدعوة السريع', copy: 'نسخ', walletTitle: 'محفظة السحب المعتمدة', walletLabel: 'عنوان المحفظة (TRC20)',
             security: 'الأمان والحماية', changePassword: 'تغيير كلمة المرور', twoFactor: 'المصادقة الثنائية (2FA)',
             sessions: 'الأجهزة والجلسات النشطة', preferences: 'إعدادات المنصة والدعم', sounds: 'الأصوات والتنبيهات', language: 'لغة التطبيق',
-            support: 'الدعم الفني المباشر (Telegram)', terms: 'شروط الاستخدام', privacy: 'سياسة الخصوصية', logout: 'تسجيل الخروج من الحساب'
+            support: 'الدعم الفني الخارجي', terms: 'شروط الاستخدام', privacy: 'سياسة الخصوصية', logout: 'تسجيل الخروج من الحساب'
         },
         en: {
             displayName: 'User', email: 'user@domain.com', earnings: 'Total earnings', withdrawn: 'Successful withdrawals',
             referral: 'Quick referral link', copy: 'Copy', walletTitle: 'Approved withdrawal wallet', walletLabel: 'Wallet address (TRC20)',
             security: 'Security', changePassword: 'Change password', twoFactor: 'Two-factor authentication (2FA)',
             sessions: 'Active devices and sessions', preferences: 'Platform settings and support', sounds: 'Sounds and alerts', language: 'Application language',
-            support: 'Technical support (Telegram)', terms: 'Terms of use', privacy: 'Privacy policy', logout: 'Log out of account'
+            support: 'External support', terms: 'Terms of use', privacy: 'Privacy policy', logout: 'Log out of account'
         }
     };
     const selected = translations[language] || translations.ar;

@@ -5,14 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>شروط الاستخدام | OPERIX</title>
     <style>
-        :root { color-scheme: dark; font-family: Tajawal, Arial, sans-serif; }
-        body { margin: 0; background: #030712; color: #e5e7eb; line-height: 1.9; }
-        main { max-width: 760px; margin: 0 auto; padding: 32px 20px 60px; }
+        :root { color-scheme: dark; font-family: Tajawal, Arial, sans-serif; --page-bg:#040b15; --panel-bg:rgba(11,19,31,0.82); --line:rgba(148,163,184,.18); --text:#e5e7eb; --muted:#a9bacd; --gold:#f7b955; }
+        body { margin: 0; background: radial-gradient(circle at top right,rgba(247,185,85,.12),transparent 22%),radial-gradient(circle at bottom left,rgba(34,211,238,.09),transparent 24%),linear-gradient(180deg,#040b15 0%,#07111f 32%,#040b15 100%); color: var(--text); line-height: 1.9; background-attachment:fixed; }
+        main { max-width: 820px; margin: 0 auto; padding: 32px 20px 60px; }
         a { color: #fbbf24; }
         h1 { color: #fbbf24; margin-bottom: 4px; }
         h2 { color: #fcd34d; margin-top: 28px; font-size: 1.1rem; }
         .meta { color: #94a3b8; font-size: .85rem; }
-        section { border-top: 1px solid #1e293b; padding-top: 8px; }
+        section { border-top: 1px solid var(--line); padding-top: 12px; background: rgba(11,19,31,.52); border-radius: 16px; padding: 18px 18px 8px; margin-top: 18px; box-shadow: 0 16px 32px rgba(0,0,0,.12); }
     
 
 
@@ -31,6 +31,7 @@ body::before{content:'';position:fixed;inset:-12%;z-index:-1;pointer-events:none
 @media (max-width: 640px){body{overflow-x:hidden}}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 </style>
+<link rel="stylesheet" href="/styles/operix-premium.css?v=20261005-3">
 </head>
 <body>
 <div class="tech-grid-bg"></div>

@@ -4,6 +4,29 @@ const { hasPaidFeatureAccess, hasFullFeatureAccess } = require('../services/paid
 const { calculateDailyTaskRewardSplit } = require('../services/opxPricing');
 const { assignDailyEvaluationEntities, getEvaluationTags, getCategoryLabel, getOfficialBrandLogoUrl, utcDateString } = require('../services/dailyTaskAutomation');
 
+const DAILY_TASK_COOLDOWN_MS = 3 * 60 * 60 * 1000;
+
+function getDailyTaskProgress(tierCode, taskLimit, completions = [], now = Date.now()) {
+  const completedByKey = new Map((Array.isArray(completions) ? completions : []).map(item => [String(item.taskKey || ''), item]));
+  const getTaskKey = number => number === 1 ? `${tierCode}-community` : `${tierCode}-task-${String(number).padStart(2, '0')}`;
+  let nextTaskNumber = 1;
+  while (nextTaskNumber <= taskLimit && completedByKey.has(getTaskKey(nextTaskNumber))) nextTaskNumber++;
+  if (nextTaskNumber > taskLimit) return { nextTaskNumber: null, availableAt: null, remainingMs: 0, remainingSeconds: 0 };
+
+  const previousCompletion = nextTaskNumber > 1 ? completedByKey.get(getTaskKey(nextTaskNumber - 1)) : null;
+  const previousCompletedAt = previousCompletion ? new Date(previousCompletion.createdAt).getTime() : Number(now);
+  const availableAtMs = previousCompletion
+    ? (Number.isFinite(previousCompletedAt) ? previousCompletedAt : Number(now)) + DAILY_TASK_COOLDOWN_MS
+    : Number(now);
+  const remainingMs = Math.max(0, availableAtMs - Number(now));
+  return {
+    nextTaskNumber,
+    availableAt: new Date(availableAtMs).toISOString(),
+    remainingMs,
+    remainingSeconds: Math.ceil(remainingMs / 1000)
+  };
+}
+
 function splitHybridReward(amount) {
   const value = Number(amount) || 0;
   const usdtAmount = Number((value * 0.7).toFixed(4));
@@ -135,8 +158,37 @@ function buildSupplementalTask(tierCode, number, supplementalIndex) {
 
 function buildDailyTasks(tierCode, adminTasks = [], completedKeys = new Set(), locked = false, dailyProfit = 0, communityTaskStatus = {}) {
   const taskLimit = 1 + (Array.isArray(adminTasks) ? adminTasks.length : 0);
-  const split = calculateDailyTaskRewardSplit(dailyProfit, tierCode, taskLimit);
-  const perTaskReward = Number(split.perTaskUsdt || 0);
+  const categoryWeights = {
+    technology: 0.95,
+    ai: 1.35,
+    crypto: 1.45,
+    trading: 1.55,
+    finance: 1.25,
+    community: 1.00
+  };
+  const weights = Array.from({ length: taskLimit }, (_, index) => {
+    const number = index + 1;
+    const isCommunityTask = number === 1;
+    const configuredTask = isCommunityTask ? COMMUNITY_DAILY_TASK : adminTasks[index - 1];
+    const categoryKey = String((configuredTask && configuredTask.category) || 'technology').toLowerCase();
+    const categoryWeight = isCommunityTask ? 1.0 : (categoryWeights[categoryKey] || 1.0);
+    const seedText = isCommunityTask ? `${tierCode}-community` : String(configuredTask.entityName || configuredTask.entityKey || `${tierCode}-${number}`);
+    let seedValue = 0;
+    for (let i = 0; i < seedText.length; i++) seedValue += seedText.charCodeAt(i) * (i + 1);
+    const companyBoost = (seedValue % 7) * 0.08;
+    return Math.max(0.35, categoryWeight + companyBoost);
+  });
+
+  const totalWeight = weights.reduce((sum, weight) => sum + Number(weight || 0), 0) || taskLimit;
+  let rewardTotal = 0;
+  const rewards = weights.map((weight, index) => {
+    const taskReward = Number(((Number(dailyProfit || 0) * (Number(weight || 0) / totalWeight))).toFixed(4));
+    rewardTotal += taskReward;
+    return taskReward;
+  });
+  const adjustment = Number((Number(dailyProfit || 0) - rewardTotal).toFixed(4));
+  if (rewards.length) rewards[rewards.length - 1] = Number((rewards[rewards.length - 1] + adjustment).toFixed(4));
+
   return Array.from({ length: taskLimit }, (_, index) => {
     const number = index + 1;
     const isCommunityTask = number === 1;
@@ -159,7 +211,7 @@ function buildDailyTasks(tierCode, adminTasks = [], completedKeys = new Set(), l
       entityKey: isCommunityTask ? null : String(template.entityKey || ''),
       tags: isCommunityTask ? [] : getEvaluationTags(template.category),
       requirementMet: isCommunityTask ? Boolean(communityTaskStatus.communityEngagement) : Boolean(template.submissionComplete),
-      reward: Number(perTaskReward.toFixed(4)),
+      reward: Number((rewards[index] ?? 0).toFixed(4)),
       completed: completedKeys.has(taskKey),
       locked
     };
@@ -230,7 +282,17 @@ async function getDailyTasks(req, res) {
     const completedKeys = new Set(completions.map(item => item.taskKey));
     const active = hasPaidFeatureAccess(user) || Number(user.wallet?.totalDeposits || 0) > 0;
     const dailyProfit = Number(tier.dailyProfit || 0);
-    return res.json({ success: true, tier: { code: tier.code, name: tier.name, taskLimit, dailyProfit }, active, completedCount: completedKeys.size, tasks: buildDailyTasks(tier.code, evaluationAssignments, completedKeys, !active, dailyProfit, { communityEngagement: communityTaskStatus.communityPost && communityTaskStatus.communityInteraction }) });
+    const progress = getDailyTaskProgress(tier.code, taskLimit, completions, Date.now());
+    const allTasks = buildDailyTasks(tier.code, evaluationAssignments, completedKeys, !active, dailyProfit, { communityEngagement: communityTaskStatus.communityPost && communityTaskStatus.communityInteraction });
+    const nextTask = allTasks.find(task => task.number === progress.nextTaskNumber);
+    const tasks = nextTask ? [{
+      ...nextTask,
+      availableAt: progress.availableAt,
+      cooldownRemainingSeconds: progress.remainingSeconds,
+      locked: !active || progress.remainingMs > 0,
+      lockReason: !active ? 'tier_inactive' : progress.remainingMs > 0 ? 'cooldown' : null
+    }] : [];
+    return res.json({ success: true, tier: { code: tier.code, name: tier.name, taskLimit, dailyProfit }, active, completedCount: completedKeys.size, tasks });
   } catch (error) {
     console.error('Daily task list error:', error.message);
     res.status(500).json({ error: 'تعذر تحميل مهام اليوم' });
@@ -256,8 +318,11 @@ async function completeTaskSupabase(req, res) {
     if (message.includes('VIP_LEVEL_NOT_FOUND')) return res.status(503).json({ error: 'إعدادات المستوى غير متاحة حاليًا، حاول لاحقًا' });
     if (message.includes('INVALID_TASK_KEY')) return res.status(400).json({ error: 'هذه المهمة غير صالحة لخطة مستواك الحالية' });
     if (message.includes('TASK_ALREADY_COMPLETED')) return res.status(400).json({ error: 'تم إنجاز هذه المهمة مسبقًا اليوم' });
+    if (message.includes('TASK_SEQUENCE_REQUIRED')) return res.status(409).json({ error: 'أكمل المهمة السابقة أولًا لفتح المهمة التالية.' });
+    if (message.includes('TASK_COOLDOWN_ACTIVE')) return res.status(429).json({ error: 'ستُفتح المهمة التالية بعد مرور 3 ساعات على إكمال المهمة السابقة.' });
+    if (message.includes('DAILY_CAP_REACHED')) return res.status(400).json({ error: 'تم بلوغ الحد اليومي للربح، ولا يمكن جمع أكثر من الربح اليومي الثابت.' });
     if (message.includes('COMMUNITY_TASK_REQUIRED')) return res.status(400).json({ error: 'أكمل أولًا نشر منشور عن OPERIX والتفاعل مع منشور عضو آخر في المجتمع اليوم.' });
-    if (message.includes('EVALUATION_REQUIRED')) return res.status(400).json({ error: 'أرسل التقييم المتوازن مع مصدر موثوق قبل إنهاء المهمة.' });
+    if (message.includes('EVALUATION_REQUIRED')) return res.status(400).json({ error: 'اختر التقييم بالنجوم وحدد جانب التقييم قبل إنهاء المهمة.' });
     if (error?.code === 'PGRST202' || /operix_daily_task_complete_atomic.*does not exist/i.test(message)) return res.status(503).json({ error: 'نظام المهام يحتاج إلى تحديث قاعدة البيانات قبل الاستخدام' });
     res.status(500).json({ error: 'حدث خطأ في معالجة المهمة والمكافأة' });
   }
@@ -278,12 +343,16 @@ async function submitDailyEvaluation(req, res) {
     const assignment = taskNumber >= 2 ? await dataAccess.dailyTaskAssignment.findOne({ userId: user.id || user._id, tierCode: tier.code, taskDate: today, taskNumber }) : null;
     if (!assignment) return res.status(400).json({ error: 'مهمة التقييم غير موجودة ضمن خطة اليوم الحالية' });
 
+    const completions = await dataAccess.dailyTaskCompletion.find({ userId: user.id || user._id, taskDate: today }, { sort: { createdAt: 1 } });
+    const progress = getDailyTaskProgress(tier.code, Math.max(1, Number(tier.tasks || 1)), completions, Date.now());
+    if (taskNumber !== progress.nextTaskNumber) return res.status(409).json({ error: 'أكمل المهمة السابقة أولًا لفتح هذه المهمة.' });
+    if (progress.remainingMs > 0) return res.status(429).json({ error: 'ستُفتح المهمة التالية بعد مرور 3 ساعات على إكمال المهمة السابقة.', unlockAt: progress.availableAt });
+
     const rating = Number(req.body?.rating);
     const selectedTag = String(req.body?.selectedTag || '').trim();
-    const feedback = String(req.body?.feedback || '').trim();
     const allowedTags = getEvaluationTags(assignment.category);
-    if (!Number.isInteger(rating) || rating < 1 || rating > 5 || !allowedTags.includes(selectedTag) || feedback.length < 10 || feedback.length > 500) {
-      return res.status(400).json({ error: 'اختر تقييمًا من 1 إلى 5 ووسمًا مناسبًا، واكتب ملاحظة قصيرة من 10 إلى 500 حرف.' });
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5 || !allowedTags.includes(selectedTag)) {
+      return res.status(400).json({ error: 'اختر تقييمًا من نجمة إلى خمس نجوم وحدد جانب التقييم.' });
     }
 
     const completion = await dataAccess.dailyTaskCompletion.findOne({ userId: user.id, taskKey, taskDate: today });
@@ -298,9 +367,9 @@ async function submitDailyEvaluation(req, res) {
       targetName: assignment.entityName,
       rating,
       selectedTag,
-      feedback,
-      strengths: feedback,
-      concerns: feedback,
+      feedback: '',
+      strengths: '',
+      concerns: '',
       evidenceUrl: 'in-app-daily-entity-review'
     };
     const existingSubmission = await dataAccess.dailyTaskSubmission.findOne({ userId: user.id, taskKey, taskDate: today });
@@ -312,8 +381,11 @@ async function submitDailyEvaluation(req, res) {
   } catch (error) {
     const message = String(error?.message || '');
     console.error('Daily evaluation submission error:', message);
-    if (message.includes('EVALUATION_REQUIRED')) return res.status(400).json({ error: 'أرسل التقييم مع مصدر موثوق قبل إنهاء المهمة.' });
+    if (message.includes('EVALUATION_REQUIRED')) return res.status(400).json({ error: 'اختر التقييم بالنجوم وحدد جانب التقييم قبل إنهاء المهمة.' });
     if (message.includes('TASK_ALREADY_COMPLETED')) return res.status(409).json({ error: 'تم إنهاء هذه المهمة اليوم مسبقًا' });
+    if (message.includes('TASK_SEQUENCE_REQUIRED')) return res.status(409).json({ error: 'أكمل المهمة السابقة أولًا لفتح المهمة التالية.' });
+    if (message.includes('TASK_COOLDOWN_ACTIVE')) return res.status(429).json({ error: 'ستُفتح المهمة التالية بعد مرور 3 ساعات على إكمال المهمة السابقة.' });
+    if (message.includes('DAILY_CAP_REACHED')) return res.status(400).json({ error: 'تم بلوغ الحد اليومي للربح، ولا يمكن جمع أكثر من الربح اليومي الثابت.' });
     if (error?.code === 'PGRST202' || /operix_daily_task_complete_atomic.*does not exist/i.test(message)) return res.status(503).json({ error: 'قاعدة البيانات تحتاج إلى تحديث نظام مهام التقييم.' });
     res.status(500).json({ error: 'تعذر حفظ التقييم وإنهاء المهمة' });
   }
@@ -414,6 +486,7 @@ async function claimStakingSupabase(req, res) {
 
 module.exports = {
   buildDailyTasks,
+  getDailyTaskProgress,
   hasDailyPlatformPost,
   hasDailyCommunityInteraction,
   completeTask,

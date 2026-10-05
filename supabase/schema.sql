@@ -1084,6 +1084,45 @@ grant all on table public.daily_task_submissions to service_role;
 
 create index if not exists daily_task_completions_user_date_idx on public.daily_task_completions(user_id, task_date);
 
+create or replace function public.operix_enforce_daily_task_sequence_and_cooldown()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_tier text;
+  task_number integer;
+  previous_task_key text;
+  previous_completed_at timestamptz;
+begin
+  select tier_code into current_tier from public.users where id = new.user_id for update;
+  if current_tier is null then raise exception using errcode = 'P0002', message = 'USER_NOT_FOUND'; end if;
+  if new.task_key = current_tier || '-community' then
+    task_number := 1;
+  elsif new.task_key ~ ('^' || current_tier || '-task-[0-9]+$') then
+    task_number := substring(new.task_key from '[0-9]+$')::integer;
+  else
+    raise exception using errcode = 'P0001', message = 'INVALID_TASK_KEY';
+  end if;
+  if task_number < 1 then raise exception using errcode = 'P0001', message = 'INVALID_TASK_KEY'; end if;
+  if task_number > 1 then
+    previous_task_key := case when task_number = 2 then current_tier || '-community'
+      else current_tier || '-task-' || lpad((task_number - 1)::text, 2, '0') end;
+    select created_at into previous_completed_at from public.daily_task_completions
+      where user_id = new.user_id and task_date = new.task_date and task_key = previous_task_key;
+    if previous_completed_at is null then raise exception using errcode = 'P0001', message = 'TASK_SEQUENCE_REQUIRED'; end if;
+    if previous_completed_at + interval '3 hours' > clock_timestamp() then
+      raise exception using errcode = 'P0001', message = 'TASK_COOLDOWN_ACTIVE';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists daily_task_sequence_and_cooldown on public.daily_task_completions;
+create trigger daily_task_sequence_and_cooldown before insert on public.daily_task_completions
+for each row execute function public.operix_enforce_daily_task_sequence_and_cooldown();
+
 create or replace function public.operix_daily_task_complete_atomic(
   p_user_id uuid,
   p_task_key text
@@ -1104,6 +1143,7 @@ declare
   usdt_reward numeric;
   opx_reward numeric;
   balance_before numeric;
+  total_daily_reward numeric;
   completion_id uuid;
   reward_transaction_id uuid;
 begin
@@ -1144,7 +1184,6 @@ begin
         and submission.target_category = assignment_row.category
         and submission.target_name = assignment_row.entity_name
         and submission.selected_tag = any(assignment_row.allowed_tags)
-        and length(trim(submission.feedback)) between 10 and 500
         and submission.rating between 1 and 5
     ) then raise exception using errcode = 'P0001', message = 'EVALUATION_REQUIRED'; end if;
   end if;
@@ -1190,6 +1229,12 @@ begin
   );
   usdt_reward := round(gross_reward - opx_reward, 4);
   balance_before := wallet_row.balance;
+  select coalesce(sum(gross_amount), 0) into total_daily_reward
+  from daily_task_completions
+  where user_id = p_user_id and task_date = current_date;
+  if total_daily_reward + gross_reward > coalesce(level_row.daily_profit, 0) then
+    raise exception using errcode = 'P0001', message = 'DAILY_CAP_REACHED';
+  end if;
 
   insert into daily_task_completions(user_id, task_key, task_date, gross_amount, usdt_amount, opx_amount)
   values(p_user_id, p_task_key, current_date, gross_reward, usdt_reward, opx_reward)

@@ -6,6 +6,7 @@ const originals = {
   findUser: dataAccess.user.findById,
   findLevel: dataAccess.vipLevel.findOne,
   findCompletion: dataAccess.dailyTaskCompletion.findOne,
+  findCompletions: dataAccess.dailyTaskCompletion.find,
   findAssignment: dataAccess.dailyTaskAssignment.findOne,
   findSubmission: dataAccess.dailyTaskSubmission.findOne,
   createSubmission: dataAccess.dailyTaskSubmission.create,
@@ -25,10 +26,12 @@ function responseRecorder() {
 (async () => {
   const saved = [];
   let rpcCalls = 0;
+  let completionRows = [{ taskKey: 'A2-community', createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString() }];
   try {
     dataAccess.user.findById = async () => ({ id: 'user-1', tierCode: 'A2', wallet: { totalDeposits: 100 } });
-    dataAccess.vipLevel.findOne = async () => ({ code: 'A2', dailyTasks: [{ targetCategory: 'ai', targetName: 'Example AI' }] });
+    dataAccess.vipLevel.findOne = async () => ({ code: 'A2', tasks: 3, dailyTasks: [{ targetCategory: 'ai', targetName: 'Example AI' }] });
     dataAccess.dailyTaskCompletion.findOne = async () => null;
+    dataAccess.dailyTaskCompletion.find = async () => completionRows;
     dataAccess.dailyTaskAssignment.findOne = async () => ({ id: 'assignment-1', category: 'ai', entityKey: 'wiki:example-ai', entityName: 'Example AI', allowedTags: ['الدقة', 'الخصوصية'] });
     dataAccess.dailyTaskSubmission.findOne = async () => null;
     dataAccess.dailyTaskSubmission.create = async submission => { saved.push(submission); return submission; };
@@ -45,8 +48,7 @@ function responseRecorder() {
       body: {
         taskKey: 'A2-task-02',
         rating: 4,
-        selectedTag: 'الدقة',
-        feedback: 'كانت النتائج مفيدة في تجربتي، لكن ينبغي توضيح حدود الدقة في الإجابات.'
+        selectedTag: 'الدقة'
       }
     };
     const validResponse = responseRecorder();
@@ -59,33 +61,42 @@ function responseRecorder() {
     assert.equal(saved[0].assignmentId, 'assignment-1');
     assert.equal(saved[0].selectedTag, 'الدقة');
     assert.equal(saved[0].rating, 4);
+    assert.equal(saved[0].feedback, '', 'rating-only evaluations should not require or persist a note');
     assert.equal(rpcCalls, 1);
 
-    const shortFeedbackResponse = responseRecorder();
+    const outOfSequenceResponse = responseRecorder();
+    const savedBeforeSequenceError = saved.length;
+    const rpcBeforeSequenceError = rpcCalls;
+    completionRows = [];
     await activityController.submitDailyEvaluation({
       user: { id: 'user-1' },
-      body: {
-        taskKey: 'A2-task-02',
-        rating: 4,
-        selectedTag: 'الدقة',
-        feedback: 'خدمة جيدة جدًا.'
-      }
-    }, shortFeedbackResponse);
-    assert.equal(shortFeedbackResponse.statusCode, 200, 'brief but real feedback should be accepted without annoying the user');
-    assert.equal(rpcCalls, 2, 'a brief valid evaluation should still trigger completion');
+      body: { taskKey: 'A2-task-02', rating: 4, selectedTag: 'الدقة' }
+    }, outOfSequenceResponse);
+    assert.equal(outOfSequenceResponse.statusCode, 409, 'a task cannot be submitted before its immediate predecessor');
+    assert.equal(saved.length, savedBeforeSequenceError, 'out-of-sequence evaluations must not be saved');
+    assert.equal(rpcCalls, rpcBeforeSequenceError, 'out-of-sequence evaluations must not call the reward RPC');
 
-    const minimumLengthResponse = responseRecorder();
+    const cooldownResponse = responseRecorder();
+    const savedBeforeCooldown = saved.length;
+    const rpcBeforeCooldown = rpcCalls;
+    completionRows = [{ taskKey: 'A2-community', createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() }];
     await activityController.submitDailyEvaluation({
       user: { id: 'user-1' },
-      body: {
-        taskKey: 'A2-task-02',
-        rating: 3,
-        selectedTag: 'الدقة',
-        feedback: 'ممتاز جدًا.'
-      }
-    }, minimumLengthResponse);
-    assert.equal(minimumLengthResponse.statusCode, 200, 'the minimum short feedback threshold should remain user-friendly');
-    assert.equal(rpcCalls, 3, 'minimum-length valid input should still succeed');
+      body: { taskKey: 'A2-task-02', rating: 3, selectedTag: 'الدقة' }
+    }, cooldownResponse);
+    assert.equal(cooldownResponse.statusCode, 429, 'the next task remains blocked until 3 hours after the previous completion');
+    assert.equal(saved.length, savedBeforeCooldown, 'cooldown-blocked evaluations must not be saved');
+    assert.equal(rpcCalls, rpcBeforeCooldown, 'cooldown-blocked evaluations must not earn task rewards');
+
+    completionRows = [{ taskKey: 'A2-community', createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000 - 1000).toISOString() }];
+    const noNoteResponse = responseRecorder();
+    await activityController.submitDailyEvaluation({
+      user: { id: 'user-1' },
+      body: { taskKey: 'A2-task-02', rating: 3, selectedTag: 'الدقة' }
+    }, noNoteResponse);
+    assert.equal(noNoteResponse.statusCode, 200, 'an evaluation with only stars and aspect should be accepted');
+    assert.equal(saved.at(-1).feedback, '');
+    assert.equal(rpcCalls, 2);
 
     const invalidResponse = responseRecorder();
     const savedBeforeInvalid = saved.length;
@@ -111,6 +122,7 @@ function responseRecorder() {
     dataAccess.user.findById = originals.findUser;
     dataAccess.vipLevel.findOne = originals.findLevel;
     dataAccess.dailyTaskCompletion.findOne = originals.findCompletion;
+    dataAccess.dailyTaskCompletion.find = originals.findCompletions;
     dataAccess.dailyTaskAssignment.findOne = originals.findAssignment;
     dataAccess.dailyTaskSubmission.findOne = originals.findSubmission;
     dataAccess.dailyTaskSubmission.create = originals.createSubmission;

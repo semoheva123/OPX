@@ -3,9 +3,18 @@ const dataAccess = require('../services/dataAccess');
 
 const defaultSettings = { platformName: 'OPERIX', supportUrl: '', maintenanceMode: false, maintenanceMessage: 'الخدمة متاحة حاليًا' };
 
+function isTelegramUrl(value) {
+  try {
+    const hostname = new URL(String(value)).hostname.toLowerCase();
+    return ['t.me', 'telegram.me', 'telegram.org', 'telegram.dog', 'tgram.me'].some(domain => hostname === domain || hostname.endsWith(`.${domain}`));
+  } catch (error) {
+    return false;
+  }
+}
+
 function sanitizeSettings(settings = {}) {
   const result = { ...defaultSettings, ...settings };
-  if (result.supportUrl === 'https://t.me/TRADING_KURD3') result.supportUrl = '';
+  if (isTelegramUrl(result.supportUrl)) result.supportUrl = '';
   return result;
 }
 
@@ -57,6 +66,7 @@ async function update(req, res) {
     if (req.body.supportUrl !== undefined) {
       const supportUrl = String(req.body.supportUrl).trim();
       if (supportUrl && !/^https:\/\//i.test(supportUrl)) return res.status(400).json({ error: 'يجب أن يبدأ رابط الدعم بـ https://' });
+      if (supportUrl && isTelegramUrl(supportUrl)) return res.status(400).json({ error: 'روابط Telegram غير متاحة كرابط دعم للمنصة.' });
       update.supportUrl = supportUrl.slice(0, 300);
     }
     if (req.body.maintenanceMode !== undefined) update.maintenanceMode = Boolean(req.body.maintenanceMode);

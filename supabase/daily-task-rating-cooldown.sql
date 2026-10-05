@@ -1,87 +1,6 @@
+-- Rating-only task submissions and sequential 3-hour release enforcement.
+-- Apply after automated-daily-tasks.sql.
 begin;
-
-create table if not exists public.daily_task_entities (
-  id uuid primary key default uuid_generate_v4(),
-  snapshot_date date not null,
-  entity_key text not null,
-  category text not null check (category in ('technology', 'ai', 'crypto')),
-  name text not null,
-  summary text not null,
-  image_url text not null default '',
-  source text not null,
-  created_at timestamptz not null default now(),
-  unique(snapshot_date, entity_key)
-);
-create index if not exists daily_task_entities_snapshot_category_idx on public.daily_task_entities(snapshot_date, category);
-alter table public.daily_task_entities drop constraint if exists daily_task_entities_category_check;
-alter table public.daily_task_entities add constraint daily_task_entities_category_check
-  check (category in ('technology', 'ai', 'crypto', 'trading', 'finance'));
-alter table public.daily_task_entities enable row level security;
-revoke all on table public.daily_task_entities from public, anon, authenticated;
-grant all on table public.daily_task_entities to service_role;
-
-create table if not exists public.daily_task_assignments (
-  id uuid primary key default uuid_generate_v4(),
-  user_id uuid not null references public.users(id) on delete cascade,
-  tier_code text not null,
-  task_date date not null,
-  task_number integer not null check (task_number >= 2),
-  category text not null check (category in ('technology', 'ai', 'crypto')),
-  entity_key text not null,
-  entity_name text not null,
-  summary text not null,
-  image_url text not null default '',
-  source text not null,
-  allowed_tags text[] not null default '{}',
-  created_at timestamptz not null default now(),
-  unique(user_id, tier_code, task_date, task_number),
-  unique(user_id, task_date, entity_key)
-);
-create index if not exists daily_task_assignments_user_recent_idx on public.daily_task_assignments(user_id, task_date desc);
-alter table public.daily_task_assignments drop constraint if exists daily_task_assignments_category_check;
-alter table public.daily_task_assignments add constraint daily_task_assignments_category_check
-  check (category in ('technology', 'ai', 'crypto', 'trading', 'finance'));
-alter table public.daily_task_assignments enable row level security;
-revoke all on table public.daily_task_assignments from public, anon, authenticated;
-grant all on table public.daily_task_assignments to service_role;
-
-alter table public.daily_task_submissions add column if not exists assignment_id uuid references public.daily_task_assignments(id) on delete set null;
-alter table public.daily_task_submissions add column if not exists entity_key text not null default '';
-alter table public.daily_task_submissions add column if not exists selected_tag text not null default '';
-alter table public.daily_task_submissions add column if not exists feedback text not null default '';
-alter table public.daily_task_submissions drop constraint if exists daily_task_submissions_target_category_check;
-alter table public.daily_task_submissions add constraint daily_task_submissions_target_category_check
-  check (target_category in ('technology', 'ai', 'crypto', 'trading', 'finance'));
-alter table public.daily_task_submissions enable row level security;
-revoke all on table public.daily_task_submissions from public, anon, authenticated;
-grant all on table public.daily_task_submissions to service_role;
-
-create or replace function public.operix_enforce_daily_task_sequence_and_cooldown()
-returns trigger language plpgsql security definer set search_path = public as $$
-declare current_tier text; task_number integer; previous_task_key text; previous_completed_at timestamptz;
-begin
-  select tier_code into current_tier from public.users where id = new.user_id for update;
-  if current_tier is null then raise exception using errcode = 'P0002', message = 'USER_NOT_FOUND'; end if;
-  if new.task_key = current_tier || '-community' then task_number := 1;
-  elsif new.task_key ~ ('^' || current_tier || '-task-[0-9]+$') then task_number := substring(new.task_key from '[0-9]+$')::integer;
-  else raise exception using errcode = 'P0001', message = 'INVALID_TASK_KEY'; end if;
-  if task_number < 1 then raise exception using errcode = 'P0001', message = 'INVALID_TASK_KEY'; end if;
-  if task_number > 1 then
-    previous_task_key := case when task_number = 2 then current_tier || '-community'
-      else current_tier || '-task-' || lpad((task_number - 1)::text, 2, '0') end;
-    select created_at into previous_completed_at from public.daily_task_completions
-      where user_id = new.user_id and task_date = new.task_date and task_key = previous_task_key;
-    if previous_completed_at is null then raise exception using errcode = 'P0001', message = 'TASK_SEQUENCE_REQUIRED'; end if;
-    if previous_completed_at + interval '3 hours' > clock_timestamp() then
-      raise exception using errcode = 'P0001', message = 'TASK_COOLDOWN_ACTIVE';
-    end if;
-  end if;
-  return new;
-end;
-$$;
-drop trigger if exists daily_task_sequence_and_cooldown on public.daily_task_completions;
-create trigger daily_task_sequence_and_cooldown before insert on public.daily_task_completions
-for each row execute function public.operix_enforce_daily_task_sequence_and_cooldown();
 
 create or replace function public.operix_daily_task_complete_atomic(
   p_user_id uuid,
@@ -103,7 +22,6 @@ declare
   usdt_reward numeric;
   opx_reward numeric;
   balance_before numeric;
-  total_daily_reward numeric;
   completion_id uuid;
   reward_transaction_id uuid;
 begin
@@ -189,12 +107,6 @@ begin
   );
   usdt_reward := round(gross_reward - opx_reward, 4);
   balance_before := wallet_row.balance;
-  select coalesce(sum(gross_amount), 0) into total_daily_reward
-  from daily_task_completions
-  where user_id = p_user_id and task_date = current_date;
-  if total_daily_reward + gross_reward > coalesce(level_row.daily_profit, 0) then
-    raise exception using errcode = 'P0001', message = 'DAILY_CAP_REACHED';
-  end if;
 
   insert into daily_task_completions(user_id, task_key, task_date, gross_amount, usdt_amount, opx_amount)
   values(p_user_id, p_task_key, current_date, gross_reward, usdt_reward, opx_reward)
@@ -226,8 +138,56 @@ begin
 end;
 $$;
 
-revoke all on function public.operix_daily_task_atomic(uuid) from public, anon, authenticated;
+create or replace function public.operix_enforce_daily_task_sequence_and_cooldown()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_tier text;
+  task_number integer;
+  previous_task_key text;
+  previous_completed_at timestamptz;
+begin
+  select tier_code into current_tier from public.users where id = new.user_id for update;
+  if current_tier is null then raise exception using errcode = 'P0002', message = 'USER_NOT_FOUND'; end if;
+
+  if new.task_key = current_tier || '-community' then
+    task_number := 1;
+  elsif new.task_key ~ ('^' || current_tier || '-task-[0-9]+$') then
+    task_number := substring(new.task_key from '[0-9]+$')::integer;
+  else
+    raise exception using errcode = 'P0001', message = 'INVALID_TASK_KEY';
+  end if;
+  if task_number < 1 then raise exception using errcode = 'P0001', message = 'INVALID_TASK_KEY'; end if;
+
+  if task_number > 1 then
+    previous_task_key := case when task_number = 2
+      then current_tier || '-community'
+      else current_tier || '-task-' || lpad((task_number - 1)::text, 2, '0')
+    end;
+    select created_at into previous_completed_at
+      from public.daily_task_completions
+      where user_id = new.user_id and task_date = new.task_date and task_key = previous_task_key;
+    if previous_completed_at is null then
+      raise exception using errcode = 'P0001', message = 'TASK_SEQUENCE_REQUIRED';
+    end if;
+    if previous_completed_at + interval '3 hours' > clock_timestamp() then
+      raise exception using errcode = 'P0001', message = 'TASK_COOLDOWN_ACTIVE';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists daily_task_sequence_and_cooldown on public.daily_task_completions;
+create trigger daily_task_sequence_and_cooldown
+before insert on public.daily_task_completions
+for each row execute function public.operix_enforce_daily_task_sequence_and_cooldown();
+
 revoke all on function public.operix_daily_task_complete_atomic(uuid, text) from public, anon, authenticated;
+revoke all on function public.operix_enforce_daily_task_sequence_and_cooldown() from public, anon, authenticated;
 grant execute on function public.operix_daily_task_complete_atomic(uuid, text) to service_role;
 
 commit;
