@@ -166,7 +166,7 @@ async function overview(req, res) {
       User.countDocuments(),
       Transaction.countDocuments({ type: 'withdraw', status: 'pending' }),
       Transaction.countDocuments({ type: 'deposit', status: 'pending' }),
-      User.countDocuments({ updatedAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } }),
+      User.countDocuments({ lastLoginAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } }),
       dataAccess.transaction.find({ type: 'deposit', status: 'approved' }, { limit: 10000 }).then(rows => [{ total: rows.reduce((sum, row) => sum + Number(row.amount || 0), 0) }]),
       dataAccess.transaction.find({ type: 'withdraw', status: 'approved' }, { limit: 10000 }).then(rows => [{ total: rows.reduce((sum, row) => sum + Number(row.amount || 0), 0) }]),
       dataAccess.transaction.find({ type: { $in: ['reward', 'staking_reward', 'referral_commission'] }, status: 'approved' }, { limit: 10000 }).then(rows => [{ total: rows.reduce((sum, row) => sum + Number(row.amount || 0), 0) }]),
@@ -367,25 +367,50 @@ async function riskSummary(req, res) {
   } catch (err) { res.status(500).json({ error: 'تعذر تحميل ملخص المخاطر' }); }
 }
 
+function buildAdminUserFilter(query = {}) {
+  const filter = {};
+  if (['user', 'admin', 'financial_admin', 'support_admin', 'monitor'].includes(query.role)) filter.role = query.role;
+  if (query.tier) filter.tierCode = String(query.tier).trim().toUpperCase();
+  if (query.status === 'banned') filter.isBanned = true;
+  if (query.status === 'active') filter.isBanned = false;
+  if (query.verified === 'yes') filter.emailVerified = true;
+  if (query.verified === 'no') filter.emailVerified = false;
+  return filter;
+}
+
+async function getAdminUserRows(query = {}) {
+  const allUsers = await dataAccess.user.find(buildAdminUserFilter(query), { sort: { createdAt: -1 }, limit: 10000 });
+  const search = String(query.search || '').trim().slice(0, 120).toLowerCase();
+  return search ? allUsers.filter(user => `${user.username || ''} ${user.email || ''} ${user.referralCode || ''}`.toLowerCase().includes(search)) : allUsers;
+}
+
 async function listUsers(req, res) {
   try {
     const page = Math.max(1, Number(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 10));
-    const search = String(req.query.search || '').trim().slice(0, 120);
-    const filter = {};
-    if (['user', 'admin', 'financial_admin', 'support_admin', 'monitor'].includes(req.query.role)) filter.role = req.query.role;
-    if (req.query.tier) filter.tierCode = String(req.query.tier).trim().toUpperCase();
-    if (req.query.status === 'banned') filter.isBanned = true;
-    if (req.query.status === 'active') filter.isBanned = false;
-    if (req.query.verified === 'yes') filter.emailVerified = true;
-    if (req.query.verified === 'no') filter.emailVerified = false;
-    const allUsers = await dataAccess.user.find(filter, { sort: { createdAt: -1 }, limit: 10000 });
-    const searchedUsers = search ? allUsers.filter(user => `${user.username || ''} ${user.email || ''} ${user.referralCode || ''}`.toLowerCase().includes(search.toLowerCase())) : allUsers;
+    const searchedUsers = await getAdminUserRows(req.query);
     const total = searchedUsers.length;
     const users = searchedUsers.slice((page - 1) * limit, page * limit);
     res.json({ success: true, users, page, totalPages: Math.max(1, Math.ceil(total / limit)), total });
   }
   catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
+}
+
+async function exportUsers(req, res) {
+  try {
+    const users = await getAdminUserRows(req.query);
+    res.json({ success: true, users: users.map(user => ({
+      username: user.username || '',
+      email: user.email || '',
+      role: user.role || 'user',
+      tierCode: user.tierCode || 'A1',
+      wallet: user.wallet || {},
+      isBanned: Boolean(user.isBanned),
+      emailVerified: Boolean(user.emailVerified),
+      todayCompletedTasks: Number(user.todayCompletedTasks || 0),
+      createdAt: user.createdAt || null
+    })) });
+  } catch (error) { res.status(500).json({ error: 'تعذر تصدير المستخدمين' }); }
 }
 
 async function userDetails(req, res) {
@@ -700,17 +725,37 @@ async function listAuditLogs(req, res) {
   } catch (err) { res.status(500).json({ error: 'تعذر تحميل سجل التدقيق' }); }
 }
 
+async function getAdminReferralRows(query = {}) {
+  const allUsers = await dataAccess.user.find({}, { sort: { createdAt: -1 }, limit: 10000 });
+  const search = String(query.search || '').trim().toLowerCase().slice(0, 120);
+  return allUsers.filter(user => user.referredBy && (!search || `${user.email || ''} ${user.username || ''} ${user.referralCode || ''} ${user.referredBy || ''}`.toLowerCase().includes(search)));
+}
+
 async function listReferrals(req, res) {
   try {
     const page = Math.max(1, Number(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
-    const allUsers = await dataAccess.user.find({}, { sort: { createdAt: -1 }, limit: 10000 });
-    const search = String(req.query.search || '').trim().toLowerCase();
-    const filtered = allUsers.filter(user => user.referredBy && (!search || String(user.email || '').toLowerCase().includes(search)));
+    const filtered = await getAdminReferralRows(req.query);
     const total = filtered.length;
     const referrals = filtered.slice((page - 1) * limit, page * limit);
     res.json({ success: true, referrals, page, totalPages: Math.max(1, Math.ceil(total / limit)), total });
   } catch (err) { res.status(500).json({ error: 'تعذر تحميل الإحالات' }); }
+}
+
+async function exportReferrals(req, res) {
+  try {
+    const referrals = await getAdminReferralRows(req.query);
+    res.json({ success: true, referrals: referrals.map(user => ({
+      username: user.username || '',
+      email: user.email || '',
+      referralCode: user.referralCode || '',
+      referredBy: user.referredBy || '',
+      tierCode: user.tierCode || 'A1',
+      isActive: Number(user.wallet?.totalDeposits || 0) > 0,
+      totalDeposits: Number(user.wallet?.totalDeposits || 0),
+      createdAt: user.createdAt || null
+    })) });
+  } catch (error) { res.status(500).json({ error: 'تعذر تصدير الإحالات' }); }
 }
 
 async function referralTree(req, res) {
@@ -1180,4 +1225,4 @@ async function processScheduledBroadcasts(webpush) {
   return [];
 }
 
-module.exports = { saveVipLevel, listVipLevels, deleteVipLevel, overview, analytics, financialSummary, investmentVaultSummary, getInvestmentVaultContracts, updateInvestmentVaultContracts, listInvestmentVaults, emergencyReleaseInvestmentVault, riskSummary, listUsers, userDetails, resetDailyTasks, toggleBan, bulkToggleBan, revokeUserSessions, verifyUserEmail, disableUserTwoFactor, updateUser, updateUserAccount, updateUserRole, updateUserTier, listWithdrawals, transactionDetails, exportTransactions, listAuditLogs, listReferrals, referralTree, withdrawalAction, reconcileWithdrawalPayout, bulkWithdrawalAction, gameSettings, updateGameSettings, broadcast, listBroadcasts, processScheduledBroadcasts, processAutomaticWithdrawalApprovals, processWithdrawalPayoutQueue, sendAdminAuditBroadcast };
+module.exports = { saveVipLevel, listVipLevels, deleteVipLevel, overview, analytics, financialSummary, investmentVaultSummary, getInvestmentVaultContracts, updateInvestmentVaultContracts, listInvestmentVaults, emergencyReleaseInvestmentVault, riskSummary, listUsers, exportUsers, userDetails, resetDailyTasks, toggleBan, bulkToggleBan, revokeUserSessions, verifyUserEmail, disableUserTwoFactor, updateUser, updateUserAccount, updateUserRole, updateUserTier, listWithdrawals, transactionDetails, exportTransactions, listAuditLogs, listReferrals, exportReferrals, referralTree, withdrawalAction, reconcileWithdrawalPayout, bulkWithdrawalAction, gameSettings, updateGameSettings, broadcast, listBroadcasts, processScheduledBroadcasts, processAutomaticWithdrawalApprovals, processWithdrawalPayoutQueue, sendAdminAuditBroadcast };

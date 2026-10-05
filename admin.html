@@ -200,7 +200,7 @@ body.modal-open{overflow:hidden}
 
         <!-- تبويب: نظرة عامة -->
         <div id="admin-overview" class="space-y-6">
-            <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3"><div><span class="text-[10px] text-emerald-300 font-bold tracking-widest">OPERIX OPERATIONS CENTER</span><h2 class="text-xl font-black text-white mt-1">نظرة عامة والسرعة</h2><p class="text-[10px] text-slate-500 mt-1">قراءة تشغيلية سريعة لأهم مؤشرات المنصة</p></div><div class="flex items-center gap-2"><span class="ops-status text-[10px] text-emerald-300"><i class="ops-dot"></i>الخدمات الأساسية متصلة</span><button onclick="refreshOverviewDashboard()" title="تحديث البيانات" class="px-3 py-2 bg-slate-900 text-slate-300 rounded-xl"><i id="overviewRefreshIcon" class="fa-solid fa-arrows-rotate"></i></button></div></div>
+            <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3"><div><span class="text-[10px] text-emerald-300 font-bold tracking-widest">OPERIX OPERATIONS CENTER</span><h2 class="text-xl font-black text-white mt-1">نظرة عامة والسرعة</h2><p class="text-[10px] text-slate-500 mt-1">قراءة تشغيلية سريعة لأهم مؤشرات المنصة</p></div><div class="flex items-center gap-2"><span id="adminServiceStatus" class="ops-status text-[10px] text-slate-300" role="status" aria-live="polite"><i class="ops-dot"></i>جارٍ التحقق من الخدمات</span><button onclick="refreshOverviewDashboard()" title="تحديث البيانات" aria-label="تحديث مركز الإدارة" class="px-3 py-2 bg-slate-900 text-slate-300 rounded-xl"><i id="overviewRefreshIcon" class="fa-solid fa-arrows-rotate"></i></button></div></div>
             <div class="flex items-center justify-between"><span id="overviewLastSync" class="text-[10px] text-slate-500">آخر مزامنة: --</span><select id="overviewPeriod" onchange="refreshOverviewDashboard()" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-slate-300"><option value="7">آخر 7 أيام</option><option value="30" selected>آخر 30 يومًا</option></select></div>
             <section class="glass-card rounded-3xl border border-cyan-500/20 p-4"><div class="flex items-center justify-between gap-3"><div><h3 class="text-sm font-black text-white">رابط الدعم الخارجي</h3><p class="mt-1 text-[10px] text-slate-500">يظهر هذا الرابط للمستخدمين داخل قسم حسابي. لا يمكن استخدام روابط Telegram.</p></div><i class="fa-solid fa-headset text-cyan-300"></i></div><div class="mt-3 flex gap-2"><input id="platformSupportUrlInput" type="url" placeholder="https://example.com/support" class="min-w-0 flex-1 rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-400 dir-ltr"><button type="button" onclick="savePlatformSupportUrl()" class="rounded-xl bg-cyan-400 px-4 py-2.5 text-xs font-black text-slate-950">حفظ الرابط</button></div><p id="platformSupportUrlStatus" class="mt-2 text-[10px] text-slate-500"></p></section>
             
@@ -209,7 +209,7 @@ body.modal-open{overflow:hidden}
                     <span class="text-xs text-slate-400 font-bold">إجمالي المستخدمين</span>
                     <div class="flex justify-between items-baseline">
                         <h3 id="statTotalUsers" class="text-2xl font-black text-white">0</h3>
-                        <span class="text-xs text-emerald-400 font-bold">+12%</span>
+                        <span class="text-[10px] text-slate-500">إجمالي الحسابات</span>
                     </div>
                 </div>
 
@@ -230,7 +230,7 @@ body.modal-open{overflow:hidden}
                 </div>
 
                 <div class="glass-card p-5 rounded-3xl border border-slate-800 space-y-2">
-                    <span class="text-xs text-slate-400 font-bold">طلبات سحب معلقة</span>
+                    <span class="text-xs text-slate-400 font-bold">طلبات مالية معلقة</span>
                     <div class="flex justify-between items-baseline">
                         <h3 id="statPendingRequests" class="text-2xl font-black text-rose-400">0</h3>
                         <span class="text-xs text-rose-400 font-bold animate-pulse">تطلب الإجراء</span>
@@ -449,8 +449,8 @@ body.modal-open{overflow:hidden}
         <div id="admin-security" class="space-y-6 hide"><div><span class="text-[10px] text-emerald-300 font-bold tracking-widest">ADMIN SECURITY</span><h2 class="text-xl font-black text-white mt-1">إعدادات أمان الإدارة</h2><p class="text-[10px] text-slate-500 mt-1">هذه المصادقة مستقلة تمامًا عن مصادقة المستخدمين.</p></div><div class="glass-card max-w-lg p-6 rounded-3xl border border-emerald-500/20 space-y-4"><div id="adminSecurityStatus" class="p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300">جاري فحص الحالة...</div><button id="adminSecuritySetupButton" onclick="setupAdminSecurity2FA()" class="w-full py-3 bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 rounded-xl text-xs font-bold">إنشاء رمز Google Authenticator</button><div id="adminSecuritySetupPanel" class="hidden space-y-3"><div class="bg-white rounded-2xl p-3 w-fit mx-auto"><img id="adminSecurityQr" class="w-48 h-48" alt="QR مصادقة الإدارة"></div><code id="adminSecuritySecret" class="block text-center text-[10px] text-amber-300 break-all"></code><input id="adminSecurityCode" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="أدخل الرمز المكون من 6 أرقام" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-center tracking-[.4em] text-white"><button onclick="confirmAdminSecurity2FA()" class="w-full py-3 bg-amber-400 text-slate-950 rounded-xl text-xs font-black">تأكيد وتفعيل مصادقة الإدارة</button></div></div></div>
 
         <div id="admin-referrals" class="space-y-6 hide">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"><h2 class="text-xl font-black text-white">إدارة إحالات المنصة</h2><div class="flex gap-2 w-full sm:w-auto"><input id="txtSearchReferral" onkeyup="filterReferrals()" placeholder="ابحث بالبريد..." class="bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white w-full sm:w-64"><button onclick="exportReferralsCsv()" title="تصدير CSV" class="px-3 bg-slate-900 text-emerald-400 rounded-xl"><i class="fa-solid fa-file-csv"></i></button></div></div>
-            <div class="glass-card rounded-3xl overflow-hidden border border-slate-800"><div class="overflow-x-auto"><table class="w-full text-right text-xs"><thead class="bg-slate-900/80 text-slate-400"><tr><th class="p-4">المستخدم</th><th class="p-4">كود الإحالة</th><th class="p-4">أحاله</th><th class="p-4">المستوى</th><th class="p-4">نشطة</th><th class="p-4">تاريخ التسجيل</th><th class="p-4">الشجرة</th></tr></thead><tbody id="tblReferralsBody"></tbody></table></div></div>
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"><h2 class="text-xl font-black text-white">إدارة إحالات المنصة</h2><div class="flex gap-2 w-full sm:w-auto"><input id="txtSearchReferral" onkeydown="if(event.key==='Enter') fetchReferrals(1)" placeholder="ابحث بالبريد أو الاسم أو الكود..." class="bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white w-full sm:w-64"><button type="button" onclick="fetchReferrals(1)" title="بحث الإحالات" aria-label="بحث الإحالات" class="px-3 bg-slate-900 text-slate-300 rounded-xl"><i class="fa-solid fa-magnifying-glass"></i></button><button onclick="exportReferralsCsv()" title="تصدير كل النتائج المطابقة CSV" aria-label="تصدير كل الإحالات المطابقة" class="px-3 bg-slate-900 text-emerald-400 rounded-xl"><i class="fa-solid fa-file-csv"></i></button></div></div>
+            <div class="glass-card rounded-3xl overflow-hidden border border-slate-800"><div class="overflow-x-auto"><table class="w-full text-right text-xs"><thead class="bg-slate-900/80 text-slate-400"><tr><th class="p-4">المستخدم</th><th class="p-4">كود الإحالة</th><th class="p-4">أحاله</th><th class="p-4">المستوى</th><th class="p-4">نشطة</th><th class="p-4">تاريخ التسجيل</th><th class="p-4">الشجرة</th></tr></thead><tbody id="tblReferralsBody"></tbody></table></div><div class="flex justify-between items-center p-4 border-t border-slate-800 text-xs text-slate-400"><button id="referralsPrevButton" onclick="changeReferralsPage(-1)" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 rounded-lg">السابق</button><span>صفحة <span id="referralsCurrentPage">1</span> من <span id="referralsTotalPages">1</span> · <span id="referralsTotalCount">0 إحالة</span></span><button id="referralsNextButton" onclick="changeReferralsPage(1)" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 rounded-lg">التالي</button></div></div>
         </div>
 
     </main>
@@ -474,13 +474,7 @@ body.modal-open{overflow:hidden}
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="block text-xs text-slate-400 mb-1">المستوى الحالي</label>
-                    <select id="editUserTier" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white">
-                        <option value="A1">A1</option>
-                        <option value="A2">A2</option>
-                        <option value="A3">A3</option>
-                        <option value="A4">A4</option>
-                        <option value="A5">A5</option>
-                    </select>
+                    <p id="editUserTierDisplay" class="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-2.5 text-xs text-amber-300">غير مفعّل</p>
                 </div>
                 <div>
                     <label class="block text-xs text-slate-400 mb-1">رصيد المحفظة ($)</label>
@@ -936,10 +930,34 @@ body.modal-open{overflow:hidden}
             list.innerHTML = actions.slice(0, 4).map(action => `<button onclick="switchAdminTab('${action.tab}')" class="w-full flex items-center justify-between gap-2 p-3 rounded-xl bg-slate-950/60 border border-slate-800 text-right hover:border-amber-500/30"><span class="text-[11px] ${action.color}">${escapeAdminHtml(action.text)}</span><i class="fa-solid fa-arrow-left text-[10px] text-slate-600"></i></button>`).join('');
         }
 
+        async function updateAdminServiceStatus() {
+            const status = document.getElementById('adminServiceStatus');
+            if (!status) return;
+            const dot = status.querySelector('.ops-dot') || document.createElement('i');
+            dot.className = 'ops-dot';
+            try {
+                const response = await fetch('/api/health', { cache: 'no-store' });
+                const health = await response.json();
+                const connected = response.ok && health.database === 'supabase';
+                const financialReady = Boolean(health.financialSchema?.ready);
+                const healthy = connected && financialReady;
+                status.className = `ops-status text-[10px] ${healthy ? 'text-emerald-300' : 'text-amber-300'}`;
+                status.replaceChildren(dot, document.createTextNode(healthy ? 'قاعدة البيانات والخدمات المالية متصلة' : connected ? 'قاعدة البيانات متصلة؛ تحقق من مخطط الماليات' : 'اتصال قاعدة البيانات متدهور'));
+                status.title = `الإصدار: ${health.deploymentVersion || 'غير معروف'} · آخر فحص: ${new Date(health.timestamp || Date.now()).toLocaleTimeString('ar')}`;
+                if (dot) dot.style.backgroundColor = healthy ? '#45d6b0' : '#fbbf24';
+            } catch (error) {
+                status.className = 'ops-status text-[10px] text-rose-300';
+                status.replaceChildren(dot, document.createTextNode('تعذر التحقق من حالة الخدمات'));
+                status.title = error.message || 'Health check failed';
+                if (dot) dot.style.backgroundColor = '#fb7185';
+            }
+        }
+
         async function refreshOverviewDashboard() {
             const icon = document.getElementById('overviewRefreshIcon');
             if (icon) icon.classList.add('fa-spin');
             try {
+                await updateAdminServiceStatus();
                 await fetchAdminOverview();
                 await loadOverviewFinancialSummary();
                 await loadOverviewRiskSummary();
@@ -948,11 +966,20 @@ body.modal-open{overflow:hidden}
                 const data = await response.json();
                 if (response.ok) {
                     const period = Number(document.getElementById('overviewPeriod')?.value || 30);
-                    const daily = (data.daily || []).slice(-period);
+                    const totalsByDay = new Map();
+                    (data.daily || []).forEach(item => {
+                        const day = String(item._id?.day || '');
+                        if (!day) return;
+                        const dailyTotal = totalsByDay.get(day) || { _id: { day }, total: 0, count: 0 };
+                        dailyTotal.total += Number(item.total || 0);
+                        dailyTotal.count += Number(item.count || 0);
+                        totalsByDay.set(day, dailyTotal);
+                    });
+                    const daily = [...totalsByDay.values()].sort((a, b) => a._id.day.localeCompare(b._id.day)).slice(-period);
                     const max = Math.max(1, ...daily.map(item => Number(item.total || 0)));
                     const chart = document.getElementById('overviewChart');
                     const labels = document.getElementById('overviewChartLabels');
-                    if (chart) chart.innerHTML = daily.length ? daily.map(item => `<span class="ops-bar" title="${escapeAdminHtml(item._id.day)}: ${Number(item.total || 0).toFixed(2)} $" style="height:${Math.max(5, Math.round(Number(item.total || 0) / max * 100))}%"></span>`).join('') : '<span class="text-[10px] text-slate-500 self-center">لا توجد بيانات للفترة المحدعة</span>';
+                    if (chart) chart.innerHTML = daily.length ? daily.map(item => `<span class="ops-bar" title="${escapeAdminHtml(item._id.day)}: ${Number(item.total || 0).toFixed(2)} $ · ${Number(item.count || 0)} معاملة" style="height:${Math.max(5, Math.round(Number(item.total || 0) / max * 100))}%"></span>`).join('') : '<span class="text-[10px] text-slate-500 self-center">لا توجد بيانات للفترة المحددة</span>';
                     if (labels) labels.innerHTML = daily.length ? `<span>${escapeAdminHtml(daily[0]._id.day)}</span><span>${escapeAdminHtml(daily[daily.length - 1]._id.day)}</span>` : '';
                 }
                 const activity = document.getElementById('overviewRecentActivity');
@@ -995,25 +1022,57 @@ body.modal-open{overflow:hidden}
         }
 
         let allReferralsData = [];
-        async function fetchReferrals() {
-            const token = localStorage.getItem('token');
+        let referralsCurrentPage = 1;
+        let referralsTotalPages = 1;
+        async function fetchReferrals(page = 1) {
             try {
-                const response = await fetch('/api/admin/referrals?limit=100', { headers: adminHeaders() });
+                const params = new URLSearchParams({ page, limit: 20, search: document.getElementById('txtSearchReferral')?.value.trim() || '' });
+                const response = await fetch(`/api/admin/referrals?${params}`, { headers: adminHeaders() });
                 if (response.status === 401 || response.status === 403) return adminLogout();
                 const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'تعذر تحميل الإحالات');
                 allReferralsData = data.referrals || [];
+                referralsCurrentPage = Number(data.page || 1);
+                referralsTotalPages = Number(data.totalPages || 1);
+                document.getElementById('referralsCurrentPage').innerText = referralsCurrentPage;
+                document.getElementById('referralsTotalPages').innerText = referralsTotalPages;
+                document.getElementById('referralsTotalCount').innerText = `${Number(data.total || 0).toLocaleString('ar')} إحالة`;
+                document.getElementById('referralsPrevButton').disabled = referralsCurrentPage <= 1;
+                document.getElementById('referralsNextButton').disabled = referralsCurrentPage >= referralsTotalPages;
                 renderReferrals(allReferralsData);
-            } catch (error) { showToast('تعذر تحميل الإحالات'); }
+            } catch (error) { showToast(error.message || 'تعذر تحميل الإحالات'); }
+        }
+        function changeReferralsPage(delta) {
+            const target = referralsCurrentPage + delta;
+            if (target >= 1 && target <= referralsTotalPages) fetchReferrals(target);
         }
         function renderReferrals(referrals) {
             const tbody = document.getElementById('tblReferralsBody');
             if (!tbody) return;
             tbody.innerHTML = referrals.length ? referrals.map(referral => `<tr><td class="p-4 text-white">${escapeAdminHtml(referral.email)}</td><td class="p-4 text-amber-400 font-mono">${escapeAdminHtml(referral.referralCode || '-')}</td><td class="p-4 text-slate-400 font-mono">${escapeAdminHtml(referral.referredBy || '-')}</td><td class="p-4 text-slate-300">${Number(referral.wallet?.totalDeposits || 0) > 0 ? escapeAdminHtml(referral.tierCode || 'A1') : 'غير مفعّل'}</td><td class="p-4">${Number(referral.wallet?.totalDeposits || 0) > 0 ? '<span class="text-emerald-400">نعم</span>' : '<span class="text-slate-500">لا</span>'}</td><td class="p-4 text-slate-500">${escapeAdminHtml(new Date(referral.createdAt).toLocaleDateString('ar'))}</td><td class="p-4"><button type="button" onclick="viewReferralTreeById('${escapeAdminHtml(referral._id)}')" class="text-blue-300 hover:text-blue-200" title="عرض شجرة الإحالات"><i class="fa-solid fa-sitemap"></i></button></td></tr>`).join('') : '<tr><td colspan="7" class="p-4 text-center text-slate-500">لا توجد إحالات</td></tr>';
         }
-        function filterReferrals() { const term = document.getElementById('txtSearchReferral').value.toLowerCase(); renderReferrals(allReferralsData.filter(referral => referral.email?.toLowerCase().includes(term))); }
+        function filterReferrals() { fetchReferrals(1); }
         function exportCsv(rows, filename) { const csv = rows.map(row => row.map(value => `"${String(value ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n'); const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = filename; link.click(); URL.revokeObjectURL(link.href); }
-        function exportReferralsCsv() { exportCsv([['البريد', 'كود الإحالة', 'أحاله', 'المستوى', 'نشطة'], ...allReferralsData.map(item => [item.email, item.referralCode, item.referredBy, Number(item.wallet?.totalDeposits || 0) > 0 ? item.tierCode : 'غير مفعّل', Number(item.wallet?.totalDeposits || 0) > 0 ? 'نعم' : 'لا'])], 'referrals.csv'); }
-        function exportUsersCsv() { exportCsv([['البريد', 'المستوى', 'الرصيد', 'الحالة'], ...allUsersData.map(item => [item.email, Number(item.wallet?.totalDeposits || 0) > 0 ? item.tierCode : 'غير مفعّل', item.wallet?.balance || 0, item.isBanned ? 'محظور' : 'نشط'])], 'users.csv'); }
+        async function exportReferralsCsv() {
+            try {
+                const params = new URLSearchParams({ search: document.getElementById('txtSearchReferral')?.value.trim() || '' });
+                const response = await fetch(`/api/admin/referrals/export?${params}`, { headers: adminHeaders() });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'تعذر تصدير الإحالات');
+                const rows = (data.referrals || []).map(item => [item.username, item.email, item.referralCode, item.referredBy, item.isActive ? item.tierCode : 'غير مفعّل', item.isActive ? 'نعم' : 'لا', item.totalDeposits, item.createdAt ? new Date(item.createdAt).toISOString() : '']);
+                exportCsv([['اسم المستخدم', 'البريد', 'كود الإحالة', 'أحاله', 'المستوى', 'نشطة', 'إجمالي الإيداعات', 'تاريخ التسجيل'], ...rows], 'referrals.csv');
+            } catch (error) { showToast(error.message || 'تعذر تصدير الإحالات'); }
+        }
+        async function exportUsersCsv() {
+            try {
+                const params = new URLSearchParams({ search: document.getElementById('txtSearchUser')?.value.trim() || '', role: document.getElementById('userFilterRole')?.value || '', tier: document.getElementById('userFilterTier')?.value.trim() || '', status: document.getElementById('userFilterStatus')?.value || '', verified: document.getElementById('userFilterVerified')?.value || '' });
+                const response = await fetch(`/api/admin/users/export?${params}`, { headers: adminHeaders() });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'تعذر تصدير المستخدمين');
+                const rows = (data.users || []).map(item => [item.username, item.email, item.role, Number(item.wallet?.totalDeposits || 0) > 0 ? item.tierCode : 'غير مفعّل', Number(item.wallet?.balance || 0), Number(item.wallet?.depositBalance || 0), Number(item.wallet?.profitBalance || 0), item.isBanned ? 'محظور' : 'نشط', item.emailVerified ? 'موثق' : 'غير موثق', item.todayCompletedTasks, item.createdAt ? new Date(item.createdAt).toISOString() : '']);
+                exportCsv([['اسم المستخدم', 'البريد', 'الدور', 'المستوى', 'الرصيد', 'الإيداع', 'الأرباح', 'الحالة', 'البريد', 'مهام اليوم', 'تاريخ التسجيل'], ...rows], 'users.csv');
+            } catch (error) { showToast(error.message || 'تعذر تصدير المستخدمين'); }
+        }
         async function exportTransactionsCsv() { const params = new URLSearchParams({ status: document.getElementById('filterTxStatus')?.value || 'all', type: document.getElementById('filterTxType')?.value || 'all', network: document.getElementById('filterTxNetwork')?.value || '', search: document.getElementById('txSearch')?.value.trim() || '', from: document.getElementById('txFrom')?.value || '', to: document.getElementById('txTo')?.value || '' }); const response = await fetch(`/api/admin/withdrawals/export?${params}`, { headers: adminHeaders() }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر تصدير المعاملات'); exportCsv([['المستخدم', 'النوع', 'المبلغ', 'الشبكة', 'الهاش', 'المحفظة', 'الحالة', 'التاريخ'], ...(data.transactions || []).map(item => [item.userId?.email || '-', item.type, item.amount, item.network || '-', item.txHash || '-', item.walletAddress || '-', item.status, new Date(item.createdAt).toISOString()])], 'transactions.csv'); }
         function renderUsersTable(users) {
             const tbody = document.getElementById('tblUsersBody');
@@ -1239,7 +1298,7 @@ body.modal-open{overflow:hidden}
 
         function openEditUser(id, tier, balance, role = 'user') {
             document.getElementById('editUserId').value = id;
-            document.getElementById('editUserTier').value = tier;
+            document.getElementById('editUserTierDisplay').innerText = tier || 'غير مفعّل';
             document.getElementById('editUserBalance').value = balance;
             document.getElementById('editUserPass').value = '';
             document.getElementById('editUserRole').value = role;
@@ -1251,9 +1310,7 @@ body.modal-open{overflow:hidden}
         }
 
         async function submitEditUser() {
-            const token = getAdminAuthToken();
             const userId = document.getElementById('editUserId').value;
-            const tierCode = document.getElementById('editUserTier').value;
             const balance = parseFloat(document.getElementById('editUserBalance').value);
             const password = document.getElementById('editUserPass').value;
             const role = document.getElementById('editUserRole').value;
@@ -1261,19 +1318,25 @@ body.modal-open{overflow:hidden}
             try {
                 const headers = adminJsonHeaders();
                 const operations = [];
-                if (canAdmin('finance')) operations.push(['الرصيد', fetch('/api/admin/users/update', { method: 'POST', headers, body: JSON.stringify({ userId, balance }) })]);
-                if (canAdmin('manage_users') && password) operations.push(['بيانات الحساب', fetch('/api/admin/users/update-account', { method: 'POST', headers, body: JSON.stringify({ userId, password }) })]);
-                if (canAdmin('manage_vip')) operations.push(['المستوى', fetch('/api/admin/users/tier', { method: 'POST', headers, body: JSON.stringify({ userId, tierCode }) })]);
-                if (currentAdminRole === 'admin') operations.push(['الدور', fetch('/api/admin/users/role', { method: 'POST', headers, body: JSON.stringify({ userId, role }) })]);
+                if (canAdmin('finance')) operations.push(['الرصيد', () => fetch('/api/admin/users/update', { method: 'POST', headers, body: JSON.stringify({ userId, balance }) })]);
+                if (canAdmin('manage_users') && password) operations.push(['بيانات الحساب', () => fetch('/api/admin/users/update-account', { method: 'POST', headers, body: JSON.stringify({ userId, password }) })]);
+                if (currentAdminRole === 'admin') operations.push(['الدور', () => fetch('/api/admin/users/role', { method: 'POST', headers, body: JSON.stringify({ userId, role }) })]);
                 if (!operations.length) return showToast('لا تملك صلاحية لتعديل بيانات هذا المستخدم');
-                const results = await Promise.all(operations.map(async ([label, request]) => {
-                    const response = await request;
+                const results = [];
+                for (const [label, run] of operations) {
+                    const response = await run();
                     const data = await response.json().catch(() => ({}));
-                    return { label, ok: response.ok, error: data.error };
-                }));
+                    results.push({ label, ok: response.ok, error: data.error });
+                }
                 const failures = results.filter(result => !result.ok);
-                if (failures.length) showToast(`تم الحفظ مع تعذر: ${failures.map(result => result.error || result.label).join('، ')}`);
-                else showToast('تم تحديث بيانات المستخدم بنجاح');
+                if (failures.length) {
+                    const completed = results.filter(result => result.ok).map(result => result.label);
+                    showToast(`${completed.length ? `تم حفظ: ${completed.join('، ')}. ` : ''}تعذر حفظ: ${failures.map(result => result.error || result.label).join('، ')}. راجع البيانات وأعد المحاولة.`);
+                    fetchUsersList(usersCurrentPage);
+                    fetchAdminOverview();
+                    return;
+                }
+                showToast(`تم تحديث ${results.map(result => result.label).join('، ')} بنجاح`);
                 closeEditUserModal();
                 fetchUsersList(usersCurrentPage);
                 fetchAdminOverview();
@@ -1313,8 +1376,6 @@ body.modal-open{overflow:hidden}
                 const levels = await res.json();
                 
                 if (Array.isArray(levels) && levels.length > 0) {
-                    const tierSelect = document.getElementById('editUserTier');
-                    if (tierSelect) tierSelect.innerHTML = levels.map(level => `<option value="${escapeAdminHtml(level.code)}">${escapeAdminHtml(level.code)}</option>`).join('');
                     container.innerHTML = levels.map(plan => `
                         <div class="glass-card p-5 rounded-3xl border border-slate-800 space-y-3">
                             <h3 class="font-bold text-amber-400 text-sm">مستوى ${plan.code}</h3>
@@ -1610,6 +1671,7 @@ body.modal-open{overflow:hidden}
                     refreshAdminAlerts();
                     startAdminRealtimeStream(token);
                     setInterval(refreshAdminAlerts, 30000);
+                    setInterval(updateAdminServiceStatus, 60000);
                 })
                 .catch(error => showAdminAccessMessage(error.message));
         }

@@ -25,6 +25,7 @@ router.get('/users/:userId/details', requirePermission('read_users'), adminContr
 router.post('/reset-daily-tasks', requirePermission('manage_users'), adminController.resetDailyTasks);
 router.post('/users/toggle-ban', requirePermission('manage_users'), adminController.toggleBan);
 router.post('/users/bulk-ban', requirePermission('manage_users'), adminController.bulkToggleBan);
+router.get('/users/export', requirePermission('read_users'), adminController.exportUsers);
 router.post('/users/:userId/revoke-sessions', requirePermission('manage_users'), adminController.revokeUserSessions);
 router.post('/users/:userId/verify-email', requirePermission('manage_users'), adminController.verifyUserEmail);
 router.post('/users/:userId/disable-2fa', requireFullAdmin, adminController.disableUserTwoFactor);
@@ -38,6 +39,7 @@ router.get('/withdrawals/:transactionId', requirePermission('finance'), adminCon
 router.post('/withdrawals/:transactionId/payout-reconcile', requirePermission('finance'), adminController.reconcileWithdrawalPayout);
 router.get('/audit-logs', requirePermission('read_audit'), adminController.listAuditLogs);
 router.get('/referrals', requirePermission('read_referrals'), adminController.listReferrals);
+router.get('/referrals/export', requirePermission('read_referrals'), adminController.exportReferrals);
 router.get('/referrals/tree/:userId', requirePermission('read_referrals'), adminController.referralTree);
 router.post('/withdrawals/action', requirePermission('finance'), adminController.withdrawalAction);
 router.post('/withdrawals/bulk-action', requirePermission('finance'), adminController.bulkWithdrawalAction);
