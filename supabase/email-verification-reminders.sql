@@ -222,6 +222,7 @@ begin
       email_verification_reminder_sent_at = now()
   where id = p_user_id
     and lower(btrim(email)) = lower(btrim(p_email))
+    and public.operix_email_verification_reminder_domain_allowed(email)
     and role = 'user'
     and is_banned = false
     and email_verified = false
