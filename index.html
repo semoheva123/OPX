@@ -550,9 +550,47 @@
         .task-filter-active { background: rgba(247,185,85,.14); border-color: rgba(247,185,85,.35); color: #f7c45e; }
         .task-card { background: rgba(3,10,19,.5); border: 1px solid rgba(148,163,184,.14); }
         .task-card:hover { border-color: rgba(247,185,85,.35); }
-        .app-nav-item { position: relative; border-radius: 14px; padding: 5px 4px; }
-        .app-nav-item.is-active { background: rgba(247,185,85,.1); box-shadow: inset 0 -2px 0 rgba(247,185,85,.85); }
-        .app-nav-item:not(.is-active):hover { background: rgba(148,163,184,.07); }
+        .app-nav-item {
+            position: relative;
+            min-height: 52px;
+            border-radius: 16px;
+            padding: 8px 6px 7px;
+            border: 1px solid rgba(148,163,184,.08);
+            background: linear-gradient(180deg, rgba(15,23,42,.55), rgba(2,6,23,.82));
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+            transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease, background .2s ease, color .2s ease;
+        }
+        .app-nav-item:hover {
+            background: linear-gradient(180deg, rgba(30,41,59,.75), rgba(15,23,42,.92));
+            border-color: rgba(247,185,85,.3);
+            transform: translateY(-1px);
+        }
+        .app-nav-item i {
+            font-size: 1rem;
+            transition: transform .2s ease, color .2s ease;
+        }
+        .app-nav-item span {
+            letter-spacing: .02em;
+            opacity: .78;
+            transition: opacity .2s ease, color .2s ease;
+        }
+        .app-nav-item.is-active {
+            background: linear-gradient(180deg, rgba(247,185,85,.18), rgba(15,23,42,.92));
+            border-color: rgba(247,185,85,.42);
+            box-shadow: 0 12px 20px rgba(247,185,85,.12), inset 0 1px 0 rgba(255,255,255,.06), inset 0 -2px 0 rgba(247,185,85,.72);
+        }
+        .app-nav-item.is-active i {
+            transform: scale(1.06);
+            color: #f7c45e;
+        }
+        .app-nav-item.is-active span {
+            opacity: 1;
+            color: #f9d98b;
+        }
+        .app-nav-item:not(.is-active):hover i,
+        .app-nav-item:not(.is-active):hover span {
+            color: rgba(255,255,255,.9);
+        }
         #view-home .balance-summary-card,
         #view-profile .balance-summary-card {
             position: relative;
@@ -586,18 +624,46 @@
             border-color: rgba(247,185,85,.45);
             box-shadow: 0 7px 20px rgba(247,185,85,.08), inset 0 1px 0 rgba(255,255,255,.05);
         }
+        #taskBoard {
+            display: grid;
+            gap: 10px;
+        }
+        .task-filter-button {
+            position: relative;
+            border-color: rgba(148,163,184,.15);
+            background: linear-gradient(180deg, rgba(15,23,42,.72), rgba(7,12,20,.9));
+            color: rgba(226,232,240,.7);
+            transition: all .2s ease;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+        }
+        .task-filter-button:hover {
+            border-color: rgba(247,185,85,.3);
+            color: rgba(255,255,255,.92);
+            transform: translateY(-1px);
+        }
+        .task-filter-button.is-active {
+            background: linear-gradient(135deg, rgba(247,185,85,.22), rgba(251,191,36,.08));
+            border-color: rgba(247,185,85,.42);
+            color: #ffdf9a;
+            box-shadow: 0 10px 22px rgba(247,185,85,.12), inset 0 1px 0 rgba(255,255,255,.06);
+        }
         #taskBoard .task-card,
         #dailyTaskList [data-task-card] {
             position: relative;
             overflow: hidden;
             border-radius: 18px;
             background: linear-gradient(145deg, rgba(15,24,39,.9), rgba(5,12,22,.94));
+            border: 1px solid rgba(148,163,184,.12);
             box-shadow: inset 0 1px 0 rgba(255,255,255,.035), 0 12px 24px rgba(0,0,0,.13);
             transition: border-color .22s ease, transform .22s ease, box-shadow .22s ease;
         }
         #taskBoard .task-card:hover,
         #dailyTaskList [data-task-card]:hover { transform: translateY(-2px); border-color: rgba(247,185,85,.32); box-shadow: 0 18px 34px rgba(0,0,0,.22); }
         #dailyTaskList [data-task-card] > div > div > div:first-child > span { white-space: nowrap; }
+        #taskBoard .task-card .task-badge {
+            letter-spacing: .04em;
+            white-space: nowrap;
+        }
         #view-profile > .glass-card:first-child {
             background: radial-gradient(ellipse at 50% 0%, rgba(247,185,85,.12), transparent 48%), linear-gradient(160deg, rgba(15,23,42,.9), rgba(7,13,23,.97));
         }
