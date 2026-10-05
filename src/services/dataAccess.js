@@ -626,6 +626,14 @@ const dataAccess = {
         return supabaseInsert('financial_ledger', payload);
       }
       return null;
+    },
+    async find(query = {}, options = {}) {
+      if (isSupabaseRuntime() && supabaseAdmin) return supabaseFind('financial_ledger', query, options);
+      return [];
+    },
+    async countDocuments(query = {}) {
+      if (isSupabaseRuntime() && supabaseAdmin) return supabaseCountDocuments('financial_ledger', query);
+      return 0;
     }
   }
 };

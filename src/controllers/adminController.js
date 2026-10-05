@@ -2,6 +2,8 @@ const { withdrawalCompletedTemplate, withdrawalRejectedTemplate } = require('../
 const realtimeService = require('../services/realtimeService');
 const dataAccess = require('../services/dataAccess');
 const withdrawalPayoutService = require('../services/withdrawalPayoutService');
+const { checkFinancialReadiness } = require('../services/financialReadinessService');
+const { buildFinancialAccountingSummary } = require('../services/financialAccountingService');
 const User = adminRepository(dataAccess.user);
 const Transaction = adminRepository(dataAccess.transaction);
 const InvestmentVault = adminRepository(dataAccess.investmentVault);
@@ -278,6 +280,51 @@ async function financialSummary(req, res) {
     const summary = await buildFinancialSummary(days);
     res.json({ success: true, summary });
   } catch (err) { res.status(500).json({ error: 'تعذر تحميل الملخص المالي' }); }
+}
+
+async function financialReadiness(req, res) {
+  try {
+    const readiness = await checkFinancialReadiness();
+    const checks = readiness?.checks || {};
+    res.json({
+      success: true,
+      readyForControlledTest: Boolean(readiness?.readyForControlledTest),
+      ready: Boolean(readiness?.readyForControlledTest),
+      switches: readiness?.switches || {},
+      checks: {
+        supabaseReachable: Boolean(checks.supabaseReachable),
+        financialSchemaReady: Boolean(checks.financialSchemaReady),
+        noUnresolvedPayouts: Boolean(checks.noUnresolvedPayouts),
+        depositXpubDerivesAddress: Boolean(checks.depositXpubDerivesAddress),
+        tronUsdtContractValid: Boolean(checks.tronUsdtContractValid),
+        payoutKeyConfigured: Boolean(checks.payoutKeyConfigured),
+        payoutKeyValid: Boolean(checks.payoutKeyValid),
+        payoutKeyFailure: checks.payoutKeyFailure || null,
+        tronProviderReachable: Boolean(checks.tronProviderReachable),
+        payoutBalancesReadable: Boolean(checks.payoutBalancesReadable),
+        payoutUsdtFunded: Boolean(checks.payoutUsdtFunded),
+        payoutTrxSufficient: Boolean(checks.payoutTrxSufficient)
+      },
+      summary: {
+        totalChecks: Object.keys(readiness?.checks || {}).length,
+        passedChecks: Object.values(readiness?.checks || {}).filter(Boolean).length,
+        failedChecks: Object.values(readiness?.checks || {}).filter(value => value === false).length,
+        blockedReason: readiness?.readyForControlledTest ? 'all_clear' : 'read_only_preflight_blocked'
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'تعذر تحميل جاهزية الماليات' });
+  }
+}
+
+async function financialAccounting(req, res) {
+  try {
+    const days = Math.max(1, Math.min(365, Number(req.query.days) || 30));
+    const summary = await buildFinancialAccountingSummary(days, new Date());
+    res.json({ success: true, summary });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'تعذر تحميل ملخص المحاسبة' });
+  }
 }
 
 async function investmentVaultSummary(req, res) {
@@ -1225,4 +1272,4 @@ async function processScheduledBroadcasts(webpush) {
   return [];
 }
 
-module.exports = { saveVipLevel, listVipLevels, deleteVipLevel, overview, analytics, financialSummary, investmentVaultSummary, getInvestmentVaultContracts, updateInvestmentVaultContracts, listInvestmentVaults, emergencyReleaseInvestmentVault, riskSummary, listUsers, exportUsers, userDetails, resetDailyTasks, toggleBan, bulkToggleBan, revokeUserSessions, verifyUserEmail, disableUserTwoFactor, updateUser, updateUserAccount, updateUserRole, updateUserTier, listWithdrawals, transactionDetails, exportTransactions, listAuditLogs, listReferrals, exportReferrals, referralTree, withdrawalAction, reconcileWithdrawalPayout, bulkWithdrawalAction, gameSettings, updateGameSettings, broadcast, listBroadcasts, processScheduledBroadcasts, processAutomaticWithdrawalApprovals, processWithdrawalPayoutQueue, sendAdminAuditBroadcast };
+module.exports = { saveVipLevel, listVipLevels, deleteVipLevel, overview, analytics, financialSummary, financialReadiness, financialAccounting, investmentVaultSummary, getInvestmentVaultContracts, updateInvestmentVaultContracts, listInvestmentVaults, emergencyReleaseInvestmentVault, riskSummary, listUsers, exportUsers, userDetails, resetDailyTasks, toggleBan, bulkToggleBan, revokeUserSessions, verifyUserEmail, disableUserTwoFactor, updateUser, updateUserAccount, updateUserRole, updateUserTier, listWithdrawals, transactionDetails, exportTransactions, listAuditLogs, listReferrals, exportReferrals, referralTree, withdrawalAction, reconcileWithdrawalPayout, bulkWithdrawalAction, gameSettings, updateGameSettings, broadcast, listBroadcasts, processScheduledBroadcasts, processAutomaticWithdrawalApprovals, processWithdrawalPayoutQueue, sendAdminAuditBroadcast };

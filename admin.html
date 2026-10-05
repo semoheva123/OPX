@@ -244,6 +244,10 @@ body.modal-open{overflow:hidden}
                 <div class="glass-card p-5 rounded-3xl border border-slate-800"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-white text-sm">ملخص مالي</h3><i class="fa-solid fa-sack-dollar text-emerald-300"></i></div><div id="overviewFinancialSummary" class="space-y-2"></div></div>
                 <div class="glass-card p-5 rounded-3xl border border-slate-800"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-white text-sm">تنبيهات المخاطر</h3><i class="fa-solid fa-shield-heart text-amber-300"></i></div><div id="overviewRiskAlerts" class="space-y-2"></div></div>
             </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="glass-card p-5 rounded-3xl border border-slate-800"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-white text-sm">جاهزية الدفع والتمويل</h3><button onclick="loadFinancialReadinessStatus()" class="text-[10px] text-cyan-400 hover:underline">تحديث</button></div><div id="financialReadinessStatus" class="space-y-2"></div></div>
+                <div class="glass-card p-5 rounded-3xl border border-slate-800"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-white text-sm">ملخص المحاسبة</h3><button onclick="loadFinancialAccountingSummary()" class="text-[10px] text-cyan-400 hover:underline">تحديث</button></div><div id="financialAccountingSummary" class="space-y-2"></div></div>
+            </div>
             <div class="grid grid-cols-1 gap-4">
                 <div class="glass-card p-5 rounded-3xl border border-slate-800"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-white text-sm">مؤشر المخاطر</h3><button onclick="loadOverviewRiskSummary()" class="text-[10px] text-amber-400 hover:underline">تحديث</button></div><div id="overviewRiskSummary" class="space-y-2"></div></div>
             </div>
@@ -839,6 +843,82 @@ body.modal-open{overflow:hidden}
             }
         }
 
+        async function loadFinancialReadinessStatus() {
+            const container = document.getElementById('financialReadinessStatus');
+            if (!container) return;
+            try {
+                const response = await fetch('/api/admin/financial-readiness', { headers: adminHeaders() });
+                const data = await response.json();
+                if (!response.ok || !data.success) throw new Error(data.error || 'تعذر تحميل جاهزية التمويل');
+                const readiness = data || {};
+                const checks = readiness.checks || {};
+                const entries = [
+                    ['قاعدة البيانات', checks.supabaseReachable],
+                    ['مخطط الماليات', checks.financialSchemaReady],
+                    ['لا توجد دفعات معلقة', checks.noUnresolvedPayouts],
+                    ['عنوان الإيداع قابل للاشتقاق', checks.depositXpubDerivesAddress],
+                    ['عقد USDT صالح', checks.tronUsdtContractValid],
+                    ['مفتاح الدفع موجود', checks.payoutKeyConfigured],
+                    ['مفتاح الدفع صالح', checks.payoutKeyValid],
+                    ['مزود TRON متاح', checks.tronProviderReachable],
+                    ['رصيد الدفع قابل للقراءة', checks.payoutBalancesReadable],
+                    ['USDT في المحفظة', checks.payoutUsdtFunded],
+                    ['TRX كافٍ للرسوم', checks.payoutTrxSufficient]
+                ];
+                const readyCount = entries.filter(([, ok]) => ok).length;
+                const statusText = readiness.readyForControlledTest ? 'جاهز' : 'ممنوع في الوضع الحالي';
+                const statusClass = readiness.readyForControlledTest ? 'text-emerald-300' : 'text-amber-300';
+                container.innerHTML = `
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <div class="text-[9px] text-slate-400">الحالة</div>
+                            <div class="text-xl font-black ${statusClass}">${statusText}</div>
+                        </div>
+                        <span class="px-2 py-1 rounded-full text-[9px] font-bold ${readiness.readyForControlledTest ? 'bg-emerald-500/10 text-emerald-300' : 'bg-amber-500/10 text-amber-300'}">${readyCount}/${entries.length}</span>
+                    </div>
+                    <div class="mt-3 space-y-2 text-[10px] text-slate-300">
+                        ${entries.map(([label, ok]) => `
+                            <div class="flex items-center justify-between gap-2 rounded-xl bg-slate-950/60 px-2 py-1.5">
+                                <span>${escapeAdminHtml(label)}</span>
+                                <span class="${ok ? 'text-emerald-300' : 'text-rose-300'}">${ok ? 'موافق' : 'غير جاهز'}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } catch (error) {
+                container.innerHTML = '<div class="text-[10px] text-rose-300">تعذر تحميل جاهزية التمويل</div>';
+            }
+        }
+
+        async function loadFinancialAccountingSummary() {
+            const container = document.getElementById('financialAccountingSummary');
+            if (!container) return;
+            try {
+                const response = await fetch('/api/admin/financial-accounting', { headers: adminHeaders() });
+                const data = await response.json();
+                if (!response.ok || !data.success) throw new Error(data.error || 'تعذر تحميل ملخص المحاسبة');
+                const summary = data.summary || {};
+                const period = summary.period || {};
+                const obligations = summary.obligations || {};
+                const reconciliation = summary.reconciliation || {};
+                container.innerHTML = `
+                    <div class="grid grid-cols-2 gap-2 text-[10px] text-slate-300">
+                        <div class="rounded-xl bg-slate-950/60 p-2"><span class="text-slate-500 block">إيداعات مؤكدة</span><b class="text-emerald-300">${Number(period.verifiedDepositInflow || 0).toFixed(2)} $</b></div>
+                        <div class="rounded-xl bg-slate-950/60 p-2"><span class="text-slate-500 block">مسحوبات مؤكدة</span><b class="text-amber-300">${Number(period.confirmedWithdrawalCash || 0).toFixed(2)} $</b></div>
+                        <div class="rounded-xl bg-slate-950/60 p-2"><span class="text-slate-500 block">إيراد المتاجر</span><b class="text-cyan-300">${Number(period.tierRevenueUsdt || 0).toFixed(2)} $</b></div>
+                        <div class="rounded-xl bg-slate-950/60 p-2"><span class="text-slate-500 block">التزامات المستخدمين</span><b class="text-violet-300">${Number(obligations.totalTrackedCustomerObligations || 0).toFixed(2)} $</b></div>
+                    </div>
+                    <div class="mt-3 text-[10px] text-slate-300">
+                        <div>• معاملات غير متطابقة: ${Number(reconciliation.unmatchedFinancialTransactions || 0)}</div>
+                        <div>• إيرادات مكافآت: ${Number(period.rewardCreditsUsdt || 0).toFixed(2)} $</div>
+                        <div>• رصيد محفظة المستخدمين: ${Number(obligations.walletBalances || 0).toFixed(2)} $</div>
+                    </div>
+                `;
+            } catch (error) {
+                container.innerHTML = '<div class="text-[10px] text-rose-300">تعذر تحميل ملخص المحاسبة</div>';
+            }
+        }
+
         async function fetchAuditLogs(page = 1) {
             const token = getAdminAuthToken();
             try {
@@ -960,6 +1040,8 @@ body.modal-open{overflow:hidden}
                 await updateAdminServiceStatus();
                 await fetchAdminOverview();
                 await loadOverviewFinancialSummary();
+                await loadFinancialReadinessStatus();
+                await loadFinancialAccountingSummary();
                 await loadOverviewRiskSummary();
                 await loadRiskSignals();
                 const response = await fetch('/api/admin/analytics', { headers: adminHeaders() });
