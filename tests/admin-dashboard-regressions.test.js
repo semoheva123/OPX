@@ -24,6 +24,11 @@ assert.match(editUserFlow, /for \(const \[label, run\] of operations\)/, 'user-a
 assert.match(editUserFlow, /راجع البيانات وأعد المحاولة/, 'partial saves must be reported rather than hidden by closing the dialog');
 assert.match(adminRoutes, /router\.get\('\/users\/export', requirePermission\('read_users'\), adminController\.exportUsers\)/);
 assert.match(adminRoutes, /router\.get\('\/referrals\/export', requirePermission\('read_referrals'\), adminController\.exportReferrals\)/);
+assert.match(adminRoutes, /router\.post\('\/email-broadcasts\/preview', requirePermission\('broadcast'\), adminController\.previewEmailBroadcast\)/);
+assert.match(adminRoutes, /router\.post\('\/email-broadcasts', requirePermission\('broadcast'\), adminController\.createEmailBroadcast\)/);
+assert.match(adminHtml, /معاينة المحتوى وعدد المستلمين/);
+assert.match(adminHtml, /إرسال التحديث/);
+assert.match(adminHtml, /emailBroadcastRecipientCount > 0/);
 assert.match(controllerSource, /lastLoginAt: \{ \$gte: new Date\(Date\.now\(\) - 24 \* 60 \* 60 \* 1000\) \}/, 'active users must be based on actual last login, not profile updates');
 
 function responseRecorder() {

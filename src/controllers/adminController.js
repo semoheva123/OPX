@@ -4,6 +4,7 @@ const dataAccess = require('../services/dataAccess');
 const withdrawalPayoutService = require('../services/withdrawalPayoutService');
 const { checkFinancialReadiness } = require('../services/financialReadinessService');
 const { buildFinancialAccountingSummary } = require('../services/financialAccountingService');
+const adminEmailBroadcastService = require('../services/adminEmailBroadcastService');
 const User = adminRepository(dataAccess.user);
 const Transaction = adminRepository(dataAccess.transaction);
 const InvestmentVault = adminRepository(dataAccess.investmentVault);
@@ -1215,6 +1216,75 @@ async function updateGameSettings(req, res) {
   } catch (err) { res.status(500).json({ success: false, error: 'حدث خطأ في معالجة الطلب' }); }
 }
 
+function emailBroadcastValidationError(error) {
+  const message = String(error?.message || '');
+  if (message.startsWith('SUBJECT_LENGTH_INVALID')) return 'أدخل عنوانًا للبريد لا يتجاوز 150 حرفًا.';
+  if (message.startsWith('BODY_LENGTH_INVALID')) return 'اكتب محتوى الرسالة بما لا يتجاوز 5000 حرف.';
+  if (message === 'SUPABASE_RUNTIME_REQUIRED') return 'إرسال البريد الجماعي يتطلب قاعدة بيانات Supabase.';
+  if (message.startsWith('RECIPIENT_LIMIT_EXCEEDED')) return 'عدد المستلمين يتجاوز الحد الآمن البالغ 10000. استخدم حملات أصغر حسب المستوى.';
+  if (message === 'EMAIL_UNSUBSCRIBE_SECRET_NOT_CONFIGURED') return 'إعداد رابط إلغاء الاشتراك غير متاح على الخادم.';
+  return null;
+}
+
+async function previewEmailBroadcast(req, res) {
+  try {
+    const { subject, body } = adminEmailBroadcastService.validateAnnouncement(req.body?.subject, req.body?.body);
+    const recipients = await adminEmailBroadcastService.getEligibleRecipients();
+    return res.json({ success: true, subject, body, recipientCount: recipients.length, recipientPolicy: 'verified_non_opted_out_users' });
+  } catch (error) {
+    const validationMessage = emailBroadcastValidationError(error);
+    if (validationMessage) return res.status(400).json({ success: false, error: validationMessage });
+    console.error('Email broadcast preview failed:', error.message);
+    return res.status(503).json({ success: false, error: 'تعذر تجهيز معاينة المستلمين. تحقق من قاعدة البيانات وحاول مجددًا.' });
+  }
+}
+
+async function createEmailBroadcast(req, res) {
+  try {
+    const { subject, body } = adminEmailBroadcastService.validateAnnouncement(req.body?.subject, req.body?.body);
+    if (req.body?.confirmed !== true || req.body?.confirmation !== 'إرسال التحديث') {
+      return res.status(400).json({ success: false, error: 'اكتب عبارة «إرسال التحديث» وأكد إرسال الحملة.' });
+    }
+    const emailFrom = String(process.env.EMAIL_FROM || '').trim();
+    if (!req.app.locals.resend?.batch?.send || !emailFrom || /resend\.dev/i.test(emailFrom)) {
+      return res.status(503).json({ success: false, error: 'خدمة البريد غير مهيأة بعنوان مرسل موثق.' });
+    }
+    if (!process.env.EMAIL_UNSUBSCRIBE_SECRET && !process.env.JWT_SECRET) {
+      return res.status(503).json({ success: false, error: 'إعداد توقيع إلغاء الاشتراك غير متاح.' });
+    }
+
+    const recipients = await adminEmailBroadcastService.getEligibleRecipients();
+    if (!recipients.length) return res.status(409).json({ success: false, error: 'لا يوجد مستلمون مؤهلون: يلزم بريد موثق وعدم إلغاء الاشتراك.' });
+    const created = await dataAccess.callSupabaseRpc('operix_create_email_broadcast_atomic', {
+      p_subject: subject,
+      p_body: body,
+      p_created_by: req.user.id || req.user._id,
+      p_recipients: recipients
+    });
+    const campaignId = String(created?.id || created?.campaignId || created?.campaign_id || '');
+    if (!campaignId) throw new Error('EMAIL_BROADCAST_ID_MISSING');
+    return res.status(202).json({ success: true, campaignId, recipientCount: recipients.length, auditRecorded: true, message: 'تمت جدولة حملة البريد. سيُرسل النظام الرسائل على دفعات آمنة.' });
+  } catch (error) {
+    const validationMessage = emailBroadcastValidationError(error);
+    if (validationMessage) return res.status(400).json({ success: false, error: validationMessage });
+    console.error('Email broadcast queue failed:', error.message);
+    return res.status(503).json({ success: false, error: 'تعذر إنشاء حملة البريد. لم يبدأ الإرسال.' });
+  }
+}
+
+async function listEmailBroadcasts(req, res) {
+  try {
+    const campaigns = await dataAccess.emailBroadcast.find({}, { sort: { createdAt: -1 }, limit: 50 });
+    return res.json({ success: true, campaigns: campaigns.map(({ body, lastError, ...campaign }) => campaign) });
+  } catch (error) {
+    return res.status(503).json({ success: false, error: 'تعذر تحميل سجل حملات البريد.' });
+  }
+}
+
+async function processAdminEmailBroadcasts(resend) {
+  return adminEmailBroadcastService.processAdminEmailBroadcastQueue(resend);
+}
+
 async function broadcast(req, res) {
   try {
     const { title, body, audienceType = 'all', audienceValue = '', scheduledAt } = req.body;
@@ -1272,4 +1342,4 @@ async function processScheduledBroadcasts(webpush) {
   return [];
 }
 
-module.exports = { saveVipLevel, listVipLevels, deleteVipLevel, overview, analytics, financialSummary, financialReadiness, financialAccounting, investmentVaultSummary, getInvestmentVaultContracts, updateInvestmentVaultContracts, listInvestmentVaults, emergencyReleaseInvestmentVault, riskSummary, listUsers, exportUsers, userDetails, resetDailyTasks, toggleBan, bulkToggleBan, revokeUserSessions, verifyUserEmail, disableUserTwoFactor, updateUser, updateUserAccount, updateUserRole, updateUserTier, listWithdrawals, transactionDetails, exportTransactions, listAuditLogs, listReferrals, exportReferrals, referralTree, withdrawalAction, reconcileWithdrawalPayout, bulkWithdrawalAction, gameSettings, updateGameSettings, broadcast, listBroadcasts, processScheduledBroadcasts, processAutomaticWithdrawalApprovals, processWithdrawalPayoutQueue, sendAdminAuditBroadcast };
+module.exports = { saveVipLevel, listVipLevels, deleteVipLevel, overview, analytics, financialSummary, financialReadiness, financialAccounting, investmentVaultSummary, getInvestmentVaultContracts, updateInvestmentVaultContracts, listInvestmentVaults, emergencyReleaseInvestmentVault, riskSummary, listUsers, exportUsers, userDetails, resetDailyTasks, toggleBan, bulkToggleBan, revokeUserSessions, verifyUserEmail, disableUserTwoFactor, updateUser, updateUserAccount, updateUserRole, updateUserTier, listWithdrawals, transactionDetails, exportTransactions, listAuditLogs, listReferrals, exportReferrals, referralTree, withdrawalAction, reconcileWithdrawalPayout, bulkWithdrawalAction, gameSettings, updateGameSettings, previewEmailBroadcast, createEmailBroadcast, listEmailBroadcasts, processAdminEmailBroadcasts, broadcast, listBroadcasts, processScheduledBroadcasts, processAutomaticWithdrawalApprovals, processWithdrawalPayoutQueue, sendAdminAuditBroadcast };

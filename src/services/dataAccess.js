@@ -19,6 +19,8 @@ const modelMap = {
   SocialPost: { table: 'social_posts' },
   Message: { table: 'messages' },
   Broadcast: { table: 'broadcasts' },
+  EmailBroadcast: { table: 'email_broadcasts' },
+  EmailBroadcastRecipient: { table: 'email_broadcast_recipients' },
   Coupon: { table: 'coupons' },
   CpaLeadConversion: { table: 'cpa_lead_conversions' },
   InvestmentVault: { table: 'investment_vault' },
@@ -412,6 +414,8 @@ const createRepository = (name) => {
 const dataAccess = {
   isSupabaseRuntime,
   callSupabaseRpc,
+  emailBroadcast: createRepository('EmailBroadcast'),
+  emailBroadcastRecipient: createRepository('EmailBroadcastRecipient'),
   withdrawalPayout: createRepository('WithdrawalPayout'),
   tronDepositAddress: createRepository('TronDepositAddress'),
   user: {
@@ -436,6 +440,28 @@ const dataAccess = {
     async find(query = {}, options = {}) {
       if (isSupabaseRuntime() && supabaseAdmin) return supabaseFind('users', query, options);
       return [];
+    },
+    async findEmailBroadcastRecipients(limit = 10001) {
+      if (!isSupabaseRuntime() || !supabaseAdmin) return [];
+      const maximum = Math.max(1, Math.min(10001, Number(limit) || 10001));
+      const pageSize = 1000;
+      const recipients = [];
+      for (let offset = 0; offset < maximum; offset += pageSize) {
+        const requested = Math.min(pageSize, maximum - offset);
+        const { data, error } = await supabaseAdmin.from('users')
+          .select('id,email')
+          .eq('role', 'user')
+          .eq('email_verified', true)
+          .eq('is_banned', false)
+          .eq('email_updates_opt_out', false)
+          .order('id', { ascending: true })
+          .range(offset, offset + requested - 1);
+        if (error) throw error;
+        const page = data || [];
+        recipients.push(...page);
+        if (page.length < requested) break;
+      }
+      return normalizeSupabaseResult(recipients);
     },
     async create(data) {
       if (isSupabaseRuntime()) {

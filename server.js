@@ -84,6 +84,7 @@ const app = createApp({
     'refresh-daily-task-entities': generateDailyTaskEntities,
     'ai-announcer': generateOfficialAiPost,
     'process-broadcasts': () => processScheduledBroadcasts(webpush),
+    'process-email-broadcasts': () => require('./src/controllers/adminController').processAdminEmailBroadcasts(resend),
     'process-tron-deposits': () => require('./src/services/tronDepositService').processTronDepositQueue(),
     'check-financial-readiness': () => require('./src/services/financialReadinessService').checkFinancialReadiness(),
     'process-withdrawal-payouts': async () => {

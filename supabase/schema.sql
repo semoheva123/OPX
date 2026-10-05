@@ -10,6 +10,7 @@ create table if not exists public.users (
   password_hash text not null,
   role text not null default 'user' check (role in ('user','admin','financial_admin','support_admin','monitor')),
   email_verified boolean not null default false,
+  email_updates_opt_out boolean not null default false,
   is_banned boolean not null default false,
   tier_code text not null default 'A1',
   referral_code text,
@@ -27,6 +28,7 @@ create table if not exists public.users (
 );
 
 alter table public.users add column if not exists email_verification_token text;
+alter table public.users add column if not exists email_updates_opt_out boolean not null default false;
 alter table public.users add column if not exists email_verification_expire timestamptz;
 alter table public.users add column if not exists is_official_platform boolean not null default false;
 alter table public.users add column if not exists today_completed_tasks integer not null default 0;
@@ -273,6 +275,38 @@ create table if not exists public.broadcasts (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.email_broadcasts (
+  id uuid primary key default uuid_generate_v4(),
+  created_by uuid not null references public.users(id) on delete restrict,
+  subject text not null check (char_length(subject) between 1 and 150),
+  body text not null check (char_length(body) between 1 and 5000),
+  status text not null default 'queued' check (status in ('queued','sending','sent','partial','manual_review')),
+  recipient_count integer not null default 0 check (recipient_count >= 0),
+  sent_count integer not null default 0 check (sent_count >= 0),
+  failed_count integer not null default 0 check (failed_count >= 0),
+  suppressed_count integer not null default 0 check (suppressed_count >= 0),
+  unknown_count integer not null default 0 check (unknown_count >= 0),
+  last_error text not null default '',
+  created_at timestamptz not null default now(),
+  started_at timestamptz,
+  completed_at timestamptz
+);
+
+create table if not exists public.email_broadcast_recipients (
+  id uuid primary key default uuid_generate_v4(),
+  campaign_id uuid not null references public.email_broadcasts(id) on delete cascade,
+  user_id uuid not null references public.users(id) on delete restrict,
+  email text not null,
+  status text not null default 'queued' check (status in ('queued','sending','sent','failed','unknown','suppressed')),
+  attempts integer not null default 0 check (attempts >= 0),
+  last_error text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  sent_at timestamptz,
+  unique(campaign_id, user_id),
+  unique(campaign_id, email)
+);
+
 create table if not exists public.coupons (
   id uuid primary key default uuid_generate_v4(),
   code text not null unique,
@@ -463,6 +497,8 @@ create index if not exists idx_support_tickets_user_updated on public.support_ti
 create index if not exists idx_social_posts_status_created on public.social_posts(status, created_at desc);
 create index if not exists idx_messages_pair_created on public.messages(sender_id, recipient_id, created_at desc);
 create index if not exists idx_broadcasts_status_schedule on public.broadcasts(status, scheduled_at);
+create index if not exists email_broadcasts_status_created_idx on public.email_broadcasts(status, created_at);
+create index if not exists email_broadcast_recipients_queue_idx on public.email_broadcast_recipients(campaign_id, status, created_at);
 create index if not exists idx_cpa_conversions_user on public.cpa_lead_conversions(user_id, created_at desc);
 create index if not exists idx_investment_vault_user_status_maturity on public.investment_vault(user_id, status, maturity_date);
 create index if not exists idx_stakings_user_status_end on public.stakings(user_id, status, end_date);

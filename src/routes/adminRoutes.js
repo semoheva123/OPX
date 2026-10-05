@@ -49,6 +49,9 @@ router.get('/settings/games', requirePermission('manage_games'), adminController
 router.post('/settings/games', requirePermission('manage_games'), adminController.updateGameSettings);
 router.post('/broadcast', requirePermission('broadcast'), adminController.broadcast);
 router.get('/broadcasts', requirePermission('broadcast'), adminController.listBroadcasts);
+router.post('/email-broadcasts/preview', requirePermission('broadcast'), adminController.previewEmailBroadcast);
+router.post('/email-broadcasts', requirePermission('broadcast'), adminController.createEmailBroadcast);
+router.get('/email-broadcasts', requirePermission('broadcast'), adminController.listEmailBroadcasts);
 router.get('/social-feed/reports', requirePermission('manage_users'), socialFeedController.listReportedPosts);
 router.post('/social-feed/:postId/moderate', requirePermission('manage_users'), socialFeedController.moderatePost);
 router.get('/support/tickets', requirePermission('manage_users'), supportController.listAdmin);
