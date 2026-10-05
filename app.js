@@ -3191,10 +3191,12 @@ async function loadPrivateConversations() {
         const badge = document.getElementById('privateMessageBadge');
         if (badge) { badge.innerText = unread > 99 ? '99+' : unread; badge.classList.toggle('hidden', unread === 0); }
         const markup = conversations.length ? conversations.map(item => `<button type="button" onclick="openPrivateThread('${escapeSocialHtml(item.user._id)}')" class="flex w-full items-center justify-between gap-2 rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-right hover:border-cyan-400/40"><span class="min-w-0"><b class="block truncate text-[11px] text-white">${escapeSocialHtml(item.user.label)}</b><small class="mt-1 block truncate text-[10px] text-slate-500">${escapeSocialHtml(item.lastMessage.body)}</small></span>${item.unread ? `<em class="rounded-full bg-cyan-400 px-2 py-1 text-[9px] font-black text-slate-950">${item.unread}</em>` : ''}</button>`).join('') : '<p class="py-5 text-center text-[10px] text-slate-500">لا توجد محادثات بعد.</p>';
-        lists.forEach(list => { list.innerHTML = markup; });
+        const emptyState = '<p class="py-5 text-center text-[10px] text-slate-500">لا توجد محادثات بعد.</p>';
+        lists.forEach(list => { list.innerHTML = markup || emptyState; });
     } catch (error) {
         const message = escapeSocialHtml(error.message || 'تعذر تحميل المحادثات');
-        lists.forEach(list => { list.innerHTML = `<p class="py-5 text-center text-[10px] text-rose-300">${message}</p>`; });
+        const errorState = `<p class="py-5 text-center text-[10px] text-rose-300">${message}</p>`;
+        lists.forEach(list => { list.innerHTML = errorState; });
     }
 }
 
