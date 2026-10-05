@@ -1,3 +1,4 @@
+# Push-triggered runs validate production readiness only; they never process queues.
 name: Financial queue workers
 
 on:
