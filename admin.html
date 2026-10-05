@@ -246,7 +246,22 @@ body.modal-open{overflow:hidden}
             </div>
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div class="glass-card p-5 rounded-3xl border border-slate-800"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-white text-sm">جاهزية الدفع والتمويل</h3><button onclick="loadFinancialReadinessStatus()" class="text-[10px] text-cyan-400 hover:underline">تحديث</button></div><div id="financialReadinessStatus" class="space-y-2"></div></div>
-                <div class="glass-card p-5 rounded-3xl border border-slate-800"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-white text-sm">ملخص المحاسبة</h3><button onclick="loadFinancialAccountingSummary()" class="text-[10px] text-cyan-400 hover:underline">تحديث</button></div><div id="financialAccountingSummary" class="space-y-2"></div></div>
+                <section class="glass-card rounded-3xl border border-slate-800 overflow-hidden lg:col-span-2" aria-labelledby="financialAccountingTitle">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 border-b border-slate-800 bg-slate-950/30">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-2xl bg-cyan-500/10 border border-cyan-400/15 flex items-center justify-center"><i class="fa-solid fa-scale-balanced text-cyan-300"></i></div>
+                            <div><h3 id="financialAccountingTitle" class="font-black text-white text-base">مركز المحاسبة والتسوية</h3><p class="text-[10px] text-slate-500 mt-1">قراءة تحليلية للدفاتر والتدفقات والالتزامات — دون تنفيذ أي عمليات مالية</p></div>
+                        </div>
+                        <div class="flex items-center gap-2 self-end sm:self-auto">
+                            <label for="financialAccountingDays" class="sr-only">الفترة الزمنية</label>
+                            <select id="financialAccountingDays" onchange="loadFinancialAccountingSummary()" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-[10px] text-slate-200 focus:outline-none focus:border-cyan-500">
+                                <option value="7">آخر 7 أيام</option><option value="30" selected>آخر 30 يومًا</option><option value="90">آخر 90 يومًا</option><option value="365">آخر 12 شهرًا</option>
+                            </select>
+                            <button onclick="loadFinancialAccountingSummary()" aria-label="تحديث ملخص المحاسبة" title="تحديث" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-700 text-cyan-300 hover:bg-slate-800"><i class="fa-solid fa-arrows-rotate"></i></button>
+                        </div>
+                    </div>
+                    <div id="financialAccountingSummary" class="p-5" aria-live="polite"></div>
+                </section>
             </div>
             <div class="grid grid-cols-1 gap-4">
                 <div class="glass-card p-5 rounded-3xl border border-slate-800"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-white text-sm">مؤشر المخاطر</h3><button onclick="loadOverviewRiskSummary()" class="text-[10px] text-amber-400 hover:underline">تحديث</button></div><div id="overviewRiskSummary" class="space-y-2"></div></div>
@@ -893,29 +908,102 @@ body.modal-open{overflow:hidden}
         async function loadFinancialAccountingSummary() {
             const container = document.getElementById('financialAccountingSummary');
             if (!container) return;
+            const days = Number(document.getElementById('financialAccountingDays')?.value || 30);
+            const formatMoney = value => new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number.isFinite(Number(value)) ? Number(value) : 0);
+            const formatCount = value => new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(Number.isFinite(Number(value)) ? Number(value) : 0);
             try {
-                const response = await fetch('/api/admin/financial-accounting', { headers: adminHeaders() });
+                container.innerHTML = '<div class="py-12 text-center text-xs text-slate-500"><i class="fa-solid fa-circle-notch fa-spin text-cyan-400 text-lg mb-3 block"></i>جارٍ إعداد التقرير المحاسبي...</div>';
+                const response = await fetch(`/api/admin/financial-accounting?days=${days}`, { headers: adminHeaders() });
                 const data = await response.json();
                 if (!response.ok || !data.success) throw new Error(data.error || 'تعذر تحميل ملخص المحاسبة');
                 const summary = data.summary || {};
                 const period = summary.period || {};
                 const obligations = summary.obligations || {};
                 const reconciliation = summary.reconciliation || {};
+                const daily = Array.isArray(summary.daily) ? summary.daily.slice(-7).reverse() : [];
+                const maxDailyFlow = Math.max(1, ...daily.map(row => Math.max(Number(row.deposits) || 0, Number(row.paidWithdrawals) || 0)));
+                const unmatched = Number(reconciliation.unmatchedFinancialTransactions) || 0;
+                const unclassified = Number(reconciliation.unclassifiedRewardTransactions) || 0;
+                const reconciliationClear = unmatched === 0 && unclassified === 0;
+                const updatedAt = new Intl.DateTimeFormat('ar', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date());
+                const moneyTile = (label, value, color, icon, note) => `
+                    <div class="rounded-2xl border border-slate-800 bg-slate-950/55 p-4 min-w-0">
+                        <div class="flex items-start justify-between gap-2"><span class="text-[10px] leading-5 text-slate-400">${label}</span><i class="${icon} ${color} text-xs"></i></div>
+                        <div class="mt-3 flex items-baseline gap-1"><b class="text-lg sm:text-xl font-black tracking-tight text-white tabular-nums">${formatMoney(value)}</b><span class="text-[9px] text-slate-500">USDT</span></div>
+                        <div class="mt-2 text-[9px] text-slate-500">${note}</div>
+                    </div>`;
+                const obligationRow = (label, value, countLabel = '') => `
+                    <div class="flex items-center justify-between gap-3 py-2.5 border-b border-slate-800/70 last:border-0">
+                        <span class="text-[10px] text-slate-400">${label}${countLabel}</span>
+                        <span class="text-[11px] font-bold text-slate-200 tabular-nums">${formatMoney(value)} <small class="text-[9px] text-slate-500">USDT</small></span>
+                    </div>`;
+                const dailyRows = daily.length ? daily.map(row => {
+                    const depositWidth = Math.max(0, Math.min(100, (Number(row.deposits || 0) / maxDailyFlow) * 100));
+                    const withdrawalWidth = Math.max(0, Math.min(100, (Number(row.paidWithdrawals || 0) / maxDailyFlow) * 100));
+                    const dayLabel = /^\d{4}-\d{2}-\d{2}$/.test(String(row.date || '')) ? new Intl.DateTimeFormat('ar', { day: 'numeric', month: 'short' }).format(new Date(`${row.date}T12:00:00`)) : '—';
+                    return `<tr class="border-t border-slate-800/70">
+                        <td class="py-3 pr-1 text-[10px] text-slate-300 whitespace-nowrap">${dayLabel}</td>
+                        <td class="py-3 px-2"><div class="flex items-center gap-2"><span class="w-12 text-left text-[9px] text-emerald-300 tabular-nums">${formatMoney(row.deposits)}</span><div class="h-1.5 flex-1 rounded-full bg-slate-800 overflow-hidden"><div class="h-full rounded-full bg-emerald-400" style="width:${depositWidth}%"></div></div></div></td>
+                        <td class="py-3 pl-1"><div class="flex items-center gap-2"><span class="w-12 text-left text-[9px] text-amber-300 tabular-nums">${formatMoney(row.paidWithdrawals)}</span><div class="h-1.5 flex-1 rounded-full bg-slate-800 overflow-hidden"><div class="h-full rounded-full bg-amber-400" style="width:${withdrawalWidth}%"></div></div></div></td>
+                    </tr>`;
+                }).join('') : '<tr><td colspan="3" class="py-6 text-center text-[10px] text-slate-500">لا توجد حركة مسجلة ضمن الفترة المحددة</td></tr>';
                 container.innerHTML = `
-                    <div class="grid grid-cols-2 gap-2 text-[10px] text-slate-300">
-                        <div class="rounded-xl bg-slate-950/60 p-2"><span class="text-slate-500 block">إيداعات مؤكدة</span><b class="text-emerald-300">${Number(period.verifiedDepositInflow || 0).toFixed(2)} $</b></div>
-                        <div class="rounded-xl bg-slate-950/60 p-2"><span class="text-slate-500 block">مسحوبات مؤكدة</span><b class="text-amber-300">${Number(period.confirmedWithdrawalCash || 0).toFixed(2)} $</b></div>
-                        <div class="rounded-xl bg-slate-950/60 p-2"><span class="text-slate-500 block">إيراد المتاجر</span><b class="text-cyan-300">${Number(period.tierRevenueUsdt || 0).toFixed(2)} $</b></div>
-                        <div class="rounded-xl bg-slate-950/60 p-2"><span class="text-slate-500 block">التزامات المستخدمين</span><b class="text-violet-300">${Number(obligations.totalTrackedCustomerObligations || 0).toFixed(2)} $</b></div>
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                        <div class="flex items-center gap-2"><span class="inline-flex w-2 h-2 rounded-full ${reconciliationClear ? 'bg-emerald-400' : 'bg-amber-400'}"></span><span class="text-[10px] font-bold ${reconciliationClear ? 'text-emerald-300' : 'text-amber-300'}">${reconciliationClear ? 'مؤشرات المطابقة سليمة' : 'توجد عناصر تتطلب مراجعة'}</span><span class="text-[9px] text-slate-600">• ${formatCount(summary.periodDays || days)} يومًا</span></div>
+                        <span class="text-[9px] text-slate-600">آخر تحديث: ${updatedAt}</span>
                     </div>
-                    <div class="mt-3 text-[10px] text-slate-300">
-                        <div>• معاملات غير متطابقة: ${Number(reconciliation.unmatchedFinancialTransactions || 0)}</div>
-                        <div>• إيرادات مكافآت: ${Number(period.rewardCreditsUsdt || 0).toFixed(2)} $</div>
-                        <div>• رصيد محفظة المستخدمين: ${Number(obligations.walletBalances || 0).toFixed(2)} $</div>
+                    <div class="grid grid-cols-1 xl:grid-cols-[1fr_1fr] gap-3 mb-4">
+                        <div class="relative overflow-hidden rounded-2xl border border-cyan-500/20 bg-gradient-to-br from-cyan-500/10 via-slate-950/70 to-slate-950/70 p-4 sm:p-5">
+                            <div class="absolute -left-7 -top-8 w-28 h-28 rounded-full bg-cyan-400/5 blur-2xl"></div>
+                            <div class="relative flex justify-between gap-3"><div><div class="text-[10px] text-slate-400">صافي التدفق النقدي الخارجي</div><div class="text-[9px] text-slate-600 mt-1">الإيداعات المؤكدة ناقص المسحوبات المنفذة</div></div><i class="fa-solid fa-arrow-right-arrow-left text-cyan-300"></i></div>
+                            <div class="relative mt-4 flex items-baseline gap-2"><strong class="text-2xl sm:text-3xl font-black text-white tracking-tight tabular-nums">${formatMoney(period.externalNetCashFlow)}</strong><span class="text-[10px] text-cyan-300">USDT</span></div>
+                            <div class="relative mt-3 h-px bg-slate-700/60"></div>
+                            <div class="relative mt-3 flex flex-wrap gap-x-5 gap-y-1 text-[9px]"><span class="text-emerald-300">وارد ${formatMoney(period.verifiedDepositInflow)}</span><span class="text-amber-300">صادر ${formatMoney(period.confirmedWithdrawalCash)}</span></div>
+                        </div>
+                        <div class="rounded-2xl border border-violet-500/20 bg-gradient-to-br from-violet-500/10 via-slate-950/70 to-slate-950/70 p-4 sm:p-5">
+                            <div class="flex justify-between gap-3"><div><div class="text-[10px] text-slate-400">مساهمة تشغيلية تقديرية</div><div class="text-[9px] text-slate-600 mt-1">قبل المصاريف التشغيلية — ليست صافي ربح مدقق</div></div><i class="fa-solid fa-chart-line text-violet-300"></i></div>
+                            <div class="mt-4 flex items-baseline gap-2"><strong class="text-2xl sm:text-3xl font-black text-white tracking-tight tabular-nums">${formatMoney(period.estimatedContributionBeforeOperatingCosts)}</strong><span class="text-[10px] text-violet-300">USDT</span></div>
+                            <div class="mt-3 h-px bg-slate-700/60"></div>
+                            <div class="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-[9px]"><span class="text-cyan-300">إيراد الترقية ${formatMoney(period.tierRevenueUsdt)}</span><span class="text-rose-300">المكافآت ${formatMoney(period.rewardCreditsUsdt)}</span></div>
+                        </div>
                     </div>
+                    <div class="grid grid-cols-2 xl:grid-cols-4 gap-2 mb-4">
+                        ${moneyTile('إيداعات مؤكدة', period.verifiedDepositInflow, 'text-emerald-300', 'fa-solid fa-circle-arrow-down', `${formatCount(period.depositCount)} عملية`)}
+                        ${moneyTile('مسحوبات منفذة', period.confirmedWithdrawalCash, 'text-amber-300', 'fa-solid fa-circle-arrow-up', `${formatCount(period.paidWithdrawalCount)} عملية`)}
+                        ${moneyTile('رسوم السحب', period.withdrawalFeeIncome, 'text-cyan-300', 'fa-solid fa-percent', 'إيراد رسوم مسجل')}
+                        ${moneyTile('عمليات الترقية', period.tierRevenueUsdt, 'text-violet-300', 'fa-solid fa-layer-group', `${formatCount(period.tierActivationCount)} عملية`)}
+                    </div>
+                    <div class="grid grid-cols-1 xl:grid-cols-[1.05fr_.95fr] gap-3">
+                        <section class="rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
+                            <div class="flex items-center justify-between gap-2 mb-2"><div><h4 class="text-[11px] font-bold text-white">التزامات العملاء المتتبعة</h4><p class="text-[9px] text-slate-600 mt-1">أرصدة وأصول نشطة ومنافع متوقعة</p></div><span class="text-[9px] text-violet-300">${formatCount((Number(obligations.activeVaultCount) || 0) + (Number(obligations.activeStakingCount) || 0))} عقود نشطة</span></div>
+                            ${obligationRow('أرصدة المحافظ', obligations.walletBalances)}
+                            ${obligationRow('أصل الخزائن النشطة', obligations.lockedVaultPrincipal, ` <small class="text-slate-600">(${formatCount(obligations.activeVaultCount)} خزائن)</small>`)}
+                            ${obligationRow('عوائد الخزائن المتوقعة', obligations.expectedVaultIncentives)}
+                            ${obligationRow('أصل التخزين النشط', obligations.activeStakingPrincipal, ` <small class="text-slate-600">(${formatCount(obligations.activeStakingCount)} مراكز)</small>`)}
+                            ${obligationRow('عوائد التخزين المتوقعة', obligations.expectedStakingIncentives)}
+                            <div class="mt-3 flex items-center justify-between rounded-xl border border-violet-400/15 bg-violet-400/5 px-3 py-3"><span class="text-[10px] font-bold text-violet-200">إجمالي الالتزامات المتتبعة</span><b class="text-sm font-black text-white tabular-nums">${formatMoney(obligations.totalTrackedCustomerObligations)} <small class="text-[9px] font-normal text-violet-300">USDT</small></b></div>
+                        </section>
+                        <div class="space-y-3">
+                            <section class="rounded-2xl border ${reconciliationClear ? 'border-emerald-500/20' : 'border-amber-500/25'} bg-slate-950/40 p-4">
+                                <div class="flex items-center justify-between gap-2"><div><h4 class="text-[11px] font-bold text-white">سلامة المطابقة</h4><p class="text-[9px] text-slate-600 mt-1">مؤشرات مراجعة دفترية للفترة</p></div><span class="px-2 py-1 rounded-lg text-[9px] font-bold ${reconciliationClear ? 'bg-emerald-500/10 text-emerald-300' : 'bg-amber-500/10 text-amber-300'}">${reconciliationClear ? 'سليم' : 'مراجعة مطلوبة'}</span></div>
+                                <div class="grid grid-cols-2 gap-2 mt-4">
+                                    <div class="rounded-xl bg-slate-900/80 p-3"><div class="text-[9px] text-slate-500">معاملات غير متطابقة</div><b class="block mt-1 text-lg ${unmatched ? 'text-rose-300' : 'text-emerald-300'} tabular-nums">${formatCount(unmatched)}</b></div>
+                                    <div class="rounded-xl bg-slate-900/80 p-3"><div class="text-[9px] text-slate-500">مكافآت غير مصنفة</div><b class="block mt-1 text-lg ${unclassified ? 'text-amber-300' : 'text-emerald-300'} tabular-nums">${formatCount(unclassified)}</b></div>
+                                </div>
+                                <div class="mt-3 flex justify-between text-[9px] text-slate-500"><span>المعاملات بالفترة</span><span class="text-slate-300">${formatCount(reconciliation.transactionsInPeriod)}</span></div>
+                                <div class="mt-1 flex justify-between text-[9px] text-slate-500"><span>قيود دفتر الأستاذ بالفترة</span><span class="text-slate-300">${formatCount(reconciliation.ledgerEntriesInPeriod)}</span></div>
+                                ${unclassified ? `<div class="mt-3 rounded-lg bg-amber-500/5 px-2.5 py-2 text-[9px] text-amber-200">قيمة المكافآت غير المصنفة: ${formatMoney(reconciliation.unclassifiedRewardAmount)} USDT</div>` : ''}
+                            </section>
+                            <section class="rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
+                                <div class="flex items-center justify-between gap-2 mb-2"><div><h4 class="text-[11px] font-bold text-white">حركة آخر 7 أيام</h4><p class="text-[9px] text-slate-600 mt-1">الإيداعات والمسحوبات المؤكدة</p></div><i class="fa-solid fa-chart-simple text-slate-500"></i></div>
+                                <div class="overflow-x-auto"><table class="w-full"><thead><tr class="text-[8px] text-slate-600"><th class="text-right pb-2 font-medium">التاريخ</th><th class="text-right pb-2 font-medium text-emerald-400">الإيداعات</th><th class="text-right pb-2 font-medium text-amber-400">المسحوبات</th></tr></thead><tbody>${dailyRows}</tbody></table></div>
+                            </section>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t border-slate-800 pt-3 text-[9px] text-slate-600"><span><i class="fa-solid fa-circle-info ml-1 text-cyan-500"></i>الأرقام تلخيص تشغيلي من البيانات المتاحة؛ لا تمثل تدقيقًا ماليًا مستقلًا.</span><span>المبالغ المعروضة بوحدة USDT</span></div>
                 `;
             } catch (error) {
-                container.innerHTML = '<div class="text-[10px] text-rose-300">تعذر تحميل ملخص المحاسبة</div>';
+                container.innerHTML = '<div class="rounded-2xl border border-rose-500/20 bg-rose-500/5 px-4 py-8 text-center"><i class="fa-solid fa-triangle-exclamation text-rose-300 text-lg"></i><div class="mt-2 text-xs font-bold text-rose-200">تعذر تحميل التقرير المحاسبي</div><div class="mt-1 text-[9px] text-slate-500">تحقق من الاتصال والصلاحيات ثم أعد المحاولة.</div><button onclick="loadFinancialAccountingSummary()" class="mt-3 rounded-lg border border-slate-700 px-3 py-2 text-[9px] text-slate-300 hover:bg-slate-800">إعادة المحاولة</button></div>';
             }
         }
 

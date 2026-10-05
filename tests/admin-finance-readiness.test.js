@@ -12,5 +12,10 @@ assert.match(routes, /router\.get\('\/financial-accounting'/, 'accounting route 
 assert.match(controller, /async function financialReadiness\(req, res\)/, 'financialReadiness controller missing');
 assert.match(controller, /async function financialAccounting\(req, res\)/, 'financialAccounting controller missing');
 assert.match(adminUi, /financial-readiness|جاهزية التمويل|جاهزية الدفع/, 'finance readiness panel missing from admin UI');
+assert.match(adminUi, /id="financialAccountingSummary"/, 'accounting summary container missing from admin UI');
+assert.match(adminUi, /مركز المحاسبة والتسوية|لوحة المحاسبة والتسوية/, 'accounting dashboard heading missing from admin UI');
+assert.match(adminUi, /التزامات العملاء المتتبعة/, 'accounting obligations section missing from admin UI');
+assert.match(adminUi, /سلامة المطابقة/, 'accounting reconciliation section missing from admin UI');
+assert.match(adminUi, /financialAccountingDays|financialAccountingPeriod/, 'accounting period selector missing from admin UI');
 
 console.log('Admin financial readiness tests: ok');
