@@ -821,11 +821,11 @@
         @media (min-width: 768px) { #view-home > .operix-wallet { display: block; } }
         @media (min-width: 768px) { #view-home > .operix-wallet { grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); } #view-home > .operix-wallet > :first-child, #view-home > .operix-wallet > :nth-child(2), #view-home > .operix-wallet > :nth-child(3), #view-home > .operix-wallet > :nth-child(6), #view-home > .operix-wallet > :nth-child(7), #view-home > .operix-wallet > :nth-child(8), #view-home > .operix-wallet > :nth-child(9) { grid-column: 1 / -1; } #view-home > .operix-wallet > :nth-child(4), #view-home > .operix-wallet > :nth-child(5) { grid-column: auto; } }
         @media (max-width: 480px) {
-            #appNavBar { justify-content: flex-start; overflow-x: auto; scrollbar-width: none; padding-left: 8px; padding-right: 8px; }
-            #appNavBar::-webkit-scrollbar { display: none; }
-            #appNavBar button { flex: 0 0 64px; font-size: 10px; }
+            #appNavBar { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); grid-auto-rows: minmax(46px, auto); gap: 2px; align-items: stretch; justify-content: initial; overflow: hidden; scrollbar-width: none; padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); }
+            #appNavBar button { grid-column: span 2; flex: none; min-width: 0; width: auto; padding: 4px 1px; font-size: 9px; }
+            #appNavBar button:nth-child(6) { grid-column: 2 / span 2; }
             #appNavBar button i { font-size: 14px; }
-            #appNavBar button span { white-space: nowrap; transform: scale(.92); }
+            #appNavBar button span { font-size: 9px; line-height: 1; white-space: nowrap; transform: scale(.88); transform-origin: center; }
             .company-intro { padding-left: 14px; padding-right: 14px; }
             .company-intro h1 { font-size: 2.15rem; }
             .company-intro .trust-item { padding: 11px; }

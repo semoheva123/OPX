@@ -3125,8 +3125,8 @@ async function openPrivateMessagesModal() {
 }
 
 function closePrivateMessagesModal() {
+    closePrivateThread();
     document.getElementById('privateMessagesModal')?.classList.add('hide');
-    window.activePrivateThreadId = null;
 }
 
 async function loadPrivateThread(userId, keepComposer = true) {
@@ -3147,6 +3147,11 @@ async function loadPrivateThread(userId, keepComposer = true) {
 }
 
 async function openPrivateThread(userId) {
+    const modal = document.getElementById('privateMessagesModal');
+    if (modal?.classList.contains('hide')) {
+        modal.classList.remove('hide');
+        await loadPrivateConversations();
+    }
     const panel = privateElement('privateMessagesPanel');
     panel?.classList.remove('hidden');
     panel?.classList.add('flex');
@@ -3170,16 +3175,27 @@ async function sendPrivateMessage(event) {
 }
 
 async function loadPrivateConversations() {
-    const list = privateElement('privateConversationList');
+    const lists = [...document.querySelectorAll('#privateConversationList')];
     const token = localStorage.getItem('token');
-    if (!list || !token) return;
-    const response = await fetch('/api/messages', { headers: { Authorization: `Bearer ${token}` } });
-    const data = await response.json();
-    if (!response.ok) return;
-    const unread = data.conversations.reduce((total, item) => total + Number(item.unread || 0), 0);
-    const badge = document.getElementById('privateMessageBadge');
-    if (badge) { badge.innerText = unread > 99 ? '99+' : unread; badge.classList.toggle('hidden', unread === 0); }
-    list.innerHTML = data.conversations.length ? data.conversations.map(item => `<button type="button" onclick="openPrivateThread('${escapeSocialHtml(item.user._id)}')" class="flex w-full items-center justify-between gap-2 rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-right hover:border-cyan-400/40"><span class="min-w-0"><b class="block truncate text-[11px] text-white">${escapeSocialHtml(item.user.label)}</b><small class="mt-1 block truncate text-[10px] text-slate-500">${escapeSocialHtml(item.lastMessage.body)}</small></span>${item.unread ? `<em class="rounded-full bg-cyan-400 px-2 py-1 text-[9px] font-black text-slate-950">${item.unread}</em>` : ''}</button>`).join('') : '<p class="py-5 text-center text-[10px] text-slate-500">لا توجد محادثات بعد.</p>';
+    if (!lists.length) return;
+    if (!token) {
+        lists.forEach(list => { list.innerHTML = '<p class="py-5 text-center text-[10px] text-slate-500">سجّل الدخول لعرض محادثاتك.</p>'; });
+        return;
+    }
+    try {
+        const response = await fetch('/api/messages', { headers: { Authorization: `Bearer ${token}` } });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'تعذر تحميل المحادثات');
+        const conversations = Array.isArray(data.conversations) ? data.conversations : [];
+        const unread = conversations.reduce((total, item) => total + Number(item.unread || 0), 0);
+        const badge = document.getElementById('privateMessageBadge');
+        if (badge) { badge.innerText = unread > 99 ? '99+' : unread; badge.classList.toggle('hidden', unread === 0); }
+        const markup = conversations.length ? conversations.map(item => `<button type="button" onclick="openPrivateThread('${escapeSocialHtml(item.user._id)}')" class="flex w-full items-center justify-between gap-2 rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-right hover:border-cyan-400/40"><span class="min-w-0"><b class="block truncate text-[11px] text-white">${escapeSocialHtml(item.user.label)}</b><small class="mt-1 block truncate text-[10px] text-slate-500">${escapeSocialHtml(item.lastMessage.body)}</small></span>${item.unread ? `<em class="rounded-full bg-cyan-400 px-2 py-1 text-[9px] font-black text-slate-950">${item.unread}</em>` : ''}</button>`).join('') : '<p class="py-5 text-center text-[10px] text-slate-500">لا توجد محادثات بعد.</p>';
+        lists.forEach(list => { list.innerHTML = markup; });
+    } catch (error) {
+        const message = escapeSocialHtml(error.message || 'تعذر تحميل المحادثات');
+        lists.forEach(list => { list.innerHTML = `<p class="py-5 text-center text-[10px] text-rose-300">${message}</p>`; });
+    }
 }
 
 async function editSocialPost(postId) {
