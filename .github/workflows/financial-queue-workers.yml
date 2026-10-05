@@ -9,6 +9,12 @@ on:
       - 'server.js'
       - 'src/config/supabase.js'
       - 'src/services/financialReadinessService.js'
+      - 'src/services/withdrawalPayoutService.js'
+      - 'src/controllers/walletController.js'
+      - 'src/controllers/adminController.js'
+      - 'supabase/automatic-withdrawals.sql'
+      - 'supabase/withdrawal-validation-hardening.sql'
+      - 'tests/automatic-withdrawals.test.js'
       - 'tests/tron-deposit-automation.test.js'
   schedule:
     - cron: '*/5 * * * *'

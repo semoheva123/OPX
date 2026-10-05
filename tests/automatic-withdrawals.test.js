@@ -74,6 +74,8 @@ assert.match(controller, /action === 'approve' && selected\.some\(item => item\.
 assert.match(adminHtml, /موافقة وإرسال/);
 assert.match(server, /process-withdrawal-payouts/);
 assert.match(queueWorkflow, /\/api\/internal\/cron\/process-withdrawal-payouts/);
+assert.match(queueWorkflow, /src\/services\/withdrawalPayoutService\.js/);
+assert.match(queueWorkflow, /src\/controllers\/walletController\.js/);
 
 function responseRecorder() {
 	return { statusCode: 200, body: null, status(code) { this.statusCode = code; return this; }, json(body) { this.body = body; return this; } };
