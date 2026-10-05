@@ -10,6 +10,7 @@ const { hasFullFeatureAccess } = require('../services/paidFeatureAccess');
 const withdrawalPayoutService = require('../services/withdrawalPayoutService');
 const dataAccess = require('../services/dataAccess');
 const tronDepositService = require('../services/tronDepositService');
+const { getWithdrawalSchedule } = require('../services/weeklySchedule');
 const SecurityEvent = dataAccess.securityEvent;
 
 const MIN_WITHDRAWAL_AMOUNT = 20;
@@ -119,6 +120,15 @@ async function withdrawSupabase(req, res) {
     }
     const user = await dataAccess.user.findById(req.user.id);
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
+    const withdrawalSchedule = getWithdrawalSchedule(user.tierCode, new Date());
+    if (!withdrawalSchedule.allowed) {
+      return res.status(403).json({
+        success: false,
+        code: 'WITHDRAWAL_DAY_NOT_ALLOWED',
+        error: `${withdrawalSchedule.message} موعدك التالي: ${withdrawalSchedule.nextAvailableAt}.`,
+        schedule: withdrawalSchedule
+      });
+    }
     const fullFeatureAccess = hasFullFeatureAccess(user);
     if (!user.emailVerified) return res.status(400).json({ error: 'يجب تأكيد بريدك الإلكتروني قبل طلب السحب' });
     if (!user.twoFactorEnabled || !user.twoFactorSecret) return res.status(400).json({ error: 'يجب تفعيل المصادقة الثنائية قبل طلب السحب' });
@@ -180,6 +190,7 @@ async function withdrawSupabase(req, res) {
     return res.json({ success: true, emailSent, message: emailSent ? 'تم تقديم طلب السحب وإرسال إشعار إلى بريدك الإلكتروني' : 'تم تقديم طلب السحب، لكن تعذر إرسال إشعار البريد حاليًا', wallet: result.wallet, withdrawal });
   } catch (error) {
     if (error?.message === 'INSUFFICIENT_PROFIT') return res.status(400).json({ error: 'رصيد الأرباح غير كافٍ' });
+    if (error?.message === 'WITHDRAWAL_DAY_NOT_ALLOWED') return res.status(403).json({ success: false, code: 'WITHDRAWAL_DAY_NOT_ALLOWED', error: 'موعد طلب السحب لمستواك غير متاح اليوم. A1/A2 يوم الجمعة، وبقية المستويات يوم السبت (UTC).' });
     if (error?.message === 'IDEMPOTENCY_KEY_REUSED') return res.status(409).json({ error: 'أُعيد استخدام مفتاح الطلب لبيانات سحب مختلفة؛ أنشئ طلبًا جديدًا.' });
     if (error?.code === '23505') {
       try {

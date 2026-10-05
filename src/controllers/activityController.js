@@ -3,6 +3,7 @@ const { syncGameCredits } = require('../services/gameAccess');
 const { hasPaidFeatureAccess, hasFullFeatureAccess } = require('../services/paidFeatureAccess');
 const { calculateDailyTaskRewardSplit } = require('../services/opxPricing');
 const { assignDailyEvaluationEntities, getEvaluationTags, getCategoryLabel, getOfficialBrandLogoUrl, utcDateString } = require('../services/dailyTaskAutomation');
+const { getTaskSchedule } = require('../services/weeklySchedule');
 
 const DAILY_TASK_COOLDOWN_MS = 3 * 60 * 60 * 1000;
 
@@ -256,6 +257,18 @@ async function getDailyTasks(req, res) {
     const tier = await dataAccess.vipLevel.findOne({ code: user.tierCode });
     if (!tier) return res.status(503).json({ error: 'إعدادات المستوى غير متاحة حاليًا' });
     const today = utcDateString();
+    const schedule = getTaskSchedule(new Date());
+    if (schedule.holiday) {
+      return res.json({
+        success: true,
+        holiday: true,
+        schedule,
+        tier: { code: tier.code, name: tier.name, taskLimit: Math.max(1, Number(tier.tasks || 1)), dailyProfit: Number(tier.dailyProfit || 0) },
+        active: false,
+        completedCount: 0,
+        tasks: []
+      });
+    }
     const todayStart = new Date();
     todayStart.setUTCHours(0, 0, 0, 0);
     const taskLimit = Math.max(1, Math.min(50, Number(tier.tasks || 1)));
@@ -307,6 +320,8 @@ async function completeTaskSupabase(req, res) {
   try {
     const taskKey = String(req.body?.taskKey || '').trim();
     if (!taskKey) return res.status(400).json({ error: 'اختر مهمة من خطة اليوم أولًا' });
+    const schedule = getTaskSchedule(new Date());
+    if (schedule.holiday) return res.status(403).json({ success: false, code: 'TASK_HOLIDAY', error: schedule.message });
     const result = await dataAccess.callSupabaseRpc('operix_daily_task_complete_atomic', { p_user_id: req.user.id, p_task_key: taskKey });
     res.json({ success: true, ...result });
   } catch (error) {
@@ -320,6 +335,7 @@ async function completeTaskSupabase(req, res) {
     if (message.includes('TASK_ALREADY_COMPLETED')) return res.status(400).json({ error: 'تم إنجاز هذه المهمة مسبقًا اليوم' });
     if (message.includes('TASK_SEQUENCE_REQUIRED')) return res.status(409).json({ error: 'أكمل المهمة السابقة أولًا لفتح المهمة التالية.' });
     if (message.includes('TASK_COOLDOWN_ACTIVE')) return res.status(429).json({ error: 'ستُفتح المهمة التالية بعد مرور 3 ساعات على إكمال المهمة السابقة.' });
+    if (message.includes('TASK_HOLIDAY')) return res.status(403).json({ success: false, code: 'TASK_HOLIDAY', error: 'عطلة المهام الأسبوعية: لا توجد مهام يوم الجمعة أو السبت.' });
     if (message.includes('DAILY_CAP_REACHED')) return res.status(400).json({ error: 'تم بلوغ الحد اليومي للربح، ولا يمكن جمع أكثر من الربح اليومي الثابت.' });
     if (message.includes('COMMUNITY_TASK_REQUIRED')) return res.status(400).json({ error: 'أكمل أولًا نشر منشور عن OPERIX والتفاعل مع منشور عضو آخر في المجتمع اليوم.' });
     if (message.includes('EVALUATION_REQUIRED')) return res.status(400).json({ error: 'اختر التقييم بالنجوم وحدد جانب التقييم قبل إنهاء المهمة.' });
@@ -330,6 +346,8 @@ async function completeTaskSupabase(req, res) {
 
 async function submitDailyEvaluation(req, res) {
   try {
+    const schedule = getTaskSchedule(new Date());
+    if (schedule.holiday) return res.status(403).json({ success: false, code: 'TASK_HOLIDAY', error: schedule.message });
     const user = await dataAccess.user.findById(req.user.id);
     if (!user || !user.tierCode) return res.status(404).json({ error: 'المستخدم أو المستوى غير موجود' });
     const tier = await dataAccess.vipLevel.findOne({ code: user.tierCode });
@@ -385,6 +403,7 @@ async function submitDailyEvaluation(req, res) {
     if (message.includes('TASK_ALREADY_COMPLETED')) return res.status(409).json({ error: 'تم إنهاء هذه المهمة اليوم مسبقًا' });
     if (message.includes('TASK_SEQUENCE_REQUIRED')) return res.status(409).json({ error: 'أكمل المهمة السابقة أولًا لفتح المهمة التالية.' });
     if (message.includes('TASK_COOLDOWN_ACTIVE')) return res.status(429).json({ error: 'ستُفتح المهمة التالية بعد مرور 3 ساعات على إكمال المهمة السابقة.' });
+    if (message.includes('TASK_HOLIDAY')) return res.status(403).json({ success: false, code: 'TASK_HOLIDAY', error: 'عطلة المهام الأسبوعية: لا توجد مهام يوم الجمعة أو السبت.' });
     if (message.includes('DAILY_CAP_REACHED')) return res.status(400).json({ error: 'تم بلوغ الحد اليومي للربح، ولا يمكن جمع أكثر من الربح اليومي الثابت.' });
     if (error?.code === 'PGRST202' || /operix_daily_task_complete_atomic.*does not exist/i.test(message)) return res.status(503).json({ error: 'قاعدة البيانات تحتاج إلى تحديث نظام مهام التقييم.' });
     res.status(500).json({ error: 'تعذر حفظ التقييم وإنهاء المهمة' });

@@ -1929,15 +1929,29 @@ function updateTaskAvailability(completed, maximum) {
     const button = document.getElementById('btnCompleteTask');
     const taskLimit = Math.max(1, Number(maximum) || 1);
     const completedCount = Math.max(0, Math.min(Number(completed) || 0, taskLimit));
+    const taskHoliday = isWeeklyTaskHolidayUtc();
     if (button) {
-        button.disabled = !currentUserTierActive;
-        button.innerText = !currentUserTierActive ? 'يتطلب تفعيل المستوى' : completedCount >= taskLimit ? 'مراجعة مهام اليوم' : 'عرض مهام اليوم';
-        button.classList.toggle('opacity-50', !currentUserTierActive);
-        button.classList.toggle('cursor-not-allowed', !currentUserTierActive);
+        button.disabled = !currentUserTierActive || taskHoliday;
+        button.innerText = taskHoliday ? 'عطلة المهام' : !currentUserTierActive ? 'يتطلب تفعيل المستوى' : completedCount >= taskLimit ? 'مراجعة مهام اليوم' : 'عرض مهام اليوم';
+        button.classList.toggle('opacity-50', !currentUserTierActive || taskHoliday);
+        button.classList.toggle('cursor-not-allowed', !currentUserTierActive || taskHoliday);
     }
     const remaining = document.getElementById('lblRemainingTasks');
     if (remaining) remaining.innerText = currentUserTierActive ? Math.max(0, taskLimit - completedCount) : 'يتطلب التفعيل';
     renderTaskBoard(completedCount, taskLimit);
+}
+
+function isWeeklyTaskHolidayUtc(date = new Date()) {
+    const day = date.getUTCDay();
+    return day === 5 || day === 6;
+}
+
+function getTierWithdrawalSchedule(tierCode = currentUserData?.tierCode || currentUserTier, date = new Date()) {
+    const normalizedTier = String(tierCode || '').trim().toUpperCase();
+    const allowedDay = normalizedTier === 'A1' || normalizedTier === 'A2' ? 5 : 6;
+    const allowedDayName = allowedDay === 5 ? 'الجمعة' : 'السبت';
+    const allowed = date.getUTCDay() === allowedDay;
+    return { allowed, allowedDay, allowedDayName, tierCode: normalizedTier };
 }
 
 function getActiveTaskTier() {
@@ -2006,6 +2020,11 @@ function setTaskFilter(filter) {
 function renderTaskBoard(completed, maximum) {
     const board = document.getElementById('taskBoard');
     if (!board) return;
+    const taskHoliday = isWeeklyTaskHolidayUtc();
+    const scheduleNotice = document.getElementById('weeklyScheduleNotice');
+    if (scheduleNotice) scheduleNotice.innerText = taskHoliday
+        ? 'اليوم عطلة أسبوعية: لا توجد مهام يوم الجمعة أو السبت. تستأنف المهام بعد انتهاء العطلة. مواعيد السحب: A1 وA2 الجمعة، وبقية المستويات السبت (UTC).'
+        : 'المهام متوقفة يومي الجمعة والسبت. مواعيد طلب السحب: A1 وA2 يوم الجمعة، وبقية المستويات يوم السبت (UTC).';
     const activeTier = getActiveTaskTier();
     updateTaskLevelPanel(activeTier);
     const tierTask = {
@@ -2021,7 +2040,7 @@ function renderTaskBoard(completed, maximum) {
         { id: 'wallet', category: 'priority', icon: 'fa-wallet', title: 'ثبّت محفظة السحب', description: 'أدخل عنوانًا صحيحًا لتجهيز مسار السحب الآمن.', done: Boolean((currentUserData?.walletAddress || currentUserData?.withdrawWallet || '').trim()), action: "switchTab('profile'); document.getElementById('profileWalletAddress')?.focus()", status: 'جاهزية الحساب', badge: 'محفظة' },
         { id: 'daily', category: 'operations', icon: 'fa-bolt', title: currentUserTierActive && completed >= maximum ? 'راجع خطة مهام اليوم' : currentUserTierActive ? tierTask.title : 'مهام المستوى اليومية', description: currentUserTierActive ? `${tierTask.description} الحد اليومي: ${maximum} مهمة.` : 'تتطلب هذه المهمة إيداعًا وتفعيل المستوى الأول.', done: false, locked: !currentUserTierActive, action: 'openDailyTasks()', status: currentUserTierActive ? completed >= maximum ? 'خطة اليوم' : 'تشغيلية' : 'غير متاحة', badge: 'مكافأة' },
     ];
-    const pendingTasks = tasks.filter(task => !task.done);
+    const pendingTasks = tasks.filter(task => !task.done && !(taskHoliday && task.id === 'daily'));
     const visibleTasks = pendingTasks.filter(task => taskBoardFilter === 'all' || task.category === taskBoardFilter);
     board.innerHTML = visibleTasks.length
         ? visibleTasks.map(task => {
@@ -2037,9 +2056,9 @@ function renderTaskBoard(completed, maximum) {
     const strategyTitle = document.getElementById('taskStrategyTitle');
     const strategyMeta = document.getElementById('taskStrategyMeta');
     const strategyState = document.getElementById('taskStrategyState');
-    if (strategyTitle) strategyTitle.innerText = nextTask ? nextTask.title : 'الخطة مكتملة اليوم';
-    if (strategyMeta) strategyMeta.innerText = `${pendingTasks.length} / ${tasks.length} خطوات متبقية`;
-    if (strategyState) strategyState.innerText = completed >= maximum ? 'مكتمل اليوم' : 'الخطة مفتوحة';
+    if (strategyTitle) strategyTitle.innerText = taskHoliday ? 'عطلة المهام الأسبوعية' : nextTask ? nextTask.title : 'الخطة مكتملة اليوم';
+    if (strategyMeta) strategyMeta.innerText = `${pendingTasks.length} / ${Math.max(0, tasks.length - (taskHoliday ? 1 : 0))} خطوات متبقية`;
+    if (strategyState) strategyState.innerText = taskHoliday ? 'استئناف الأحد (UTC)' : completed >= maximum ? 'مكتمل اليوم' : 'الخطة مفتوحة';
 }
 
 async function openDailyTasks() {
@@ -2081,6 +2100,13 @@ function renderDailyTaskDetail(data) {
     const meta = document.getElementById('dailyTaskDetailMeta');
     const list = document.getElementById('dailyTaskList');
     if (!title || !meta || !list) return;
+    if (data.holiday) {
+        window.__latestDailyTasks = [];
+        title.innerText = 'عطلة المهام الأسبوعية';
+        meta.innerText = data.schedule?.message || 'لا توجد مهام يوم الجمعة أو السبت.';
+        list.innerHTML = '<div class="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 text-center"><i class="fa-solid fa-calendar-check text-cyan-300 text-lg"></i><p class="mt-2 text-xs font-bold text-cyan-100">لا توجد مهام اليوم</p><p class="mt-1 text-[10px] text-slate-400">عطلة أسبوعية يومي الجمعة والسبت. تعود المهام بعد انتهاء العطلة.</p></div>';
+        return;
+    }
     const allTasks = Array.isArray(data.tasks) ? data.tasks : [];
     const tasks = allTasks.filter(task => !task.completed);
     const taskLimit = Math.max(1, Number(data.taskLimit ?? data.tier?.taskLimit ?? allTasks.length ?? 1));
@@ -3353,7 +3379,35 @@ function closeSupportModal() { document.getElementById('supportModal').classList
 async function loadSupportTickets() { const list = document.getElementById('supportTicketsList'); try { const response = await fetch('/api/support', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }); const data = await response.json(); if (!response.ok) throw new Error(data.error); list.innerHTML = data.tickets?.length ? data.tickets.map(ticket => `<div class="p-2.5 border border-slate-800 rounded-xl"><div class="flex justify-between gap-2"><b class="text-slate-200">${escapeAiHtml(ticket.subject)}</b><span class="text-cyan-300">${escapeAiHtml(ticket.status)}</span></div><p class="mt-1">${escapeAiHtml(ticket.adminReply || 'بانتظار رد فريق الدعم')}</p></div>`).join('') : 'لا توجد تذاكر دعم بعد.'; } catch (error) { list.innerText = error.message || 'تعذر تحميل التذاكر'; } }
 async function createSupportTicket(event) { event.preventDefault(); const subject = document.getElementById('supportSubject').value; const message = document.getElementById('supportMessage').value; const response = await fetch('/api/support', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` }, body: JSON.stringify({ subject, message }) }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر إنشاء التذكرة'); event.target.reset(); showToast(data.message || 'تم إنشاء التذكرة'); loadSupportTickets(); }
 async function applyCoupon() { const input = document.getElementById('couponCodeInput'); const code = input?.value.trim(); if (!code) return showToast('أدخل رمز الكوبون'); const response = await fetch('/api/coupons/apply', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` }, body: JSON.stringify({ code }) }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر تطبيق الكوبون'); input.value = ''; showToast(data.message || 'تم تطبيق الكوبون'); loadUserProfile(); }
-function openWithdrawModal() { document.getElementById('withdrawModal').classList.remove('hide'); }
+function syncWithdrawalScheduleUI() {
+    const status = document.getElementById('withdrawalScheduleStatus');
+    const button = document.getElementById('btnSubmitWithdraw');
+    const schedule = getTierWithdrawalSchedule();
+    const day = new Date().getUTCDay();
+    const todayName = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'][day];
+    if (status) {
+        status.innerText = schedule.allowed
+            ? `اليوم ${todayName}: يمكنك تقديم طلب السحب لمستوى ${schedule.tierCode} اليوم. (UTC)`
+            : `موعد السحب لمستوى ${schedule.tierCode}: يوم ${schedule.allowedDayName} فقط. اليوم ${todayName}؛ أرسل الطلب في الموعد المحدد. (UTC)`;
+        status.classList.toggle('border-emerald-500/20', schedule.allowed);
+        status.classList.toggle('bg-emerald-500/5', schedule.allowed);
+        status.classList.toggle('text-emerald-100', schedule.allowed);
+        status.classList.toggle('border-amber-500/20', !schedule.allowed);
+        status.classList.toggle('bg-amber-500/5', !schedule.allowed);
+        status.classList.toggle('text-amber-100', !schedule.allowed);
+    }
+    if (button && !button.dataset.submitting) {
+        button.disabled = !schedule.allowed;
+        button.classList.toggle('opacity-50', !schedule.allowed);
+        button.classList.toggle('cursor-not-allowed', !schedule.allowed);
+    }
+    return schedule;
+}
+
+function openWithdrawModal() {
+    document.getElementById('withdrawModal').classList.remove('hide');
+    syncWithdrawalScheduleUI();
+}
 function closeWithdrawModal() { document.getElementById('withdrawModal').classList.add('hide'); }
 
 async function loadDepositAddress() {
@@ -3421,6 +3475,12 @@ async function submitWithdraw() {
     const twoFactorCode = document.getElementById('withdraw2faCode').value.trim();
     const token = localStorage.getItem('token');
     const btn = document.getElementById('btnSubmitWithdraw');
+    const schedule = syncWithdrawalScheduleUI();
+
+    if (!schedule.allowed) {
+        showToast(`طلبات السحب لمستوى ${schedule.tierCode} متاحة يوم ${schedule.allowedDayName} فقط (UTC)`);
+        return;
+    }
 
     if (!Number.isFinite(amount) || amount < 20) {
         showToast('الحد الأدنى للسحب هو 20$ USDT');
@@ -3439,6 +3499,7 @@ async function submitWithdraw() {
     }
 
     btn.disabled = true;
+    btn.dataset.submitting = 'true';
     try {
         const idempotencyKey = sessionStorage.getItem('operix_withdraw_key') || (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
         sessionStorage.setItem('operix_withdraw_key', idempotencyKey);
@@ -3455,12 +3516,14 @@ async function submitWithdraw() {
             if (data.wallet) updateWalletData(data.wallet);
             await loadUserProfile(); // مزامنة وتحديث قيم الرصيد في الأماكن كافة فور نجاح الطلب
         } else {
+            if (data.code === 'WITHDRAWAL_DAY_NOT_ALLOWED') syncWithdrawalScheduleUI();
             showToast(data.error || 'رصيد المحفظة لا يكفي أو رمز 2FA غير صحيح');
         }
     } catch(err) {
         showToast('خطأ في الاتصال');
     } finally {
-        btn.disabled = false;
+        delete btn.dataset.submitting;
+        syncWithdrawalScheduleUI();
     }
 }
 

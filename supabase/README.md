@@ -6,6 +6,7 @@ This folder contains the canonical Supabase schema and deployment checks for OPE
 - schema.sql — base SQL schema for users, wallet balances, ledger, transactions, sessions, and security events
 - production-readiness.sql — idempotent upgrade for automated tasks, 6-referral game cycles, one-time A4 milestone rewards, and backend-only RLS
 - automatic-withdrawals.sql — persists withdrawal networks and installs the backend-only payout queue/RPCs used for admin-triggered TRC20/BEP20 payouts
+- weekly-schedule-guards.sql — blocks Friday/Saturday task completions and restricts new withdrawal requests to Friday for A1/A2 or Saturday for higher tiers (UTC)
 - migration-plan.md — production rollout and reconciliation rules
 - remove-identity-verification.sql — removes legacy identity-verification data and columns from an existing database
 - referral-cash-rewards.sql — legacy standalone referral migration; superseded by production-readiness.sql
@@ -31,8 +32,9 @@ The project is configured for Supabase as the only application database layer.
 2. For a new database, run schema.sql. For an existing database, do not rerun the full starter schema blindly.
 3. Run production-readiness.sql in the Supabase SQL editor; it is transactional and safe to rerun.
 4. Run automatic-withdrawals.sql before deploying automatic payout code. Existing un-networked pending withdrawals must not be auto-paid.
-5. Validate required tables/functions and confirm the application uses only the backend service-role client.
-6. Configure the dedicated hot-wallet keys and provider RPCs in hosting secrets, deploy, and run small-value test withdrawals on each enabled network.
+5. After production-readiness.sql and automatic-withdrawals.sql, run weekly-schedule-guards.sql before deploying the weekly task/withdrawal schedule. Friday and Saturday are task holidays; A1/A2 may request withdrawal Friday and all higher tiers Saturday (UTC). This restricts new requests only; already accepted payouts continue through the existing settlement queue.
+6. Validate required tables/functions and confirm the application uses only the backend service-role client.
+7. Configure the dedicated hot-wallet keys and provider RPCs in hosting secrets, deploy, and run small-value test withdrawals on each enabled network.
 
 ## Removing legacy identity-verification data
 The application no longer accepts or reviews identity-verification submissions. For an existing project, review and back up the database according to the applicable retention policy, deploy the code changes, then run remove-identity-verification.sql in the Supabase SQL editor. This drops the legacy user columns and removes the corresponding keys from user metadata. It does not delete copies held by external image hosts or in database/storage backups; handle those separately under the applicable retention requirements.

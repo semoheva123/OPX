@@ -1681,6 +1681,7 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
                     </div>
                 </div>
                 <div class="grid grid-cols-3 gap-1.5"><button id="taskFilterAll" onclick="setTaskFilter('all')" class="task-filter-active rounded-xl border py-2 text-[10px] font-bold">الكل</button><button id="taskFilterPriority" onclick="setTaskFilter('priority')" class="rounded-xl border border-slate-800 py-2 text-[10px] font-bold text-slate-400">جاهزية الحساب</button><button id="taskFilterOperations" onclick="setTaskFilter('operations')" class="rounded-xl border border-slate-800 py-2 text-[10px] font-bold text-slate-400">المهمة المدفوعة</button></div>
+                <div id="weeklyScheduleNotice" class="rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-3 text-[10px] leading-5 text-cyan-100" aria-live="polite"></div>
                 <div class="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-3 space-y-2">
                     <div class="flex items-center justify-between">
                         <span class="text-[10px] font-black text-amber-300">استراتيجية الإنجاز</span>
@@ -2106,6 +2107,7 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
             <div class="bg-amber-500/10 border border-amber-500/20 text-amber-400 p-2.5 rounded-xl text-[11px] font-bold">
                 <i class="fa-solid fa-circle-info mr-1"></i> السحب متاح حصراً من رصيد الأرباح المتاح.
             </div>
+            <div id="withdrawalScheduleStatus" class="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-2.5 text-[10px] leading-5 text-cyan-100" aria-live="polite">مواعيد طلب السحب: A1 وA2 يوم الجمعة، وبقية المستويات يوم السبت (UTC).</div>
 
             <div class="space-y-3">
                 <div>
