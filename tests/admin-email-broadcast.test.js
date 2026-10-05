@@ -64,6 +64,9 @@ assert.match(worker, /process-email-broadcasts/);
 assert.match(adminUi, /معاينة المحتوى وعدد المستلمين/);
 assert.match(adminUi, /إرسال التحديث/);
 assert.match(adminUi, /تغيّر النص؛ أعد المعاينة/);
+assert.match(adminUi, /requestedDraftKey/);
+assert.match(adminUi, /emailBroadcastDeliveryReady/);
+assert.match(adminUi, /عامل الإرسال المجدول/);
 assert.match(privacy, /إيقاف رسائل التحديثات/);
 assert.match(terms, /إلغاء رسائل التحديثات/);
 
@@ -90,6 +93,10 @@ function responseRecorder() {
     await adminController.previewEmailBroadcast({ body: { subject: 'Update', body: 'A new feature' } }, preview);
     assert.equal(preview.statusCode, 200);
     assert.equal(preview.body.recipientCount, 1);
+    assert.equal(preview.body.deliveryReadiness.providerConfigured, false);
+    assert.equal(preview.body.deliveryReadiness.senderConfigured, true);
+    assert.equal(preview.body.deliveryReadiness.unsubscribeConfigured, true);
+    assert.equal(preview.body.deliveryReadiness.ready, false);
 
     const queueCalls = [];
     dataAccess.callSupabaseRpc = async (name, args) => {

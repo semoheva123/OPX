@@ -458,17 +458,18 @@ body.modal-open{overflow:hidden}
             <div class="glass-card rounded-3xl overflow-hidden border border-slate-800"><div class="p-4 border-b border-slate-800"><h3 class="text-sm font-bold text-white">سجل الحملات وقياس الوصول</h3></div><div class="overflow-x-auto"><table class="w-full text-right text-xs"><thead class="bg-slate-900/80 text-slate-400"><tr><th class="p-4">الحملة</th><th class="p-4">الجمهور</th><th class="p-4">الحالة</th><th class="p-4">داخلي</th><th class="p-4">Push</th><th class="p-4">مقروء</th></tr></thead><tbody id="tblBroadcastsBody"></tbody></table></div></div>
 
             <section class="glass-card rounded-3xl border border-cyan-500/20 p-5 sm:p-6 space-y-4" aria-labelledby="emailBroadcastHeading">
-                <div class="flex items-start gap-3"><span class="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-cyan-400/20 bg-cyan-400/10 text-cyan-300"><i class="fa-solid fa-envelope-open-text"></i></span><div><h3 id="emailBroadcastHeading" class="text-base font-black text-white">تحديثات المنصة عبر البريد</h3><p class="mt-1 text-[10px] leading-5 text-slate-400">تُرسل للحسابات العادية ذات البريد الموثّق فقط، مع استبعاد من ألغى الاشتراك. تُضاف الحملة إلى قائمة إرسال متدرجة؛ إغلاق الصفحة لا يوقفها.</p></div></div>
+                <div class="flex items-start gap-3"><span class="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-cyan-400/20 bg-cyan-400/10 text-cyan-300"><i class="fa-solid fa-envelope-open-text"></i></span><div><h3 id="emailBroadcastHeading" class="text-base font-black text-white">تحديثات المنصة عبر البريد</h3><p class="mt-1 text-[10px] leading-5 text-slate-400">تُرسل للحسابات العادية ذات البريد الموثّق فقط، مع استبعاد من ألغى الاشتراك. الجدولة تضيف الحملة إلى الطابور ولا تعني التسليم الفوري؛ يلزم إعداد Resend وعامل الإرسال المجدول.</p></div></div>
+                <div id="emailBroadcastReadiness" class="hidden rounded-2xl border border-slate-800 bg-slate-950/60 p-3" aria-live="polite"></div>
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                    <label class="block text-[10px] font-bold text-slate-400">عنوان البريد <span class="font-normal text-slate-600">(حتى 150 حرفًا)</span><input id="emailBroadcastSubject" maxlength="150" oninput="invalidateEmailBroadcastPreview()" placeholder="مثال: تحديث جديد في OPERIX" class="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-xs text-white outline-none focus:border-cyan-400"></label>
-                    <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-[10px] leading-5 text-slate-400"><i class="fa-solid fa-shield-halved ml-1 text-emerald-300"></i>معاينة الخادم تحصي العناوين الفريدة الصالحة. يلزم تأكيد منفصل لبدء الإرسال. أضف معلومات دقيقة فقط، ولا تضع بيانات سرية أو وعودًا مالية.</div>
+                    <label class="block text-[10px] font-bold text-slate-400">عنوان البريد <span class="font-normal text-slate-600">(حتى 150 حرفًا)</span><input id="emailBroadcastSubject" maxlength="150" oninput="invalidateEmailBroadcastPreview()" placeholder="مثال: تحديث جديد في OPERIX" class="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-xs text-white outline-none focus:border-cyan-400"><span id="emailBroadcastSubjectCount" class="mt-1 block text-left text-[9px] text-slate-600" aria-live="polite">0 / 150</span></label>
+                    <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-[10px] leading-5 text-slate-400"><i class="fa-solid fa-shield-halved ml-1 text-emerald-300"></i>المعاينة تحصي المستلمين المؤهلين من الخادم. لا تُرسل إلا بعد مراجعة النص والتأكيد. استخدم معلومات دقيقة، ولا تضع بيانات سرية أو وعودًا مالية.</div>
                 </div>
-                <label class="block text-[10px] font-bold text-slate-400">محتوى التحديث <span class="font-normal text-slate-600">(نص عادي، حتى 5000 حرف)</span><textarea id="emailBroadcastBody" maxlength="5000" rows="6" oninput="invalidateEmailBroadcastPreview()" placeholder="اكتب تحديثًا واضحًا عن ميزة أو إضافة جديدة..." class="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-xs leading-6 text-white outline-none focus:border-cyan-400"></textarea></label>
-                <div class="flex flex-col sm:flex-row gap-2"><button type="button" onclick="previewEmailBroadcast()" class="rounded-xl border border-cyan-400/20 bg-cyan-400/10 px-4 py-3 text-xs font-bold text-cyan-200"><i class="fa-solid fa-users-viewfinder ml-1"></i>معاينة المحتوى وعدد المستلمين</button><span id="emailBroadcastPreviewStatus" class="self-center text-[10px] text-slate-500" aria-live="polite">لم تُحسب قائمة المستلمين بعد.</span></div>
+                <label class="block text-[10px] font-bold text-slate-400">محتوى التحديث <span class="font-normal text-slate-600">(نص عادي، حتى 5000 حرف)</span><textarea id="emailBroadcastBody" maxlength="5000" rows="6" oninput="invalidateEmailBroadcastPreview()" placeholder="اكتب تحديثًا واضحًا عن ميزة أو إضافة جديدة..." class="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-xs leading-6 text-white outline-none focus:border-cyan-400"></textarea><span id="emailBroadcastBodyCount" class="mt-1 block text-left text-[9px] text-slate-600" aria-live="polite">0 / 5000</span></label>
+                <div class="flex flex-col sm:flex-row gap-2"><button id="emailBroadcastPreviewButton" type="button" onclick="previewEmailBroadcast()" class="rounded-xl border border-cyan-400/20 bg-cyan-400/10 px-4 py-3 text-xs font-bold text-cyan-200"><i class="fa-solid fa-users-viewfinder ml-1"></i>معاينة المحتوى وعدد المستلمين</button><span id="emailBroadcastPreviewStatus" class="self-center text-[10px] text-slate-500" aria-live="polite">لم تُحسب قائمة المستلمين بعد.</span></div>
                 <div id="emailBroadcastPreview" class="hidden rounded-2xl border border-cyan-500/20 bg-slate-950/70 p-4" aria-live="polite"></div>
                 <div class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 border-t border-slate-800 pt-4">
                     <label class="block text-[10px] text-slate-400">للتأكيد، اكتب: <strong class="text-amber-300">إرسال التحديث</strong><input id="emailBroadcastConfirmation" oninput="updateEmailBroadcastSendButton()" autocomplete="off" placeholder="إرسال التحديث" class="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-xs text-white outline-none focus:border-amber-400"></label>
-                    <button id="emailBroadcastSendButton" type="button" onclick="queueEmailBroadcast()" disabled class="self-end rounded-xl bg-cyan-400 px-5 py-3 text-xs font-black text-slate-950 opacity-40 disabled:cursor-not-allowed"><i class="fa-solid fa-paper-plane ml-1"></i>جدولة الإرسال الآمن</button>
+                    <button id="emailBroadcastSendButton" type="button" onclick="queueEmailBroadcast()" disabled class="self-end rounded-xl bg-cyan-400 px-5 py-3 text-xs font-black text-slate-950 opacity-40 disabled:cursor-not-allowed"><i class="fa-solid fa-paper-plane ml-1"></i>إضافة إلى قائمة الإرسال</button>
                 </div>
             </section>
 
@@ -1746,6 +1747,8 @@ body.modal-open{overflow:hidden}
         let emailBroadcastPreviewKey = '';
         let emailBroadcastRecipientCount = null;
         let emailBroadcastSubmitting = false;
+        let emailBroadcastPreviewing = false;
+        let emailBroadcastDeliveryReady = false;
 
         function getEmailBroadcastDraftKey() {
             const subject = document.getElementById('emailBroadcastSubject')?.value?.trim() || '';
@@ -1758,15 +1761,40 @@ body.modal-open{overflow:hidden}
             if (!button) return;
             const valid = emailBroadcastPreviewKey === getEmailBroadcastDraftKey() &&
                 emailBroadcastRecipientCount > 0 &&
+                emailBroadcastDeliveryReady &&
                 document.getElementById('emailBroadcastConfirmation')?.value?.trim() === 'إرسال التحديث' &&
                 !emailBroadcastSubmitting;
             button.disabled = !valid;
             button.classList.toggle('opacity-40', !valid);
         }
 
+        function updateEmailBroadcastCounters() {
+            const subject = document.getElementById('emailBroadcastSubject')?.value || '';
+            const body = document.getElementById('emailBroadcastBody')?.value || '';
+            const subjectCount = document.getElementById('emailBroadcastSubjectCount');
+            const bodyCount = document.getElementById('emailBroadcastBodyCount');
+            if (subjectCount) subjectCount.innerText = `${subject.length.toLocaleString('ar')} / 150`;
+            if (bodyCount) bodyCount.innerText = `${body.length.toLocaleString('ar')} / 5000`;
+        }
+
+        function renderEmailBroadcastReadiness(readiness = {}) {
+            const container = document.getElementById('emailBroadcastReadiness');
+            if (!container) return;
+            const checks = [
+                ['مفتاح Resend متاح للخادم', readiness.providerConfigured],
+                ['عنوان الإرسال موثّق', readiness.senderConfigured],
+                ['سر إلغاء الاشتراك مضبوط', readiness.unsubscribeConfigured]
+            ];
+            const ready = readiness.ready === true;
+            container.innerHTML = `<div class="flex items-center justify-between gap-3"><strong class="text-[10px] ${ready ? 'text-emerald-300' : 'text-amber-300'}">${ready ? 'الخادم جاهز لقبول الحملة' : 'الإرسال متوقف حتى استكمال إعداد البريد'}</strong><span class="text-[9px] text-slate-500">${checks.filter(([, ok]) => ok).length} / ${checks.length}</span></div><div class="mt-2 grid gap-1 sm:grid-cols-3">${checks.map(([label, ok]) => `<span class="text-[9px] ${ok ? 'text-emerald-300' : 'text-rose-300'}"><i class="fa-solid ${ok ? 'fa-circle-check' : 'fa-circle-xmark'} ml-1"></i>${label}</span>`).join('')}</div><p class="mt-2 text-[9px] leading-5 text-slate-500">هذه الحالة تفحص إعدادات الخادم فقط؛ التسليم الفعلي يتطلب تشغيل عامل GitHub Actions وقبول الرسائل لدى مزود البريد.</p>`;
+            container.classList.remove('hidden');
+        }
+
         function invalidateEmailBroadcastPreview() {
             emailBroadcastPreviewKey = '';
             emailBroadcastRecipientCount = null;
+            emailBroadcastDeliveryReady = false;
+            updateEmailBroadcastCounters();
             const status = document.getElementById('emailBroadcastPreviewStatus');
             const preview = document.getElementById('emailBroadcastPreview');
             if (status) status.innerText = 'تغيّر النص؛ أعد المعاينة لحساب المستلمين من جديد.';
@@ -1779,9 +1807,15 @@ body.modal-open{overflow:hidden}
             const body = document.getElementById('emailBroadcastBody')?.value?.trim() || '';
             const status = document.getElementById('emailBroadcastPreviewStatus');
             const preview = document.getElementById('emailBroadcastPreview');
+            const previewButton = document.getElementById('emailBroadcastPreviewButton');
+            if (emailBroadcastPreviewing) return;
             if (!subject || !body) return showToast('أدخل عنوان البريد ومحتوى التحديث أولًا.');
+            const requestedDraftKey = JSON.stringify([subject, body]);
             emailBroadcastPreviewKey = '';
             emailBroadcastRecipientCount = null;
+            emailBroadcastDeliveryReady = false;
+            emailBroadcastPreviewing = true;
+            if (previewButton) previewButton.disabled = true;
             updateEmailBroadcastSendButton();
             if (status) status.innerText = 'جارٍ احتساب المستلمين المؤهلين…';
             try {
@@ -1790,17 +1824,28 @@ body.modal-open{overflow:hidden}
                 });
                 const data = await response.json();
                 if (!response.ok || !data.success) throw new Error(data.error || 'تعذرت معاينة البريد');
-                emailBroadcastPreviewKey = getEmailBroadcastDraftKey();
+                if (getEmailBroadcastDraftKey() !== requestedDraftKey) {
+                    if (status) status.innerText = 'تغيّر النص أثناء المعاينة؛ أعد المعاينة قبل الإرسال.';
+                    preview?.classList.add('hidden');
+                    return;
+                }
+                emailBroadcastPreviewKey = requestedDraftKey;
                 emailBroadcastRecipientCount = Number(data.recipientCount) || 0;
+                emailBroadcastDeliveryReady = data.deliveryReadiness?.ready === true;
+                renderEmailBroadcastReadiness(data.deliveryReadiness || {});
                 preview.innerHTML = `<div class="flex flex-wrap items-center justify-between gap-2"><strong class="text-xs text-white">${escapeAdminHtml(data.subject)}</strong><span class="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[10px] font-black text-emerald-300">${emailBroadcastRecipientCount.toLocaleString('ar')} مستلم مؤهل</span></div><p class="mt-3 whitespace-pre-wrap text-[10px] leading-6 text-slate-300">${escapeAdminHtml(data.body)}</p><p class="mt-3 border-t border-slate-800 pt-2 text-[9px] text-slate-500">الاحتساب يستبعد البريد غير الموثق والمكرر والحسابات الإدارية ومن ألغى الاشتراك.</p>`;
                 preview.classList.remove('hidden');
-                if (status) status.innerText = emailBroadcastRecipientCount ? 'المعاينة صالحة لهذا النص. غيّر أي حرف وستحتاج لإعادتها.' : 'لا يوجد مستلمون مؤهلون حاليًا.';
+                if (status) status.innerText = !emailBroadcastRecipientCount ? 'لا يوجد مستلمون مؤهلون حاليًا.' : emailBroadcastDeliveryReady ? 'المعاينة صالحة لهذا النص؛ أعدها إذا غيّرت أي حرف.' : 'تمت المعاينة، لكن إعداد الإرسال غير مكتمل؛ لن يُفعّل زر الجدولة.';
                 updateEmailBroadcastSendButton();
             } catch (error) {
                 emailBroadcastPreviewKey = '';
                 emailBroadcastRecipientCount = null;
+                emailBroadcastDeliveryReady = false;
                 if (status) status.innerText = error.message || 'تعذرت معاينة قائمة المستلمين.';
                 updateEmailBroadcastSendButton();
+            } finally {
+                emailBroadcastPreviewing = false;
+                if (previewButton) previewButton.disabled = false;
             }
         }
 
@@ -1809,7 +1854,7 @@ body.modal-open{overflow:hidden}
             if (document.getElementById('emailBroadcastConfirmation')?.value?.trim() !== 'إرسال التحديث' || emailBroadcastPreviewKey !== getEmailBroadcastDraftKey() || !emailBroadcastRecipientCount) {
                 return showToast('عاين الحملة وأكّد عبارة الإرسال قبل المتابعة.');
             }
-            const confirmed = await showPlatformConfirm(`ستُضاف حملة «${document.getElementById('emailBroadcastSubject').value.trim()}» إلى طابور الإرسال لنحو ${emailBroadcastRecipientCount.toLocaleString('ar')} بريد موثّق. هل تريد المتابعة؟`, 'تأكيد إرسال تحديث بريدي');
+            const confirmed = await showPlatformConfirm(`ستُضاف حملة «${document.getElementById('emailBroadcastSubject').value.trim()}» إلى طابور الإرسال لعدد ${emailBroadcastRecipientCount.toLocaleString('ar')} من المستلمين المؤهلين. الجدولة لا تعني التسليم الفوري. هل تريد المتابعة؟`, 'تأكيد إرسال تحديث بريدي');
             if (!confirmed) return;
             emailBroadcastSubmitting = true;
             updateEmailBroadcastSendButton();
@@ -1825,11 +1870,20 @@ body.modal-open{overflow:hidden}
                 });
                 const data = await response.json();
                 if (!response.ok || !data.success) throw new Error(data.error || 'تعذر جدولة حملة البريد');
-                showToast(data.message || 'تمت جدولة الحملة على دفعات.');
+                showToast(data.message || 'أُضيفت الحملة إلى الطابور؛ سيعالجها عامل الإرسال المجدول.');
                 document.getElementById('emailBroadcastSubject').value = '';
                 document.getElementById('emailBroadcastBody').value = '';
                 document.getElementById('emailBroadcastConfirmation').value = '';
-                invalidateEmailBroadcastPreview();
+                emailBroadcastPreviewKey = '';
+                emailBroadcastRecipientCount = null;
+                emailBroadcastDeliveryReady = false;
+                updateEmailBroadcastCounters();
+                const previewStatus = document.getElementById('emailBroadcastPreviewStatus');
+                if (previewStatus) previewStatus.innerText = 'أُضيفت الحملة إلى الطابور؛ راقب حالتها في سجل تحديثات البريد.';
+                document.getElementById('emailBroadcastPreview')?.classList.add('hidden');
+                updateEmailBroadcastSendButton();
+                const readiness = document.getElementById('emailBroadcastReadiness');
+                readiness?.classList.add('hidden');
                 await fetchEmailBroadcasts();
             } catch (error) {
                 showToast(error.message || 'تعذر جدولة حملة البريد.');

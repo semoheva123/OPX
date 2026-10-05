@@ -1230,7 +1230,14 @@ async function previewEmailBroadcast(req, res) {
   try {
     const { subject, body } = adminEmailBroadcastService.validateAnnouncement(req.body?.subject, req.body?.body);
     const recipients = await adminEmailBroadcastService.getEligibleRecipients();
-    return res.json({ success: true, subject, body, recipientCount: recipients.length, recipientPolicy: 'verified_non_opted_out_users' });
+    const emailFrom = String(process.env.EMAIL_FROM || '').trim();
+    const deliveryReadiness = {
+      providerConfigured: Boolean(req.app?.locals?.resend?.batch?.send),
+      senderConfigured: Boolean(emailFrom && !/resend\.dev/i.test(emailFrom)),
+      unsubscribeConfigured: Boolean(process.env.EMAIL_UNSUBSCRIBE_SECRET || process.env.JWT_SECRET)
+    };
+    deliveryReadiness.ready = Object.values(deliveryReadiness).every(Boolean);
+    return res.json({ success: true, subject, body, recipientCount: recipients.length, recipientPolicy: 'verified_non_opted_out_users', deliveryReadiness });
   } catch (error) {
     const validationMessage = emailBroadcastValidationError(error);
     if (validationMessage) return res.status(400).json({ success: false, error: validationMessage });
