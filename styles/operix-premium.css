@@ -519,3 +519,29 @@ body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) th { col
     .company-intro .rewards-campaign::after { inset: 6px; border-radius: 19px; }
     .company-intro .reward-prize-card:hover { transform: none; }
 }
+
+@media (max-width: 640px) {
+    #view-home .premium-status-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-bottom: 10px; }
+    #view-home .status-pill { min-height: 58px; padding: 7px 8px; gap: 5px; border-radius: 14px; }
+    #view-home .status-pill i { width: 25px; height: 25px; border-radius: 9px; font-size: 10px; }
+    #view-home .status-pill span { font-size: 8px; white-space: nowrap; }
+    #view-home .status-pill strong { font-size: 13px; }
+}
+
+@media (max-width: 480px) {
+    #view-home .balance-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; margin-top: 8px; }
+    #view-home .operix-wallet { padding: 14px !important; }
+    #view-home .operix-wallet > :nth-child(2) { padding: 0 0 8px; }
+    #view-home .operix-wallet > :nth-child(4),
+    #view-home .operix-wallet > :nth-child(5),
+    #view-home .operix-wallet > :nth-child(6),
+    #view-home .operix-wallet > :nth-child(7),
+    #view-home .operix-wallet > :nth-child(8),
+    #view-home .operix-wallet > :nth-child(9) { margin-top: 8px; }
+    #view-home #lblWalletBalance { font-size: 34px; }
+    #view-home .balance-summary-card { min-height: 76px; padding: 9px; border-radius: 14px; }
+    #view-home .balance-summary-card .balance-card-head { font-size: 9px; }
+    #view-home .balance-summary-card .balance-card-value { margin-top: 4px; font-size: 15px; line-height: 1.25; }
+    #view-home .balance-summary-card .balance-card-value small { font-size: 9px; }
+    #view-home .balance-summary-card .balance-card-note { margin-top: 2px; font-size: 8px; }
+}
