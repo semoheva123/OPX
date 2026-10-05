@@ -473,6 +473,18 @@ body.modal-open{overflow:hidden}
                 </div>
             </section>
 
+            <section class="glass-card rounded-3xl border border-amber-500/20 p-5 sm:p-6 space-y-4" aria-labelledby="emailVerificationReminderHeading">
+                <div class="flex items-start gap-3"><span class="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-amber-400/20 bg-amber-400/10 text-amber-300"><i class="fa-solid fa-envelope-circle-check"></i></span><div><h3 id="emailVerificationReminderHeading" class="text-base font-black text-white">تذكير توثيق البريد للحسابات غير الموثّقة</h3><p class="mt-1 text-[10px] leading-5 text-slate-400">يرسل رابط توثيق آمنًا وفريدًا صالحًا لمدة 24 ساعة للحسابات العادية غير المحظورة التي لم توثّق بريدها ولم تلغِ الاشتراك. لا يتضمن إعلانًا؛ لا يعاد التذكير للحساب نفسه قبل مرور 7 أيام.</p></div></div>
+                <div class="flex flex-col sm:flex-row sm:items-center gap-2"><button id="emailVerificationReminderPreviewButton" type="button" onclick="previewEmailVerificationReminders()" class="rounded-xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-xs font-bold text-amber-200"><i class="fa-solid fa-users-viewfinder ml-1"></i>احتساب الحسابات غير الموثّقة</button><span id="emailVerificationReminderStatus" class="text-[10px] text-slate-500" aria-live="polite">لم تُحسب الحسابات المؤهلة بعد.</span></div>
+                <div id="emailVerificationReminderPreview" class="hidden rounded-2xl border border-amber-500/20 bg-slate-950/70 p-4" aria-live="polite"></div>
+                <div class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 border-t border-slate-800 pt-4">
+                    <label class="block text-[10px] text-slate-400">للتأكيد، اكتب: <strong class="text-amber-300">إرسال تذكيرات التوثيق</strong><input id="emailVerificationReminderConfirmation" oninput="updateEmailVerificationReminderButton()" autocomplete="off" placeholder="إرسال تذكيرات التوثيق" class="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-xs text-white outline-none focus:border-amber-400"></label>
+                    <button id="emailVerificationReminderSendButton" type="button" onclick="queueEmailVerificationReminders()" disabled class="self-end rounded-xl bg-amber-400 px-5 py-3 text-xs font-black text-slate-950 opacity-40 disabled:cursor-not-allowed"><i class="fa-solid fa-paper-plane ml-1"></i>إضافة تذكيرات التوثيق للطابور</button>
+                </div>
+            </section>
+
+            <div class="glass-card rounded-3xl overflow-hidden border border-slate-800"><div class="flex items-center justify-between p-4 border-b border-slate-800"><div><h3 class="text-sm font-bold text-white">سجل تذكيرات توثيق البريد</h3><p class="mt-1 text-[9px] text-slate-500">دفعات التذكير وحالات تسليمها إلى مزود البريد</p></div><button onclick="fetchEmailVerificationReminderCampaigns()" aria-label="تحديث سجل تذكيرات التوثيق" class="rounded-lg bg-slate-900 px-3 py-2 text-slate-300"><i class="fa-solid fa-arrows-rotate"></i></button></div><div class="overflow-x-auto"><table class="w-full min-w-[640px] text-right text-xs"><thead class="bg-slate-900/80 text-slate-400"><tr><th class="p-3">الحالة</th><th class="p-3">أُرسلت لمزود البريد</th><th class="p-3">تعذّر</th><th class="p-3">مستبعد</th><th class="p-3">مراجعة مطلوبة</th><th class="p-3">تاريخ الإنشاء</th></tr></thead><tbody id="emailVerificationReminderHistory"><tr><td colspan="6" class="p-4 text-center text-slate-500">جارٍ تحميل سجل التذكيرات...</td></tr></tbody></table></div></div>
+
             <div class="glass-card rounded-3xl overflow-hidden border border-slate-800"><div class="flex items-center justify-between p-4 border-b border-slate-800"><div><h3 class="text-sm font-bold text-white">سجل تحديثات البريد</h3><p class="mt-1 text-[9px] text-slate-500">حالات الطابور والإرسال والتعثرات</p></div><button onclick="fetchEmailBroadcasts()" aria-label="تحديث سجل حملات البريد" class="rounded-lg bg-slate-900 px-3 py-2 text-slate-300"><i class="fa-solid fa-arrows-rotate"></i></button></div><div class="overflow-x-auto"><table class="w-full min-w-[720px] text-right text-xs"><thead class="bg-slate-900/80 text-slate-400"><tr><th class="p-3">العنوان</th><th class="p-3">الحالة</th><th class="p-3">وصل لمزود البريد</th><th class="p-3">تعذّر</th><th class="p-3">مستبعد/ألغى الاشتراك</th><th class="p-3">مراجعة يدوية</th><th class="p-3">تاريخ الإنشاء</th></tr></thead><tbody id="emailBroadcastHistory"><tr><td colspan="7" class="p-4 text-center text-slate-500">جارٍ تحميل سجل البريد...</td></tr></tbody></table></div></div>
         </div>
 
@@ -715,7 +727,7 @@ body.modal-open{overflow:hidden}
             if(tab === 'plans') { fetchVipPlans(); fetchVaultContractsAdmin(); }
             if(tab === 'games') fetchGameSettings();
             if(tab === 'audit') fetchAuditLogs();
-            if(tab === 'broadcast') { fetchBroadcasts(); fetchEmailBroadcasts(); }
+            if(tab === 'broadcast') { fetchBroadcasts(); fetchEmailBroadcasts(); fetchEmailVerificationReminderCampaigns(); }
             if(tab === 'support') fetchAdminSupport();
             if(tab === 'social-feed') fetchSocialFeedReports();
             if(tab === 'security') loadAdminSecurityStatus();
@@ -1905,6 +1917,102 @@ body.modal-open{overflow:hidden}
                 tbody.innerHTML = data.campaigns?.length ? data.campaigns.map(item => `<tr class="border-t border-slate-800"><td class="p-3 font-bold text-white">${escapeAdminHtml(item.subject || 'تحديث')}</td><td class="p-3 ${tone[item.status] || 'text-slate-300'}">${labels[item.status] || escapeAdminHtml(item.status)}</td><td class="p-3 text-emerald-300">${Number(item.sentCount || 0)} / ${Number(item.recipientCount || 0)}</td><td class="p-3 text-amber-300">${Number(item.failedCount || 0)}</td><td class="p-3 text-slate-300">${Number(item.suppressedCount || 0)}</td><td class="p-3 text-rose-300">${Number(item.unknownCount || 0)}</td><td class="p-3 whitespace-nowrap text-slate-500">${item.createdAt ? escapeAdminHtml(new Date(item.createdAt).toLocaleString('ar')) : '—'}</td></tr>`).join('') : '<tr><td colspan="7" class="p-4 text-center text-slate-500">لا توجد حملات بريد بعد.</td></tr>';
             } catch (error) {
                 tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-rose-300">${escapeAdminHtml(error.message || 'تعذر تحميل سجل البريد.')}</td></tr>`;
+            }
+        }
+
+        let emailVerificationReminderDraft = null;
+        let emailVerificationReminderReady = false;
+        let emailVerificationReminderSubmitting = false;
+
+        function updateEmailVerificationReminderButton() {
+            const button = document.getElementById('emailVerificationReminderSendButton');
+            if (!button) return;
+            const valid = emailVerificationReminderReady && emailVerificationReminderDraft?.recipientCount > 0 &&
+                document.getElementById('emailVerificationReminderConfirmation')?.value?.trim() === 'إرسال تذكيرات التوثيق' &&
+                !emailVerificationReminderSubmitting;
+            button.disabled = !valid;
+            button.classList.toggle('opacity-40', !valid);
+        }
+
+        async function previewEmailVerificationReminders() {
+            const status = document.getElementById('emailVerificationReminderStatus');
+            const preview = document.getElementById('emailVerificationReminderPreview');
+            const button = document.getElementById('emailVerificationReminderPreviewButton');
+            if (button?.disabled) return;
+            emailVerificationReminderDraft = null;
+            emailVerificationReminderReady = false;
+            if (button) button.disabled = true;
+            if (status) status.innerText = 'جارٍ احتساب الحسابات غير الموثّقة…';
+            updateEmailVerificationReminderButton();
+            try {
+                const response = await fetch('/api/admin/email-verification-reminders/preview', {
+                    method: 'POST', headers: adminJsonHeaders(), body: JSON.stringify({})
+                });
+                const data = await response.json();
+                if (!response.ok || !data.success) throw new Error(data.error || 'تعذرت معاينة التذكيرات');
+                emailVerificationReminderReady = data.deliveryReadiness?.ready === true;
+                emailVerificationReminderDraft = { recipientCount: Number(data.recipientCount) || 0 };
+                const readiness = data.deliveryReadiness || {};
+                preview.innerHTML = `<div class="flex flex-wrap items-center justify-between gap-2"><strong class="text-xs text-white">تذكير توثيق حساب OPERIX</strong><span class="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[10px] font-black text-amber-200">${emailVerificationReminderDraft.recipientCount.toLocaleString('ar')} حساب غير موثّق</span></div><p class="mt-3 text-[10px] leading-6 text-slate-300">سيُنشئ الخادم رابطًا فريدًا صالحًا لمدة 24 ساعة لكل مستلم. يستهدف الحسابات العادية غير المحظورة ذات البريد الصالح، مع احترام إلغاء الاشتراك وحدّ تذكير واحد كل 7 أيام.</p><p class="mt-2 text-[9px] ${emailVerificationReminderReady ? 'text-emerald-300' : 'text-rose-300'}">${emailVerificationReminderReady ? 'إعداد مزود البريد والمرسل جاهز.' : `إعداد البريد غير مكتمل: ${readiness.providerConfigured ? '' : 'Resend غير مهيأ. '}${readiness.senderConfigured ? '' : 'عنوان مرسل موثّق مطلوب.'}`}</p>`;
+                preview.classList.remove('hidden');
+                if (status) status.innerText = emailVerificationReminderDraft.recipientCount ? (emailVerificationReminderReady ? 'المعاينة جاهزة؛ لا تُرسل أي رسالة قبل تأكيدك.' : 'المعاينة تمت لكن الإرسال غير جاهز.') : 'لا توجد حسابات مؤهلة للتذكير حاليًا.';
+                updateEmailVerificationReminderButton();
+            } catch (error) {
+                emailVerificationReminderDraft = null;
+                emailVerificationReminderReady = false;
+                if (status) status.innerText = error.message || 'تعذرت معاينة التذكيرات.';
+                preview?.classList.add('hidden');
+                updateEmailVerificationReminderButton();
+            } finally {
+                if (button) button.disabled = false;
+            }
+        }
+
+        async function queueEmailVerificationReminders() {
+            updateEmailVerificationReminderButton();
+            if (!emailVerificationReminderDraft || !emailVerificationReminderReady || !emailVerificationReminderDraft.recipientCount ||
+                document.getElementById('emailVerificationReminderConfirmation')?.value?.trim() !== 'إرسال تذكيرات التوثيق') {
+                return showToast('عاين العدد أولًا واكتب عبارة التأكيد قبل المتابعة.');
+            }
+            const count = emailVerificationReminderDraft.recipientCount;
+            if (!await showPlatformConfirm(`سيُجدول ${count.toLocaleString('ar')} تذكير توثيق للحسابات غير الموثّقة فقط. سيُرسل رابط فريد صالح 24 ساعة، مع استبعاد من ألغى الاشتراك. هل تريد المتابعة؟`, 'تأكيد تذكيرات توثيق البريد')) return;
+            emailVerificationReminderSubmitting = true;
+            updateEmailVerificationReminderButton();
+            try {
+                const response = await fetch('/api/admin/email-verification-reminders', {
+                    method: 'POST', headers: adminJsonHeaders(),
+                    body: JSON.stringify({ confirmed: true, confirmation: 'إرسال تذكيرات التوثيق' })
+                });
+                const data = await response.json();
+                if (!response.ok || !data.success) throw new Error(data.error || 'تعذرت جدولة تذكيرات التوثيق');
+                emailVerificationReminderDraft = null;
+                emailVerificationReminderReady = false;
+                document.getElementById('emailVerificationReminderConfirmation').value = '';
+                document.getElementById('emailVerificationReminderPreview')?.classList.add('hidden');
+                const status = document.getElementById('emailVerificationReminderStatus');
+                if (status) status.innerText = 'أُضيفت التذكيرات للطابور؛ راقب سجل الدفعات أدناه.';
+                showToast(data.message || 'تمت جدولة تذكيرات التوثيق على دفعات.');
+                await fetchEmailVerificationReminderCampaigns();
+            } catch (error) {
+                showToast(error.message || 'تعذرت جدولة تذكيرات التوثيق.');
+            } finally {
+                emailVerificationReminderSubmitting = false;
+                updateEmailVerificationReminderButton();
+            }
+        }
+
+        async function fetchEmailVerificationReminderCampaigns() {
+            const tbody = document.getElementById('emailVerificationReminderHistory');
+            if (!tbody) return;
+            try {
+                const response = await fetch('/api/admin/email-verification-reminders', { headers: adminHeaders() });
+                const data = await response.json();
+                if (!response.ok || !data.success) throw new Error(data.error || 'تعذر تحميل سجل التذكيرات');
+                const labels = { queued: 'في الانتظار', sending: 'جارٍ الإرسال', sent: 'اكتمل', partial: 'تعثر جزئي', manual_review: 'مراجعة مطلوبة' };
+                const tone = { queued: 'text-cyan-300', sending: 'text-amber-300', sent: 'text-emerald-300', partial: 'text-amber-300', manual_review: 'text-rose-300' };
+                tbody.innerHTML = data.campaigns?.length ? data.campaigns.map(item => `<tr class="border-t border-slate-800"><td class="p-3 ${tone[item.status] || 'text-slate-300'}">${labels[item.status] || escapeAdminHtml(item.status)}</td><td class="p-3 text-emerald-300">${Number(item.sentCount || 0)} / ${Number(item.recipientCount || 0)}</td><td class="p-3 text-amber-300">${Number(item.failedCount || 0)}</td><td class="p-3 text-slate-300">${Number(item.suppressedCount || 0)}</td><td class="p-3 text-rose-300">${Number(item.unknownCount || 0)}</td><td class="p-3 whitespace-nowrap text-slate-500">${item.createdAt ? escapeAdminHtml(new Date(item.createdAt).toLocaleString('ar')) : '—'}</td></tr>`).join('') : '<tr><td colspan="6" class="p-4 text-center text-slate-500">لا توجد دفعات تذكير بعد.</td></tr>';
+            } catch (error) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-rose-300">${escapeAdminHtml(error.message || 'تعذر تحميل سجل التذكيرات.')}</td></tr>`;
             }
         }
 

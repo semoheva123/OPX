@@ -119,8 +119,12 @@ async function verifyEmail(req, res) {
   try {
     const token = String(req.query.token || '').trim();
     const resultPage = (statusCode, title, message, actionText = 'العودة إلى OPERIX') => res.status(statusCode).send(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title} - OPERIX</title></head><body style="margin:0;background:#060d18;color:#f8fafc;font-family:Tahoma,Arial,sans-serif;display:grid;place-items:center;min-height:100vh;padding:24px"><main style="width:100%;max-width:520px;background:#0d1726;border:1px solid #26364b;border-radius:18px;padding:36px 28px;text-align:center;box-sizing:border-box"><div style="display:inline-block;background:#eeb34e;color:#08111e;font-size:22px;font-weight:700;letter-spacing:1px;padding:12px 18px;border-radius:10px;margin-bottom:24px">OPERIX</div><h1 style="margin:0 0 14px;font-size:26px">${title}</h1><p style="margin:0 0 26px;color:#cbd5e1;line-height:1.9">${message}</p><a href="/" style="display:inline-block;background:#eeb34e;color:#08111e;text-decoration:none;font-weight:700;padding:14px 22px;border-radius:9px">${actionText}</a></main></body></html>`);
-    if (!token) return resultPage(400, 'رابط التحقق غير صالح', 'يرجى طلب رابط توثيق جديد من قسم حسابي.');
-    const user = await dataAccess.user.findOne({ emailVerificationToken: token, emailVerificationExpire: { $gt: new Date() } });
+    if (!/^[a-f0-9]{64}$/i.test(token)) return resultPage(400, 'رابط التحقق غير صالح', 'يرجى طلب رابط توثيق جديد من قسم حسابي.');
+    let user = await dataAccess.user.findOne({ emailVerificationToken: token, emailVerificationExpire: { $gt: new Date() } });
+    if (!user) {
+      const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+      user = await dataAccess.user.findOne({ emailVerificationToken: tokenHash, emailVerificationExpire: { $gt: new Date() } });
+    }
     if (!user) return resultPage(400, 'الرابط غير صالح أو منتهي الصلاحية', 'يرجى طلب رابط توثيق جديد من قسم حسابي.');
     await dataAccess.user.updateOne({ id: user.id }, { emailVerified: true, emailVerificationToken: null, emailVerificationExpire: null });
     await dataAccess.securityEvent.create({ userId: user.id, email: user.email, event: 'email_verified', ip: req.ip, userAgent: req.get('user-agent') || 'unknown' });

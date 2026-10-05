@@ -85,6 +85,7 @@ const app = createApp({
     'ai-announcer': generateOfficialAiPost,
     'process-broadcasts': () => processScheduledBroadcasts(webpush),
     'process-email-broadcasts': () => require('./src/controllers/adminController').processAdminEmailBroadcasts(resend),
+    'process-email-verification-reminders': () => require('./src/controllers/adminController').processEmailVerificationReminders(resend),
     'process-tron-deposits': () => require('./src/services/tronDepositService').processTronDepositQueue(),
     'check-financial-readiness': () => require('./src/services/financialReadinessService').checkFinancialReadiness(),
     'process-withdrawal-payouts': async () => {

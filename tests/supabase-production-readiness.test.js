@@ -50,6 +50,10 @@ for (const table of ['tron_deposit_addresses', 'tron_deposit_address_sequences',
   assert.ok(validator.includes(`'${table}'`), `${table} must be checked by the production readiness validator`);
   assert.match(supabaseConfig, new RegExp(`'${table}'`), `${table} must be probed by production health`);
 }
+for (const table of ['email_verification_reminder_campaigns', 'email_verification_reminder_recipients']) {
+  assert.ok(validator.includes(`'${table}'`), `${table} must be checked by the production readiness validator`);
+}
+assert.match(validator, /email_verification_reminder_sent_at/);
 assert.match(supabaseConfig, /depositTablesReady/);
 assert.match(supabaseConfig, /payoutTableReady/);
 assert.match(supabaseConfig, /missingDepositTables/);

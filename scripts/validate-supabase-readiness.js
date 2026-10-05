@@ -17,10 +17,13 @@ async function main() {
   });
 
   const checks = [
-    ...['users', 'wallet_balances', 'transactions', 'financial_ledger', 'sessions', 'security_events',
+    ...['wallet_balances', 'transactions', 'financial_ledger', 'sessions', 'security_events',
       'vip_levels', 'game_settings', 'daily_task_completions', 'daily_task_entities',
       'daily_task_assignments', 'daily_task_submissions', 'referral_reward_awards', 'milestone_reward_awards']
       .map(table => ({ table, columns: 'id' })),
+    { table: 'users', columns: 'id,email_verification_reminder_sent_at' },
+    { table: 'email_verification_reminder_campaigns', columns: 'id,status,recipient_count,sent_count,failed_count' },
+    { table: 'email_verification_reminder_recipients', columns: 'id,campaign_id,user_id,email,status,attempts' },
     { table: 'tron_deposit_addresses', columns: 'user_id,derivation_index,address,last_scanned_at' },
     { table: 'tron_deposit_address_sequences', columns: 'id,next_index' },
     { table: 'tron_deposit_events', columns: 'id,transaction_id,user_id,tx_hash,event_index,to_address,amount' },

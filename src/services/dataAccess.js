@@ -21,6 +21,8 @@ const modelMap = {
   Broadcast: { table: 'broadcasts' },
   EmailBroadcast: { table: 'email_broadcasts' },
   EmailBroadcastRecipient: { table: 'email_broadcast_recipients' },
+  EmailVerificationReminderCampaign: { table: 'email_verification_reminder_campaigns' },
+  EmailVerificationReminderRecipient: { table: 'email_verification_reminder_recipients' },
   Coupon: { table: 'coupons' },
   CpaLeadConversion: { table: 'cpa_lead_conversions' },
   InvestmentVault: { table: 'investment_vault' },
@@ -416,6 +418,8 @@ const dataAccess = {
   callSupabaseRpc,
   emailBroadcast: createRepository('EmailBroadcast'),
   emailBroadcastRecipient: createRepository('EmailBroadcastRecipient'),
+  emailVerificationReminderCampaign: createRepository('EmailVerificationReminderCampaign'),
+  emailVerificationReminderRecipient: createRepository('EmailVerificationReminderRecipient'),
   withdrawalPayout: createRepository('WithdrawalPayout'),
   tronDepositAddress: createRepository('TronDepositAddress'),
   user: {
@@ -454,6 +458,28 @@ const dataAccess = {
           .eq('email_verified', true)
           .eq('is_banned', false)
           .eq('email_updates_opt_out', false)
+          .order('id', { ascending: true })
+          .range(offset, offset + requested - 1);
+        if (error) throw error;
+        const page = data || [];
+        recipients.push(...page);
+        if (page.length < requested) break;
+      }
+      return normalizeSupabaseResult(recipients);
+    },
+    async findEmailVerificationReminderRecipients(limit = 10001) {
+      if (!isSupabaseRuntime() || !supabaseAdmin) return [];
+      const maximum = Math.max(1, Math.min(10001, Number(limit) || 10001));
+      const pageSize = 1000;
+      const recipients = [];
+      for (let offset = 0; offset < maximum; offset += pageSize) {
+        const requested = Math.min(pageSize, maximum - offset);
+        const { data, error } = await supabaseAdmin.from('users')
+          .select('id,email,email_verification_reminder_sent_at')
+          .eq('role', 'user')
+          .eq('email_verified', false)
+          .eq('is_banned', false)
+          .or(`email_verification_reminder_sent_at.is.null,email_verification_reminder_sent_at.lt.${new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()}`)
           .order('id', { ascending: true })
           .range(offset, offset + requested - 1);
         if (error) throw error;

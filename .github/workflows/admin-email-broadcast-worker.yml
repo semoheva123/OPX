@@ -39,3 +39,19 @@ jobs:
             'https://operix.website/api/internal/cron/process-email-broadcasts'
           jq -c '{success, job, processed: .result.processed, status: .result.status, skipped: (.result.skipped // false), reason: (.result.reason // null)}' "$response_file"
           jq -e '.success == true' "$response_file" > /dev/null
+
+      - name: Process one bounded email verification reminder batch
+        shell: bash
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          response_file=$(mktemp)
+          trap 'rm -f "$response_file"' EXIT
+          curl --fail --silent --show-error --output "$response_file" \
+            --write-out 'Email verification reminder worker HTTP %{http_code}\n' \
+            --max-time 70 \
+            --request POST \
+            --header "Authorization: Bearer ${CRON_SECRET}" \
+            'https://operix.website/api/internal/cron/process-email-verification-reminders'
+          jq -c '{success, job, processed: .result.processed, status: .result.status, skipped: (.result.skipped // false), reason: (.result.reason // null)}' "$response_file"
+          jq -e '.success == true' "$response_file" > /dev/null

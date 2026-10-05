@@ -5,6 +5,7 @@ const withdrawalPayoutService = require('../services/withdrawalPayoutService');
 const { checkFinancialReadiness } = require('../services/financialReadinessService');
 const { buildFinancialAccountingSummary } = require('../services/financialAccountingService');
 const adminEmailBroadcastService = require('../services/adminEmailBroadcastService');
+const emailVerificationReminderService = require('../services/emailVerificationReminderService');
 const User = adminRepository(dataAccess.user);
 const Transaction = adminRepository(dataAccess.transaction);
 const InvestmentVault = adminRepository(dataAccess.investmentVault);
@@ -1292,6 +1293,62 @@ async function processAdminEmailBroadcasts(resend) {
   return adminEmailBroadcastService.processAdminEmailBroadcastQueue(resend);
 }
 
+async function previewEmailVerificationReminders(req, res) {
+  try {
+    const recipients = await emailVerificationReminderService.getEligibleRecipients();
+    const emailFrom = String(process.env.EMAIL_FROM || '').trim();
+    const deliveryReadiness = {
+      providerConfigured: Boolean(req.app?.locals?.resend?.batch?.send),
+      senderConfigured: Boolean(emailFrom && !/resend\.dev/i.test(emailFrom))
+    };
+    deliveryReadiness.ready = Object.values(deliveryReadiness).every(Boolean);
+    return res.json({ success: true, recipientCount: recipients.length, deliveryReadiness, recipientPolicy: 'unverified_active_users_not_opted_out_cooldown_7d' });
+  } catch (error) {
+    if (error.message === 'SUPABASE_RUNTIME_REQUIRED') return res.status(400).json({ success: false, error: 'تذكير التوثيق يتطلب قاعدة بيانات Supabase.' });
+    if (String(error.message || '').startsWith('RECIPIENT_LIMIT_EXCEEDED')) return res.status(400).json({ success: false, error: 'تجاوز عدد الحسابات حد الإرسال الآمن البالغ 10000.' });
+    console.error('Email verification reminder preview failed:', error.message);
+    return res.status(503).json({ success: false, error: 'تعذر احتساب الحسابات غير الموثقة حاليًا.' });
+  }
+}
+
+async function createEmailVerificationReminders(req, res) {
+  try {
+    if (req.body?.confirmed !== true || req.body?.confirmation !== 'إرسال تذكيرات التوثيق') {
+      return res.status(400).json({ success: false, error: 'اكتب عبارة «إرسال تذكيرات التوثيق» لتأكيد الجدولة.' });
+    }
+    const emailFrom = String(process.env.EMAIL_FROM || '').trim();
+    if (!req.app?.locals?.resend?.batch?.send || !emailFrom || /resend\.dev/i.test(emailFrom)) {
+      return res.status(503).json({ success: false, error: 'خدمة البريد غير مهيأة بعنوان مرسل موثق.' });
+    }
+    const recipients = await emailVerificationReminderService.getEligibleRecipients();
+    if (!recipients.length) return res.status(409).json({ success: false, error: 'لا توجد حسابات مؤهلة لتذكير التوثيق حاليًا.' });
+    const created = await dataAccess.callSupabaseRpc('operix_create_email_verification_reminder_atomic', {
+      p_created_by: req.user.id || req.user._id,
+      p_recipients: recipients
+    });
+    const campaignId = String(created?.id || created?.campaignId || created?.campaign_id || '');
+    if (!campaignId) throw new Error('EMAIL_VERIFICATION_REMINDER_ID_MISSING');
+    return res.status(202).json({ success: true, campaignId, recipientCount: recipients.length, message: 'تمت جدولة تذكيرات التوثيق على دفعات.' });
+  } catch (error) {
+    if (String(error.message || '').startsWith('RECIPIENT_LIMIT_EXCEEDED')) return res.status(400).json({ success: false, error: 'تجاوز عدد الحسابات حد الإرسال الآمن البالغ 10000.' });
+    console.error('Email verification reminder queue failed:', error.message);
+    return res.status(503).json({ success: false, error: 'تعذر جدولة تذكيرات التوثيق؛ لم يبدأ الإرسال.' });
+  }
+}
+
+async function listEmailVerificationReminderCampaigns(req, res) {
+  try {
+    const campaigns = await dataAccess.emailVerificationReminderCampaign.find({}, { sort: { createdAt: -1 }, limit: 50 });
+    return res.json({ success: true, campaigns });
+  } catch (error) {
+    return res.status(503).json({ success: false, error: 'تعذر تحميل سجل تذكيرات التوثيق.' });
+  }
+}
+
+async function processEmailVerificationReminders(resend) {
+  return emailVerificationReminderService.processQueue(resend);
+}
+
 async function broadcast(req, res) {
   try {
     const { title, body, audienceType = 'all', audienceValue = '', scheduledAt } = req.body;
@@ -1349,4 +1406,4 @@ async function processScheduledBroadcasts(webpush) {
   return [];
 }
 
-module.exports = { saveVipLevel, listVipLevels, deleteVipLevel, overview, analytics, financialSummary, financialReadiness, financialAccounting, investmentVaultSummary, getInvestmentVaultContracts, updateInvestmentVaultContracts, listInvestmentVaults, emergencyReleaseInvestmentVault, riskSummary, listUsers, exportUsers, userDetails, resetDailyTasks, toggleBan, bulkToggleBan, revokeUserSessions, verifyUserEmail, disableUserTwoFactor, updateUser, updateUserAccount, updateUserRole, updateUserTier, listWithdrawals, transactionDetails, exportTransactions, listAuditLogs, listReferrals, exportReferrals, referralTree, withdrawalAction, reconcileWithdrawalPayout, bulkWithdrawalAction, gameSettings, updateGameSettings, previewEmailBroadcast, createEmailBroadcast, listEmailBroadcasts, processAdminEmailBroadcasts, broadcast, listBroadcasts, processScheduledBroadcasts, processAutomaticWithdrawalApprovals, processWithdrawalPayoutQueue, sendAdminAuditBroadcast };
+module.exports = { saveVipLevel, listVipLevels, deleteVipLevel, overview, analytics, financialSummary, financialReadiness, financialAccounting, investmentVaultSummary, getInvestmentVaultContracts, updateInvestmentVaultContracts, listInvestmentVaults, emergencyReleaseInvestmentVault, riskSummary, listUsers, exportUsers, userDetails, resetDailyTasks, toggleBan, bulkToggleBan, revokeUserSessions, verifyUserEmail, disableUserTwoFactor, updateUser, updateUserAccount, updateUserRole, updateUserTier, listWithdrawals, transactionDetails, exportTransactions, listAuditLogs, listReferrals, exportReferrals, referralTree, withdrawalAction, reconcileWithdrawalPayout, bulkWithdrawalAction, gameSettings, updateGameSettings, previewEmailBroadcast, createEmailBroadcast, listEmailBroadcasts, processAdminEmailBroadcasts, previewEmailVerificationReminders, createEmailVerificationReminders, listEmailVerificationReminderCampaigns, processEmailVerificationReminders, broadcast, listBroadcasts, processScheduledBroadcasts, processAutomaticWithdrawalApprovals, processWithdrawalPayoutQueue, sendAdminAuditBroadcast };
