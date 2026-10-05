@@ -30,7 +30,7 @@ Deposits are assigned a deterministic, per-user TRON address derived from a publ
 
 ### Required setup — keep all switches off until validation
 
-1. Apply `supabase/automatic-withdrawals.sql`, then `supabase/automatic-trc20-deposits.sql`, then `supabase/trc20-only-financials.sql` to production Supabase, in that order. The migrations use service-role-only RPCs and must be applied after the canonical schema.
+1. Apply `supabase/automatic-withdrawals.sql`, then `supabase/automatic-trc20-deposits.sql`, then `supabase/trc20-only-financials.sql`, and finally `supabase/withdrawal-validation-hardening.sql` to production Supabase, in that order. The migrations use service-role-only RPCs and must be applied after the canonical schema.
 2. Create a NEW dedicated TRON deposit wallet offline. Run `node scripts/create-tron-deposit-xpub.js` on a trusted offline computer and enter its recovery phrase only into that local hidden prompt. Put the resulting **public** extended key in `TRON_DEPOSIT_XPUB`; never place the seed/private keys in Vercel or Supabase. Keep the seed offline for recovery and manual consolidation of the derived deposit addresses.
 3. Create a separate, low-balance TRON payout wallet. Fund it with USDT TRC20 and TRX for network fees. Put only its private key in Vercel's encrypted Production variable `TRON_WITHDRAWAL_PRIVATE_KEY`; never paste it in chat or commit it.
 4. Configure `TRONGRID_API_URL` (mainnet endpoint), `TRONGRID_API_KEY` (recommended), and `CRON_SECRET`. Keep `TRON_DEPOSIT_AUTOMATION_ENABLED=false`, `WITHDRAWAL_PAYOUTS_ENABLED=false`, and `WITHDRAWAL_AUTO_APPROVAL_ENABLED=false` while applying migrations, deploying, and validating.

@@ -1,13 +1,7 @@
 const crypto = require('crypto');
-const { Contract, JsonRpcProvider, Wallet, isAddress, keccak256, parseUnits } = require('ethers');
 const { TronWeb } = require('tronweb');
 const blockchainService = require('./blockchainService');
 
-const TOKEN_ABI = [
-  'function transfer(address to, uint256 amount) returns (bool)',
-  'function balanceOf(address account) view returns (uint256)',
-  'event Transfer(address indexed from, address indexed to, uint256 value)'
-];
 const TRANSFER_ABI_V2 = {
   name: 'transfer',
   type: 'function',
@@ -15,17 +9,28 @@ const TRANSFER_ABI_V2 = {
   outputs: [{ name: 'success', type: 'bool' }],
   stateMutability: 'nonpayable'
 };
-const BSC_CHAIN_ID = 56n;
-const DEFAULT_CONFIRMATIONS = 12;
 const MAX_BROADCAST_ATTEMPTS = 10;
-const MAX_PAYOUT_AMOUNT = Number(process.env.WITHDRAWAL_MAX_SINGLE_USDT || 5000);
+const DEFAULT_MAX_PAYOUT_AMOUNT = 5000;
+
+function getMaxPayoutAmount() {
+  const configured = String(process.env.WITHDRAWAL_MAX_SINGLE_USDT || '').trim();
+  if (!configured) return DEFAULT_MAX_PAYOUT_AMOUNT;
+  if (!/^(?:0|[1-9]\d*)(?:\.\d+)?$/.test(configured)) throw new Error('PAYOUT_AMOUNT_LIMIT_CONFIG_INVALID');
+  const maximum = Number(configured);
+  if (!Number.isFinite(maximum) || maximum <= 0 || maximum > DEFAULT_MAX_PAYOUT_AMOUNT) {
+    throw new Error('PAYOUT_AMOUNT_LIMIT_CONFIG_INVALID');
+  }
+  return maximum;
+}
 
 function parseTokenUnits(value, decimals) {
   const text = String(value ?? '').trim();
+  if (!Number.isInteger(decimals) || decimals < 0 || decimals > 18) throw new Error('INVALID_TOKEN_DECIMALS');
   const match = text.match(/^(0|[1-9]\d*)(?:\.(\d+))?$/);
   if (!match || (match[2] && match[2].length > decimals)) throw new Error('INVALID_PAYOUT_AMOUNT');
   const units = BigInt(match[1]) * 10n ** BigInt(decimals) + BigInt((match[2] || '').padEnd(decimals, '0') || '0');
-  if (units <= 0n || !Number.isFinite(Number(text)) || Number(text) > MAX_PAYOUT_AMOUNT) throw new Error('PAYOUT_AMOUNT_LIMIT');
+  const numericAmount = Number(text);
+  if (units <= 0n || !Number.isFinite(numericAmount) || numericAmount > getMaxPayoutAmount()) throw new Error('PAYOUT_AMOUNT_LIMIT');
   return units;
 }
 
@@ -55,59 +60,6 @@ function getPrivateKey(network) {
   const privateKey = String(process.env[keyName] || '').trim();
   if (!privateKey) throw new Error(`${keyName}_NOT_CONFIGURED`);
   return privateKey;
-}
-
-async function prepareBep20Payout({ recipient, amount }) {
-  const config = blockchainService.getBlockchainConfig().BEP20;
-  if (!config.rpcUrl) throw new Error('BSC_RPC_URL_NOT_CONFIGURED');
-  const privateKey = getPrivateKey('BEP20');
-  const provider = new JsonRpcProvider(config.rpcUrl, Number(BSC_CHAIN_ID), { staticNetwork: true });
-  const wallet = new Wallet(privateKey, provider);
-  if (!isAddress(recipient)) throw new Error('INVALID_BEP20_RECIPIENT');
-  const recipientAddress = recipient.trim();
-  const chain = await provider.getNetwork();
-  if (chain.chainId !== BSC_CHAIN_ID) throw new Error('BSC_RPC_WRONG_CHAIN');
-
-  const token = new Contract(config.tokenContract, TOKEN_ABI, wallet);
-  const amountUnits = parseTokenUnits(amount, config.decimals);
-  const balance = await token.balanceOf(wallet.address);
-  if (balance < amountUnits) throw new Error('PAYOUT_TOKEN_BALANCE_INSUFFICIENT');
-
-  const feeData = await provider.getFeeData();
-  const maxFeePerGas = feeData.maxFeePerGas;
-  const maxPriorityFeePerGas = feeData.maxPriorityFeePerGas;
-  const gasPrice = feeData.gasPrice;
-  const feeFields = maxFeePerGas !== null && maxPriorityFeePerGas !== null
-    ? { type: 2, maxFeePerGas, maxPriorityFeePerGas }
-    : gasPrice !== null ? { type: 0, gasPrice } : null;
-  if (!feeFields) throw new Error('BSC_GAS_PRICE_UNAVAILABLE');
-  const maxAllowedGasPrice = parseUnits(String(process.env.BSC_WITHDRAWAL_MAX_GAS_PRICE_GWEI || '10'), 'gwei');
-  if ((feeFields.maxFeePerGas || feeFields.gasPrice) > maxAllowedGasPrice) throw new Error('BSC_GAS_PRICE_LIMIT_EXCEEDED');
-
-  const data = token.interface.encodeFunctionData('transfer', [recipientAddress, amountUnits]);
-  const estimate = await provider.estimateGas({ from: wallet.address, to: config.tokenContract, data, value: 0n });
-  const gasLimit = estimate * 120n / 100n;
-  const gasBalance = await provider.getBalance(wallet.address);
-  const maxGasPrice = feeFields.maxFeePerGas || feeFields.gasPrice;
-  if (gasBalance < gasLimit * maxGasPrice) throw new Error('PAYOUT_NATIVE_GAS_BALANCE_INSUFFICIENT');
-
-  const nonce = await provider.getTransactionCount(wallet.address, 'pending');
-  const rawTransaction = await wallet.signTransaction({
-    chainId: BSC_CHAIN_ID,
-    type: feeFields.type,
-    nonce,
-    to: config.tokenContract,
-    value: 0n,
-    data,
-    gasLimit,
-    ...feeFields
-  });
-  const txHash = keccak256(rawTransaction);
-  return {
-    network: 'BEP20', recipient: recipientAddress, amount: String(amount), amountUnits: amountUnits.toString(),
-    senderAddress: wallet.address, txHash, encryptedPayload: encryptSignedPayload('BEP20', privateKey, { rawTransaction }),
-    payloadExpiresAt: null
-  };
 }
 
 function createTronWeb(network, privateKey) {
@@ -163,9 +115,10 @@ async function prepareTrc20Payout({ recipient, amount }) {
 
 async function preparePayout(withdrawal) {
   const network = String(withdrawal.network || '').toUpperCase();
-  const amount = Number(withdrawal.netAmount ?? withdrawal.amount);
+  const amount = String(withdrawal.netAmount ?? withdrawal.amount ?? '').trim();
+  const numericAmount = Number(amount);
   if (network !== 'TRC20') throw new Error('UNSUPPORTED_WITHDRAWAL_NETWORK');
-  if (!Number.isFinite(amount) || amount <= 0 || amount > MAX_PAYOUT_AMOUNT) throw new Error('PAYOUT_AMOUNT_LIMIT');
+  if (!Number.isFinite(numericAmount) || numericAmount <= 0 || numericAmount > getMaxPayoutAmount()) throw new Error('PAYOUT_AMOUNT_LIMIT');
   return prepareTrc20Payout({ recipient: withdrawal.walletAddress, amount });
 }
 
@@ -185,37 +138,11 @@ async function broadcastPreparedPayout(network, encryptedPayload) {
 async function inspectPayout(network, txHash, encryptedPayload) {
   const normalizedNetwork = String(network || '').toUpperCase();
   if (normalizedNetwork !== 'TRC20') throw new Error('UNSUPPORTED_WITHDRAWAL_NETWORK');
-  if (normalizedNetwork === 'BEP20') {
-    const config = blockchainService.getBlockchainConfig().BEP20;
-    const provider = new JsonRpcProvider(config.rpcUrl, Number(BSC_CHAIN_ID), { staticNetwork: true });
-    const [receipt, transaction] = await Promise.all([provider.getTransactionReceipt(txHash), provider.getTransaction(txHash)]);
-    if (!receipt) return { state: 'pending' };
-    if (!transaction || transaction.to?.toLowerCase() !== config.tokenContract.toLowerCase()) return { state: 'failed' };
-    const tokenInterface = new Contract(config.tokenContract, TOKEN_ABI, provider).interface;
-    const parsedTransfer = tokenInterface.parseTransaction({ data: transaction.data });
-    if (!parsedTransfer || parsedTransfer.name !== 'transfer') return { state: 'failed' };
-    const transferEvent = tokenInterface.getEvent('Transfer');
-    const matchingTransfer = receipt.logs.some(log => {
-      if (log.address.toLowerCase() !== config.tokenContract.toLowerCase() || log.topics[0]?.toLowerCase() !== transferEvent.topicHash.toLowerCase()) return false;
-      try {
-        const parsedLog = tokenInterface.parseLog(log);
-        return parsedLog.args.to.toLowerCase() === parsedTransfer.args.to.toLowerCase() && parsedLog.args.value === parsedTransfer.args.value;
-      } catch { return false; }
-    });
-    if (!matchingTransfer) return { state: receipt.status === 1 ? 'failed' : 'confirming_failure' };
-    const latestBlock = await provider.getBlockNumber();
-    const confirmations = latestBlock - receipt.blockNumber + 1;
-    if (receipt.status !== 1) {
-      return confirmations >= Number(process.env.BSC_WITHDRAWAL_MIN_CONFIRMATIONS || DEFAULT_CONFIRMATIONS)
-        ? { state: 'failed', confirmations }
-        : { state: 'confirming_failure', confirmations };
-    }
-    return confirmations >= Number(process.env.BSC_WITHDRAWAL_MIN_CONFIRMATIONS || DEFAULT_CONFIRMATIONS)
-      ? { state: 'confirmed', confirmations }
-      : { state: 'confirming', confirmations };
-  }
   const config = blockchainService.getBlockchainConfig().TRC20;
   const payload = decryptSignedPayload(normalizedNetwork, getPrivateKey(normalizedNetwork), encryptedPayload);
+  if (String(payload.signedTransaction?.txID || '').toLowerCase() !== String(txHash || '').toLowerCase()) {
+    throw new Error('PAYOUT_HASH_MISMATCH');
+  }
   const apiKey = String(process.env.TRONGRID_API_KEY || '').trim();
   const url = `${String(process.env.TRONGRID_SOLIDITY_API_URL || config.apiUrl).replace(/\/$/, '')}/walletsolidity/gettransactioninfobyid`;
   const response = await fetch(url, {
@@ -224,21 +151,38 @@ async function inspectPayout(network, txHash, encryptedPayload) {
   });
   if (!response.ok) throw new Error('TRON_CONFIRMATION_PROVIDER_ERROR');
   const info = await response.json();
+  const expiration = Number(payload.signedTransaction.raw_data.expiration);
   if (!info?.id) {
     const tronWeb = createTronWeb(normalizedNetwork, getPrivateKey(normalizedNetwork)).tronWeb;
-    const observedTransaction = await tronWeb.trx.getTransaction(txHash).catch(() => null);
-    const expiration = Number(payload.signedTransaction.raw_data.expiration);
-    if (observedTransaction?.txID && Date.now() < expiration + 30 * 60 * 1000) return { state: 'confirming' };
-    if (Date.now() >= expiration) return { state: 'expired' };
-    return { state: 'pending' };
+    // Do not turn provider/network errors into proof that the transaction is absent.
+    const observedTransaction = await tronWeb.trx.getTransaction(txHash);
+    return classifyTronConfirmation({ txHash, info, observedTransaction, expiration });
   }
-  return info.receipt?.result === 'SUCCESS' ? { state: 'confirmed', blockNumber: info.blockNumber } : { state: 'failed', blockNumber: info.blockNumber };
+  return classifyTronConfirmation({ txHash, info, expiration });
 }
 
 function getMaxBroadcastAttempts() { return MAX_BROADCAST_ATTEMPTS; }
 
+function classifyTronConfirmation({ txHash, info, observedTransaction, expiration, now = Date.now() }) {
+  if (info?.id) {
+    if (String(info.id).toLowerCase() !== String(txHash).toLowerCase()) throw new Error('TRON_CONFIRMATION_HASH_MISMATCH');
+    const block = info.blockNumber === undefined ? {} : { blockNumber: info.blockNumber };
+    if (info.receipt?.result === 'SUCCESS') return { state: 'confirmed', ...block };
+    if (typeof info.receipt?.result === 'string' && info.receipt.result.trim()) return { state: 'failed', ...block };
+    return { state: 'confirming', ...block };
+  }
+  if (observedTransaction?.txID) {
+    if (String(observedTransaction.txID).toLowerCase() !== String(txHash).toLowerCase()) throw new Error('TRON_CONFIRMATION_HASH_MISMATCH');
+    return { state: 'confirming' };
+  }
+  if (!Number.isFinite(expiration) || expiration <= 0) throw new Error('INVALID_SIGNED_PAYOUT_EXPIRATION');
+  return now >= expiration + 30 * 60 * 1000 ? { state: 'expired' } : { state: 'pending' };
+}
+
 module.exports = {
   parseTokenUnits,
+  getMaxPayoutAmount,
+  classifyTronConfirmation,
   encryptSignedPayload,
   decryptSignedPayload,
   preparePayout,

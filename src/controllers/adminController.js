@@ -905,10 +905,23 @@ async function processAutomaticWithdrawalApprovals() {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(automationAdminId)) {
     return { processed: 0, skipped: true, reason: 'WITHDRAWAL_AUTO_APPROVAL_ADMIN_ID_NOT_CONFIGURED' };
   }
-  const maxSingle = Math.min(5000, Math.max(20, Number(process.env.WITHDRAWAL_AUTO_MAX_SINGLE_USDT || 100)));
-  const maxDaily = Math.max(maxSingle, Number(process.env.WITHDRAWAL_AUTO_DAILY_LIMIT_USDT || 250));
-  const maxRiskScore = Math.min(39, Math.max(0, Number(process.env.WITHDRAWAL_AUTO_MAX_RISK_SCORE || 20)));
-  const delayMinutes = Math.max(10, Number(process.env.WITHDRAWAL_AUTO_DELAY_MINUTES || 30));
+  const readLimit = (name, fallback) => {
+    const raw = String(process.env[name] || '').trim();
+    if (!raw) return fallback;
+    const value = Number(raw);
+    return Number.isFinite(value) ? value : null;
+  };
+  const configuredMaxSingle = readLimit('WITHDRAWAL_AUTO_MAX_SINGLE_USDT', 100);
+  const configuredMaxDaily = readLimit('WITHDRAWAL_AUTO_DAILY_LIMIT_USDT', 250);
+  const configuredMaxRiskScore = readLimit('WITHDRAWAL_AUTO_MAX_RISK_SCORE', 20);
+  const configuredDelayMinutes = readLimit('WITHDRAWAL_AUTO_DELAY_MINUTES', 30);
+  if ([configuredMaxSingle, configuredMaxDaily, configuredMaxRiskScore, configuredDelayMinutes].some(value => value === null)) {
+    return { processed: 0, skipped: true, reason: 'WITHDRAWAL_AUTO_APPROVAL_LIMIT_CONFIG_INVALID' };
+  }
+  const maxSingle = Math.min(5000, Math.max(20, configuredMaxSingle));
+  const maxDaily = Math.max(0, Math.min(100000, configuredMaxDaily));
+  const maxRiskScore = Math.min(39, Math.max(0, configuredMaxRiskScore));
+  const delayMinutes = Math.min(10080, Math.max(10, configuredDelayMinutes));
   const eligibleBefore = new Date(Date.now() - delayMinutes * 60 * 1000);
   const pending = await dataAccess.transaction.find({
     type: 'withdraw', status: 'pending', network: 'TRC20', riskLevel: 'low',
@@ -928,7 +941,7 @@ async function processAutomaticWithdrawalApprovals() {
         continue;
       }
       const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
-      const recent = await dataAccess.transaction.find({ userId: transaction.userId, type: 'withdraw', status: { $in: ['pending', 'approved'] }, createdAt: { $gte: since } }, { limit: 100 });
+      const recent = await dataAccess.transaction.find({ userId: transaction.userId, type: 'withdraw', status: { $in: ['pending', 'approved'] }, createdAt: { $gte: since } });
       const dailyTotal = recent.reduce((sum, item) => sum + Number(item.amount || 0), 0);
       if (!Number.isFinite(amount) || amount <= 0 || dailyTotal > maxDaily) {
         results.push({ transactionId: transaction.id, state: 'manual_review', reason: 'AUTO_DAILY_LIMIT_EXCEEDED' });

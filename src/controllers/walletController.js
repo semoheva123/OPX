@@ -1,24 +1,35 @@
 const { authenticator } = require('otplib');
 const emailFrom = String(process.env.EMAIL_FROM || '').trim();
+const { TronWeb } = require('tronweb');
 
 const verifySync = ({ token, secret }) => ({ valid: authenticator.check(token, secret) });
 const realtimeService = require('../services/realtimeService');
 const { withdrawalRequestTemplate } = require('../services/emailTemplates');
 const { recordLedgerEntry } = require('../services/financialLedger');
 const { hasFullFeatureAccess } = require('../services/paidFeatureAccess');
+const withdrawalPayoutService = require('../services/withdrawalPayoutService');
 const dataAccess = require('../services/dataAccess');
 const tronDepositService = require('../services/tronDepositService');
 const SecurityEvent = dataAccess.securityEvent;
 
-const HYBRID_WITHDRAWAL_RATE = 0.05;
-const HYBRID_WITHDRAWAL_FIXED_FEE = 2;
 const MIN_WITHDRAWAL_AMOUNT = 20;
 
 function calculateHybridWithdrawalFee(amount) {
-  const value = Number(amount);
-  const feeAmount = Number((value * HYBRID_WITHDRAWAL_RATE + HYBRID_WITHDRAWAL_FIXED_FEE).toFixed(2));
-  const netAmount = Number(Math.max(0, value - feeAmount).toFixed(2));
-  return { feeAmount, netAmount };
+  const match = String(amount ?? '').trim().match(/^(?:0|[1-9]\d*)(?:\.(\d{1,4}))?$/);
+  if (!match) return { feeAmount: Number.NaN, netAmount: Number.NaN };
+  const [whole, fraction = ''] = String(amount).trim().split('.');
+  const amountUnits = BigInt(whole) * 10000n + BigInt(fraction.padEnd(4, '0') || '0');
+  const feeCents = (amountUnits * 5n + 5000n) / 10000n + 200n;
+  const netUnits = amountUnits - feeCents * 100n;
+  return { feeAmount: Number(feeCents) / 100, netAmount: Number(netUnits) / 10000 };
+}
+
+function sameWithdrawalIntent(existing, intent) {
+  return Number(existing?.amount) === intent.amount &&
+    Number(existing?.feeAmount) === intent.feeAmount &&
+    Number(existing?.netAmount) === intent.netAmount &&
+    String(existing?.walletAddress || '').trim() === intent.walletAddress &&
+    String(existing?.network || '').trim().toUpperCase() === intent.network;
 }
 
 async function calculateWithdrawalRisk(user, amount, ip, session) {
@@ -78,36 +89,47 @@ async function withdraw(req, res) {
 }
 
 async function withdrawSupabase(req, res) {
+  let withdrawalIntent = null;
   try {
     const { amount, walletAddress, walletNetwork, twoFactorCode, asset, currency } = req.body;
     const requestedAsset = String(asset || currency || '').trim().toUpperCase();
-    if (requestedAsset === 'OPX') {
-      return res.status(400).json({ error: 'رصيد OPX الداخلي مخصص فقط للترقيات ولا يمكن سحبه.' });
-    }
-    const idempotencyKey = String(req.get('Idempotency-Key') || '').trim().slice(0, 120);
-    const withdrawNum = Number(amount);
-    const feeSummary = calculateHybridWithdrawalFee(withdrawNum);
+    if (requestedAsset && requestedAsset !== 'USDT') return res.status(400).json({ error: 'السحب متاح بعملة USDT فقط؛ رصيد OPX الداخلي غير قابل للسحب.' });
+    const idempotencyKey = String(req.get('Idempotency-Key') || '').trim();
+    if (!/^[A-Za-z0-9._:-]{8,120}$/.test(idempotencyKey)) return res.status(400).json({ error: 'مفتاح طلب السحب غير صالح؛ أعد المحاولة من التطبيق.' });
+    const amountText = (typeof amount === 'number' || typeof amount === 'string') ? String(amount).trim() : '';
+    if (!/^(?:0|[1-9]\d*)(?:\.\d{1,4})?$/.test(amountText)) return res.status(400).json({ error: 'المبلغ يجب أن يكون رقمًا صالحًا حتى 4 منازل عشرية.' });
+    const withdrawNum = Number(amountText);
+    let maxPayoutAmount;
+    try { maxPayoutAmount = withdrawalPayoutService.getMaxPayoutAmount(); }
+    catch { return res.status(503).json({ error: 'إعداد الحد الأقصى للسحب غير صالح؛ لم يُحجز أي رصيد.' }); }
+    const feeSummary = calculateHybridWithdrawalFee(amountText);
     if (!Number.isFinite(withdrawNum) || withdrawNum < MIN_WITHDRAWAL_AMOUNT) return res.status(400).json({ error: `الحد الأدنى للسحب هو ${MIN_WITHDRAWAL_AMOUNT}$ USDT` });
+    if (withdrawNum > maxPayoutAmount) return res.status(400).json({ error: `الحد الأقصى للسحب هو ${maxPayoutAmount}$ USDT` });
     if (!walletAddress || typeof walletAddress !== 'string' || !walletAddress.trim()) return res.status(400).json({ error: 'يرجى إدخال عنوان المحفظة' });
-    if (String(walletNetwork || '').trim().toUpperCase() !== 'TRC20') return res.status(400).json({ error: 'السحب متاح حاليًا على شبكة TRC20 فقط' });
+    const normalizedWalletAddress = walletAddress.trim();
+    const normalizedNetwork = String(walletNetwork || '').trim().toUpperCase();
+    if (normalizedNetwork !== 'TRC20') return res.status(400).json({ error: 'السحب متاح حاليًا على شبكة TRC20 فقط' });
+    if (!TronWeb.isAddress(normalizedWalletAddress)) return res.status(400).json({ error: 'عنوان محفظة TRON غير صالح.' });
     if (feeSummary.netAmount <= 0) return res.status(400).json({ error: 'مبلغ السحب غير صالح بعد احتساب الرسوم' });
-    if (idempotencyKey) {
-      const existing = await dataAccess.transaction.findOne({ userId: req.user.id, type: 'withdraw', idempotencyKey });
-      if (existing) return res.json({ success: true, message: 'تم استلام طلب السحب مسبقًا', wallet: null, withdrawal: existing, duplicate: true });
+    const intent = withdrawalIntent = { amount: withdrawNum, feeAmount: feeSummary.feeAmount, netAmount: feeSummary.netAmount, walletAddress: normalizedWalletAddress, network: normalizedNetwork };
+    const existing = await dataAccess.transaction.findOne({ userId: req.user.id, type: 'withdraw', idempotencyKey });
+    if (existing) {
+      if (!sameWithdrawalIntent(existing, intent)) return res.status(409).json({ error: 'أُعيد استخدام مفتاح الطلب لبيانات سحب مختلفة؛ أنشئ طلبًا جديدًا.' });
+      return res.json({ success: true, message: 'تم استلام طلب السحب مسبقًا', wallet: null, withdrawal: existing, duplicate: true });
     }
     const user = await dataAccess.user.findById(req.user.id);
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     const fullFeatureAccess = hasFullFeatureAccess(user);
-    if (!fullFeatureAccess && !user.emailVerified) return res.status(400).json({ error: 'يجب تأكيد بريدك الإلكتروني قبل طلب السحب' });
-    if (!fullFeatureAccess && (!user.twoFactorEnabled || !user.twoFactorSecret)) return res.status(400).json({ error: 'يجب تفعيل المصادقة الثنائية قبل طلب السحب' });
-    if (!fullFeatureAccess && (!twoFactorCode || !verifySync({ token: String(twoFactorCode).trim(), secret: user.twoFactorSecret }).valid)) return res.status(400).json({ error: 'رمز المصادقة الثنائية غير صحيح' });
-    if (!fullFeatureAccess && (!user.walletAddress || user.walletAddress.trim() !== walletAddress.trim())) return res.status(400).json({ error: 'عنوان المحفظة لا يطابق العنوان المثبت في حسابك' });
-    if (!fullFeatureAccess && String(user.walletNetwork || '').toUpperCase() !== String(walletNetwork).trim().toUpperCase()) return res.status(400).json({ error: 'شبكة السحب لا تطابق الشبكة المثبتة مع العنوان' });
+    if (!user.emailVerified) return res.status(400).json({ error: 'يجب تأكيد بريدك الإلكتروني قبل طلب السحب' });
+    if (!user.twoFactorEnabled || !user.twoFactorSecret) return res.status(400).json({ error: 'يجب تفعيل المصادقة الثنائية قبل طلب السحب' });
+    if (!twoFactorCode || !verifySync({ token: String(twoFactorCode).trim(), secret: user.twoFactorSecret }).valid) return res.status(400).json({ error: 'رمز المصادقة الثنائية غير صحيح' });
+    if (!user.walletAddress || String(user.walletAddress).trim() !== normalizedWalletAddress) return res.status(400).json({ error: 'عنوان المحفظة لا يطابق العنوان المثبت في حسابك' });
+    if (String(user.walletNetwork || '').toUpperCase() !== normalizedNetwork) return res.status(400).json({ error: 'شبكة السحب لا تطابق الشبكة المثبتة مع العنوان' });
     if (!fullFeatureAccess && Number(user.wallet?.profitBalance || 0) < MIN_WITHDRAWAL_AMOUNT) return res.status(400).json({ error: `الحد الأدنى لرصيد الأرباح للسحب هو ${MIN_WITHDRAWAL_AMOUNT}$` });
     const vipLevel = await dataAccess.vipLevel.findOne({ code: user.tierCode });
     const maxLimit = vipLevel ? Math.max(20, Number(vipLevel.price || 0) * 0.3) : 20;
     if (!fullFeatureAccess && withdrawNum > maxLimit) return res.status(400).json({ error: `الحد الأقصى للسحب الحالي هو ${maxLimit}$` });
-    if (!fullFeatureAccess && Number(user.wallet.profitBalance || 0) < withdrawNum) return res.status(400).json({ error: 'رصيد الأرباح غير كافٍ' });
+    if (!fullFeatureAccess && Number(user.wallet?.profitBalance || 0) < withdrawNum) return res.status(400).json({ error: 'رصيد الأرباح غير كافٍ' });
     const weekStart = new Date(); weekStart.setUTCHours(0, 0, 0, 0); weekStart.setUTCDate(weekStart.getUTCDate() - 6);
     const weekly = await dataAccess.transaction.find({ userId: req.user.id, type: 'withdraw', status: { $in: ['pending', 'approved'] }, createdAt: { $gte: weekStart } });
     if (!fullFeatureAccess && weekly.reduce((sum, item) => sum + Number(item.amount || 0), 0) + withdrawNum > maxLimit) return res.status(400).json({ error: `تجاوزت الحد الأسبوعي للسحب البالغ ${maxLimit}$` });
@@ -117,15 +139,19 @@ async function withdrawSupabase(req, res) {
       p_amount: withdrawNum,
       p_fee: feeSummary.feeAmount,
       p_net_amount: feeSummary.netAmount,
-      p_wallet_address: walletAddress.trim(),
+      p_wallet_address: normalizedWalletAddress,
       p_image_url: '',
       p_idempotency_key: idempotencyKey,
       p_risk_score: risk.riskScore,
       p_risk_level: risk.riskLevel,
       p_risk_flags: risk.riskFlags,
-      p_network: String(walletNetwork).trim().toUpperCase()
+      p_network: normalizedNetwork
     });
     const withdrawal = result.transaction;
+    if (result.duplicate) {
+      if (!sameWithdrawalIntent(withdrawal, intent)) return res.status(409).json({ error: 'أُعيد استخدام مفتاح الطلب لبيانات سحب مختلفة؛ أنشئ طلبًا جديدًا.' });
+      return res.json({ success: true, message: 'تم استلام طلب السحب مسبقًا', wallet: null, withdrawal, duplicate: true });
+    }
     await realtimeService.publish('user_data_changed', { reason: 'withdrawal_created', timestamp: new Date().toISOString() }, { userId: req.user.id });
     await realtimeService.publish('admin_transaction_created', { transactionId: withdrawal.id, type: 'withdraw', userId: req.user.id, riskLevel: withdrawal.riskLevel, riskScore: withdrawal.riskScore }, { scope: 'admin' });
     const resend = req.app.locals.resend;
@@ -139,7 +165,7 @@ async function withdrawSupabase(req, res) {
           html: withdrawalRequestTemplate({
             amount: withdrawNum.toFixed(2),
             transactionId: withdrawal.id,
-            walletAddress: walletAddress.trim(),
+            walletAddress: normalizedWalletAddress,
             requestedAt: new Date().toLocaleString('ar')
           })
         });
@@ -154,7 +180,16 @@ async function withdrawSupabase(req, res) {
     return res.json({ success: true, emailSent, message: emailSent ? 'تم تقديم طلب السحب وإرسال إشعار إلى بريدك الإلكتروني' : 'تم تقديم طلب السحب، لكن تعذر إرسال إشعار البريد حاليًا', wallet: result.wallet, withdrawal });
   } catch (error) {
     if (error?.message === 'INSUFFICIENT_PROFIT') return res.status(400).json({ error: 'رصيد الأرباح غير كافٍ' });
-    if (error?.code === '23505') return res.status(409).json({ success: true, message: 'تم استلام طلب السحب مسبقًا', duplicate: true });
+    if (error?.message === 'IDEMPOTENCY_KEY_REUSED') return res.status(409).json({ error: 'أُعيد استخدام مفتاح الطلب لبيانات سحب مختلفة؛ أنشئ طلبًا جديدًا.' });
+    if (error?.code === '23505') {
+      try {
+        const existing = await dataAccess.transaction.findOne({ userId: req.user.id, type: 'withdraw', idempotencyKey: String(req.get('Idempotency-Key') || '').trim() });
+        if (existing && withdrawalIntent && sameWithdrawalIntent(existing, withdrawalIntent)) {
+          return res.json({ success: true, message: 'تم استلام طلب السحب مسبقًا', withdrawal: existing, duplicate: true });
+        }
+      } catch { }
+      return res.status(409).json({ error: 'تعارض مفتاح طلب السحب أو اختلاف بياناته؛ راجع سجل المعاملات أو أنشئ طلبًا جديدًا.' });
+    }
     console.error('Supabase withdrawal error:', error.message);
     return res.status(500).json({ error: 'حدث خطأ في معالجة طلب السحب' });
   }
@@ -174,4 +209,4 @@ async function getDepositConfig(req, res) {
   }
 }
 
-module.exports = { deposit, withdraw, getMyHistory, getDepositConfig };
+module.exports = { deposit, withdraw, getMyHistory, getDepositConfig, calculateHybridWithdrawalFee, sameWithdrawalIntent };

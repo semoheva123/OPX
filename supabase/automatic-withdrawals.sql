@@ -25,9 +25,24 @@ declare
   before_balance numeric;
   normalized_network text := upper(trim(coalesce(p_network, '')));
 begin
-  if normalized_network not in ('TRC20', 'BEP20') then raise exception using errcode = 'P0001', message = 'INVALID_WITHDRAWAL_NETWORK'; end if;
-  if p_idempotency_key is not null and exists (select 1 from transactions where user_id = p_user_id and type = 'withdraw' and idempotency_key = p_idempotency_key) then
+  if normalized_network <> 'TRC20' then raise exception using errcode = 'P0001', message = 'INVALID_WITHDRAWAL_NETWORK'; end if;
+  if p_amount is null or p_amount < 20 or p_amount > 5000 or p_amount <> round(p_amount, 4)
+      or p_fee is null or p_fee < 0 or p_fee <> round(p_amount * 0.05 + 2, 2)
+      or p_net_amount is null or p_net_amount <= 0 or p_net_amount <> round(p_amount - p_fee, 4) then
+    raise exception using errcode = 'P0001', message = 'INVALID_WITHDRAWAL_AMOUNT';
+  end if;
+  if p_idempotency_key is null or length(trim(p_idempotency_key)) < 8 or length(p_idempotency_key) > 120 then
+    raise exception using errcode = 'P0001', message = 'INVALID_IDEMPOTENCY_KEY';
+  end if;
+  if p_wallet_address is null or length(trim(p_wallet_address)) < 34 or length(trim(p_wallet_address)) > 36 then
+    raise exception using errcode = 'P0001', message = 'INVALID_WITHDRAWAL_DESTINATION';
+  end if;
+  if exists (select 1 from transactions where user_id = p_user_id and type = 'withdraw' and idempotency_key = p_idempotency_key) then
     select * into transaction_row from transactions where user_id = p_user_id and type = 'withdraw' and idempotency_key = p_idempotency_key limit 1;
+    if transaction_row.amount <> p_amount or transaction_row.fee_amount <> p_fee or transaction_row.net_amount <> p_net_amount
+        or transaction_row.wallet_address <> trim(p_wallet_address) or transaction_row.network <> normalized_network then
+      raise exception using errcode = 'P0001', message = 'IDEMPOTENCY_KEY_REUSED';
+    end if;
     return jsonb_build_object('duplicate', true, 'transaction', row_to_json(transaction_row));
   end if;
   select * into wallet_row from wallet_balances where user_id = p_user_id for update;
@@ -89,7 +104,7 @@ begin
     if payout.status = 'failed' then update withdrawal_payouts set status = 'preparing', admin_user_id = p_admin_user_id, last_error = '', updated_at = now() where id = payout.id returning * into payout; end if;
   else
     if tx.status <> 'pending' then raise exception using errcode = 'P0001', message = 'WITHDRAWAL_NOT_PENDING'; end if;
-    if tx.network not in ('TRC20','BEP20') or trim(tx.wallet_address) = '' or tx.net_amount <= 0 then raise exception using errcode = 'P0001', message = 'WITHDRAWAL_DESTINATION_INCOMPLETE'; end if;
+    if tx.network <> 'TRC20' or trim(tx.wallet_address) = '' or tx.net_amount <= 0 then raise exception using errcode = 'P0001', message = 'WITHDRAWAL_DESTINATION_INCOMPLETE'; end if;
     insert into withdrawal_payouts(transaction_id, admin_user_id, network, recipient, amount, status)
       values(tx.id, p_admin_user_id, tx.network, tx.wallet_address, tx.net_amount, 'preparing') returning * into payout;
   end if;
