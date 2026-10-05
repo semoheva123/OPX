@@ -13,6 +13,7 @@ const publicRoutes = read('src/routes/publicRoutes.js');
 const preferences = read('src/controllers/emailPreferenceController.js');
 const app = read('server.js');
 const worker = read('.github/workflows/admin-email-broadcast-worker.yml');
+const targetedWorker = read('.github/workflows/single-email-broadcast-worker.yml');
 const adminUi = read('admin.html');
 const privacy = read('privacy.html');
 const terms = read('terms.html');
@@ -61,6 +62,9 @@ assert.match(preferences, /verifyUnsubscribeToken/);
 assert.match(app, /process-email-broadcasts/);
 assert.match(worker, /CRON_SECRET/);
 assert.match(worker, /process-email-broadcasts/);
+assert.match(targetedWorker, /inputs\.campaign_id/);
+assert.match(targetedWorker, /process-email-broadcasts/);
+assert.match(targetedWorker, /CAMPAIGN_ID/);
 assert.match(adminUi, /معاينة المحتوى وعدد المستلمين/);
 assert.match(adminUi, /إرسال التحديث/);
 assert.match(adminUi, /تغيّر النص؛ أعد المعاينة/);
@@ -126,7 +130,13 @@ function responseRecorder() {
 
     const recipientRows = new Map([['423e4567-e89b-42d3-a456-426614174000', { id: '423e4567-e89b-42d3-a456-426614174000', userId: '123e4567-e89b-42d3-a456-426614174000', email: 'member@example.test', status: 'sending' }]]);
     let campaignStatus = 'queued';
-    dataAccess.emailBroadcast.find = async () => [{ id: '223e4567-e89b-42d3-a456-426614174000', subject: 'Update', body: 'New', status: campaignStatus }];
+    const campaignSearches = [];
+    dataAccess.emailBroadcast.find = async query => {
+      campaignSearches.push(query);
+      if (query.id === '223e4567-e89b-42d3-a456-426614174000') return [{ id: query.id, subject: 'Update', body: 'New', status: campaignStatus }];
+      if (query.id) return [];
+      return [{ id: 'older-queued-campaign', subject: 'Unrelated', body: 'Old', status: 'queued' }];
+    };
     dataAccess.emailBroadcast.updateOne = async (_filter, changes) => {
       const values = changes.$set || changes;
       campaignStatus = values.status || campaignStatus;
@@ -149,6 +159,23 @@ function responseRecorder() {
     assert.equal(sentBatches[0][0].to, 'member@example.test');
     assert.ok(sentBatches[0][0].headers['List-Unsubscribe']);
     assert.equal(recipientRows.get('423e4567-e89b-42d3-a456-426614174000').status, 'sent');
+
+    campaignStatus = 'queued';
+    dataAccess.callSupabaseRpc = async () => [];
+    const targeted = await emailService.processAdminEmailBroadcastQueue(
+      { batch: { send: async emails => { sentBatches.push(emails); return { data: { data: [] } }; } } },
+      '223e4567-e89b-42d3-a456-426614174000'
+    );
+    assert.equal(campaignSearches.at(-1).id, '223e4567-e89b-42d3-a456-426614174000');
+    assert.equal(targeted.campaignId, '223e4567-e89b-42d3-a456-426614174000');
+    assert.equal(targeted.processed, 0);
+    assert.equal(sentBatches.length, 1, 'targeted worker must not send other queued campaign content');
+
+    const invalidTarget = await emailService.processAdminEmailBroadcastQueue(
+      { batch: { send: async () => { throw new Error('must not send'); } } },
+      'not-a-uuid'
+    );
+    assert.equal(invalidTarget.reason, 'INVALID_EMAIL_BROADCAST_CAMPAIGN_ID');
     console.log('Admin email broadcast tests: ok');
   } catch (error) {
     console.error(error);

@@ -1289,8 +1289,8 @@ async function listEmailBroadcasts(req, res) {
   }
 }
 
-async function processAdminEmailBroadcasts(resend) {
-  return adminEmailBroadcastService.processAdminEmailBroadcastQueue(resend);
+async function processAdminEmailBroadcasts(resend, campaignId) {
+  return adminEmailBroadcastService.processAdminEmailBroadcastQueue(resend, campaignId);
 }
 
 async function previewEmailVerificationReminders(req, res) {

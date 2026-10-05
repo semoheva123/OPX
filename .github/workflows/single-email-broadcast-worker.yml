@@ -1,0 +1,52 @@
+name: Process one email broadcast campaign
+
+on:
+  workflow_dispatch:
+    inputs:
+      campaign_id:
+        description: 'Exact email broadcast campaign UUID to process'
+        required: true
+        type: string
+
+concurrency:
+  group: single-email-broadcast-${{ inputs.campaign_id }}
+  cancel-in-progress: false
+
+jobs:
+  send-campaign-batch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Validate scheduler configuration
+        shell: bash
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          CAMPAIGN_ID: ${{ inputs.campaign_id }}
+        run: |
+          if [[ -z "$CRON_SECRET" ]]; then
+            echo "::error::Add CRON_SECRET as a GitHub Actions repository secret before enabling the email worker."
+            exit 1
+          fi
+          if [[ ! "$CAMPAIGN_ID" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$ ]]; then
+            echo "::error::campaign_id must be a UUID."
+            exit 1
+          fi
+
+      - name: Process only the requested email broadcast campaign
+        shell: bash
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          CAMPAIGN_ID: ${{ inputs.campaign_id }}
+        run: |
+          response_file=$(mktemp)
+          trap 'rm -f "$response_file"' EXIT
+          curl --fail --silent --show-error --output "$response_file" \
+            --write-out 'Targeted email campaign worker HTTP %{http_code}\n' \
+            --max-time 70 \
+            --request POST \
+            --header "Authorization: Bearer ${CRON_SECRET}" \
+            --header 'Content-Type: application/json' \
+            --data "{\"campaignId\":\"${CAMPAIGN_ID}\"}" \
+            'https://operix.website/api/internal/cron/process-email-broadcasts'
+          jq -c '{success, job, processed: .result.processed, campaignId: .result.campaignId, status: .result.status, sent: .result.sentCount, failed: .result.failedCount, skipped: (.result.skipped // false), reason: (.result.reason // null)}' "$response_file"
+          jq -e '.success == true' "$response_file" > /dev/null

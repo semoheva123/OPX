@@ -6,6 +6,7 @@ const RESEND_BATCH_SIZE = 100;
 const SUBJECT_MAX_LENGTH = 150;
 const BODY_MAX_LENGTH = 5000;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function escapeHtml(value = '') {
   return String(value).replace(/[&<>"']/g, character => ({
@@ -119,18 +120,24 @@ async function updateCampaignTotals(campaignId) {
   return { status, queuedCount, sendingCount, sentCount, failedCount, suppressedCount, unknownCount };
 }
 
-async function processAdminEmailBroadcastQueue(resend) {
+async function processAdminEmailBroadcastQueue(resend, requestedCampaignId = null) {
+  const campaignIdFilter = requestedCampaignId == null ? null : String(requestedCampaignId).trim();
+  if (campaignIdFilter && !UUID_PATTERN.test(campaignIdFilter)) {
+    return { processed: 0, skipped: true, reason: 'INVALID_EMAIL_BROADCAST_CAMPAIGN_ID' };
+  }
   if (!dataAccess.isSupabaseRuntime()) return { processed: 0, skipped: true, reason: 'SUPABASE_RUNTIME_REQUIRED' };
   if (!resend?.batch?.send) return { processed: 0, skipped: true, reason: 'EMAIL_PROVIDER_NOT_CONFIGURED' };
   const from = String(process.env.EMAIL_FROM || '').trim();
   if (!from || /resend\.dev/i.test(from)) return { processed: 0, skipped: true, reason: 'EMAIL_FROM_NOT_CONFIGURED' };
 
   const staleBefore = new Date(Date.now() - 20 * 60 * 1000);
+  const staleFilter = { status: 'sending', updatedAt: { $lt: staleBefore }, ...(campaignIdFilter ? { campaignId: campaignIdFilter } : {}) };
   const stale = await dataAccess.emailBroadcastRecipient.updateMany(
-    { status: 'sending', updatedAt: { $lt: staleBefore } },
+    staleFilter,
     { $set: { status: 'unknown', lastError: 'WORKER_INTERRUPTED_AFTER_CLAIM; DELIVERY_NOT_RETRIED_TO_AVOID_DUPLICATES' } }
   );
-  const campaigns = await dataAccess.emailBroadcast.find({ status: { $in: ['queued', 'sending'] } }, { sort: { createdAt: 1 }, limit: 10 });
+  const campaignFilter = { status: { $in: ['queued', 'sending'] }, ...(campaignIdFilter ? { id: campaignIdFilter } : {}) };
+  const campaigns = await dataAccess.emailBroadcast.find(campaignFilter, { sort: { createdAt: 1 }, limit: campaignIdFilter ? 1 : 10 });
   let campaign = null;
   for (const candidate of campaigns) {
     if (candidate.status === 'queued') {

@@ -71,7 +71,7 @@ function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
     const handler = cronHandlers[req.params.job];
     if (typeof handler !== 'function') return res.status(404).json({ error: 'المهمة المجدولة غير موجودة' });
     try {
-      const result = await handler();
+      const result = await handler(req);
       res.json({ success: true, job: req.params.job, result: result || null });
     } catch (error) {
       console.error(`Cron job ${req.params.job} error:`, error.message);

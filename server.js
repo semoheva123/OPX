@@ -84,7 +84,7 @@ const app = createApp({
     'refresh-daily-task-entities': generateDailyTaskEntities,
     'ai-announcer': generateOfficialAiPost,
     'process-broadcasts': () => processScheduledBroadcasts(webpush),
-    'process-email-broadcasts': () => require('./src/controllers/adminController').processAdminEmailBroadcasts(resend),
+    'process-email-broadcasts': req => require('./src/controllers/adminController').processAdminEmailBroadcasts(resend, req?.body?.campaignId),
     'process-email-verification-reminders': () => require('./src/controllers/adminController').processEmailVerificationReminders(resend),
     'process-tron-deposits': () => require('./src/services/tronDepositService').processTronDepositQueue(),
     'check-financial-readiness': () => require('./src/services/financialReadinessService').checkFinancialReadiness(),
