@@ -16,6 +16,10 @@ const worker = read('.github/workflows/admin-email-broadcast-worker.yml');
 const adminUi = read('admin.html');
 const authController = read('src/controllers/authController.js');
 const emailTemplates = read('src/services/emailTemplates.js');
+const serviceDomainBlock = read('src/services/emailVerificationReminderService.js').match(/ALLOWED_EMAIL_DOMAINS = new Set\(\[([\s\S]*?)\]\)/)?.[1] || '';
+const sqlDomainBlock = migration.match(/function public\.operix_email_verification_reminder_domain_allowed[\s\S]*?array\[([\s\S]*?)\]::text\[\]/i)?.[1] || '';
+const serviceDomains = [...serviceDomainBlock.matchAll(/'([^']+)'/g)].map(match => match[1]).sort();
+const sqlDomains = [...sqlDomainBlock.matchAll(/'([^']+)'/g)].map(match => match[1]).sort();
 
 assert.match(schema, /email_verification_token/i);
 assert.match(migration, /email_verification_reminder_sent_at/i);
@@ -26,6 +30,9 @@ assert.match(migration, /interval '7 days'/i);
 assert.match(migration, /operix_create_email_verification_reminder_atomic/i);
 assert.match(migration, /operix_claim_email_verification_reminder_recipients/i);
 assert.match(migration, /operix_prepare_email_verification_reminder_atomic/i);
+assert.match(migration, /operix_email_verification_reminder_domain_allowed/i);
+assert.match(migration, /last_error\s*=\s*'RECIPIENT_DOMAIN_NOT_ALLOWED'/i);
+assert.deepEqual(sqlDomains, serviceDomains, 'runtime and database email provider allowlists must match');
 assert.match(migration, /for update skip locked/i);
 assert.match(migration, /revoke all privileges on table public\.email_verification_reminder_campaigns from public, anon, authenticated/i);
 assert.match(routes, /email-verification-reminders\/preview', requirePermission\('broadcast'/);
@@ -38,11 +45,18 @@ assert.match(authController, /createHash\('sha256'\)\.update\(token\)/);
 assert.match(emailTemplates, /function emailVerificationTemplate/);
 
 assert.deepEqual(reminderService.normalizeRecipients([
-  { id: 'user-1', email: 'NotVerified@example.test' },
-  { id: 'user-2', email: 'notverified@example.test' },
+  { id: 'user-1', email: 'NotVerified@gmail.com' },
+  { id: 'user-2', email: 'notverified@gmail.com' },
   { id: 'user-3', email: 'invalid' },
-  { id: '', email: 'missing-id@example.test' }
-]), [{ userId: 'user-1', email: 'notverified@example.test' }]);
+  { id: 'user-4', email: 'fake@example.com' },
+  { id: 'user-5', email: 'qa@example.test' },
+  { id: 'user-6', email: 'throwaway@mailinator.com' },
+  { id: '', email: 'missing-id@hotmail.com' }
+]), [{ userId: 'user-1', email: 'notverified@gmail.com' }]);
+assert.equal(reminderService.isAllowedRecipientEmail('valid@hotmail.com'), true);
+assert.equal(reminderService.isAllowedRecipientEmail('valid@outlook.com'), true);
+assert.equal(reminderService.isAllowedRecipientEmail('valid@example.org'), false);
+assert.equal(reminderService.isAllowedRecipientEmail('valid@example.test'), false);
 
 function responseRecorder() {
   return { statusCode: 200, body: null, status(code) { this.statusCode = code; return this; }, json(body) { this.body = body; return this; }, send(body) { this.body = body; return this; } };
@@ -63,7 +77,7 @@ function responseRecorder() {
   };
   const previousFrom = process.env.EMAIL_FROM;
   const previousAppUrl = process.env.APP_URL;
-  const recipient = { id: '423e4567-e89b-42d3-a456-426614174000', userId: '123e4567-e89b-42d3-a456-426614174000', email: 'pending@example.test', status: 'sending' };
+  const recipient = { id: '423e4567-e89b-42d3-a456-426614174000', userId: '123e4567-e89b-42d3-a456-426614174000', email: 'pending@gmail.com', status: 'sending' };
   const campaignId = '223e4567-e89b-42d3-a456-426614174000';
   const calls = [];
   const sentMessages = [];
@@ -73,7 +87,8 @@ function responseRecorder() {
     dataAccess.isSupabaseRuntime = () => true;
     dataAccess.user.findEmailVerificationReminderRecipients = async () => [
       { id: recipient.userId, email: recipient.email },
-      { id: '523e4567-e89b-42d3-a456-426614174000', email: 'PENDING@example.test' }
+      { id: '523e4567-e89b-42d3-a456-426614174000', email: 'PENDING@gmail.com' },
+      { id: '623e4567-e89b-42d3-a456-426614174000', email: 'seed@example.com' }
     ];
 
     const preview = responseRecorder();

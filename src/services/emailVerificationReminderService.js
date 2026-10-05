@@ -5,13 +5,34 @@ const { emailVerificationTemplate } = require('./emailTemplates');
 const MAX_RECIPIENTS = 10000;
 const BATCH_SIZE = 100;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const ALLOWED_EMAIL_DOMAINS = new Set([
+  'gmail.com', 'googlemail.com',
+  'outlook.com', 'hotmail.com', 'hotmail.co.uk', 'hotmail.fr', 'hotmail.de', 'hotmail.es', 'hotmail.it', 'hotmail.ca', 'hotmail.com.au', 'hotmail.com.tr',
+  'live.com', 'live.co.uk', 'live.fr', 'live.de', 'msn.com',
+  'yahoo.com', 'yahoo.co.uk', 'yahoo.fr', 'yahoo.de', 'yahoo.es', 'yahoo.ca', 'yahoo.com.au', 'yahoo.co.jp', 'yahoo.co.in', 'ymail.com', 'rocketmail.com',
+  'icloud.com', 'me.com', 'mac.com', 'aol.com',
+  'proton.me', 'protonmail.com', 'pm.me', 'tuta.com', 'tuta.io', 'tutanota.com',
+  'gmx.com', 'gmx.de', 'gmx.net', 'web.de', 'mail.com', 'zoho.com', 'zohomail.com',
+  'fastmail.com', 'fastmail.fm', 'hey.com',
+  'yandex.com', 'yandex.ru', 'yandex.kz', 'yandex.uz',
+  'mail.ru', 'bk.ru', 'list.ru', 'inbox.ru', 'rambler.ru',
+  'qq.com', '163.com', '126.com', 'yeah.net', 'naver.com', 'daum.net', 'hanmail.net', 'rediffmail.com',
+  'orange.fr', 'laposte.net', 'free.fr', 'seznam.cz', 'email.cz', 'wp.pl', 'onet.pl', 'interia.pl', 'o2.pl', 't-online.de', 'freenet.de', 'btinternet.com', 'virginmedia.com'
+]);
+
+function isAllowedRecipientEmail(email) {
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  if (!EMAIL_PATTERN.test(normalizedEmail)) return false;
+  const domain = normalizedEmail.slice(normalizedEmail.lastIndexOf('@') + 1);
+  return ALLOWED_EMAIL_DOMAINS.has(domain);
+}
 
 function normalizeRecipients(users = []) {
   const recipients = new Map();
   for (const user of Array.isArray(users) ? users : []) {
     const userId = String(user.id || user._id || '').trim();
     const email = String(user.email || '').trim().toLowerCase();
-    if (!userId || !EMAIL_PATTERN.test(email) || recipients.has(email)) continue;
+    if (!userId || !isAllowedRecipientEmail(email) || recipients.has(email)) continue;
     recipients.set(email, { userId, email });
   }
   return [...recipients.values()];
@@ -94,6 +115,13 @@ async function processQueue(resend) {
     if (!Array.isArray(recipients)) recipients = [];
     const prepared = [];
     for (const recipient of recipients) {
+      if (!isAllowedRecipientEmail(recipient.email)) {
+        await dataAccess.emailVerificationReminderRecipient.updateOne(
+          { id: recipient.id, status: 'sending' },
+          { $set: { status: 'suppressed', lastError: 'RECIPIENT_DOMAIN_NOT_ALLOWED' } }
+        );
+        continue;
+      }
       const token = crypto.randomBytes(32).toString('hex');
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
       const updated = await dataAccess.callSupabaseRpc('operix_prepare_email_verification_reminder_atomic', {
@@ -148,4 +176,4 @@ async function processQueue(resend) {
   return { processed: recipients.length, campaignId, ...totals };
 }
 
-module.exports = { MAX_RECIPIENTS, BATCH_SIZE, normalizeRecipients, getEligibleRecipients, updateCampaignTotals, processQueue };
+module.exports = { MAX_RECIPIENTS, BATCH_SIZE, ALLOWED_EMAIL_DOMAINS, isAllowedRecipientEmail, normalizeRecipients, getEligibleRecipients, updateCampaignTotals, processQueue };

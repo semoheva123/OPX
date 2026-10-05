@@ -40,6 +40,28 @@ create index if not exists email_verification_reminder_campaign_queue_idx
 create index if not exists email_verification_reminder_recipient_queue_idx
   on public.email_verification_reminder_recipients(campaign_id, status, created_at);
 
+create or replace function public.operix_email_verification_reminder_domain_allowed(p_email text)
+returns boolean
+language sql
+immutable
+strict
+as $$
+  select split_part(lower(btrim(p_email)), '@', 2) = any (array[
+    'gmail.com', 'googlemail.com',
+    'outlook.com', 'hotmail.com', 'hotmail.co.uk', 'hotmail.fr', 'hotmail.de', 'hotmail.es', 'hotmail.it', 'hotmail.ca', 'hotmail.com.au', 'hotmail.com.tr',
+    'live.com', 'live.co.uk', 'live.fr', 'live.de', 'msn.com',
+    'yahoo.com', 'yahoo.co.uk', 'yahoo.fr', 'yahoo.de', 'yahoo.es', 'yahoo.ca', 'yahoo.com.au', 'yahoo.co.jp', 'yahoo.co.in', 'ymail.com', 'rocketmail.com',
+    'icloud.com', 'me.com', 'mac.com', 'aol.com',
+    'proton.me', 'protonmail.com', 'pm.me', 'tuta.com', 'tuta.io', 'tutanota.com',
+    'gmx.com', 'gmx.de', 'gmx.net', 'web.de', 'mail.com', 'zoho.com', 'zohomail.com',
+    'fastmail.com', 'fastmail.fm', 'hey.com',
+    'yandex.com', 'yandex.ru', 'yandex.kz', 'yandex.uz',
+    'mail.ru', 'bk.ru', 'list.ru', 'inbox.ru', 'rambler.ru',
+    'qq.com', '163.com', '126.com', 'yeah.net', 'naver.com', 'daum.net', 'hanmail.net', 'rediffmail.com',
+    'orange.fr', 'laposte.net', 'free.fr', 'seznam.cz', 'email.cz', 'wp.pl', 'onet.pl', 'interia.pl', 'o2.pl', 't-online.de', 'freenet.de', 'btinternet.com', 'virginmedia.com'
+  ]::text[]);
+$$;
+
 alter table public.email_verification_reminder_campaigns enable row level security;
 alter table public.email_verification_reminder_recipients enable row level security;
 revoke all privileges on table public.email_verification_reminder_campaigns from public, anon, authenticated;
@@ -84,6 +106,7 @@ begin
   join public.users eligible on eligible.id = requested."userId"
     and lower(btrim(eligible.email)) = lower(btrim(requested.email))
     and lower(btrim(eligible.email)) ~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$'
+    and public.operix_email_verification_reminder_domain_allowed(eligible.email)
     and eligible.role = 'user'
     and eligible.is_banned = false
     and eligible.email_verified = false
@@ -123,6 +146,12 @@ begin
   end if;
 
   update public.email_verification_reminder_recipients recipient
+  set status = 'suppressed', last_error = 'RECIPIENT_DOMAIN_NOT_ALLOWED', updated_at = now()
+  where recipient.campaign_id = p_campaign_id
+    and recipient.status = 'queued'
+    and not public.operix_email_verification_reminder_domain_allowed(recipient.email);
+
+  update public.email_verification_reminder_recipients recipient
   set status = 'suppressed', last_error = 'ACCOUNT_NO_LONGER_ELIGIBLE', updated_at = now()
   where recipient.campaign_id = p_campaign_id
     and recipient.status = 'queued'
@@ -130,6 +159,7 @@ begin
       select 1 from public.users eligible
       where eligible.id = recipient.user_id
         and lower(btrim(eligible.email)) = recipient.email
+        and public.operix_email_verification_reminder_domain_allowed(eligible.email)
         and eligible.role = 'user'
         and eligible.is_banned = false
         and eligible.email_verified = false
@@ -148,6 +178,7 @@ begin
         select 1 from public.users eligible
         where eligible.id = recipient.user_id
           and lower(btrim(eligible.email)) = recipient.email
+          and public.operix_email_verification_reminder_domain_allowed(eligible.email)
           and eligible.role = 'user'
           and eligible.is_banned = false
           and eligible.email_verified = false
@@ -206,8 +237,10 @@ $$;
 revoke all on function public.operix_create_email_verification_reminder_atomic(uuid, jsonb) from public, anon, authenticated;
 revoke all on function public.operix_claim_email_verification_reminder_recipients(uuid, integer) from public, anon, authenticated;
 revoke all on function public.operix_prepare_email_verification_reminder_atomic(uuid, text, text, timestamptz) from public, anon, authenticated;
+revoke all on function public.operix_email_verification_reminder_domain_allowed(text) from public, anon, authenticated;
 grant execute on function public.operix_create_email_verification_reminder_atomic(uuid, jsonb) to service_role;
 grant execute on function public.operix_claim_email_verification_reminder_recipients(uuid, integer) to service_role;
 grant execute on function public.operix_prepare_email_verification_reminder_atomic(uuid, text, text, timestamptz) to service_role;
+grant execute on function public.operix_email_verification_reminder_domain_allowed(text) to service_role;
 
 commit;
