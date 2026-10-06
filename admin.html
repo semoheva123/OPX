@@ -1293,7 +1293,7 @@ body.modal-open{overflow:hidden}
                 return `
                     <tr>
                         <td class="p-4"><input type="checkbox" class="user-select-checkbox" value="${u._id}" onchange="updateUserSelectionCount()" aria-label="تحديد المستخدم"></td>
-                        <td class="p-4"><b class="block text-white">@${escapeAdminHtml(u.username || 'unknown')}</b><span class="mt-1 block text-[10px] text-slate-500">${escapeAdminHtml(u.email)}</span></td>
+                        <td class="p-4"><b class="block break-all text-white">${escapeAdminHtml(u.email || u.username || 'unknown')}</b></td>
                         <td class="p-4"><span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 text-[10px] font-bold">${Number(u.wallet?.totalDeposits || 0) > 0 ? escapeAdminHtml(u.tierCode || 'A1') : 'غير مفعّل'}</span></td>
                         <td class="p-4 text-emerald-400 font-mono font-bold">${Number(u.wallet?.balance || 0).toFixed(2)} $</td>
                         <td class="p-4">${statusBadge}</td>
@@ -1412,7 +1412,7 @@ body.modal-open{overflow:hidden}
                         return `
                             <tr>
                                 <td class="p-4"><input type="checkbox" class="transaction-select-checkbox" value="${tx._id}" onchange="updateTransactionSelectionCount()" aria-label="تحديد المعاملة"></td>
-                                <td class="p-4"><b class="block text-white">@${escapeAdminHtml(tx.userId?.username || 'unknown')}</b><span class="mt-1 block text-[10px] text-slate-500">${escapeAdminHtml(tx.userId?.email || 'غير معروف')}</span></td>
+                                <td class="p-4"><b class="block break-all text-white">${escapeAdminHtml(tx.userId?.email || tx.userId?.username || 'غير معروف')}</b></td>
                                 <td class="p-4 font-semibold text-slate-300">${({ withdraw: 'سحب رصيد', deposit: 'شحن/إيداع', vault_lock: 'قفل خزنة', vault_release: 'فك خزنة', vault_early_release: 'فتح اضطراري', vault_penalty: 'غرامة فتح مبكر', token_burn: 'حرق OPX' }[tx.type] || tx.type)}<span class="block text-[9px] text-slate-500">${escapeAdminHtml(tx.network || '-')}</span>${tx.type === 'withdraw' && tx.riskLevel !== 'low' ? `<span class="inline-block mt-1 px-2 py-0.5 rounded bg-rose-500/15 text-rose-300 text-[9px] font-bold">خطر ${escapeAdminHtml(tx.riskLevel === 'high' ? 'مرتفع' : 'متوسط')} (${Number(tx.riskScore || 0)})</span>` : ''}</td>
                                 <td class="p-4 text-amber-400 font-mono font-bold">${Number(tx.amount || 0).toFixed(2)} $${tx.type === 'withdraw' ? `<span class="block text-[9px] text-slate-500">الصافي المحوّل: ${Number(tx.netAmount || 0).toFixed(2)} USDT</span>` : ''}</td>
                                 <td class="p-4 text-slate-300 font-mono text-[11px] select-all">${escapeAdminHtml(tx.walletAddress || tx.hash || 'غير محدد')}</td>

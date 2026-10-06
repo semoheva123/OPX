@@ -5,7 +5,7 @@ function idOf(value) {
 }
 
 function labelFor(user) {
-  return (user.isOfficialPlatform || user.metadata?.officialPlatform || String(user.email || '').toLowerCase() === 'official@operix.website') ? 'OPERIX Official' : user.username ? `@${user.username}` : user.referralCode ? `عضو ${user.referralCode}` : 'عضو OPERIX';
+  return (user.isOfficialPlatform || user.metadata?.officialPlatform || String(user.email || '').toLowerCase() === 'official@operix.website') ? 'OPERIX Official' : String(user.email || 'عضو OPERIX');
 }
 
 function toClientPost(post) {

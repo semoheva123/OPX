@@ -7,7 +7,7 @@ function validId(value) {
 }
 
 function labelFor(user) {
-  return user.referralCode ? `عضو ${user.referralCode}` : `عضو ${String(user.email).slice(0, 2)}•••`;
+  return String(user.email || 'عضو OPERIX');
 }
 
 function safeMessage(message) {

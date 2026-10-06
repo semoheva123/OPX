@@ -6,7 +6,7 @@ const { authenticator } = require('otplib');
 const QRCode = require('qrcode');
 const { emailVerificationTemplate, passwordResetTemplate, adminInviteTemplate } = require('../services/emailTemplates');
 const { followOfficialCommunityAccount } = require('../services/officialCommunity');
-const { normalizeUsername, isValidUsername, usernameFromEmail } = require('../services/username');
+const { usernameFromEmail } = require('../services/username');
 const dataAccess = require('../services/dataAccess');
 const User = dataAccess.user;
 const Session = dataAccess.session;
@@ -38,11 +38,7 @@ function matchesHash(value, expected) {
 }
 
 async function generateAvailableUsername(email) {
-  for (let attempt = 0; attempt < 12; attempt += 1) {
-    const username = usernameFromEmail(email);
-    if (!await dataAccess.user.findOne({ username })) return username;
-  }
-  throw new Error('USERNAME_GENERATION_FAILED');
+  return usernameFromEmail(email);
 }
 
 function safeUser(user) {
@@ -60,18 +56,13 @@ function safeUser(user) {
 
 async function register(req, res) {
   try {
-    const { email, password, username: requestedUsername, referralCode, acceptTerms } = req.body || {};
+    const { email, password, referralCode, acceptTerms } = req.body || {};
     if (!email || !password || typeof email !== 'string' || typeof password !== 'string') return res.status(400).json({ error: 'جميع الحقول مطلوبة وبصيغة صحيحة' });
     if (acceptTerms !== true) return res.status(400).json({ error: 'يجب الموافقة على شروط الاستخدام وسياسة الخصوصية' });
     if (password.length < 8) return res.status(400).json({ error: 'كلمة المرور يجب أن لا تقل عن 8 أحرف' });
     const cleanEmail = email.trim().toLowerCase();
-    let username = normalizeUsername(requestedUsername);
-    if (requestedUsername !== undefined && requestedUsername !== null && String(requestedUsername).trim() && !isValidUsername(username)) {
-      return res.status(400).json({ error: 'اسم المستخدم يجب أن يبدأ بحرف إنجليزي ويتكون من 3 إلى 24 حرفًا أو رقمًا أو _' });
-    }
-    if (!username) username = await generateAvailableUsername(cleanEmail);
+    const username = cleanEmail;
     if (await dataAccess.user.findOne({ email: cleanEmail })) return res.status(400).json({ error: 'البريد الإلكتروني مسجل بالفعل' });
-    if (await dataAccess.user.findOne({ username })) return res.status(409).json({ error: 'اسم المستخدم مستخدم بالفعل، اختر اسمًا آخر' });
 
     let validReferralCode = null;
     if (typeof referralCode === 'string' && referralCode.trim()) {
@@ -109,7 +100,7 @@ async function register(req, res) {
     res.status(201).json({ success: true, message: `تم إنشاء الحساب بنجاح.${emailWarning}` });
   } catch (err) {
     console.error('Register error:', err.message);
-    if (err.code === '23505' && String(err.message || '').toLowerCase().includes('username')) return res.status(409).json({ error: 'اسم المستخدم مستخدم بالفعل، اختر اسمًا آخر' });
+    if (err.code === '23505' && String(err.message || '').toLowerCase().includes('username')) return res.status(409).json({ error: 'اسم المستخدم يجب أن يطابق البريد الإلكتروني المسجل' });
     if (err.code === '23505' && String(err.message || '').toLowerCase().includes('email')) return res.status(409).json({ error: 'البريد الإلكتروني مسجل بالفعل' });
     res.status(400).json({ error: 'فشل في إنشاء الحساب' });
   }

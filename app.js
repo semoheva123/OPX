@@ -18,7 +18,7 @@ let profileSyncTimer = null;
 let platformSupportUrl = '';
 let realtimeClient = null;
 let realtimeChannel = null;
-let realtimeEventSource = null;
+    if (refCode) {
 let socialFeedPage = 1;
 let socialFeedHasMore = false;
 let socialFeedMode = 'all';
@@ -901,16 +901,12 @@ async function handleLogin(e) {
 async function handleRegister(e) {
     e.preventDefault();
     const email = document.getElementById('regEmail').value.trim();
-    const rawUsername = String(document.getElementById('regUsername')?.value || '').trim().replace(/^@/, '').toLowerCase();
-    const username = rawUsername || undefined;
     const password = document.getElementById('regPassword').value;
     const passwordConfirm = document.getElementById('regPasswordConfirm').value;
     const referralCode = document.getElementById('regReferralCode').value.trim();
     const btn = document.getElementById('btnRegisterSubmit');
 
     if (password !== passwordConfirm) { showToast('كلمتا المرور غير متطابقتين'); return; }
-    if (username && !/^[a-z][a-z0-9_]{2,23}$/.test(username)) { showToast('اسم المستخدم يجب أن يبدأ بحرف إنجليزي ويتكون من 3 إلى 24 حرفًا أو رقمًا أو _'); return; }
-
     btn.disabled = true;
     btn.innerText = 'جاري إنشاء الحساب...';
 
@@ -918,7 +914,7 @@ async function handleRegister(e) {
         const res = await fetch('/api/auth/register', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({email, username, password, referralCode, acceptTerms: document.getElementById('regTermsConsent')?.checked === true})
+            body: JSON.stringify({email, password, referralCode, acceptTerms: document.getElementById('regTermsConsent')?.checked === true})
         });
         const data = await res.json();
         if(res.ok) {
@@ -943,8 +939,8 @@ async function saveUsername(event) {
     const input = document.getElementById('profileUsernameInput');
     const status = document.getElementById('profileUsernameStatus');
     const username = String(input?.value || '').trim().replace(/^@/, '').toLowerCase();
-    if (!/^[a-z][a-z0-9_]{2,23}$/.test(username)) {
-        if (status) status.innerText = 'استخدم 3–24 حرفًا أو رقمًا أو _، وابدأ بحرف إنجليزي.';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(username)) {
+        if (status) status.innerText = 'يرجى إدخال بريد إلكتروني صحيح مطابق للحساب المسجل.';
         return;
     }
     const token = localStorage.getItem('token');
@@ -960,7 +956,7 @@ async function saveUsername(event) {
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'تعذر تحديث اسم المستخدم');
-        if (currentUserData) currentUserData.username = data.username || username;
+        if (currentUserData) currentUserData.username = currentUserData.email;
         updateProfileUI();
         if (status) status.innerText = data.message || 'تم تحديث اسم المستخدم.';
         showToast(data.message || 'تم تحديث اسم المستخدم');
@@ -1363,16 +1359,16 @@ function updateProfileUI() {
     updateProfileSecuritySummary();
     updateReferralRewardTotal();
 
-    // البريد واسم المستخدم
+    // اسم المستخدم هو البريد المسجل حرفياً.
     const displayNameEl = document.getElementById('lblProfileDisplayName');
     const emailEl = document.getElementById('lblProfileEmail');
-    const username = String(currentUserData.username || '').trim().toLowerCase();
-    if (displayNameEl) displayNameEl.innerText = username ? `@${username}` : 'User';
+    const accountEmail = String(currentUserData.email || '');
+    if (displayNameEl) displayNameEl.innerText = accountEmail;
     const usernameEl = document.getElementById('lblProfileUsername');
-    if (usernameEl) usernameEl.innerText = username ? `@${username}` : '';
+    if (usernameEl) usernameEl.innerText = accountEmail;
     const usernameInput = document.getElementById('profileUsernameInput');
-    if (usernameInput && username) usernameInput.value = username;
-    if (emailEl) emailEl.innerText = currentUserData.email || '';
+    if (usernameInput) usernameInput.value = accountEmail;
+    if (emailEl) emailEl.innerText = accountEmail;
 
     // كود ورابط الدعوة
     const refCode = currentUserData.referralCode || 'OPERIX99';
@@ -1731,7 +1727,7 @@ async function loadUserProfileInternal() {
                 console.error('Realtime initialization failed:', error);
             }
             
-            document.getElementById('lblUserEmail').innerText = data.user.username ? `@${data.user.username}` : data.user.email;
+            document.getElementById('lblUserEmail').innerText = data.user.email || '';
             document.getElementById('lblCompletedTasks').innerText = data.user.todayCompletedTasks || 0;
             document.getElementById('lblReferralCode').innerText = data.user.referralCode || 'OPERIX99';
             const twoFactorToggle = document.getElementById('toggle2FA');
@@ -3018,7 +3014,7 @@ document.addEventListener('keydown', (event) => {
 function renderSocialPostCard(post) {
     const isOfficialAi = Boolean(post.isOfficialAi || post.is_official_ai);
     const isOfficialPlatform = Boolean(post.authorIsOfficial);
-    const authorLabel = String(post.authorUsername ? `@${post.authorUsername}` : post.authorLabel || post.username_display || post.author?.username || post.author?.email || 'OPERIX').trim() || 'OPERIX';
+    const authorLabel = String(post.authorEmail || post.authorUsername || post.author?.email || post.authorLabel || post.username_display || post.author?.username || 'OPERIX').trim() || 'OPERIX';
     const content = String(post.content || post.post_text || '').trim() || 'محتوى منشور';
     const formattedContent = escapeSocialHtml(content).replace(/(^|\s)#([\p{L}\p{N}_-]{2,40})/gu, '$1<button type="button" class="social-hashtag" onclick="searchSocialHashtag(\'$2\')">#$2</button>');
     const postId = String(post._id || post.id || '');
@@ -3026,7 +3022,7 @@ function renderSocialPostCard(post) {
     const avatar = post.authorProfileImage ? `<img src="${escapeSocialHtml(post.authorProfileImage)}" alt="" class="twitter-avatar-image">` : initials;
     const image = post.image_url ? `<div class="twitter-post-media"><img src="${escapeSocialHtml(post.image_url)}" alt="صورة مرفقة من ${escapeSocialHtml(authorLabel)}" loading="lazy"></div>` : '';
     const createdAt = post.createdAt ? new Date(post.createdAt).toLocaleString('ar') : 'إعلان رسمي';
-    const handle = isOfficialAi ? '@operix_support' : post.authorUsername ? `@${escapeSocialHtml(post.authorUsername)}` : '@' + escapeSocialHtml(authorLabel.toLowerCase().replace(/\s+/g, ''));
+    const handle = isOfficialAi ? '@operix_support' : '';
     return `<article data-social-post-id="${escapeSocialHtml(postId)}" class="twitter-post ${isOfficialAi ? 'border-amber-400/20' : ''}">
         <div class="twitter-post-inner">
             <div class="twitter-avatar"><div class="twitter-avatar-badge ${isOfficialAi ? 'bg-amber-400/15 text-amber-300' : ''}">${isOfficialAi ? '<i class="fa-solid fa-robot"></i>' : avatar}</div></div>
@@ -3034,7 +3030,7 @@ function renderSocialPostCard(post) {
                 <div class="twitter-post-header">
                     <div class="twitter-user-meta">
                         ${post.authorId && !isOfficialAi ? `<button type="button" class="twitter-author-button" onclick="openSocialUserCard('${escapeSocialHtml(post.authorId)}')">${escapeSocialHtml(authorLabel)}${isOfficialPlatform ? ' <i class="fa-solid fa-circle-check text-cyan-300" title="الحساب الرسمي"></i>' : ''}</button>` : `<strong>${isOfficialAi ? 'خدمة عملاء OPERIX' : escapeSocialHtml(authorLabel)}</strong>`}
-                        <span>${handle}</span>
+                        ${handle ? `<span>${handle}</span>` : ''}
                         <span class="twitter-post-time">• ${createdAt}</span>
                     </div>
                     ${isOfficialAi ? '<i class="fa-solid fa-shield-halved text-amber-300" title="محتوى رسمي من خدمة عملاء OPERIX"></i>' : '<button type="button" onclick="reportSocialPost(\'${escapeSocialHtml(postId)}\')" class="twitter-more" title="إبلاغ"><i class="fa-solid fa-ellipsis"></i></button>'}
@@ -3710,7 +3706,7 @@ function changeLanguage(language) {
     const profile = document.getElementById('view-profile');
     if (!profile) return;
     const replace = (selector, value) => { const element = profile.querySelector(selector); if (element) element.innerText = value; };
-    replace('#lblProfileDisplayName', currentUserData?.email?.split('@')[0] || selected.displayName);
+    replace('#lblProfileDisplayName', currentUserData?.email || selected.displayName);
     replace('#lblProfileEmail', currentUserData?.email || selected.email);
     replace('#profileEarningsLabel', selected.earnings);
     replace('#profileWithdrawnLabel', selected.withdrawn);

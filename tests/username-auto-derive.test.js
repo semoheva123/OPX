@@ -59,8 +59,8 @@ const { register } = require('../src/controllers/authController');
   await register(req, res);
 
   assert.equal(res.statusCode, 201, 'should allow registration without explicit username');
-  assert.ok(created.payload && created.payload.username, 'username should be generated from email');
-  assert.match(created.payload.username, /^[a-z][a-z0-9_]{2,23}$/);
+  assert.ok(created.payload && created.payload.username, 'username should match the registered email');
+  assert.equal(created.payload.username, 'user.name+123@example.com');
   console.log('username auto-derive test: ok');
 })().catch((error) => {
   console.error(error);

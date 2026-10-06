@@ -16,7 +16,6 @@ const Session = dataAccess.session;
 const emailFrom = String(process.env.EMAIL_FROM || '').trim();
 const imgbbStorage = require('../services/imgbbStorage');
 const { hasPaidFeatureAccess } = require('../services/paidFeatureAccess');
-const { normalizeUsername, isValidUsername } = require('../services/username');
 
 async function getProfile(req, res) {
   try {
@@ -41,20 +40,15 @@ async function getProfile(req, res) {
 }
 
 async function updateUsername(req, res) {
-  const username = normalizeUsername(req.body?.username);
-  if (!isValidUsername(username)) return res.status(400).json({ error: 'اسم المستخدم يجب أن يبدأ بحرف إنجليزي ويتكون من 3 إلى 24 حرفًا أو رقمًا أو _' });
   try {
-    const existing = await dataAccess.user.findOne({ username });
-    if (existing && String(existing.id || existing._id) !== String(req.user.id)) {
-      return res.status(409).json({ error: 'اسم المستخدم مستخدم بالفعل، اختر اسمًا آخر' });
+    const user = await dataAccess.user.findById(req.user.id);
+    if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
+    if (user.username !== user.email) {
+      const updated = await dataAccess.user.updateOne({ id: req.user.id }, { username: user.email });
+      if (!updated) return res.status(404).json({ error: 'المستخدم غير موجود' });
     }
-    const updated = await dataAccess.user.updateOne({ id: req.user.id }, { username });
-    if (!updated) return res.status(404).json({ error: 'المستخدم غير موجود' });
-    return res.json({ success: true, username: updated.username || username, message: 'تم تحديث اسم المستخدم بنجاح' });
+    return res.json({ success: true, username: user.email, message: 'اسم المستخدم هو البريد الإلكتروني المسجل ولا يمكن تغييره بشكل منفصل' });
   } catch (error) {
-    if (error.code === '23505' || String(error.message || '').includes('users_username_lower_unique_idx')) {
-      return res.status(409).json({ error: 'اسم المستخدم مستخدم بالفعل، اختر اسمًا آخر' });
-    }
     return res.status(500).json({ error: 'تعذر تحديث اسم المستخدم' });
   }
 }
