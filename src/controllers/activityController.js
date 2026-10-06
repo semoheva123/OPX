@@ -7,24 +7,66 @@ const { getTaskSchedule } = require('../services/weeklySchedule');
 
 const DAILY_TASK_COOLDOWN_MS = 3 * 60 * 60 * 1000;
 
-function getDailyTaskProgress(tierCode, taskLimit, completions = [], now = Date.now()) {
-  const completedByKey = new Map((Array.isArray(completions) ? completions : []).map(item => [String(item.taskKey || ''), item]));
-  const getTaskKey = number => number === 1 ? `${tierCode}-community` : `${tierCode}-task-${String(number).padStart(2, '0')}`;
-  let nextTaskNumber = 1;
-  while (nextTaskNumber <= taskLimit && completedByKey.has(getTaskKey(nextTaskNumber))) nextTaskNumber++;
-  if (nextTaskNumber > taskLimit) return { nextTaskNumber: null, availableAt: null, remainingMs: 0, remainingSeconds: 0 };
+function getDailyTaskProgress(tierCode, paidTaskCount, assignments = [], completions = [], now = Date.now()) {
+  let effectiveAssignments = Array.isArray(assignments) ? assignments : [];
+  let effectiveCompletions = Array.isArray(completions) ? completions : [];
+  let currentNow = Number.isFinite(Number(now)) ? Number(now) : Date.now();
 
-  const previousCompletion = nextTaskNumber > 1 ? completedByKey.get(getTaskKey(nextTaskNumber - 1)) : null;
-  const previousCompletedAt = previousCompletion ? new Date(previousCompletion.createdAt).getTime() : Number(now);
-  const availableAtMs = previousCompletion
-    ? (Number.isFinite(previousCompletedAt) ? previousCompletedAt : Number(now)) + DAILY_TASK_COOLDOWN_MS
-    : Number(now);
-  const remainingMs = Math.max(0, availableAtMs - Number(now));
+  if (typeof completions === 'number' && Array.isArray(assignments)) {
+    currentNow = Number(completions);
+    effectiveCompletions = [];
+  }
+
+  const completionKeys = new Set(effectiveCompletions
+    .map(item => String(item.taskKey || ''))
+    .filter(taskKey => taskKey.startsWith(`${tierCode}-task-`)));
+
+  const normalizedAssignments = effectiveAssignments
+    .map(item => {
+      const taskKey = String(item.taskKey || '');
+      const taskMatch = taskKey.match(/-task-(\d+)$/);
+      const taskNumber = Number(item.taskNumber ?? (taskMatch ? taskMatch[1] : 0));
+      const createdAtMs = new Date(item.createdAt || item.created_at || '').getTime();
+      if (!Number.isFinite(taskNumber) || taskNumber < 2) return null;
+      return { taskNumber, createdAtMs, taskKey: `${tierCode}-task-${String(taskNumber).padStart(2, '0')}` };
+    })
+    .filter(Boolean)
+    .sort((left, right) => left.taskNumber - right.taskNumber);
+
+  const planStartedAt = normalizedAssignments.length
+    ? Math.min(...normalizedAssignments.map(item => item.createdAtMs).filter(Number.isFinite))
+    : Number(currentNow);
+
+  const taskWindows = [];
+  const maxTaskNumber = Math.max(2, Number(paidTaskCount || 0) + 1);
+  for (let taskNumber = 2; taskNumber <= maxTaskNumber; taskNumber += 1) {
+    const taskKey = `${tierCode}-task-${String(taskNumber).padStart(2, '0')}`;
+    const availableAtMs = planStartedAt + Math.max(0, taskNumber - 2) * DAILY_TASK_COOLDOWN_MS;
+    const window = {
+      taskNumber,
+      taskKey,
+      availableAt: new Date(availableAtMs).toISOString(),
+      remainingMs: Math.max(0, availableAtMs - Number(currentNow)),
+      completed: completionKeys.has(taskKey)
+    };
+    taskWindows.push(window);
+  }
+
+  const unlockedTaskNumbers = taskWindows
+    .filter(window => !window.completed && window.remainingMs === 0)
+    .map(window => window.taskNumber - 1);
+  const availableWindow = taskWindows.find(window => !window.completed && window.remainingMs === 0)
+    || taskWindows.find(window => !window.completed && window.remainingMs > 0)
+    || taskWindows[0] || null;
+
   return {
-    nextTaskNumber,
-    availableAt: new Date(availableAtMs).toISOString(),
-    remainingMs,
-    remainingSeconds: Math.ceil(remainingMs / 1000)
+    taskWindows,
+    unlockedTaskNumbers,
+    nextTaskNumber: availableWindow ? Math.max(1, availableWindow.taskNumber - 1) : null,
+    availableAt: availableWindow?.availableAt || null,
+    remainingMs: availableWindow?.remainingMs || 0,
+    remainingSeconds: availableWindow ? Math.ceil(availableWindow.remainingMs / 1000) : 0,
+    planStartedAt: new Date(planStartedAt).toISOString()
   };
 }
 
@@ -158,7 +200,7 @@ function buildSupplementalTask(tierCode, number, supplementalIndex) {
 }
 
 function buildDailyTasks(tierCode, adminTasks = [], completedKeys = new Set(), locked = false, dailyProfit = 0, communityTaskStatus = {}) {
-  const taskLimit = 1 + (Array.isArray(adminTasks) ? adminTasks.length : 0);
+  const taskLimit = Array.isArray(adminTasks) ? adminTasks.length : 0;
   const categoryWeights = {
     technology: 0.95,
     ai: 1.35,
@@ -167,13 +209,10 @@ function buildDailyTasks(tierCode, adminTasks = [], completedKeys = new Set(), l
     finance: 1.25,
     community: 1.00
   };
-  const weights = Array.from({ length: taskLimit }, (_, index) => {
-    const number = index + 1;
-    const isCommunityTask = number === 1;
-    const configuredTask = isCommunityTask ? COMMUNITY_DAILY_TASK : adminTasks[index - 1];
-    const categoryKey = String((configuredTask && configuredTask.category) || 'technology').toLowerCase();
-    const categoryWeight = isCommunityTask ? 1.0 : (categoryWeights[categoryKey] || 1.0);
-    const seedText = isCommunityTask ? `${tierCode}-community` : String(configuredTask.entityName || configuredTask.entityKey || `${tierCode}-${number}`);
+  const weights = adminTasks.map((configuredTask, index) => {
+    const categoryKey = String(configuredTask?.category || 'technology').toLowerCase();
+    const categoryWeight = categoryWeights[categoryKey] || 1.0;
+    const seedText = String(configuredTask?.entityName || configuredTask?.entityKey || `${tierCode}-${index + 1}`);
     let seedValue = 0;
     for (let i = 0; i < seedText.length; i++) seedValue += seedText.charCodeAt(i) * (i + 1);
     const companyBoost = (seedValue % 7) * 0.08;
@@ -190,33 +229,58 @@ function buildDailyTasks(tierCode, adminTasks = [], completedKeys = new Set(), l
   const adjustment = Number((Number(dailyProfit || 0) - rewardTotal).toFixed(4));
   if (rewards.length) rewards[rewards.length - 1] = Number((rewards[rewards.length - 1] + adjustment).toFixed(4));
 
-  return Array.from({ length: taskLimit }, (_, index) => {
-    const number = index + 1;
-    const isCommunityTask = number === 1;
-    const configuredTask = isCommunityTask ? COMMUNITY_DAILY_TASK : adminTasks[index - 1];
+  const communityTask = (communityTaskStatus && (communityTaskStatus.communityEngagement || communityTaskStatus.communityPost || communityTaskStatus.communityInteraction))
+    ? buildOptionalCommunityTask(tierCode, communityTaskStatus)
+    : buildOptionalCommunityTask(tierCode, { communityEngagement: true });
+
+  const evaluationTasks = adminTasks.map((configuredTask, index) => {
     const template = configuredTask || {};
-    const taskKey = isCommunityTask ? `${tierCode}-${COMMUNITY_DAILY_TASK.taskKeySuffix}` : `${tierCode}-task-${String(number).padStart(2, '0')}`;
+    const taskNumber = Number(template.taskNumber) || index + 2;
+    const taskKey = `${tierCode}-task-${String(taskNumber).padStart(2, '0')}`;
     return {
       taskKey,
-      number,
-      icon: isCommunityTask ? COMMUNITY_DAILY_TASK.icon : 'fa-magnifying-glass-chart',
-      title: isCommunityTask ? COMMUNITY_DAILY_TASK.title : `قيّم ${String(template.entityName || 'الجهة المحددة')}`,
-      description: isCommunityTask ? COMMUNITY_DAILY_TASK.description : String(template.summary || 'قدّم تقييمًا متوازنًا استنادًا إلى المعلومات المعروضة داخل المنصة.'),
-      instructions: isCommunityTask ? COMMUNITY_DAILY_TASK.instructions : (Array.isArray(template.instructions) ? template.instructions : []),
-      requirement: isCommunityTask ? COMMUNITY_DAILY_TASK.requirement : 'evaluation',
-      targetCategory: isCommunityTask ? null : String(template.category || 'technology'),
-      targetCategoryLabel: isCommunityTask ? null : getCategoryLabel(template.category),
-      targetName: isCommunityTask ? null : String(template.entityName || ''),
-      targetSummary: isCommunityTask ? null : String(template.summary || ''),
-      targetImageUrl: isCommunityTask ? '' : getOfficialBrandLogoUrl(template.entityName) || String(template.imageUrl || ''),
-      entityKey: isCommunityTask ? null : String(template.entityKey || ''),
-      tags: isCommunityTask ? [] : getEvaluationTags(template.category),
-      requirementMet: isCommunityTask ? Boolean(communityTaskStatus.communityEngagement) : Boolean(template.submissionComplete),
+      number: index + 1,
+      assignmentNumber: taskNumber,
+      icon: 'fa-magnifying-glass-chart',
+      title: `قيّم ${String(template.entityName || 'الجهة المحددة')}`,
+      description: String(template.summary || 'قدّم تقييمًا متوازنًا استنادًا إلى المعلومات المعروضة داخل المنصة.'),
+      instructions: Array.isArray(template.instructions) ? template.instructions : [],
+      requirement: 'evaluation',
+      targetCategory: String(template.category || 'technology'),
+      targetCategoryLabel: getCategoryLabel(template.category),
+      targetName: String(template.entityName || ''),
+      targetSummary: String(template.summary || ''),
+      targetImageUrl: getOfficialBrandLogoUrl(template.entityName) || String(template.imageUrl || ''),
+      entityKey: String(template.entityKey || ''),
+      tags: getEvaluationTags(template.category),
+      requirementMet: Boolean(template.submissionComplete),
       reward: Number((rewards[index] ?? 0).toFixed(4)),
       completed: completedKeys.has(taskKey),
       locked
     };
   });
+
+  return [communityTask, ...evaluationTasks];
+}
+
+function buildOptionalCommunityTask(tierCode, communityTaskStatus = {}) {
+  const communityEngaged = Boolean(communityTaskStatus.communityEngagement || (communityTaskStatus.communityPost && communityTaskStatus.communityInteraction));
+  const completed = communityEngaged;
+  return {
+    taskKey: `${tierCode}-${COMMUNITY_DAILY_TASK.taskKeySuffix}`,
+    number: 0,
+    icon: COMMUNITY_DAILY_TASK.icon,
+    title: COMMUNITY_DAILY_TASK.title,
+    description: COMMUNITY_DAILY_TASK.description,
+    instructions: COMMUNITY_DAILY_TASK.instructions,
+    requirement: COMMUNITY_DAILY_TASK.requirement,
+    requirementMet: completed,
+    reward: 0,
+    paid: false,
+    optional: true,
+    completed,
+    locked: false
+  };
 }
 
 function getGameConfig(req, res) {
@@ -258,26 +322,8 @@ async function getDailyTasks(req, res) {
     if (!tier) return res.status(503).json({ error: 'إعدادات المستوى غير متاحة حاليًا' });
     const today = utcDateString();
     const schedule = getTaskSchedule(new Date());
-    if (schedule.holiday) {
-      return res.json({
-        success: true,
-        holiday: true,
-        schedule,
-        tier: { code: tier.code, name: tier.name, taskLimit: Math.max(1, Number(tier.tasks || 1)), dailyProfit: Number(tier.dailyProfit || 0) },
-        active: false,
-        completedCount: 0,
-        tasks: []
-      });
-    }
     const todayStart = new Date();
     todayStart.setUTCHours(0, 0, 0, 0);
-    const taskLimit = Math.max(1, Math.min(50, Number(tier.tasks || 1)));
-    const evaluationAssignments = await assignDailyEvaluationEntities({
-      userId: user.id || user._id,
-      tierCode: tier.code,
-      totalTaskCount: taskLimit,
-      date: today
-    });
     const [todayUserPosts, otherMembersPosts] = await Promise.all([
       dataAccess.socialPost.find({ authorId: user.id, status: 'visible', createdAt: { $gte: todayStart } }, { select: 'authorId content status createdAt', limit: 100 }),
       dataAccess.socialPost.find({ authorId: { $ne: user.id }, status: 'visible' }, { select: 'authorId comments likedBy status', sort: { createdAt: -1 }, limit: 1000 })
@@ -286,26 +332,61 @@ async function getDailyTasks(req, res) {
       communityPost: hasDailyPlatformPost(todayUserPosts, user.id, todayStart),
       communityInteraction: hasDailyCommunityInteraction(otherMembersPosts, user.id, todayStart)
     };
+    const optionalCommunityTask = buildOptionalCommunityTask(tier.code, communityTaskStatus);
+    const taskLimit = Math.max(0, Math.min(50, Number(tier.tasks || 0)));
+    const active = hasPaidFeatureAccess(user) || Number(user.wallet?.totalDeposits || 0) > 0;
+    if (schedule.holiday) {
+      return res.json({
+        success: true,
+        holiday: true,
+        schedule,
+        tier: { code: tier.code, name: tier.name, taskLimit, dailyProfit: Number(tier.dailyProfit || 0) },
+        active,
+        completedCount: 0,
+        pendingPaidTaskCount: taskLimit,
+        tasks: [optionalCommunityTask]
+      });
+    }
+    const evaluationAssignments = await assignDailyEvaluationEntities({
+      userId: user.id || user._id,
+      tierCode: tier.code,
+      totalTaskCount: taskLimit,
+      date: today
+    });
     const [evaluationSubmissions, completions] = await Promise.all([
       dataAccess.dailyTaskSubmission.find({ userId: user.id, taskDate: today }, { select: 'taskKey' }),
       dataAccess.dailyTaskCompletion.find({ userId: user.id, taskDate: today }, { sort: { createdAt: 1 } })
     ]);
     const submittedTaskKeys = new Set(evaluationSubmissions.map(submission => submission.taskKey));
     evaluationAssignments.forEach(assignment => { assignment.submissionComplete = submittedTaskKeys.has(`${tier.code}-task-${String(assignment.taskNumber).padStart(2, '0')}`); });
-    const completedKeys = new Set(completions.map(item => item.taskKey));
-    const active = hasPaidFeatureAccess(user) || Number(user.wallet?.totalDeposits || 0) > 0;
+    const paidCompletions = completions.filter(item => /^.+-task-\d+$/.test(String(item.taskKey || '')));
+    const completedKeys = new Set(paidCompletions.map(item => item.taskKey));
     const dailyProfit = Number(tier.dailyProfit || 0);
-    const progress = getDailyTaskProgress(tier.code, taskLimit, completions, Date.now());
-    const allTasks = buildDailyTasks(tier.code, evaluationAssignments, completedKeys, !active, dailyProfit, { communityEngagement: communityTaskStatus.communityPost && communityTaskStatus.communityInteraction });
-    const nextTask = allTasks.find(task => task.number === progress.nextTaskNumber);
-    const tasks = nextTask ? [{
-      ...nextTask,
-      availableAt: progress.availableAt,
+    const now = Date.now();
+    const progress = getDailyTaskProgress(tier.code, taskLimit, evaluationAssignments, paidCompletions, now);
+    const allPaidTasks = buildDailyTasks(tier.code, evaluationAssignments, completedKeys, !active, dailyProfit, communityTaskStatus);
+    const pendingPaidTasks = allPaidTasks.filter(task => !task.completed && task.requirement !== 'community_engagement');
+    const visiblePaidTasks = !active
+      ? pendingPaidTasks.slice(0, 1).map(task => ({ ...task, locked: true, lockReason: 'tier_inactive' }))
+      : pendingPaidTasks
+        .filter(task => progress.unlockedTaskNumbers.includes(task.number))
+        .map(task => {
+          const window = progress.taskWindows.find(item => item.taskNumber === task.assignmentNumber);
+          return { ...task, availableAt: window?.availableAt || null, locked: false, lockReason: null };
+        });
+    const tasks = [optionalCommunityTask, ...visiblePaidTasks];
+    return res.json({
+      success: true,
+      tier: { code: tier.code, name: tier.name, taskLimit, dailyProfit },
+      active,
+      completedCount: completedKeys.size,
+      pendingPaidTaskCount: pendingPaidTasks.length,
+      releasedPaidTaskCount: progress.unlockedTaskNumbers.length,
+      nextTaskAvailableAt: progress.availableAt,
       cooldownRemainingSeconds: progress.remainingSeconds,
-      locked: !active || progress.remainingMs > 0,
-      lockReason: !active ? 'tier_inactive' : progress.remainingMs > 0 ? 'cooldown' : null
-    }] : [];
-    return res.json({ success: true, tier: { code: tier.code, name: tier.name, taskLimit, dailyProfit }, active, completedCount: completedKeys.size, tasks });
+      planStartedAt: progress.planStartedAt,
+      tasks
+    });
   } catch (error) {
     console.error('Daily task list error:', error.message);
     res.status(500).json({ error: 'تعذر تحميل مهام اليوم' });
@@ -361,10 +442,15 @@ async function submitDailyEvaluation(req, res) {
     const assignment = taskNumber >= 2 ? await dataAccess.dailyTaskAssignment.findOne({ userId: user.id || user._id, tierCode: tier.code, taskDate: today, taskNumber }) : null;
     if (!assignment) return res.status(400).json({ error: 'مهمة التقييم غير موجودة ضمن خطة اليوم الحالية' });
 
-    const completions = await dataAccess.dailyTaskCompletion.find({ userId: user.id || user._id, taskDate: today }, { sort: { createdAt: 1 } });
-    const progress = getDailyTaskProgress(tier.code, Math.max(1, Number(tier.tasks || 1)), completions, Date.now());
-    if (taskNumber !== progress.nextTaskNumber) return res.status(409).json({ error: 'أكمل المهمة السابقة أولًا لفتح هذه المهمة.' });
-    if (progress.remainingMs > 0) return res.status(429).json({ error: 'ستُفتح المهمة التالية بعد مرور 3 ساعات على إكمال المهمة السابقة.', unlockAt: progress.availableAt });
+    const [completions, todayAssignments] = await Promise.all([
+      dataAccess.dailyTaskCompletion.find({ userId: user.id || user._id, taskDate: today }, { sort: { createdAt: 1 } }),
+      dataAccess.dailyTaskAssignment.find({ userId: user.id || user._id, tierCode: tier.code, taskDate: today }, { sort: { taskNumber: 1 }, limit: 100 })
+    ]);
+    const paidTaskCount = Math.max(0, Math.min(50, Number(tier.tasks || 0)));
+    const progress = getDailyTaskProgress(tier.code, paidTaskCount, todayAssignments, completions, Date.now());
+    const taskWindow = progress.taskWindows.find(window => window.taskNumber === taskNumber);
+    if (!taskWindow) return res.status(400).json({ error: 'مهمة التقييم غير موجودة ضمن خطة اليوم الحالية' });
+    if (taskWindow.remainingMs > 0) return res.status(429).json({ error: 'لم يحن موعد ظهور هذه المهمة بعد؛ تظهر مهمة جديدة كل 3 ساعات.', unlockAt: taskWindow.availableAt });
 
     const rating = Number(req.body?.rating);
     const selectedTag = String(req.body?.selectedTag || '').trim();

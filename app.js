@@ -2113,7 +2113,7 @@ function renderDailyTaskDetail(data) {
     const completedCount = Math.min(Number(data.completedCount || 0), taskLimit);
     window.__latestDailyTasks = allTasks;
     title.innerText = `${data.tier?.name || data.tier?.code || 'المستوى'} - مهام اليوم`;
-    meta.innerText = data.active ? `${completedCount} من ${taskLimit} مكتملة • ${Math.max(0, taskLimit - completedCount)} مهمة متبقية • تظهر مهمة واحدة كل مرة • الربح اليومي الإجمالي $${Number(data.tier?.dailyProfit || 0).toFixed(2)}` : 'فعّل المستوى لفتح المهام المدفوعة';
+    meta.innerText = data.active ? `${completedCount} من ${taskLimit} مكتملة • ${Math.max(0, taskLimit - completedCount)} مهمة متبقية • جميع المهام المتاحة الآن تظهر في قائمة الانتظار • الربح اليومي الإجمالي $${Number(data.tier?.dailyProfit || 0).toFixed(2)}` : 'فعّل المستوى لفتح المهام المدفوعة';
     list.innerHTML = tasks.map(task => {
         const isExpanded = expandedDailyTaskKey === task.taskKey;
         const taskReward = Number(task.reward || (Number(data.tier?.dailyProfit || 0) / taskLimit)).toFixed(4);

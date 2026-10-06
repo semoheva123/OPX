@@ -39,30 +39,33 @@ assert.ok(tasks[1].tags.includes('الخصوصية'));
 assert.equal(tasks[2].targetCategory, 'ai');
 assert.equal(tasks[2].targetImageUrl, 'https://images.example.test/ai.png');
 const now = Date.parse('2031-06-01T12:00:00.000Z');
-assert.deepEqual(activityController.getDailyTaskProgress('A1', 3, [], now), {
-	nextTaskNumber: 1,
-	availableAt: new Date(now).toISOString(),
-	remainingMs: 0,
-	remainingSeconds: 0
-});
+const initialProgress = activityController.getDailyTaskProgress('A1', 3, [], now);
+assert.equal(initialProgress.nextTaskNumber, 1, 'the first paid task should be task 1 in the display queue');
+assert.equal(initialProgress.availableAt, new Date(now).toISOString(), 'the first task is available immediately');
+assert.equal(initialProgress.remainingMs, 0, 'the first task should never be locked at launch');
+assert.equal(initialProgress.remainingSeconds, 0, 'the first task should be instantly ready');
 const afterCommunity = [{ taskKey: 'A1-community', createdAt: new Date(now - 5 * 60 * 1000).toISOString() }];
-const cooldown = activityController.getDailyTaskProgress('A1', 3, afterCommunity, now);
-assert.equal(cooldown.nextTaskNumber, 2);
-assert.equal(cooldown.remainingMs, 2 * 60 * 60 * 1000 + 55 * 60 * 1000, 'the next task unlocks 3 hours after its predecessor');
-assert.equal(activityController.getDailyTaskProgress('A1', 3, afterCommunity, now + 3 * 60 * 60 * 1000).remainingMs, 0, 'the task unlocks exactly at the 3-hour boundary');
-const afterSecond = [...afterCommunity, { taskKey: 'A1-task-02', createdAt: new Date(now - 2 * 60 * 1000).toISOString() }];
-assert.equal(activityController.getDailyTaskProgress('A1', 3, afterSecond, now).nextTaskNumber, 3);
-assert.equal(activityController.getDailyTaskProgress('A1', 3, [{ taskKey: 'A1-task-02', createdAt: new Date(now).toISOString() }], now).nextTaskNumber, 1, 'a later task cannot advance the sequence without its predecessor');
-assert.equal(activityController.getDailyTaskProgress('A1', 2, [...afterCommunity, { taskKey: 'A1-task-02' }], now).nextTaskNumber, null);
+const communityProgress = activityController.getDailyTaskProgress('A1', 3, afterCommunity, now);
+assert.equal(communityProgress.nextTaskNumber, 1, 'the community task stays separate from the paid queue');
+assert.equal(communityProgress.remainingMs, 0, 'the first paid task should still be available immediately after the community task');
+const backlogTasks = [
+  { taskKey: 'A1-task-02', createdAt: new Date(now - 3 * 60 * 60 * 1000).toISOString() },
+  { taskKey: 'A1-task-03', createdAt: new Date(now - 6 * 60 * 60 * 1000).toISOString() },
+  { taskKey: 'A1-task-04', createdAt: new Date(now - 9 * 60 * 60 * 1000).toISOString() }
+];
+const backlog = activityController.getDailyTaskProgress('A1', 4, backlogTasks, now);
+assert.deepEqual(backlog.unlockedTaskNumbers, [1, 2, 3, 4], 'the backlog should keep all due tasks visible once they unlock');
+assert.equal(backlog.nextTaskNumber, 1, 'the first due task should remain the next step in the backlog queue');
 const stripeTask = activityController.buildDailyTasks('A1', [
 	{ entityKey: 'finance:stripe', entityName: 'Stripe, Inc.', category: 'finance', summary: 'خدمة مالية.', imageUrl: '', submissionComplete: false }
 ], new Set(), false, 1)[1];
 assert.equal(stripeTask.targetImageUrl, 'https://www.google.com/s2/favicons?domain=stripe.com&sz=128', 'known brands should use the favicon hosted by their official domain when task data has no image');
 assert.equal(automation.getOfficialBrandLogoUrl('Intel'), 'https://www.google.com/s2/favicons?domain=intel.com&sz=128');
 assert.equal(automation.getOfficialBrandLogoUrl('MetaTrader'), 'https://www.metatrader5.com/i/metatrader-5-logo.png');
-assert.ok(tasks.every(task => task.reward > 0));
-assert.ok(Math.abs(tasks.reduce((sum, task) => sum + task.reward, 0) - 1.5) < 0.0001, 'المكافآت اليومية يجب أن تتجمع إلى الحد الثابت دون تجاوز');
-assert.notEqual(tasks[1].reward, tasks[2].reward, 'قيمة كل مهمة يجب أن تختلف حسب الشركة أو الفئة');
+const paidTasks = tasks.filter(task => task.requirement !== 'community_engagement');
+assert.ok(paidTasks.every(task => task.reward > 0));
+assert.ok(Math.abs(paidTasks.reduce((sum, task) => sum + task.reward, 0) - 1.5) < 0.0001, 'المكافآت اليومية يجب أن تتجمع إلى الحد الثابت دون تجاوز');
+assert.notEqual(paidTasks[0].reward, paidTasks[1].reward, 'قيمة كل مهمة يجب أن تختلف حسب الشركة أو الفئة');
 assert.deepEqual(automation.getEvaluationTags('crypto'), ['الأمان', 'الشفافية', 'المنفعة', 'اللامركزية', 'التقلب', 'الرسوم', 'الحوكمة']);
 
 const dayStart = new Date('2026-10-03T00:00:00.000Z');

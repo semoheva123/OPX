@@ -287,7 +287,7 @@ async function getDailyEntityPool(date) {
 }
 
 async function assignDailyEvaluationEntities({ userId, tierCode, totalTaskCount, date = utcDateString() }) {
-  const evaluationCount = Math.max(0, Math.min(49, Number(totalTaskCount || 1) - 1));
+  const evaluationCount = Math.max(0, Math.min(50, Number(totalTaskCount || 0)));
   if (!evaluationCount) return [];
   const cacheKey = `${userId}:${tierCode}:${date}:${evaluationCount}`;
   if (ASSIGNMENT_CACHE.has(cacheKey)) return ASSIGNMENT_CACHE.get(cacheKey);
