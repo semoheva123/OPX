@@ -47,13 +47,13 @@ assert.equal(tasks[2].targetCategory, 'ai');
 assert.equal(tasks[2].targetImageUrl, 'https://images.example.test/ai.png');
 const now = Date.parse('2031-06-01T12:00:00.000Z');
 const initialProgress = activityController.getDailyTaskProgress('A1', 3, [], now);
-assert.equal(initialProgress.nextTaskNumber, 1, 'the first paid task should be task 1 in the display queue');
+assert.equal(initialProgress.nextTaskNumber, 2, 'the first paid task key is task-02 in the live database plan');
 assert.equal(initialProgress.availableAt, new Date(now).toISOString(), 'the first task is available immediately');
 assert.equal(initialProgress.remainingMs, 0, 'the first task should never be locked at launch');
 assert.equal(initialProgress.remainingSeconds, 0, 'the first task should be instantly ready');
 const afterCommunity = [{ taskKey: 'A1-community', createdAt: new Date(now - 5 * 60 * 1000).toISOString() }];
 const communityProgress = activityController.getDailyTaskProgress('A1', 3, afterCommunity, now);
-assert.equal(communityProgress.nextTaskNumber, 1, 'the community task stays separate from the paid queue');
+assert.equal(communityProgress.nextTaskNumber, 2, 'the community task stays separate from the paid queue and the first paid task remains task-02');
 assert.equal(communityProgress.remainingMs, 0, 'the first paid task should still be available immediately after the community task');
 const backlogTasks = [
   { taskKey: 'A1-task-02', createdAt: new Date(now - 3 * 60 * 60 * 1000).toISOString() },
@@ -61,15 +61,15 @@ const backlogTasks = [
   { taskKey: 'A1-task-04', createdAt: new Date(now - 9 * 60 * 60 * 1000).toISOString() }
 ];
 const backlog = activityController.getDailyTaskProgress('A1', 4, backlogTasks, now);
-assert.deepEqual(backlog.unlockedTaskNumbers, [1, 2, 3, 4], 'the backlog should keep all due tasks visible once they unlock');
-assert.equal(backlog.nextTaskNumber, 1, 'the first due task should remain the next step in the backlog queue');
+assert.deepEqual(backlog.unlockedTaskNumbers, [2, 3, 4, 5], 'the backlog should keep all due paid tasks visible once their actual task numbers unlock');
+assert.equal(backlog.nextTaskNumber, 2, 'the first due paid task remains the real task-02 key in the backlog queue');
 const sixPaidTaskAssignments = Array.from({ length: 6 }, (_, index) => ({
 	taskNumber: index + 2,
 	createdAt: new Date(now - 18 * 60 * 60 * 1000).toISOString()
 }));
 const sixPaidTaskProgress = activityController.getDailyTaskProgress('A3', 6, sixPaidTaskAssignments, [], now);
 assert.equal(sixPaidTaskProgress.taskWindows.at(-1).taskNumber, 7, 'six paid evaluations map to assignment keys task-02 through task-07');
-assert.deepEqual(sixPaidTaskProgress.unlockedTaskNumbers, [1, 2, 3, 4, 5, 6], 'all six paid tasks accumulate after their release windows pass');
+assert.deepEqual(sixPaidTaskProgress.unlockedTaskNumbers, [2, 3, 4, 5, 6, 7], 'all six paid tasks accumulate after their release windows pass');
 const stripeTask = activityController.buildDailyTasks('A1', [
 	{ entityKey: 'finance:stripe', entityName: 'Stripe, Inc.', category: 'finance', summary: 'خدمة مالية.', imageUrl: '', submissionComplete: false }
 ], new Set(), false, 1)[1];

@@ -54,7 +54,7 @@ function getDailyTaskProgress(tierCode, paidTaskCount, assignments = [], complet
 
   const unlockedTaskNumbers = taskWindows
     .filter(window => !window.completed && window.remainingMs === 0)
-    .map(window => window.taskNumber - 1);
+    .map(window => window.taskNumber);
   const availableWindow = taskWindows.find(window => !window.completed && window.remainingMs === 0)
     || taskWindows.find(window => !window.completed && window.remainingMs > 0)
     || taskWindows[0] || null;
@@ -62,7 +62,7 @@ function getDailyTaskProgress(tierCode, paidTaskCount, assignments = [], complet
   return {
     taskWindows,
     unlockedTaskNumbers,
-    nextTaskNumber: availableWindow ? Math.max(1, availableWindow.taskNumber - 1) : null,
+    nextTaskNumber: availableWindow ? availableWindow.taskNumber : null,
     availableAt: availableWindow?.availableAt || null,
     remainingMs: availableWindow?.remainingMs || 0,
     remainingSeconds: availableWindow ? Math.ceil(availableWindow.remainingMs / 1000) : 0,
@@ -369,7 +369,7 @@ async function getDailyTasks(req, res) {
     const visiblePaidTasks = !active
       ? pendingPaidTasks.slice(0, 1).map(task => ({ ...task, locked: true, lockReason: 'tier_inactive' }))
       : pendingPaidTasks
-        .filter(task => progress.unlockedTaskNumbers.includes(task.number))
+        .filter(task => progress.unlockedTaskNumbers.includes(task.assignmentNumber))
         .map(task => {
           const window = progress.taskWindows.find(item => item.taskNumber === task.assignmentNumber);
           return { ...task, availableAt: window?.availableAt || null, locked: false, lockReason: null };
