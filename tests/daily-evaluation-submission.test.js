@@ -86,10 +86,10 @@ function responseRecorder() {
       user: { id: 'user-1' },
       body: { taskKey: 'A2-task-03', rating: 3, selectedTag: 'الدقة' }
     }, accruedBacklogResponse);
-    assert.equal(accruedBacklogResponse.statusCode, 200, 'a task already accrued in the 3-hour release schedule can be completed immediately after its predecessor');
+    assert.equal(accruedBacklogResponse.statusCode, 200, 'a task already accrued in the 2-hour release schedule can be completed immediately after its predecessor');
     assert.equal(saved.at(-1).taskKey, 'A2-task-03');
 
-    assignmentCreatedAt = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+    assignmentCreatedAt = new Date(Date.now() - 60 * 60 * 1000).toISOString();
     completionRows = [{ taskKey: 'A2-task-02', createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString() }];
     const notYetReleasedResponse = responseRecorder();
     const savedBeforeRelease = saved.length;

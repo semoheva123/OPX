@@ -157,7 +157,7 @@ begin
     from public.daily_task_assignments
     where user_id = new.user_id and tier_code = current_tier and task_date = new.task_date;
     if plan_started_at is null
-      or plan_started_at + ((task_number - 2) * interval '3 hours') > clock_timestamp() then
+      or plan_started_at + ((task_number - 2) * interval '2 hours') > clock_timestamp() then
       raise exception using errcode = 'P0001', message = 'TASK_COOLDOWN_ACTIVE';
     end if;
   end if;

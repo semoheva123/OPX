@@ -5,7 +5,7 @@ const { calculateDailyTaskRewardSplit } = require('../services/opxPricing');
 const { assignDailyEvaluationEntities, getEvaluationTags, getCategoryLabel, getOfficialBrandLogoUrl, utcDateString } = require('../services/dailyTaskAutomation');
 const { getTaskSchedule } = require('../services/weeklySchedule');
 
-const DAILY_TASK_COOLDOWN_MS = 3 * 60 * 60 * 1000;
+const DAILY_TASK_COOLDOWN_MS = 2 * 60 * 60 * 1000;
 
 function getDailyTaskProgress(tierCode, paidTaskCount, assignments = [], completions = [], now = Date.now()) {
   let effectiveAssignments = Array.isArray(assignments) ? assignments : [];
@@ -416,7 +416,7 @@ async function completeTaskSupabase(req, res) {
     if (message.includes('INVALID_TASK_KEY')) return res.status(400).json({ error: 'هذه المهمة غير صالحة لخطة مستواك الحالية' });
     if (message.includes('TASK_ALREADY_COMPLETED')) return res.status(400).json({ error: 'تم إنجاز هذه المهمة مسبقًا اليوم' });
     if (message.includes('TASK_SEQUENCE_REQUIRED')) return res.status(409).json({ error: 'أكمل المهمة السابقة أولًا لفتح المهمة التالية.' });
-    if (message.includes('TASK_COOLDOWN_ACTIVE')) return res.status(429).json({ error: 'لم يحن موعد هذه المهمة بعد؛ تُفتح المهام بالتتابع كل 3 ساعات من بدء الخطة.' });
+    if (message.includes('TASK_COOLDOWN_ACTIVE')) return res.status(429).json({ error: 'لم يحن موعد هذه المهمة بعد؛ حاول مرة أخرى لاحقًا.' });
     if (message.includes('TASK_HOLIDAY')) return res.status(403).json({ success: false, code: 'TASK_HOLIDAY', error: 'عطلة المهام الأسبوعية: لا توجد مهام يوم الجمعة أو السبت.' });
     if (message.includes('DAILY_CAP_REACHED')) return res.status(400).json({ error: 'تم بلوغ الحد اليومي للربح، ولا يمكن جمع أكثر من الربح اليومي الثابت.' });
     if (message.includes('OPTIONAL_TASK_NO_REWARD')) return res.status(400).json({ error: 'مهمة المجتمع اختيارية ولا تمنح مكافأة؛ أكمل مهام التقييم المدفوعة من نموذج التقييم.' });
@@ -453,7 +453,7 @@ async function submitDailyEvaluation(req, res) {
     if (!taskWindow) return res.status(400).json({ error: 'مهمة التقييم غير موجودة ضمن خطة اليوم الحالية' });
     const taskIsUnlocked = progress.unlockedTaskNumbers.includes(taskNumber);
     if (taskWindow.remainingMs > 0 && !taskIsUnlocked) {
-      return res.status(429).json({ error: 'لم يحن موعد ظهور هذه المهمة بعد؛ تظهر مهمة جديدة كل 3 ساعات.', unlockAt: taskWindow.availableAt });
+      return res.status(429).json({ error: 'لم يحن موعد ظهور هذه المهمة بعد؛ حاول مرة أخرى لاحقًا.', unlockAt: taskWindow.availableAt });
     }
     if (taskNumber > 2) {
       const previousTaskKey = `${tier.code}-task-${String(taskNumber - 1).padStart(2, '0')}`;
@@ -498,7 +498,7 @@ async function submitDailyEvaluation(req, res) {
     if (message.includes('EVALUATION_REQUIRED')) return res.status(400).json({ error: 'اختر التقييم بالنجوم وحدد جانب التقييم قبل إنهاء المهمة.' });
     if (message.includes('TASK_ALREADY_COMPLETED')) return res.status(409).json({ error: 'تم إنهاء هذه المهمة اليوم مسبقًا' });
     if (message.includes('TASK_SEQUENCE_REQUIRED')) return res.status(409).json({ error: 'أكمل مهمة التقييم السابقة أولًا؛ المشاركة المجتمعية اختيارية.' });
-    if (message.includes('TASK_COOLDOWN_ACTIVE')) return res.status(429).json({ error: 'لم يحن موعد هذه المهمة بعد؛ تُفتح المهام بالتتابع كل 3 ساعات من بدء الخطة.' });
+    if (message.includes('TASK_COOLDOWN_ACTIVE')) return res.status(429).json({ error: 'لم يحن موعد هذه المهمة بعد؛ حاول مرة أخرى لاحقًا.' });
     if (message.includes('TASK_HOLIDAY')) return res.status(403).json({ success: false, code: 'TASK_HOLIDAY', error: 'عطلة المهام الأسبوعية: لا توجد مهام يوم الجمعة أو السبت.' });
     if (message.includes('DAILY_CAP_REACHED')) return res.status(400).json({ error: 'تم بلوغ الحد اليومي للربح، ولا يمكن جمع أكثر من الربح اليومي الثابت.' });
     if (error?.code === 'PGRST202' || /operix_daily_task_complete_atomic.*does not exist/i.test(message)) return res.status(503).json({ error: 'قاعدة البيانات تحتاج إلى تحديث نظام مهام التقييم.' });

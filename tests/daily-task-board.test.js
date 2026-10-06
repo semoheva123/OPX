@@ -56,16 +56,18 @@ const communityProgress = activityController.getDailyTaskProgress('A1', 3, after
 assert.equal(communityProgress.nextTaskNumber, 2, 'the community task stays separate from the paid queue and the first paid task remains task-02');
 assert.equal(communityProgress.remainingMs, 0, 'the first paid task should still be available immediately after the community task');
 const backlogTasks = [
-  { taskKey: 'A1-task-02', createdAt: new Date(now - 3 * 60 * 60 * 1000).toISOString() },
-  { taskKey: 'A1-task-03', createdAt: new Date(now - 6 * 60 * 60 * 1000).toISOString() },
-  { taskKey: 'A1-task-04', createdAt: new Date(now - 9 * 60 * 60 * 1000).toISOString() }
+  { taskKey: 'A1-task-02', createdAt: new Date(now - 2 * 60 * 60 * 1000).toISOString() },
+  { taskKey: 'A1-task-03', createdAt: new Date(now - 4 * 60 * 60 * 1000).toISOString() },
+  { taskKey: 'A1-task-04', createdAt: new Date(now - 6 * 60 * 60 * 1000).toISOString() }
 ];
 const backlog = activityController.getDailyTaskProgress('A1', 4, backlogTasks, now);
 assert.deepEqual(backlog.unlockedTaskNumbers, [2, 3, 4, 5], 'the backlog should keep all due paid tasks visible once their actual task numbers unlock');
 assert.equal(backlog.nextTaskNumber, 2, 'the first due paid task remains the real task-02 key in the backlog queue');
+const stageStartProgress = activityController.getDailyTaskProgress('A3', 6, [{ taskNumber: 2, createdAt: new Date(now).toISOString() }], [], now);
+assert.equal(stageStartProgress.taskWindows[1].remainingMs, 2 * 60 * 60 * 1000, 'task-03 should release exactly two hours after the start of the daily plan');
 const sixPaidTaskAssignments = Array.from({ length: 6 }, (_, index) => ({
 	taskNumber: index + 2,
-	createdAt: new Date(now - 18 * 60 * 60 * 1000).toISOString()
+	createdAt: new Date(now - 12 * 60 * 60 * 1000).toISOString()
 }));
 const sixPaidTaskProgress = activityController.getDailyTaskProgress('A3', 6, sixPaidTaskAssignments, [], now);
 assert.equal(sixPaidTaskProgress.taskWindows.at(-1).taskNumber, 7, 'six paid evaluations map to assignment keys task-02 through task-07');
@@ -104,13 +106,13 @@ assert.doesNotMatch(schema, /length\(trim\(submission\.feedback\)\) between 10 a
 assert.match(schema, /operix_enforce_daily_task_sequence_and_cooldown/i);
 assert.match(migration, /operix_enforce_daily_task_sequence_and_cooldown/i);
 assert.match(ratingCooldownMigration, /TASK_COOLDOWN_ACTIVE/i);
-assert.match(ratingCooldownMigration, /interval '3 hours'/i);
+assert.match(ratingCooldownMigration, /interval '2 hours'/i);
 assert.doesNotMatch(ratingCooldownMigration, /length\(trim\(submission\.feedback\)\) between 10 and 500/i);
 assert.match(ratingCooldownMigration, /requested_task_number > max_tasks \+ 1/i, 'task keys start at task-02, so the final paid assignment is max_tasks + 1');
 assert.match(ratingCooldownMigration, /max_tasks := greatest\(coalesce\(level_row\.tasks, 1\) - 1, 0\)/i, 'the fixed optional community card must be excluded from the paid task count');
 assert.match(ratingCooldownMigration, /if max_tasks < 1 then raise exception/i, 'the paid reward calculation must never divide by zero');
 assert.match(ratingCooldownMigration, /OPTIONAL_TASK_NO_REWARD/, 'the database must never pay the optional community card');
-assert.match(ratingCooldownMigration, /plan_started_at \+ \(\(task_number - 2\) \* interval '3 hours'\)/i, 'the database release window must accrue from plan start, not the previous completion time');
+assert.match(ratingCooldownMigration, /plan_started_at \+ \(\(task_number - 2\) \* interval '2 hours'\)/i, 'the database release window must accrue from plan start, not the previous completion time');
 assert.match(ratingCooldownMigration, /total_daily_reward \+ gross_reward > coalesce\(level_row\.daily_profit, 0\)/i, 'the replacement task RPC must preserve the fixed daily reward cap');
 assert.match(ratingCooldownMigration, /DAILY_CAP_REACHED/i, 'the database must reject task rewards that exceed the daily cap');
 assert.match(schema, /daily_task_submissions/);
