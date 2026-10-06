@@ -243,32 +243,6 @@ begin
     end if;
   end if;
 
-  if p_task_key = (user_row.tier_code || '-community') and (
-    not exists (
-      select 1 from social_posts own_post
-      where own_post.author_id = p_user_id
-        and own_post.status = 'visible'
-        and own_post.source = 'user'
-        and not own_post.is_official_ai
-        and own_post.created_at >= (task_day::timestamp at time zone 'UTC')
-        and (own_post.content ilike '%OPERIX%' or own_post.content ilike '%أوبيريكس%')
-    )
-    or not exists (
-      select 1 from social_posts other_post
-      where other_post.author_id is distinct from p_user_id
-        and other_post.status = 'visible'
-        and exists (
-          select 1
-          from jsonb_array_elements(coalesce(other_post.comments, '[]'::jsonb)) as comments(comment_entry)
-          where coalesce(comments.comment_entry->>'authorId', comments.comment_entry->>'author_id') = p_user_id::text
-            and coalesce(comments.comment_entry->>'status', 'visible') = 'visible'
-            and left(coalesce(comments.comment_entry->>'createdAt', comments.comment_entry->>'created_at', ''), 10) = to_char(task_day, 'YYYY-MM-DD')
-        )
-    )
-  ) then
-    raise exception using errcode = 'P0001', message = 'COMMUNITY_TASK_REQUIRED';
-  end if;
-
   gross_reward := round(coalesce(level_row.daily_profit, 0) / max_tasks, 4);
   opx_reward := round(
     least(

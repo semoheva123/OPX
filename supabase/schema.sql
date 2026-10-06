@@ -1155,9 +1155,8 @@ begin
     raise exception using errcode = 'P0001', message = 'INVALID_TASK_KEY';
   end if;
   if task_number < 1 then raise exception using errcode = 'P0001', message = 'INVALID_TASK_KEY'; end if;
-  if task_number > 1 then
-    previous_task_key := case when task_number = 2 then current_tier || '-community'
-      else current_tier || '-task-' || lpad((task_number - 1)::text, 2, '0') end;
+  if task_number > 2 then
+    previous_task_key := current_tier || '-task-' || lpad((task_number - 1)::text, 2, '0');
     select created_at into previous_completed_at from public.daily_task_completions
       where user_id = new.user_id and task_date = new.task_date and task_key = previous_task_key;
     if previous_completed_at is null then raise exception using errcode = 'P0001', message = 'TASK_SEQUENCE_REQUIRED'; end if;
@@ -1235,32 +1234,6 @@ begin
         and submission.selected_tag = any(assignment_row.allowed_tags)
         and submission.rating between 1 and 5
     ) then raise exception using errcode = 'P0001', message = 'EVALUATION_REQUIRED'; end if;
-  end if;
-
-  if p_task_key = (user_row.tier_code || '-community') and (
-    not exists (
-      select 1 from social_posts own_post
-      where own_post.author_id = p_user_id
-        and own_post.status = 'visible'
-        and own_post.source = 'user'
-        and not own_post.is_official_ai
-        and own_post.created_at >= ((now() at time zone 'UTC')::date::timestamp at time zone 'UTC')
-        and (own_post.content ilike '%OPERIX%' or own_post.content ilike '%أوبيريكس%')
-    )
-    or not exists (
-      select 1 from social_posts other_post
-      where other_post.author_id is distinct from p_user_id
-        and other_post.status = 'visible'
-        and exists (
-          select 1
-          from jsonb_array_elements(coalesce(other_post.comments, '[]'::jsonb)) as comments(comment_entry)
-          where coalesce(comments.comment_entry->>'authorId', comments.comment_entry->>'author_id') = p_user_id::text
-            and coalesce(comments.comment_entry->>'status', 'visible') = 'visible'
-            and left(coalesce(comments.comment_entry->>'createdAt', comments.comment_entry->>'created_at', ''), 10) = to_char(now() at time zone 'UTC', 'YYYY-MM-DD')
-        )
-    )
-  ) then
-    raise exception using errcode = 'P0001', message = 'COMMUNITY_TASK_REQUIRED';
   end if;
 
   gross_reward := round(coalesce(level_row.daily_profit, 2.5) / max_tasks, 4);

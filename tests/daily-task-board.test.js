@@ -30,6 +30,8 @@ assert.equal(tasks[0].instructions.length > 0, true, 'يجب أن تحتوي ا�
 assert.equal(typeof tasks[0].reward, 'number', 'يجب أن تحتوي المهمة على قيمة مكافأة');
 assert.equal(tasks[0].taskKey, 'A1-community');
 assert.equal(tasks[0].requirement, 'community_engagement');
+assert.equal(tasks[0].optional, true, 'المهمة الاجتماعية اختيارية وليست جزءًا من المسار المدفوع');
+assert.equal(tasks[0].reward, 0, 'المهمة الاجتماعية لا تمنح مكافأة');
 assert.equal(tasks[0].requirementMet, true, 'المهمة الثابتة واحدة وتجمع النشر والتفاعل');
 assert.equal(tasks[1].taskKey, 'A1-task-02');
 assert.equal(tasks[1].requirement, 'evaluation');
@@ -84,7 +86,7 @@ assert.equal(activityController.hasDailyCommunityInteraction([
 assert.equal(activityController.hasDailyCommunityInteraction([
 	{ authorId: 'user-1', status: 'visible', likedBy: ['user-1'], comments: [{ authorId: 'user-1', status: 'visible', createdAt: '2026-10-03T10:00:00.000Z' }] }
 ], 'user-1', dayStart), false, 'التفاعل مع المنشور الشخصي لا يستوفي المهمة');
-assert.match(schema, /COMMUNITY_TASK_REQUIRED/);
+assert.doesNotMatch(schema, /COMMUNITY_TASK_REQUIRED/);
 assert.match(schema, /EVALUATION_REQUIRED/);
 assert.doesNotMatch(schema, /length\(trim\(submission\.feedback\)\) between 10 and 500/i, 'notes must not be a completion requirement');
 assert.match(schema, /operix_enforce_daily_task_sequence_and_cooldown/i);
@@ -100,7 +102,7 @@ assert.match(schema, /daily_task_entities/);
 assert.match(schema, /enable row level security/i);
 assert.match(schema, /grant execute on function public\.operix_daily_task_complete_atomic\(uuid, text\) to service_role/i);
 assert.match(migration, /create or replace function public\.operix_daily_task_complete_atomic/i);
-assert.match(migration, /COMMUNITY_TASK_REQUIRED/);
+assert.doesNotMatch(migration, /COMMUNITY_TASK_REQUIRED/);
 assert.match(migration, /EVALUATION_REQUIRED/);
 assert.match(adminController, /evaluationCount \+ 1/, 'task count must follow the fixed community task plus the admin-controlled evaluation count');
 assert.match(client, /button\.disabled = !currentUserTierActive/, 'the daily task card must remain an entry to the plan after all tasks are marked complete');
