@@ -6,7 +6,7 @@ This folder contains the canonical Supabase schema and deployment checks for OPE
 - schema.sql — base SQL schema for users, wallet balances, ledger, transactions, sessions, and security events
 - production-readiness.sql — idempotent upgrade for automated tasks, 6-referral game cycles, one-time A4 milestone rewards, and backend-only RLS
 - automatic-withdrawals.sql — persists withdrawal networks and installs the backend-only payout queue/RPCs used for admin-triggered TRC20/BEP20 payouts
-- weekly-schedule-guards.sql — blocks Friday/Saturday task completions and restricts new withdrawal requests to Friday for A1/A2 or Saturday for higher tiers (UTC)
+- weekly-schedule-guards.sql — blocks Friday/Saturday task completions and restricts new withdrawal requests to Friday for A1/A2 or Saturday for higher tiers (Europe/Istanbul)
 - admin-email-broadcasts.sql — installs the durable admin email announcement queue, verified-recipient enforcement, and update opt-out preference
 - email-verification-reminders.sql — installs a separate, rate-limited transactional queue for active unverified accounts; links expire after 24 hours
 - migration-plan.md — production rollout and reconciliation rules
@@ -34,7 +34,7 @@ The project is configured for Supabase as the only application database layer.
 2. For a new database, run schema.sql. For an existing database, do not rerun the full starter schema blindly.
 3. Run production-readiness.sql in the Supabase SQL editor; it is transactional and safe to rerun.
 4. Run automatic-withdrawals.sql before deploying automatic payout code. Existing un-networked pending withdrawals must not be auto-paid.
-5. After production-readiness.sql and automatic-withdrawals.sql, run weekly-schedule-guards.sql before deploying the weekly task/withdrawal schedule. Friday and Saturday are task holidays; A1/A2 may request withdrawal Friday and all higher tiers Saturday (UTC). This restricts new requests only; already accepted payouts continue through the existing settlement queue.
+5. After production-readiness.sql and automatic-withdrawals.sql, run weekly-schedule-guards.sql before deploying the weekly task/withdrawal schedule. Friday and Saturday are task holidays; A1/A2 may request withdrawal Friday and all higher tiers Saturday (Europe/Istanbul). This restricts new requests only; already accepted payouts continue through the existing settlement queue.
 6. Run admin-email-broadcasts.sql before deploying admin email announcements. Configure EMAIL_UNSUBSCRIBE_SECRET (a private random value; otherwise JWT_SECRET signs unsubscribe tokens) and a verified EMAIL_FROM. The queue sends only verified regular-user accounts not opted out, in batches of 100.
 7. Run email-verification-reminders.sql before deploying the unverified-account reminder panel or worker. It excludes banned/opted-out accounts, deduplicates email addresses, rate-limits reminders to once every 7 days, stores only token hashes, and sends one bounded batch per worker run.
 8. Validate required tables/functions and confirm the application uses only the backend service-role client.

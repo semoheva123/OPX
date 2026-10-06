@@ -1947,8 +1947,10 @@ function updateTaskAvailability(completed, maximum) {
     renderTaskBoard(completedCount, taskLimit);
 }
 
-function isWeeklyTaskHolidayUtc(date = new Date()) {
-    const day = date.getUTCDay();
+function isWeeklyTaskHoliday(date = new Date()) {
+    const dateParts = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Istanbul', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date);
+    const values = Object.fromEntries(dateParts.filter(part => part.type !== 'literal').map(part => [part.type, Number(part.value)]));
+    const day = new Date(Date.UTC(values.year, values.month - 1, values.day)).getUTCDay();
     return day === 5 || day === 6;
 }
 
@@ -2220,8 +2222,13 @@ function startTaskResetCountdown() {
     if (taskCountdownTimer) clearInterval(taskCountdownTimer);
     const update = () => {
         const now = new Date();
-        const nextDay = new Date(now);
-        nextDay.setUTCHours(24, 0, 0, 0);
+        const localDate = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Istanbul', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now);
+        const dateParts = Object.fromEntries(localDate.filter(part => part.type !== 'literal').map(part => [part.type, Number(part.value)]));
+        const utcMidnight = Date.UTC(dateParts.year, dateParts.month - 1, dateParts.day);
+        const localAtUtcMidnight = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Istanbul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(utcMidnight));
+        const localParts = Object.fromEntries(localAtUtcMidnight.filter(part => part.type !== 'literal').map(part => [part.type, Number(part.value)]));
+        const localAsUtc = Date.UTC(localParts.year, localParts.month - 1, localParts.day, localParts.hour, localParts.minute, localParts.second);
+        const nextDay = new Date(utcMidnight - (localAsUtc - utcMidnight) + 24 * 60 * 60 * 1000);
         const remaining = Math.max(0, nextDay - now);
         const hours = Math.floor(remaining / 3600000);
         const minutes = Math.floor((remaining % 3600000) / 60000);

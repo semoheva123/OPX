@@ -1,5 +1,6 @@
 const cron = require('node-cron');
 const dataAccess = require('../services/dataAccess');
+const { TASK_TIME_ZONE } = require('../services/taskCalendar');
 const User = dataAccess.user;
 
 async function resetDailyTasks() {
@@ -12,8 +13,8 @@ async function resetDailyTasks() {
 }
 
 function scheduleDailyTaskReset() {
-  cron.schedule('0 0 * * *', resetDailyTasks, { timezone: 'UTC' });
-  console.log('⏰ تمت جدولة إعادة تعيين المهام اليومية عند 00:00 UTC');
+  cron.schedule('0 0 * * *', resetDailyTasks, { timezone: TASK_TIME_ZONE });
+  console.log(`⏰ تمت جدولة إعادة تعيين المهام اليومية عند 00:00 ${TASK_TIME_ZONE}`);
 }
 
 module.exports = { resetDailyTasks, scheduleDailyTaskReset };

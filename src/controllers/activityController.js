@@ -2,7 +2,7 @@ const dataAccess = require('../services/dataAccess');
 const { syncGameCredits } = require('../services/gameAccess');
 const { hasPaidFeatureAccess, hasFullFeatureAccess } = require('../services/paidFeatureAccess');
 const { calculateDailyTaskRewardSplit } = require('../services/opxPricing');
-const { assignDailyEvaluationEntities, getEvaluationTags, getCategoryLabel, getOfficialBrandLogoUrl, utcDateString } = require('../services/dailyTaskAutomation');
+const { assignDailyEvaluationEntities, getEvaluationTags, getCategoryLabel, getOfficialBrandLogoUrl, utcDateString, startOfTaskDay } = require('../services/dailyTaskAutomation');
 const { getTaskSchedule } = require('../services/weeklySchedule');
 
 const DAILY_TASK_COOLDOWN_MS = 2 * 60 * 60 * 1000;
@@ -75,6 +75,25 @@ function splitHybridReward(amount) {
   const usdtAmount = Number((value * 0.7).toFixed(4));
   const opxAmount = Number((value * 0.3).toFixed(4));
   return { usdtAmount, opxAmount };
+}
+
+function getTaskSystemMigrationError(message = '') {
+  const normalized = String(message || '').toLowerCase();
+  const schemaMarkers = [
+    'selected_tag',
+    'assignment_id',
+    'daily_task_submissions',
+    'daily_task_assignments',
+    'daily_task_completions',
+    'allowed_tags',
+    'task_date',
+    'does not exist',
+    'operix_daily_task_complete_atomic'
+  ];
+  if (schemaMarkers.some(marker => normalized.includes(marker))) {
+    return 'قاعدة البيانات تحتاج إلى تحديث نظام المهام والتقييم قبل المتابعة. شغّل آخر تحديث SQL الخاص بالمهام ثم أعد المحاولة.';
+  }
+  return null;
 }
 
 function syncPlainWallet(user) {
@@ -322,8 +341,7 @@ async function getDailyTasks(req, res) {
     if (!tier) return res.status(503).json({ error: 'إعدادات المستوى غير متاحة حاليًا' });
     const today = utcDateString();
     const schedule = getTaskSchedule(new Date());
-    const todayStart = new Date();
-    todayStart.setUTCHours(0, 0, 0, 0);
+    const todayStart = startOfTaskDay();
     const [todayUserPosts, otherMembersPosts] = await Promise.all([
       dataAccess.socialPost.find({ authorId: user.id, status: 'visible', createdAt: { $gte: todayStart } }, { select: 'authorId content status createdAt', limit: 100 }),
       dataAccess.socialPost.find({ authorId: { $ne: user.id }, status: 'visible' }, { select: 'authorId comments likedBy status', sort: { createdAt: -1 }, limit: 1000 })
@@ -409,6 +427,7 @@ async function completeTaskSupabase(req, res) {
   } catch (error) {
     console.error('Supabase task reward error:', error.message);
     const message = String(error?.message || '');
+    const migrationMessage = getTaskSystemMigrationError(message);
     if (message.includes('USER_NOT_FOUND')) return res.status(404).json({ error: 'المستخدم غير موجود' });
     if (message.includes('USER_WALLET_NOT_FOUND')) return res.status(503).json({ error: 'محفظة الحساب غير جاهزة حاليًا، حاول لاحقًا' });
     if (message.includes('TIER_NOT_ACTIVE')) return res.status(400).json({ error: 'يجب إيداع قيمة المستوى وتفعيله قبل إنجاز المهام' });
@@ -422,6 +441,7 @@ async function completeTaskSupabase(req, res) {
     if (message.includes('OPTIONAL_TASK_NO_REWARD')) return res.status(400).json({ error: 'مهمة المجتمع اختيارية ولا تمنح مكافأة؛ أكمل مهام التقييم المدفوعة من نموذج التقييم.' });
     if (message.includes('EVALUATION_REQUIRED')) return res.status(400).json({ error: 'اختر التقييم بالنجوم وحدد جانب التقييم قبل إنهاء المهمة.' });
     if (error?.code === 'PGRST202' || /operix_daily_task_complete_atomic.*does not exist/i.test(message)) return res.status(503).json({ error: 'نظام المهام يحتاج إلى تحديث قاعدة البيانات قبل الاستخدام' });
+    if (migrationMessage) return res.status(503).json({ error: migrationMessage });
     res.status(500).json({ error: 'حدث خطأ في معالجة المهمة والمكافأة' });
   }
 }
@@ -494,6 +514,7 @@ async function submitDailyEvaluation(req, res) {
     return res.json({ success: true, ...result });
   } catch (error) {
     const message = String(error?.message || '');
+    const migrationMessage = getTaskSystemMigrationError(message);
     console.error('Daily evaluation submission error:', message);
     if (message.includes('EVALUATION_REQUIRED')) return res.status(400).json({ error: 'اختر التقييم بالنجوم وحدد جانب التقييم قبل إنهاء المهمة.' });
     if (message.includes('TASK_ALREADY_COMPLETED')) return res.status(409).json({ error: 'تم إنهاء هذه المهمة اليوم مسبقًا' });
@@ -502,6 +523,7 @@ async function submitDailyEvaluation(req, res) {
     if (message.includes('TASK_HOLIDAY')) return res.status(403).json({ success: false, code: 'TASK_HOLIDAY', error: 'عطلة المهام الأسبوعية: لا توجد مهام يوم الجمعة أو السبت.' });
     if (message.includes('DAILY_CAP_REACHED')) return res.status(400).json({ error: 'تم بلوغ الحد اليومي للربح، ولا يمكن جمع أكثر من الربح اليومي الثابت.' });
     if (error?.code === 'PGRST202' || /operix_daily_task_complete_atomic.*does not exist/i.test(message)) return res.status(503).json({ error: 'قاعدة البيانات تحتاج إلى تحديث نظام مهام التقييم.' });
+    if (migrationMessage) return res.status(503).json({ error: migrationMessage });
     res.status(500).json({ error: 'تعذر حفظ التقييم وإنهاء المهمة' });
   }
 }

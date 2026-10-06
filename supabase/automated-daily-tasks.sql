@@ -132,14 +132,14 @@ begin
     from daily_task_assignments assignment
     where assignment.user_id = p_user_id
       and assignment.tier_code = user_row.tier_code
-      and assignment.task_date = current_date
+      and assignment.task_date = (now() at time zone 'Europe/Istanbul')::date
       and assignment.task_number = requested_task_number;
     if assignment_row.id is null then raise exception using errcode = 'P0001', message = 'INVALID_TASK_KEY'; end if;
     if not exists (
       select 1 from daily_task_submissions submission
       where submission.user_id = p_user_id
         and submission.task_key = p_task_key
-        and submission.task_date = current_date
+        and submission.task_date = (now() at time zone 'Europe/Istanbul')::date
         and submission.assignment_id = assignment_row.id
         and submission.entity_key = assignment_row.entity_key
         and submission.target_category = assignment_row.category
@@ -167,13 +167,13 @@ begin
   balance_before := wallet_row.balance;
   select coalesce(sum(gross_amount), 0) into total_daily_reward
   from daily_task_completions
-  where user_id = p_user_id and task_date = current_date;
+  where user_id = p_user_id and task_date = (now() at time zone 'Europe/Istanbul')::date;
   if total_daily_reward + gross_reward > coalesce(level_row.daily_profit, 0) then
     raise exception using errcode = 'P0001', message = 'DAILY_CAP_REACHED';
   end if;
 
   insert into daily_task_completions(user_id, task_key, task_date, gross_amount, usdt_amount, opx_amount)
-  values(p_user_id, p_task_key, current_date, gross_reward, usdt_reward, opx_reward)
+  values(p_user_id, p_task_key, (now() at time zone 'Europe/Istanbul')::date, gross_reward, usdt_reward, opx_reward)
   on conflict (user_id, task_date, task_key) do nothing
   returning id into completion_id;
   if completion_id is null then raise exception using errcode = 'P0001', message = 'TASK_ALREADY_COMPLETED'; end if;
@@ -197,7 +197,7 @@ begin
   values(p_user_id, 'reward', 'USDT', usdt_reward, usdt_reward, balance_before, balance_before + usdt_reward, 'approved', 'daily_task', reward_transaction_id::text, jsonb_build_object('taskKey', p_task_key, 'grossAmount', gross_reward, 'opxAmount', opx_reward));
 
   select count(*) into completed_count from daily_task_completions
-  where user_id = p_user_id and task_date = current_date
+  where user_id = p_user_id and task_date = (now() at time zone 'Europe/Istanbul')::date
     and task_key ~ ('^' || user_row.tier_code || '-task-[0-9]+$');
   update users set today_completed_tasks = completed_count, updated_at = now() where id = p_user_id;
   return jsonb_build_object('taskKey', p_task_key, 'completed', completed_count, 'taskLimit', max_tasks, 'assetWallet', (select asset_wallet from users where id = p_user_id), 'wallet', (select row_to_json(w) from wallet_balances w where w.user_id = p_user_id), 'grossAmount', gross_reward, 'usdtAmount', usdt_reward, 'opxAmount', opx_reward, 'transactionId', reward_transaction_id);

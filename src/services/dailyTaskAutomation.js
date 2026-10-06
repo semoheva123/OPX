@@ -1,4 +1,5 @@
 const dataAccess = require('./dataAccess');
+const { TASK_TIME_ZONE, taskDateString, startOfTaskDay } = require('./taskCalendar');
 
 const RECENT_ENTITY_COOLDOWN_DAYS = 14;
 const CATEGORY_ROTATION = ['technology', 'ai', 'crypto', 'trading', 'finance'];
@@ -72,9 +73,7 @@ const CURATED_CRYPTO_ENTITIES = [
 const DAY_ENTITY_CACHE = new Map();
 const ASSIGNMENT_CACHE = new Map();
 
-function utcDateString(value = new Date()) {
-  return new Date(value).toISOString().slice(0, 10);
-}
+const utcDateString = taskDateString;
 
 function shiftUtcDate(dateString, days) {
   const date = new Date(`${dateString}T00:00:00.000Z`);
@@ -369,6 +368,9 @@ function getCategoryLabel(category) {
 }
 
 module.exports = {
+  TASK_TIME_ZONE,
+  taskDateString,
+  startOfTaskDay,
   RECENT_ENTITY_COOLDOWN_DAYS,
   CATEGORY_TAGS,
   CATEGORY_LABELS,

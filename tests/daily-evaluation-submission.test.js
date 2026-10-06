@@ -129,6 +129,16 @@ function responseRecorder() {
     assert.equal(saved.length, savedBeforeInvalidTag, 'invalid tag submissions must not be saved');
     assert.equal(rpcCalls, rpcCallsBeforeInvalidTag, 'an invalid category tag must not earn a reward');
 
+    const staleDbSchemaResponse = responseRecorder();
+    dataAccess.callSupabaseRpc = async () => {
+      const error = new Error('column "selected_tag" of relation "daily_task_submissions" does not exist');
+      error.code = '42703';
+      throw error;
+    };
+    await activityController.submitDailyEvaluation({ ...validRequest, body: { ...validRequest.body, selectedTag: 'الدقة' } }, staleDbSchemaResponse);
+    assert.equal(staleDbSchemaResponse.statusCode, 503, 'stale task schema must surface a migration-focused error');
+    assert.match(String(staleDbSchemaResponse.body.error), /قاعدة البيانات|تحديث/i, 'stale task schema should explain the DB migration requirement');
+
     console.log('daily evaluation submission tests: ok');
   } catch (error) {
     console.error(error);

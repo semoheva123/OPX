@@ -73,7 +73,7 @@
   "crons": [
     {
       "path": "/api/internal/cron/reset-daily-tasks",
-      "schedule": "0 0 * * *"
+      "schedule": "0 21 * * *"
     },
     {
       "path": "/api/internal/cron/ai-announcer",
@@ -81,7 +81,7 @@
     },
     {
       "path": "/api/internal/cron/refresh-daily-task-entities",
-      "schedule": "5 0 * * *"
+      "schedule": "5 21 * * *"
     }
   ]
 }

@@ -1,5 +1,5 @@
 const cron = require('node-cron');
-const { refreshDailyEntityPool, utcDateString } = require('../services/dailyTaskAutomation');
+const { refreshDailyEntityPool, utcDateString, TASK_TIME_ZONE } = require('../services/dailyTaskAutomation');
 
 async function generateDailyTaskEntities() {
   const entities = await refreshDailyEntityPool();
@@ -13,8 +13,8 @@ async function generateDailyTaskEntities() {
 function scheduleDailyTaskGeneration() {
   cron.schedule('5 0 * * *', () => {
     generateDailyTaskEntities().catch(error => console.error('Daily evaluation entity generation failed:', error.message));
-  }, { timezone: 'UTC' });
-  console.log('Daily evaluation entity rotation scheduled for 00:05 UTC');
+  }, { timezone: TASK_TIME_ZONE });
+  console.log(`Daily evaluation entity rotation scheduled for 00:05 ${TASK_TIME_ZONE}`);
 }
 
 module.exports = { generateDailyTaskEntities, scheduleDailyTaskGeneration };
