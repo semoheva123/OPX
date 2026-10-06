@@ -162,7 +162,7 @@ const COMMUNITY_DAILY_TASK = {
   title: 'شارك وتفاعل في مجتمع OPERIX',
   description: 'انشر منشورًا أصليًا عن OPERIX، ثم أضف تعليقًا مفيدًا إلى منشور ظاهر لعضو آخر.',
   icon: 'fa-users',
-  instructions: ['افتح تبويب المجتمع.', 'انشر منشورًا أصليًا يذكر OPERIX أو أوبيريكس.', 'أضف تعليقًا مفيدًا إلى منشور ظاهر لعضو آخر اليوم.', 'ارجع إلى المهام وأكملها بعد تنفيذ الإجراءين.']
+  instructions: ['افتح تبويب المجتمع.', 'انشر منشورًا أصليًا يذكر OPERIX أو أوبيريكس.', 'أضف تعليقًا مفيدًا إلى منشور ظاهر لعضو آخر اليوم.', 'هذه مشاركة اختيارية؛ لا يلزم إتمامها لاستلام مكافآت التقييم.']
 };
 
 function hasDailyPlatformPost(posts, userId, dayStart) {
@@ -229,7 +229,7 @@ function buildDailyTasks(tierCode, adminTasks = [], completedKeys = new Set(), l
   const adjustment = Number((Number(dailyProfit || 0) - rewardTotal).toFixed(4));
   if (rewards.length) rewards[rewards.length - 1] = Number((rewards[rewards.length - 1] + adjustment).toFixed(4));
 
-  const communityTask = (communityTaskStatus && (communityTaskStatus.communityEngagement || communityTaskStatus.communityPost || communityTaskStatus.communityInteraction))
+  const communityTask = communityTaskStatus
     ? buildOptionalCommunityTask(tierCode, communityTaskStatus)
     : buildOptionalCommunityTask(tierCode, { communityEngagement: true });
 
@@ -333,7 +333,7 @@ async function getDailyTasks(req, res) {
       communityInteraction: hasDailyCommunityInteraction(otherMembersPosts, user.id, todayStart)
     };
     const optionalCommunityTask = buildOptionalCommunityTask(tier.code, communityTaskStatus);
-    const taskLimit = Math.max(0, Math.min(50, Number(tier.tasks || 0)));
+    const taskLimit = Math.max(0, Math.min(50, Number(tier.tasks || 0) - 1));
     const active = hasPaidFeatureAccess(user) || Number(user.wallet?.totalDeposits || 0) > 0;
     if (schedule.holiday) {
       return res.json({
@@ -374,7 +374,7 @@ async function getDailyTasks(req, res) {
           const window = progress.taskWindows.find(item => item.taskNumber === task.assignmentNumber);
           return { ...task, availableAt: window?.availableAt || null, locked: false, lockReason: null };
         });
-    const tasks = [optionalCommunityTask, ...visiblePaidTasks];
+    const tasks = visiblePaidTasks;
     return res.json({
       success: true,
       tier: { code: tier.code, name: tier.name, taskLimit, dailyProfit },
@@ -385,6 +385,7 @@ async function getDailyTasks(req, res) {
       nextTaskAvailableAt: progress.availableAt,
       cooldownRemainingSeconds: progress.remainingSeconds,
       planStartedAt: progress.planStartedAt,
+      communityTask: optionalCommunityTask,
       tasks
     });
   } catch (error) {
@@ -415,10 +416,10 @@ async function completeTaskSupabase(req, res) {
     if (message.includes('INVALID_TASK_KEY')) return res.status(400).json({ error: 'هذه المهمة غير صالحة لخطة مستواك الحالية' });
     if (message.includes('TASK_ALREADY_COMPLETED')) return res.status(400).json({ error: 'تم إنجاز هذه المهمة مسبقًا اليوم' });
     if (message.includes('TASK_SEQUENCE_REQUIRED')) return res.status(409).json({ error: 'أكمل المهمة السابقة أولًا لفتح المهمة التالية.' });
-    if (message.includes('TASK_COOLDOWN_ACTIVE')) return res.status(429).json({ error: 'ستُفتح المهمة التالية بعد مرور 3 ساعات على إكمال المهمة السابقة.' });
+    if (message.includes('TASK_COOLDOWN_ACTIVE')) return res.status(429).json({ error: 'لم يحن موعد هذه المهمة بعد؛ تُفتح المهام بالتتابع كل 3 ساعات من بدء الخطة.' });
     if (message.includes('TASK_HOLIDAY')) return res.status(403).json({ success: false, code: 'TASK_HOLIDAY', error: 'عطلة المهام الأسبوعية: لا توجد مهام يوم الجمعة أو السبت.' });
     if (message.includes('DAILY_CAP_REACHED')) return res.status(400).json({ error: 'تم بلوغ الحد اليومي للربح، ولا يمكن جمع أكثر من الربح اليومي الثابت.' });
-    if (message.includes('COMMUNITY_TASK_REQUIRED')) return res.status(400).json({ error: 'أكمل أولًا نشر منشور عن OPERIX والتفاعل مع منشور عضو آخر في المجتمع اليوم.' });
+    if (message.includes('OPTIONAL_TASK_NO_REWARD')) return res.status(400).json({ error: 'مهمة المجتمع اختيارية ولا تمنح مكافأة؛ أكمل مهام التقييم المدفوعة من نموذج التقييم.' });
     if (message.includes('EVALUATION_REQUIRED')) return res.status(400).json({ error: 'اختر التقييم بالنجوم وحدد جانب التقييم قبل إنهاء المهمة.' });
     if (error?.code === 'PGRST202' || /operix_daily_task_complete_atomic.*does not exist/i.test(message)) return res.status(503).json({ error: 'نظام المهام يحتاج إلى تحديث قاعدة البيانات قبل الاستخدام' });
     res.status(500).json({ error: 'حدث خطأ في معالجة المهمة والمكافأة' });
@@ -446,11 +447,17 @@ async function submitDailyEvaluation(req, res) {
       dataAccess.dailyTaskCompletion.find({ userId: user.id || user._id, taskDate: today }, { sort: { createdAt: 1 } }),
       dataAccess.dailyTaskAssignment.find({ userId: user.id || user._id, tierCode: tier.code, taskDate: today }, { sort: { taskNumber: 1 }, limit: 100 })
     ]);
-    const paidTaskCount = Math.max(0, Math.min(50, Number(tier.tasks || 0)));
+    const paidTaskCount = Math.max(0, Math.min(50, Number(tier.tasks || 0) - 1));
     const progress = getDailyTaskProgress(tier.code, paidTaskCount, todayAssignments, completions, Date.now());
     const taskWindow = progress.taskWindows.find(window => window.taskNumber === taskNumber);
     if (!taskWindow) return res.status(400).json({ error: 'مهمة التقييم غير موجودة ضمن خطة اليوم الحالية' });
     if (taskWindow.remainingMs > 0) return res.status(429).json({ error: 'لم يحن موعد ظهور هذه المهمة بعد؛ تظهر مهمة جديدة كل 3 ساعات.', unlockAt: taskWindow.availableAt });
+    if (taskNumber > 2) {
+      const previousTaskKey = `${tier.code}-task-${String(taskNumber - 1).padStart(2, '0')}`;
+      if (!completions.some(item => item.taskKey === previousTaskKey)) {
+        return res.status(409).json({ error: 'أكمل مهمة التقييم السابقة أولًا؛ المشاركة المجتمعية اختيارية.' });
+      }
+    }
 
     const rating = Number(req.body?.rating);
     const selectedTag = String(req.body?.selectedTag || '').trim();
@@ -487,8 +494,8 @@ async function submitDailyEvaluation(req, res) {
     console.error('Daily evaluation submission error:', message);
     if (message.includes('EVALUATION_REQUIRED')) return res.status(400).json({ error: 'اختر التقييم بالنجوم وحدد جانب التقييم قبل إنهاء المهمة.' });
     if (message.includes('TASK_ALREADY_COMPLETED')) return res.status(409).json({ error: 'تم إنهاء هذه المهمة اليوم مسبقًا' });
-    if (message.includes('TASK_SEQUENCE_REQUIRED')) return res.status(409).json({ error: 'أكمل المهمة السابقة أولًا لفتح المهمة التالية.' });
-    if (message.includes('TASK_COOLDOWN_ACTIVE')) return res.status(429).json({ error: 'ستُفتح المهمة التالية بعد مرور 3 ساعات على إكمال المهمة السابقة.' });
+    if (message.includes('TASK_SEQUENCE_REQUIRED')) return res.status(409).json({ error: 'أكمل مهمة التقييم السابقة أولًا؛ المشاركة المجتمعية اختيارية.' });
+    if (message.includes('TASK_COOLDOWN_ACTIVE')) return res.status(429).json({ error: 'لم يحن موعد هذه المهمة بعد؛ تُفتح المهام بالتتابع كل 3 ساعات من بدء الخطة.' });
     if (message.includes('TASK_HOLIDAY')) return res.status(403).json({ success: false, code: 'TASK_HOLIDAY', error: 'عطلة المهام الأسبوعية: لا توجد مهام يوم الجمعة أو السبت.' });
     if (message.includes('DAILY_CAP_REACHED')) return res.status(400).json({ error: 'تم بلوغ الحد اليومي للربح، ولا يمكن جمع أكثر من الربح اليومي الثابت.' });
     if (error?.code === 'PGRST202' || /operix_daily_task_complete_atomic.*does not exist/i.test(message)) return res.status(503).json({ error: 'قاعدة البيانات تحتاج إلى تحديث نظام مهام التقييم.' });

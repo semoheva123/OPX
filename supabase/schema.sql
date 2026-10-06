@@ -995,9 +995,10 @@ begin
 
   select * into level_row from vip_levels where code = user_row.tier_code;
   if level_row.id is null then raise exception using errcode = 'P0002', message = 'VIP_LEVEL_NOT_FOUND'; end if;
-  max_tasks := greatest(level_row.tasks, 1);
+  max_tasks := greatest(coalesce(level_row.tasks, 1) - 1, 0);
   if user_row.today_completed_tasks >= max_tasks then raise exception using errcode = 'P0001', message = 'DAILY_TASK_LIMIT_REACHED'; end if;
 
+  if max_tasks < 1 then raise exception using errcode = 'P0001', message = 'NO_PAID_TASKS_CONFIGURED'; end if;
   gross_reward := round(coalesce(level_row.daily_profit, 2.5) / max_tasks, 4);
   opx_reward := round(
     least(
@@ -1143,24 +1144,27 @@ declare
   current_tier text;
   task_number integer;
   previous_task_key text;
-  previous_completed_at timestamptz;
+  plan_started_at timestamptz;
 begin
   select tier_code into current_tier from public.users where id = new.user_id for update;
   if current_tier is null then raise exception using errcode = 'P0002', message = 'USER_NOT_FOUND'; end if;
   if new.task_key = current_tier || '-community' then
-    task_number := 1;
+    raise exception using errcode = 'P0001', message = 'OPTIONAL_TASK_NO_REWARD';
   elsif new.task_key ~ ('^' || current_tier || '-task-[0-9]+$') then
     task_number := substring(new.task_key from '[0-9]+$')::integer;
   else
     raise exception using errcode = 'P0001', message = 'INVALID_TASK_KEY';
   end if;
-  if task_number < 1 then raise exception using errcode = 'P0001', message = 'INVALID_TASK_KEY'; end if;
+  if task_number < 2 then raise exception using errcode = 'P0001', message = 'INVALID_TASK_KEY'; end if;
   if task_number > 2 then
     previous_task_key := current_tier || '-task-' || lpad((task_number - 1)::text, 2, '0');
-    select created_at into previous_completed_at from public.daily_task_completions
-      where user_id = new.user_id and task_date = new.task_date and task_key = previous_task_key;
-    if previous_completed_at is null then raise exception using errcode = 'P0001', message = 'TASK_SEQUENCE_REQUIRED'; end if;
-    if previous_completed_at + interval '3 hours' > clock_timestamp() then
+    if not exists (
+      select 1 from public.daily_task_completions
+      where user_id = new.user_id and task_date = new.task_date and task_key = previous_task_key
+    ) then raise exception using errcode = 'P0001', message = 'TASK_SEQUENCE_REQUIRED'; end if;
+    select min(created_at) into plan_started_at from public.daily_task_assignments
+      where user_id = new.user_id and tier_code = current_tier and task_date = new.task_date;
+    if plan_started_at is null or plan_started_at + ((task_number - 2) * interval '3 hours') > clock_timestamp() then
       raise exception using errcode = 'P0001', message = 'TASK_COOLDOWN_ACTIVE';
     end if;
   end if;
@@ -1205,14 +1209,13 @@ begin
   if level_row.id is null then raise exception using errcode = 'P0002', message = 'VIP_LEVEL_NOT_FOUND'; end if;
   max_tasks := greatest(level_row.tasks, 1);
   if p_task_key = (user_row.tier_code || '-community') then
-    requested_task_number := 1;
+    raise exception using errcode = 'P0001', message = 'OPTIONAL_TASK_NO_REWARD';
   elsif p_task_key ~ ('^' || user_row.tier_code || '-task-[0-9]+$') then
     requested_task_number := substring(p_task_key from '[0-9]+$')::integer;
   else
     raise exception using errcode = 'P0001', message = 'INVALID_TASK_KEY';
   end if;
-  if requested_task_number < 1 or requested_task_number > max_tasks then raise exception using errcode = 'P0001', message = 'INVALID_TASK_KEY'; end if;
-  if requested_task_number = 1 and p_task_key <> (user_row.tier_code || '-community') then raise exception using errcode = 'P0001', message = 'INVALID_TASK_KEY'; end if;
+  if requested_task_number < 2 or requested_task_number > max_tasks + 1 then raise exception using errcode = 'P0001', message = 'INVALID_TASK_KEY'; end if;
 
   if requested_task_number > 1 then
     select * into assignment_row
@@ -1282,7 +1285,9 @@ begin
   insert into financial_ledger(user_id, type, currency, amount, net_amount, balance_before, balance_after, status, source, reference_id, metadata)
   values(p_user_id, 'reward', 'USDT', usdt_reward, usdt_reward, balance_before, balance_before + usdt_reward, 'approved', 'daily_task', reward_transaction_id::text, jsonb_build_object('taskKey', p_task_key, 'grossAmount', gross_reward, 'opxAmount', opx_reward));
 
-  select count(*) into completed_count from daily_task_completions where user_id = p_user_id and task_date = current_date;
+  select count(*) into completed_count from daily_task_completions
+  where user_id = p_user_id and task_date = current_date
+    and task_key ~ ('^' || user_row.tier_code || '-task-[0-9]+$');
   update users set today_completed_tasks = completed_count, updated_at = now() where id = p_user_id;
   return jsonb_build_object('taskKey', p_task_key, 'completed', completed_count, 'taskLimit', max_tasks, 'assetWallet', (select asset_wallet from users where id = p_user_id), 'wallet', (select row_to_json(w) from wallet_balances w where w.user_id = p_user_id), 'grossAmount', gross_reward, 'usdtAmount', usdt_reward, 'opxAmount', opx_reward, 'transactionId', reward_transaction_id);
 end;

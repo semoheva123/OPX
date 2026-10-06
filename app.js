@@ -72,7 +72,8 @@ const tierLimits = { 'A1': 33, 'A2': 35, 'A3': 40, 'A4': 45, 'A5': 50 };
 
 function getTaskLimitForTier(tierCode = currentUserTier) {
     const tier = tiersData.find(item => item.code === tierCode);
-    return Number(tier?.tasks) > 0 ? Number(tier.tasks) : (tierLimits[tierCode] || 33);
+    const totalPlanTasks = Number(tier?.tasks) > 0 ? Number(tier.tasks) : (tierLimits[tierCode] || 33);
+    return Math.max(0, totalPlanTasks - 1);
 }
 
 // تهيئة التطبيق عند اكتمال تحميل عناصر الصفحة
@@ -2108,17 +2109,23 @@ function renderDailyTaskDetail(data) {
         return;
     }
     const allTasks = Array.isArray(data.tasks) ? data.tasks : [];
-    const tasks = allTasks.filter(task => !task.completed);
-    const taskLimit = Math.max(1, Number(data.taskLimit ?? data.tier?.taskLimit ?? allTasks.length ?? 1));
+    const tasks = allTasks.filter(task => task.requirement !== 'community_engagement' && !task.completed);
+    const taskLimit = Math.max(1, Number(data.taskLimit ?? data.tier?.taskLimit ?? tasks.length ?? allTasks.length ?? 1));
     const completedCount = Math.min(Number(data.completedCount || 0), taskLimit);
     window.__latestDailyTasks = allTasks;
     title.innerText = `${data.tier?.name || data.tier?.code || 'المستوى'} - مهام اليوم`;
     meta.innerText = data.active ? `${completedCount} من ${taskLimit} مكتملة • ${Math.max(0, taskLimit - completedCount)} مهمة متبقية • جميع المهام المتاحة الآن تظهر في قائمة الانتظار • الربح اليومي الإجمالي $${Number(data.tier?.dailyProfit || 0).toFixed(2)}` : 'فعّل المستوى لفتح المهام المدفوعة';
-    list.innerHTML = tasks.map(task => {
+    list.innerHTML = tasks.map((task, index) => {
         const isExpanded = expandedDailyTaskKey === task.taskKey;
-        const taskReward = Number(task.reward || (Number(data.tier?.dailyProfit || 0) / taskLimit)).toFixed(4);
+        const taskReward = Number(task.reward ?? (Number(data.tier?.dailyProfit || 0) / taskLimit)).toFixed(4);
         const isCommunityTask = task.requirement === 'community_engagement';
         const isEvaluationTask = task.requirement === 'evaluation';
+        const communityGroupHeading = isCommunityTask && index === 0
+            ? '<div class="rounded-xl border border-violet-400/15 bg-violet-400/5 px-3 py-2 text-[10px] font-bold text-violet-200">مشاركة مجتمعية اختيارية — خارج المهام المدفوعة</div>'
+            : '';
+        const paidGroupHeading = isEvaluationTask && !tasks.slice(0, index).some(item => item.requirement === 'evaluation')
+            ? '<div class="rounded-xl border border-amber-400/15 bg-amber-400/5 px-3 py-2 text-[10px] font-bold text-amber-200">مهام التقييم المدفوعة</div>'
+            : '';
         const evaluationBrand = isEvaluationTask ? `<div class="mt-3 overflow-hidden rounded-2xl border border-cyan-400/20 bg-gradient-to-br from-slate-900 via-slate-950 to-cyan-900/25">
             <div class="flex items-center gap-3 border-b border-cyan-400/15 bg-slate-950/70 p-3">
                 <span class="relative flex shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-700 bg-white text-cyan-300" style="width:96px;height:48px"><i class="fa-solid ${task.targetCategory === 'crypto' ? 'fa-coins' : task.targetCategory === 'ai' ? 'fa-brain' : 'fa-building'}"></i>${task.targetImageUrl ? `<img src="${escapeAiHtml(task.targetImageUrl)}" alt="${escapeAiHtml(task.targetName || 'علامة الشركة')}" loading="lazy" referrerpolicy="no-referrer" class="absolute inset-0 h-full w-full" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:6px" onerror="this.classList.add('hidden')">` : ''}</span>
@@ -2134,7 +2141,6 @@ function renderDailyTaskDetail(data) {
                 </div>
             </div>
         </div>` : '';
-        const communityAction = isCommunityTask ? `<button type="button" onclick="switchTab('feed')" class="mt-2 w-full rounded-xl border border-cyan-400/20 bg-cyan-400/5 px-3 py-2 text-[10px] font-bold text-cyan-300"><i class="fa-solid fa-users mr-1"></i> فتح المجتمع للنشر والتفاعل</button>` : '';
         const evaluationForm = isEvaluationTask && isExpanded && !task.locked ? `<div class="mt-3 space-y-3 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3" data-evaluation-form="${escapeAiHtml(task.taskKey)}">
             <p class="text-[10px] leading-5 text-cyan-100">قيّم هذه الخدمة بشكل سريع وصادق، فقط من خلال تجربتك أو ما رأيته عنها.</p>
             <fieldset><legend class="text-[10px] text-slate-300">التقييم</legend><input data-evaluation-field="rating" type="hidden" value=""><div class="mt-1 flex flex-row-reverse justify-end gap-1" role="radiogroup" aria-label="التقييم من نجمة إلى خمس نجوم">${[1, 2, 3, 4, 5].map(rating => `<button type="button" role="radio" aria-checked="false" data-rating="${rating}" onclick="setDailyEvaluationRating('${escapeAiHtml(task.taskKey)}', ${rating})" class="rounded-lg p-1 text-2xl text-slate-600 transition-colors" aria-label="${rating} من 5 نجوم"><i class="fa-solid fa-star"></i></button>`).join('')}</div></fieldset>
@@ -2144,32 +2150,33 @@ function renderDailyTaskDetail(data) {
             <button type="button" data-evaluation-submit disabled onclick="submitDailyEvaluation('${escapeAiHtml(task.taskKey)}')" class="w-full rounded-xl bg-cyan-400 px-3 py-2.5 text-[10px] font-black text-slate-950 enabled:hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-40">إرسال التقييم</button>
         </div>` : '';
         const cooldownRemaining = Number(task.cooldownRemainingSeconds || 0);
+        const cooldownHours = Math.max(1, Math.ceil(cooldownRemaining / 3600));
+        const cooldownMessage = `المهمة المدفوعة التالية ستفتح بعد ${cooldownHours} ساعة`;
         const cooldownStatus = task.lockReason === 'cooldown' && cooldownRemaining > 0
-            ? `<span data-task-cooldown data-unlock-at="${escapeAiHtml(task.availableAt || '')}" class="text-[10px] font-bold text-cyan-300">تفتح بعد ${Math.ceil(cooldownRemaining / 3600)} ساعة</span>`
+            ? `<span data-task-cooldown data-unlock-at="${escapeAiHtml(task.availableAt || '')}" class="text-[10px] font-bold text-cyan-300">${escapeAiHtml(cooldownMessage)}</span>`
             : '';
-        const statusLabel = task.lockReason === 'cooldown' ? cooldownStatus : task.lockReason === 'tier_inactive' ? 'مقفلة حتى تفعيل المستوى' : task.requirement && !task.requirementMet ? isEvaluationTask ? 'التقييم مطلوب' : 'الإجراء مطلوب' : 'متاحة';
-        return `<article class="rounded-2xl border ${task.completed ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-slate-800 bg-slate-950/45'} p-3" data-task-card="${escapeAiHtml(task.taskKey)}">
+        const statusLabel = isCommunityTask ? (task.requirementMet ? 'تم التفاعل' : 'اختيارية') : task.lockReason === 'cooldown' ? cooldownMessage : task.lockReason === 'tier_inactive' ? 'مقفلة حتى تفعيل المستوى' : task.requirement && !task.requirementMet ? 'التقييم مطلوب' : 'متاحة';
+        return `${communityGroupHeading}${paidGroupHeading}<article class="rounded-2xl border ${isCommunityTask ? 'border-violet-400/20 bg-violet-950/20' : task.completed ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-slate-800 bg-slate-950/45'} p-3" data-task-card="${escapeAiHtml(task.taskKey)}">
             <div class="flex items-start gap-3">
                 <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${task.completed ? 'bg-emerald-400/10 text-emerald-300' : 'bg-amber-400/10 text-amber-300'}"><i class="fa-solid ${escapeAiHtml(task.icon)}"></i></span>
                 <div class="min-w-0 flex-1">
                     <div class="flex items-start justify-between gap-2">
                         <div>
-                            <h4 class="text-xs font-bold text-white">${escapeAiHtml(task.number + '. ' + task.title)}</h4>
+                            <h4 class="text-xs font-bold text-white">${escapeAiHtml(`${isCommunityTask ? '' : `${task.number}. `}${task.title}`)}</h4>
                             <p class="mt-1 text-[10px] leading-5 text-slate-500">${escapeAiHtml(task.description)}</p>
                         </div>
                         <span class="text-[10px] font-bold ${task.completed ? 'text-emerald-300' : task.locked ? 'text-slate-500' : task.requirement && !task.requirementMet ? 'text-cyan-300' : 'text-amber-300'}">${task.completed ? 'مكتملة' : statusLabel}</span>
                     </div>
                     <div class="mt-3 flex items-center justify-between gap-2 text-[10px] text-slate-400">
-                        <span>مكافأة المهمة: <strong class="text-amber-300">$${taskReward}</strong></span>
-                        <span>${task.number} من ${taskLimit}</span>
+                        <span>${isCommunityTask ? '<strong class="text-violet-200">اختيارية • بلا مكافأة</strong>' : `مكافأة المهمة: <strong class="text-amber-300">$${taskReward}</strong>`}</span>
+                        <span>${isCommunityTask ? 'خارج العدد المدفوع' : `${task.number} من ${taskLimit}`}</span>
                     </div>
                     ${evaluationBrand}
                     ${isExpanded ? `<div class="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3"><div class="mb-2 text-[10px] font-bold text-amber-300">خطوات سريعة</div><ol class="space-y-1 text-[10px] leading-5 text-slate-300 list-decimal list-inside">${(task.instructions || []).slice(0, 2).map((instruction) => `<li>${escapeAiHtml(instruction)}</li>`).join('')}</ol></div>` : ''}
                     <div class="mt-3 flex gap-2">
                         <button type="button" data-task-key="${escapeAiHtml(task.taskKey)}" onclick="toggleDailyTaskDetails('${escapeAiHtml(task.taskKey)}')" class="flex-1 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-[10px] font-bold text-slate-200">${isExpanded ? 'إخفاء' : 'فتح'} <i class="fa-solid ${isExpanded ? 'fa-chevron-up' : 'fa-arrow-left'} mr-1"></i></button>
-                        <button type="button" ${task.completed || task.locked ? 'disabled' : `onclick="${isEvaluationTask ? `toggleDailyTaskDetails('${escapeAiHtml(task.taskKey)}')` : `completeTask('${escapeAiHtml(task.taskKey)}')`}"`} class="rounded-xl border px-3 py-2 text-[10px] font-bold ${task.completed || task.locked ? 'cursor-not-allowed border-slate-700 bg-slate-900 text-slate-500' : 'border-amber-500/25 bg-amber-500/10 text-amber-300'}">${task.completed ? 'تم الإنجاز' : task.lockReason === 'cooldown' ? 'انتظر 3 ساعات' : task.locked ? 'تفعيل المستوى' : isEvaluationTask ? isExpanded ? 'إخفاء النموذج' : 'ابدأ التقييم' : 'إتمام المهمة'} <i class="fa-solid ${task.completed ? 'fa-check' : task.locked ? 'fa-lock' : isEvaluationTask ? 'fa-clipboard-check' : 'fa-arrow-left'} mr-1"></i></button>
+                        <button type="button" ${task.locked || task.completed && !isCommunityTask ? 'disabled' : `onclick="${isCommunityTask ? "switchTab('feed')" : isEvaluationTask ? `toggleDailyTaskDetails('${escapeAiHtml(task.taskKey)}')` : `completeTask('${escapeAiHtml(task.taskKey)}')`}"`} class="rounded-xl border px-3 py-2 text-[10px] font-bold ${task.locked || task.completed && !isCommunityTask ? 'cursor-not-allowed border-slate-700 bg-slate-900 text-slate-500' : isCommunityTask ? 'border-violet-400/25 bg-violet-400/10 text-violet-200' : 'border-amber-500/25 bg-amber-500/10 text-amber-300'}">${isCommunityTask ? 'فتح المجتمع' : task.completed ? 'تم الإنجاز' : task.lockReason === 'cooldown' ? 'انتظار المهمة المدفوعة' : task.locked ? 'تفعيل المستوى' : isEvaluationTask ? isExpanded ? 'إخفاء النموذج' : 'ابدأ التقييم' : 'إتمام المهمة'} <i class="fa-solid ${task.completed && !isCommunityTask ? 'fa-check' : task.locked ? 'fa-lock' : isCommunityTask ? 'fa-users' : isEvaluationTask ? 'fa-clipboard-check' : 'fa-arrow-left'} mr-1"></i></button>
                     </div>
-                    ${communityAction}
                     ${evaluationForm}
                 </div>
             </div>
@@ -2189,7 +2196,7 @@ function renderDailyTaskDetail(data) {
             const hours = Math.floor(remaining / 3600);
             const minutes = Math.floor((remaining % 3600) / 60);
             const seconds = remaining % 60;
-            cooldownElement.textContent = `تفتح بعد ${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            cooldownElement.textContent = `المهمة المدفوعة التالية ستفتح بعد ${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
         };
         updateCooldown();
         dailyTaskCooldownTimer = setInterval(updateCooldown, 1000);

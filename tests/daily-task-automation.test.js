@@ -76,9 +76,9 @@ const originals = {
     dataAccess.dailyTaskAssignment.findOne = async query => assigned.find(item => item.userId === query.userId && item.tierCode === query.tierCode && item.taskDate === query.taskDate && item.taskNumber === query.taskNumber) || null;
 
     const result = await automation.assignDailyEvaluationEntities({ userId: 'test-user-auto', tierCode: 'A1', totalTaskCount: 4, date: '2031-06-01' });
-    assert.equal(result.length, 3, 'admin task count must control the number of dynamic evaluations');
+    assert.equal(result.length, 4, 'the paid evaluation count must control the number of dynamic assignments independently of the optional community card');
     assert.ok(result.every(item => item.entityKey !== 'coin:recent'), 'recently assigned entities must be excluded');
-    assert.equal(new Set(result.map(item => item.entityKey)).size, 3, 'one user must not receive duplicate entities in the same daily plan');
+    assert.equal(new Set(result.map(item => item.entityKey)).size, 4, 'one user must not receive duplicate entities in the same daily plan');
     assert.ok(result.every(item => item.allowedTags.length > 0), 'assignments must include category-specific selectable tags');
     const secondLoad = await automation.assignDailyEvaluationEntities({ userId: 'test-user-auto', tierCode: 'A1', totalTaskCount: 4, date: '2031-06-01' });
     assert.deepEqual(secondLoad.map(item => item.id), result.map(item => item.id), 'reloading a plan must keep its generated assignments stable');
@@ -107,7 +107,7 @@ const originals = {
       { entityKey: 'ai:brand-new', category: 'ai', name: 'Brand New AI', summary: 'Summary', imageUrl: '', source: 'test' }
     ];
     dataAccess.dailyTaskEntity.find = async () => priorPool;
-    const noRepeatResult = await automation.assignDailyEvaluationEntities({ userId: 'never-repeat-user', tierCode: 'A1', totalTaskCount: 3, date: '2031-06-01' });
+    const noRepeatResult = await automation.assignDailyEvaluationEntities({ userId: 'never-repeat-user', tierCode: 'A1', totalTaskCount: 2, date: '2031-06-01' });
     assert.equal(new Set(noRepeatResult.map(item => item.entityKey)).size, 2, 'historical assignments must be excluded forever from future daily task plans');
     assert.ok(noRepeatResult.every(item => !['tech:historic', 'ai:historic'].includes(item.entityKey)), 'reused historical entities must never reappear');
 

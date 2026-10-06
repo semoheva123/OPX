@@ -21,6 +21,7 @@ const assignments = [
 	{ entityKey: 'wiki:example-ai', entityName: 'Example AI', category: 'ai', summary: 'منصة ذكاء للاختبار.', imageUrl: 'https://images.example.test/ai.png', submissionComplete: false }
 ];
 const tasks = activityController.buildDailyTasks('A1', assignments, new Set(), false, 1.5, { communityEngagement: true });
+const communityPendingTask = activityController.buildDailyTasks('A1', assignments, new Set(), false, 1.5, { communityPost: false, communityInteraction: false })[0];
 
 assert.equal(Array.isArray(tasks), true, 'يجب أن تُعيد قائمة مهام');
 assert.equal(tasks.length, 3, 'يجب أن تضم الخطة المهمة المجتمعية والتقييمات المخصصة فقط');
@@ -33,6 +34,10 @@ assert.equal(tasks[0].requirement, 'community_engagement');
 assert.equal(tasks[0].optional, true, 'المهمة الاجتماعية اختيارية وليست جزءًا من المسار المدفوع');
 assert.equal(tasks[0].reward, 0, 'المهمة الاجتماعية لا تمنح مكافأة');
 assert.equal(tasks[0].requirementMet, true, 'المهمة الثابتة واحدة وتجمع النشر والتفاعل');
+assert.equal(communityPendingTask.completed, false, 'the optional community task remains incomplete when its actions have not been performed');
+assert.equal(communityPendingTask.optional, true, 'an incomplete community task must still be optional');
+assert.equal(communityPendingTask.paid, false, 'an incomplete community task must never be marked paid');
+assert.equal(communityPendingTask.reward, 0, 'an incomplete community task must never receive a fallback reward');
 assert.equal(tasks[1].taskKey, 'A1-task-02');
 assert.equal(tasks[1].requirement, 'evaluation');
 assert.equal(tasks[1].targetName, 'Example Systems');
@@ -58,6 +63,13 @@ const backlogTasks = [
 const backlog = activityController.getDailyTaskProgress('A1', 4, backlogTasks, now);
 assert.deepEqual(backlog.unlockedTaskNumbers, [1, 2, 3, 4], 'the backlog should keep all due tasks visible once they unlock');
 assert.equal(backlog.nextTaskNumber, 1, 'the first due task should remain the next step in the backlog queue');
+const sixPaidTaskAssignments = Array.from({ length: 6 }, (_, index) => ({
+	taskNumber: index + 2,
+	createdAt: new Date(now - 18 * 60 * 60 * 1000).toISOString()
+}));
+const sixPaidTaskProgress = activityController.getDailyTaskProgress('A3', 6, sixPaidTaskAssignments, [], now);
+assert.equal(sixPaidTaskProgress.taskWindows.at(-1).taskNumber, 7, 'six paid evaluations map to assignment keys task-02 through task-07');
+assert.deepEqual(sixPaidTaskProgress.unlockedTaskNumbers, [1, 2, 3, 4, 5, 6], 'all six paid tasks accumulate after their release windows pass');
 const stripeTask = activityController.buildDailyTasks('A1', [
 	{ entityKey: 'finance:stripe', entityName: 'Stripe, Inc.', category: 'finance', summary: 'خدمة مالية.', imageUrl: '', submissionComplete: false }
 ], new Set(), false, 1)[1];
@@ -94,6 +106,11 @@ assert.match(migration, /operix_enforce_daily_task_sequence_and_cooldown/i);
 assert.match(ratingCooldownMigration, /TASK_COOLDOWN_ACTIVE/i);
 assert.match(ratingCooldownMigration, /interval '3 hours'/i);
 assert.doesNotMatch(ratingCooldownMigration, /length\(trim\(submission\.feedback\)\) between 10 and 500/i);
+assert.match(ratingCooldownMigration, /requested_task_number > max_tasks \+ 1/i, 'task keys start at task-02, so the final paid assignment is max_tasks + 1');
+assert.match(ratingCooldownMigration, /max_tasks := greatest\(coalesce\(level_row\.tasks, 1\) - 1, 0\)/i, 'the fixed optional community card must be excluded from the paid task count');
+assert.match(ratingCooldownMigration, /if max_tasks < 1 then raise exception/i, 'the paid reward calculation must never divide by zero');
+assert.match(ratingCooldownMigration, /OPTIONAL_TASK_NO_REWARD/, 'the database must never pay the optional community card');
+assert.match(ratingCooldownMigration, /plan_started_at \+ \(\(task_number - 2\) \* interval '3 hours'\)/i, 'the database release window must accrue from plan start, not the previous completion time');
 assert.match(ratingCooldownMigration, /total_daily_reward \+ gross_reward > coalesce\(level_row\.daily_profit, 0\)/i, 'the replacement task RPC must preserve the fixed daily reward cap');
 assert.match(ratingCooldownMigration, /DAILY_CAP_REACHED/i, 'the database must reject task rewards that exceed the daily cap');
 assert.match(schema, /daily_task_submissions/);
@@ -108,10 +125,14 @@ assert.match(adminController, /evaluationCount \+ 1/, 'task count must follow th
 assert.match(client, /button\.disabled = !currentUserTierActive/, 'the daily task card must remain an entry to the plan after all tasks are marked complete');
 assert.match(client, /id: 'daily',[^\n]*done: false/, 'stale completion counters must not remove the daily-plan entry');
 assert.match(client, /data\.taskLimit \?\? data\.tier\?\.taskLimit/, 'the task detail panel must read the total from the API tier payload');
-assert.match(client, /filter\(task => !task\.completed\)/, 'completed tasks must be filtered out before rendering the premium task list');
+assert.match(client, /filter\(task => task\.requirement !== 'community_engagement' && !task\.completed\)/, 'the paid task board must exclude community tasks and completed items before rendering');
 assert.match(client, /targetImageUrl.*alt.*targetName|brand.*task\.targetName/, 'the paid-task panel must show the evaluation brand logo and company name in a premium card');
 assert.match(client, /style="width:96px;height:48px".*object-fit:contain/, 'the company logo should use a fixed landscape tile and preserve the source aspect ratio');
 assert.doesNotMatch(client, /ملاحظة قصيرة|data-evaluation-field="feedback"/, 'the task evaluation form must not ask for a short note');
 assert.match(client, /data-task-cooldown/, 'the only next task should show a cooldown countdown when locked');
+assert.match(client, /task\.reward \?\?/, 'a zero-reward optional card must not fall back to a paid reward amount');
+assert.match(client, /totalPlanTasks - 1/, 'the fixed community card must be excluded from the client paid-task limit');
+assert.match(client, /مشاركة مجتمعية اختيارية — خارج المهام المدفوعة/, 'community engagement must be visually separated from paid tasks');
+assert.match(client, /isCommunityTask \? "switchTab\('feed'\)" : isEvaluationTask/, 'the community action must open the feed, never submit a paid completion');
 
 console.log('daily-task-board test: OK');
