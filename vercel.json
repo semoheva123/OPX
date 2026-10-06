@@ -9,6 +9,7 @@
         "includeFiles": [
           "*.html",
           "app.js",
+          "*.png",
           "*.svg",
           "dist/**",
           "styles/**",

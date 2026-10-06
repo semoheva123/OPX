@@ -18,10 +18,10 @@
     <text x="119" y="65" fill="#f8fafc" font-family="Georgia,serif" font-size="49" font-weight="700" letter-spacing="4">OPERIX</text>
     <path d="M122 81h138" stroke="url(#gold)" stroke-width="2" stroke-linecap="round"/>
   </g>
-  <g font-family="Arial, Tahoma, sans-serif" text-anchor="end" direction="rtl">
-    <text x="1090" y="290" fill="#f7c45e" font-size="23" font-weight="700" letter-spacing="1">مساحة رقمية أوضح</text>
-    <text x="1090" y="365" fill="#ffffff" font-size="53" font-weight="700">حسابك. مهامك. مجتمعك.</text>
-    <text x="1090" y="422" fill="#cbd5e1" font-size="25">تجربة مترابطة لمتابعة الحساب والمهام والتواصل</text>
+  <g font-family="Arial, Tahoma, sans-serif" text-anchor="middle">
+    <text x="690" y="290" fill="#f7c45e" font-size="23" font-weight="700" letter-spacing="1">مساحة رقمية أوضح</text>
+    <text x="690" y="365" fill="#ffffff" font-size="53" font-weight="700">حسابك. مهامك. مجتمعك.</text>
+    <text x="690" y="422" fill="#cbd5e1" font-size="25">تجربة مترابطة لمتابعة الحساب والمهام والتواصل</text>
   </g>
   <g transform="translate(88 475)" font-family="Arial, Tahoma, sans-serif" font-size="18" font-weight="700">
     <rect width="182" height="48" rx="24" fill="#10243a" stroke="#334155"/>
