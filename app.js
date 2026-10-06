@@ -18,7 +18,6 @@ let profileSyncTimer = null;
 let platformSupportUrl = '';
 let realtimeClient = null;
 let realtimeChannel = null;
-    if (refCode) {
 let socialFeedPage = 1;
 let socialFeedHasMore = false;
 let socialFeedMode = 'all';
@@ -506,6 +505,11 @@ async function refreshHomeDashboard() {
     if (icon) icon.classList.add('fa-spin');
     await Promise.all([loadUserProfile(), loadLiveTicker()]);
     if (icon) icon.classList.remove('fa-spin');
+}
+
+if (typeof window !== 'undefined') {
+    window.refreshHomeDashboard = refreshHomeDashboard;
+    window.loadHomeSummary = loadHomeSummary;
 }
 
 function renderHomeSummary(summary) {
