@@ -30,12 +30,12 @@ function responseRecorder() {
     yesterday.setUTCDate(yesterday.getUTCDate() - 1);
     const user = {
       id: 'user-1',
-      email: 'member@example.test',
+      email: 'official@operix.website',
       referralCode: 'TEAM1',
       tierCode: 'A3',
       createdAt: yesterday.toISOString(),
       walletAddress: '',
-      wallet: { totalDeposits: 350 }
+      wallet: { totalDeposits: 0 }
     };
     const transactions = [
       { type: 'reward', status: 'approved', amount: 1.25, usdtAmount: 1.25, createdAt: new Date(today.getTime() + 3600000).toISOString() },
@@ -63,6 +63,7 @@ function responseRecorder() {
     assert.equal(response.body.summary.referralCount, 7);
     assert.equal(response.body.summary.pendingTransactions, 1);
     assert.equal(response.body.summary.nextLevel.code, 'A4');
+    assert.equal(response.body.summary.healthChecks.deposit, true, 'paid-feature access should satisfy the home readiness activation check');
     console.log('Supabase home summary tests: ok');
   } catch (error) {
     console.error(error);

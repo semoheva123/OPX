@@ -470,7 +470,7 @@ function renderHomeSummaryFallback() {
         email: Boolean(currentUserData.emailVerified),
         twoFactor: Boolean(currentUserData.twoFactorEnabled),
         wallet: Boolean((currentUserData.walletAddress || currentUserData.withdrawWallet || '').trim()),
-        deposit: Number(currentUserData.wallet?.totalDeposits) > 0,
+        deposit: Boolean(currentUserData.paidFeatureAccess || Number(currentUserData.wallet?.totalDeposits) > 0),
         activity: false
     };
     renderHomeSummary({

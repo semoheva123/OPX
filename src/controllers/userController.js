@@ -223,12 +223,15 @@ async function getUpgradeHistory(req, res) {
         .filter(transaction => new Date(transaction.createdAt) >= start)
         .reduce((sum, transaction) => sum + Number(transaction.usdtAmount ?? transaction.amount ?? 0), 0);
       const pendingTransactions = transactions.filter(transaction => transaction.status === 'pending');
-      const nextLevel = vipLevels.find(level => Number(level.price) > Number(user.wallet?.totalDeposits || 0)) || null;
+      const currentLevel = vipLevels.find(level => level.code === user.tierCode);
+      const nextLevel = currentLevel
+        ? vipLevels.find(level => Number(level.price) > Number(currentLevel.price)) || null
+        : vipLevels.find(level => Number(level.price) > Number(user.wallet?.totalDeposits || 0)) || null;
       const healthChecks = {
         email: Boolean(user.email),
         twoFactor: Boolean(user.twoFactorEnabled),
         wallet: Boolean(user.walletAddress?.trim()),
-        deposit: Number(user.wallet?.totalDeposits) > 0,
+        deposit: hasPaidFeatureAccess(user) || Number(user.wallet?.totalDeposits) > 0,
         activity: approvedTransactions.length > 0
       };
       const timeline = [
@@ -279,12 +282,13 @@ async function getUpgradeHistory(req, res) {
     const earnings = earningsAggregate[0] || { today: 0, week: 0, month: 0 };
     const pendingTransactions = transactions.filter(transaction => transaction.status === 'pending');
     const referralCount = await User.countDocuments({ referredBy: user.referralCode?.trim().toUpperCase() });
-    const nextLevel = await VipLevel.findOne({ price: { $gt: user.wallet?.totalDeposits || 0 } }).sort({ price: 1 }).select('code name price dailyProfit tasks');
+    const currentLevel = user.tierCode ? await VipLevel.findOne({ code: user.tierCode }).select('price') : null;
+    const nextLevel = await VipLevel.findOne({ price: { $gt: Number(currentLevel?.price ?? user.wallet?.totalDeposits ?? 0) } }).sort({ price: 1 }).select('code name price dailyProfit tasks');
     const healthChecks = {
       email: Boolean(user.email),
       twoFactor: Boolean(user.twoFactorEnabled),
       wallet: Boolean(user.walletAddress?.trim()),
-      deposit: Number(user.wallet?.totalDeposits) > 0,
+      deposit: hasPaidFeatureAccess(user) || Number(user.wallet?.totalDeposits) > 0,
       activity: approvedTransactions.length > 0
     };
     const health = Object.values(healthChecks).filter(Boolean).length * 20;
