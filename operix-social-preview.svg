@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">OPERIX — مساحة رقمية أوضح لإدارة الحساب والمهام</title>
+  <desc id="desc">معاينة مشاركة رسمية لمنصة OPERIX، تجمع متابعة الحساب والمهام والمجتمع في تجربة رقمية واحدة.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#07111f"/><stop offset="1" stop-color="#020712"/></linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff0c8"/><stop offset=".45" stop-color="#f7c45e"/><stop offset="1" stop-color="#a65d17"/></linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#10243a"/><stop offset="1" stop-color="#091321"/></linearGradient>
+    <radialGradient id="glow"><stop stop-color="#0e7490" stop-opacity=".42"/><stop offset="1" stop-color="#0e7490" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#background)"/>
+  <ellipse cx="1040" cy="120" rx="360" ry="290" fill="url(#glow)"/>
+  <ellipse cx="140" cy="590" rx="360" ry="260" fill="#b7791f" opacity=".08"/>
+  <path d="M0 510h1200" stroke="#94a3b8" stroke-opacity=".12"/>
+  <g transform="translate(88 90)">
+    <rect width="96" height="96" rx="27" fill="#0b1d30" stroke="#2c4054" stroke-width="2"/>
+    <path d="M72 26a30 30 0 1 0 6 35" fill="none" stroke="url(#gold)" stroke-width="8" stroke-linecap="round"/>
+    <path d="M32 72V27h19c12 0 20 7 20 17 0 10-8 17-20 17H40" fill="none" stroke="#f8fafc" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="119" y="65" fill="#f8fafc" font-family="Georgia,serif" font-size="49" font-weight="700" letter-spacing="4">OPERIX</text>
+    <path d="M122 81h138" stroke="url(#gold)" stroke-width="2" stroke-linecap="round"/>
+  </g>
+  <g font-family="Arial, Tahoma, sans-serif" text-anchor="end" direction="rtl">
+    <text x="1090" y="290" fill="#f7c45e" font-size="23" font-weight="700" letter-spacing="1">مساحة رقمية أوضح</text>
+    <text x="1090" y="365" fill="#ffffff" font-size="53" font-weight="700">حسابك. مهامك. مجتمعك.</text>
+    <text x="1090" y="422" fill="#cbd5e1" font-size="25">تجربة مترابطة لمتابعة الحساب والمهام والتواصل</text>
+  </g>
+  <g transform="translate(88 475)" font-family="Arial, Tahoma, sans-serif" font-size="18" font-weight="700">
+    <rect width="182" height="48" rx="24" fill="#10243a" stroke="#334155"/>
+    <text x="91" y="31" fill="#dbeafe" text-anchor="middle">إدارة الحساب</text>
+    <rect x="198" width="166" height="48" rx="24" fill="#10243a" stroke="#334155"/>
+    <text x="281" y="31" fill="#dbeafe" text-anchor="middle">متابعة المهام</text>
+    <rect x="380" width="150" height="48" rx="24" fill="#10243a" stroke="#334155"/>
+    <text x="455" y="31" fill="#dbeafe" text-anchor="middle">مجتمع OPERIX</text>
+  </g>
+  <text x="1090" y="565" fill="#94a3b8" font-family="Arial, Tahoma, sans-serif" font-size="17" text-anchor="end">operix.website</text>
+</svg>
