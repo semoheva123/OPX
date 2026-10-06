@@ -347,6 +347,9 @@ function renderTiersList() {
         const isNextTier = tierIndex === currentIndex + 1;
         const canAct = fullFeatureAccess ? tierIndex > currentIndex : !isActivated && (isCurrent || tierIndex > currentIndex);
         const status = isCurrent ? (isActivated ? 'مفعل حاليًا' : 'يحتاج إيداعًا للتفعيل') : tierIndex < currentIndex ? 'مكتمل سابقًا' : fullFeatureAccess ? 'متاح للتجربة' : 'متاح بدون شرط إحالات';
+        const a4ReferralMilestone = tier.code === 'A4'
+            ? `<p class="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 text-[10px] leading-5 text-emerald-200">${isEnglish ? 'Reach 300 successful active direct referrals to qualify for free Tier 4 activation.' : 'عند الوصول إلى 300 إحالة مباشرة نشطة وناجحة، تصبح مؤهلًا لتفعيل المستوى الرابع مجانًا.'}</p>`
+            : '';
         return `
             <div class="glass-card p-5 rounded-3xl border relative overflow-hidden bg-gradient-to-br ${tier.badgeColor} shadow-xl space-y-4">
                 ${isActivated ? `<span class="absolute top-3 left-3 bg-amber-500 text-slate-950 text-[10px] font-black px-2.5 py-0.5 rounded-full shadow">${tierText.current}</span>` : ''}
@@ -363,6 +366,8 @@ function renderTiersList() {
                 </div>
 
                 <div class="flex justify-between text-[10px] text-slate-400"><span>${status}</span><span class="text-amber-400">اختر المستوى المناسب لك</span></div>
+
+                ${a4ReferralMilestone}
 
                 <div class="grid grid-cols-2 gap-2 text-xs border-y border-slate-800/80 py-3">
                     <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/50">

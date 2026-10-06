@@ -14,5 +14,6 @@ assert.match(migration, /milestone_reward_awards/i, 'the database must enforce o
 assert.match(migration, /referral_milestone/i, 'the bonus must be recorded in the financial ledger');
 assert.match(publicController, /result\.instantProfitReward/, 'the API must return the amount committed by the atomic database function');
 assert.match(client, /300.*إحالة|A4|المستوى الرابع|المستوى الرابع مجاني/i, 'frontend must surface the level-4 free activation reward to the user');
+assert.match(client, /tier\.code === 'A4'[\s\S]*300 إحالة مباشرة نشطة وناجحة[\s\S]*المستوى الرابع مجانًا/i, 'A4 tier card must explain the 300 successful active direct referral free activation milestone');
 
 console.log('Tier four free upgrade reward tests passed');
