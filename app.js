@@ -1712,7 +1712,6 @@ async function loadUserProfileInternal() {
         const data = await res.json();
         if(res.ok && data.user) {
             currentUserData = data.user;
-            await loadHomeSummary();
             updateGameCredits(data.user);
             loadGameHistory();
             updateProfileAvatar(data.user.profileImage);
@@ -1755,6 +1754,8 @@ async function loadUserProfileInternal() {
             currentUserTierActive = Boolean(data.user.isTierActivated || Number(data.user.wallet?.totalDeposits || 0) > 0);
             updateWalletData(data.user.wallet || data.user);
             updateProfileUI();
+
+            loadHomeSummary().catch(error => console.error('Home summary rendering failed:', error));
 
             updateTeamTreeData(data.user.teamStats || { l1: 0, l2: 0, l3: 0, total: 0 });
             loadReferralRewardHistory();
@@ -1947,11 +1948,15 @@ function updateTaskAvailability(completed, maximum) {
     renderTaskBoard(completedCount, taskLimit);
 }
 
-function isWeeklyTaskHoliday(date = new Date()) {
+function isWeeklyTaskHolidayUtc(date = new Date()) {
     const dateParts = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Istanbul', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date);
     const values = Object.fromEntries(dateParts.filter(part => part.type !== 'literal').map(part => [part.type, Number(part.value)]));
     const day = new Date(Date.UTC(values.year, values.month - 1, values.day)).getUTCDay();
     return day === 5 || day === 6;
+}
+
+function isWeeklyTaskHoliday(date = new Date()) {
+    return isWeeklyTaskHolidayUtc(date);
 }
 
 function getTierWithdrawalSchedule(tierCode = currentUserData?.tierCode || currentUserTier, date = new Date()) {

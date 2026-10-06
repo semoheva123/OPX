@@ -17,6 +17,16 @@ const emailFrom = String(process.env.EMAIL_FROM || '').trim();
 const imgbbStorage = require('../services/imgbbStorage');
 const { hasPaidFeatureAccess } = require('../services/paidFeatureAccess');
 
+function sanitizeProfileUser(user) {
+  const safeUser = { ...user };
+  [
+    'password', 'passwordHash', 'password_hash', 'resetOtp', 'resetOtpExpire', 'resetOtpAttempts', 'resetOTPAttempts',
+    'twoFactorCode', 'twoFactorSecret', 'twoFactorExpire', 'adminTwoFactorSecret', 'emailVerificationToken',
+    'emailVerificationExpire', 'adminInviteToken', 'adminInviteExpire', 'metadata'
+  ].forEach(field => delete safeUser[field]);
+  return safeUser;
+}
+
 async function getProfile(req, res) {
   try {
     const user = await dataAccess.user.findById(req.user.id);
@@ -35,7 +45,7 @@ async function getProfile(req, res) {
     const activeReferrals = paidFeatureAccess ? 1000 : levelCounts[0].active;
     await syncGameCredits(user, req.app.locals.gameSettings || {}, levelCounts[0].active);
     const isTierActivated = paidFeatureAccess || Number(user.wallet?.totalDeposits || 0) > 0;
-    res.status(200).json({ success: true, user: { ...user, password: undefined, passwordHash: undefined, resetOtp: undefined, twoFactorCode: undefined, isTierActivated, paidFeatureAccess, wheelCredits: paidFeatureAccess ? Number.MAX_SAFE_INTEGER : user.wheelCredits, mysteryBoxCredits: paidFeatureAccess ? Number.MAX_SAFE_INTEGER : user.mysteryBoxCredits, teamStats: { l1: levelCounts[0].total, l1Active: levelCounts[0].active, l1Inactive: levelCounts[0].inactive, l2: levelCounts[1].total, l2Active: levelCounts[1].active, l2Inactive: levelCounts[1].inactive, l3: levelCounts[2].total, l3Active: levelCounts[2].active, l3Inactive: levelCounts[2].inactive, total: referrals.length + secondLevel.length + thirdLevel.length, activeReferrals } } });
+    res.status(200).json({ success: true, user: { ...sanitizeProfileUser(user), isTierActivated, paidFeatureAccess, wheelCredits: paidFeatureAccess ? Number.MAX_SAFE_INTEGER : user.wheelCredits, mysteryBoxCredits: paidFeatureAccess ? Number.MAX_SAFE_INTEGER : user.mysteryBoxCredits, teamStats: { l1: levelCounts[0].total, l1Active: levelCounts[0].active, l1Inactive: levelCounts[0].inactive, l2: levelCounts[1].total, l2Active: levelCounts[1].active, l2Inactive: levelCounts[1].inactive, l3: levelCounts[2].total, l3Active: levelCounts[2].active, l3Inactive: levelCounts[2].inactive, total: referrals.length + secondLevel.length + thirdLevel.length, activeReferrals } } });
   } catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
 }
 
@@ -389,4 +399,4 @@ async function subscribePush(req, res) {
   } catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
 }
 
-module.exports = { getProfile, updateUsername, setWalletAddress, updateProfileImage, updateSocialProfile, getReferrals, getReferralRewards, getGrowth, getUpgradeHistory, getHomeSummary, sendTwoFactorCode, toggleTwoFactor, setupTwoFactor, confirmTwoFactor, changePassword, subscribePush };
+module.exports = { getProfile, sanitizeProfileUser, updateUsername, setWalletAddress, updateProfileImage, updateSocialProfile, getReferrals, getReferralRewards, getGrowth, getUpgradeHistory, getHomeSummary, sendTwoFactorCode, toggleTwoFactor, setupTwoFactor, confirmTwoFactor, changePassword, subscribePush };
