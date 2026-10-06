@@ -1,5 +1,6 @@
 const crypto = require('node:crypto');
 const dataAccess = require('./dataAccess');
+const { isAllowedRecipientEmail } = require('./emailVerificationReminderService');
 
 const MAX_RECIPIENTS = 10000;
 const RESEND_BATCH_SIZE = 100;
@@ -31,7 +32,7 @@ function normalizeRecipients(users = []) {
   for (const user of Array.isArray(users) ? users : []) {
     const email = String(user.email || '').trim().toLowerCase();
     const userId = String(user.id || user._id || '').trim();
-    if (!userId || !EMAIL_PATTERN.test(email) || byEmail.has(email)) continue;
+    if (!userId || !EMAIL_PATTERN.test(email) || !isAllowedRecipientEmail(email) || byEmail.has(email)) continue;
     byEmail.set(email, { userId, email });
   }
   return [...byEmail.values()];
@@ -153,6 +154,7 @@ async function processAdminEmailBroadcastQueue(resend, requestedCampaignId = nul
 
   const campaignId = String(campaign.id || campaign._id);
   let recipients = [];
+  let sendableRecipients = [];
   try {
     recipients = await dataAccess.callSupabaseRpc('operix_claim_email_broadcast_recipients', {
       p_campaign_id: campaignId,
@@ -164,7 +166,20 @@ async function processAdminEmailBroadcastQueue(resend, requestedCampaignId = nul
       return { processed: 0, campaignId, ...totals };
     }
 
-    const payload = recipients.map(recipient => {
+    const disallowedRecipients = recipients.filter(recipient => !isAllowedRecipientEmail(recipient.email));
+    sendableRecipients = recipients.filter(recipient => isAllowedRecipientEmail(recipient.email));
+    if (disallowedRecipients.length) {
+      await dataAccess.emailBroadcastRecipient.updateMany(
+        { id: { $in: disallowedRecipients.map(recipient => recipient.id) }, status: 'sending' },
+        { $set: { status: 'suppressed', lastError: 'RECIPIENT_DOMAIN_NOT_ALLOWED' } }
+      );
+    }
+    if (!sendableRecipients.length) {
+      const totals = await updateCampaignTotals(campaignId);
+      return { processed: recipients.length, campaignId, ...totals };
+    }
+
+    const payload = sendableRecipients.map(recipient => {
       const unsubscribeUrl = buildUnsubscribeUrl(recipient.userId);
       const oneClickUnsubscribeUrl = `${String(process.env.APP_URL || 'https://operix.website').trim().replace(/\/+$/, '')}/api/email/unsubscribe?token=${encodeURIComponent(createUnsubscribeToken(recipient.userId))}`;
       const content = buildAnnouncementEmail({ subject: campaign.subject, body: campaign.body, unsubscribeUrl, oneClickUnsubscribeUrl });
@@ -180,14 +195,14 @@ async function processAdminEmailBroadcastQueue(resend, requestedCampaignId = nul
     const result = await resend.batch.send(payload);
     if (result?.error) throw new Error(result.error.message || 'EMAIL_PROVIDER_REJECTED_BATCH');
     await dataAccess.emailBroadcastRecipient.updateMany(
-      { id: { $in: recipients.map(recipient => recipient.id) }, status: 'sending' },
+      { id: { $in: sendableRecipients.map(recipient => recipient.id) }, status: 'sending' },
       { $set: { status: 'sent', sentAt: new Date(), lastError: '' } }
     );
   } catch (error) {
     const errorText = safeProviderError(error);
-    if (recipients.length) {
+    if (sendableRecipients.length) {
       await dataAccess.emailBroadcastRecipient.updateMany(
-        { id: { $in: recipients.map(recipient => recipient.id) }, status: 'sending' },
+        { id: { $in: sendableRecipients.map(recipient => recipient.id) }, status: 'sending' },
         { $set: { status: 'failed', lastError: errorText } }
       ).catch(updateError => console.error('Unable to record email batch failure:', safeProviderError(updateError)));
     }

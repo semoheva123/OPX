@@ -43,12 +43,38 @@ create trigger email_verification_reminder_domain_guard
   before insert or update of email on public.email_verification_reminder_recipients
   for each row execute function public.operix_guard_email_verification_reminder_domain();
 
+create or replace function public.operix_guard_email_broadcast_domain()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.operix_email_verification_reminder_domain_allowed(new.email) then
+    raise exception using errcode = '23514', message = 'RECIPIENT_DOMAIN_NOT_ALLOWED';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists email_broadcast_recipient_domain_guard on public.email_broadcast_recipients;
+create trigger email_broadcast_recipient_domain_guard
+  before insert or update of email on public.email_broadcast_recipients
+  for each row execute function public.operix_guard_email_broadcast_domain();
+
 revoke all on function public.operix_email_verification_reminder_domain_allowed(text) from public, anon, authenticated;
 revoke all on function public.operix_guard_email_verification_reminder_domain() from public, anon, authenticated;
+revoke all on function public.operix_guard_email_broadcast_domain() from public, anon, authenticated;
 grant execute on function public.operix_email_verification_reminder_domain_allowed(text) to service_role;
 grant execute on function public.operix_guard_email_verification_reminder_domain() to service_role;
+grant execute on function public.operix_guard_email_broadcast_domain() to service_role;
 
 update public.email_verification_reminder_recipients
+set status = 'suppressed', last_error = 'RECIPIENT_DOMAIN_NOT_ALLOWED', updated_at = now()
+where status = 'queued'
+  and not public.operix_email_verification_reminder_domain_allowed(email);
+
+update public.email_broadcast_recipients
 set status = 'suppressed', last_error = 'RECIPIENT_DOMAIN_NOT_ALLOWED', updated_at = now()
 where status = 'queued'
   and not public.operix_email_verification_reminder_domain_allowed(email);

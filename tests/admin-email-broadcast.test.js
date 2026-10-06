@@ -14,6 +14,7 @@ const preferences = read('src/controllers/emailPreferenceController.js');
 const app = read('server.js');
 const worker = read('.github/workflows/admin-email-broadcast-worker.yml');
 const targetedWorker = read('.github/workflows/single-email-broadcast-worker.yml');
+const domainMigration = read('supabase/email-verification-reminder-domain-allowlist.sql');
 const adminUi = read('admin.html');
 const privacy = read('privacy.html');
 const terms = read('terms.html');
@@ -28,12 +29,13 @@ assert.throws(() => emailService.validateAnnouncement('subject', 'x'.repeat(5001
 assert.deepEqual(emailService.validateAnnouncement(' Update ', ' New feature\n\nDetails '), { subject: 'Update', body: 'New feature\n\nDetails' });
 
 const recipients = emailService.normalizeRecipients([
-  { id: 'user-1', email: 'A@example.test' },
-  { id: 'user-2', email: 'a@example.test' },
+  { id: 'user-1', email: 'A@gmail.com' },
+  { id: 'user-2', email: 'a@gmail.com' },
   { id: 'user-3', email: 'invalid' },
-  { id: 'user-4', email: 'b@example.test' }
+  { id: 'user-4', email: 'b@hotmail.com' },
+  { id: 'user-5', email: 'test@example.com' }
 ]);
-assert.deepEqual(recipients, [{ userId: 'user-1', email: 'a@example.test' }, { userId: 'user-4', email: 'b@example.test' }]);
+assert.deepEqual(recipients, [{ userId: 'user-1', email: 'a@gmail.com' }, { userId: 'user-4', email: 'b@hotmail.com' }]);
 
 const validToken = emailService.createUnsubscribeToken('123e4567-e89b-42d3-a456-426614174000');
 assert.equal(emailService.verifyUnsubscribeToken(validToken), '123e4567-e89b-42d3-a456-426614174000');
@@ -65,6 +67,8 @@ assert.match(worker, /process-email-broadcasts/);
 assert.match(targetedWorker, /inputs\.campaign_id/);
 assert.match(targetedWorker, /process-email-broadcasts/);
 assert.match(targetedWorker, /CAMPAIGN_ID/);
+assert.match(domainMigration, /email_broadcast_recipient_domain_guard/i);
+assert.match(domainMigration, /update public\.email_broadcast_recipients[\s\S]*?RECIPIENT_DOMAIN_NOT_ALLOWED/i);
 assert.match(adminUi, /معاينة المحتوى وعدد المستلمين/);
 assert.match(adminUi, /إرسال التحديث/);
 assert.match(adminUi, /تغيّر النص؛ أعد المعاينة/);
@@ -91,12 +95,13 @@ function responseRecorder() {
   try {
     dataAccess.isSupabaseRuntime = () => true;
     dataAccess.user.findEmailBroadcastRecipients = async () => [
-      { id: '123e4567-e89b-42d3-a456-426614174000', email: 'member@example.test' }
+      { id: '123e4567-e89b-42d3-a456-426614174000', email: 'member@gmail.com' },
+      { id: '523e4567-e89b-42d3-a456-426614174000', email: 'fake@example.com' }
     ];
     const preview = responseRecorder();
     await adminController.previewEmailBroadcast({ body: { subject: 'Update', body: 'A new feature' } }, preview);
     assert.equal(preview.statusCode, 200);
-    assert.equal(preview.body.recipientCount, 1);
+    assert.equal(preview.body.recipientCount, 1, 'preview excludes non-allowlisted test domains');
     assert.equal(preview.body.deliveryReadiness.providerConfigured, false);
     assert.equal(preview.body.deliveryReadiness.senderConfigured, true);
     assert.equal(preview.body.deliveryReadiness.unsubscribeConfigured, true);
@@ -128,7 +133,7 @@ function responseRecorder() {
     assert.equal(queueCalls.length, 1);
     assert.equal(queueCalls[0].args.p_recipients.length, 1);
 
-    const recipientRows = new Map([['423e4567-e89b-42d3-a456-426614174000', { id: '423e4567-e89b-42d3-a456-426614174000', userId: '123e4567-e89b-42d3-a456-426614174000', email: 'member@example.test', status: 'sending' }]]);
+    const recipientRows = new Map([['423e4567-e89b-42d3-a456-426614174000', { id: '423e4567-e89b-42d3-a456-426614174000', userId: '123e4567-e89b-42d3-a456-426614174000', email: 'member@gmail.com', status: 'sending' }]]);
     let campaignStatus = 'queued';
     const campaignSearches = [];
     dataAccess.emailBroadcast.find = async query => {
@@ -156,7 +161,7 @@ function responseRecorder() {
     const result = await emailService.processAdminEmailBroadcastQueue({ batch: { send: async emails => { sentBatches.push(emails); return { data: { data: [{ id: 'resend-email-1' }] } }; } } });
     assert.equal(result.processed, 1);
     assert.equal(sentBatches.length, 1);
-    assert.equal(sentBatches[0][0].to, 'member@example.test');
+    assert.equal(sentBatches[0][0].to, 'member@gmail.com');
     assert.ok(sentBatches[0][0].headers['List-Unsubscribe']);
     assert.equal(recipientRows.get('423e4567-e89b-42d3-a456-426614174000').status, 'sent');
 
@@ -170,6 +175,19 @@ function responseRecorder() {
     assert.equal(targeted.campaignId, '223e4567-e89b-42d3-a456-426614174000');
     assert.equal(targeted.processed, 0);
     assert.equal(sentBatches.length, 1, 'targeted worker must not send other queued campaign content');
+
+    const fakeRecipient = { id: '623e4567-e89b-42d3-a456-426614174000', userId: '523e4567-e89b-42d3-a456-426614174000', email: 'qa@example.com', status: 'sending' };
+    recipientRows.set(fakeRecipient.id, fakeRecipient);
+    campaignStatus = 'queued';
+    dataAccess.callSupabaseRpc = async () => [fakeRecipient];
+    const suppressed = await emailService.processAdminEmailBroadcastQueue(
+      { batch: { send: async emails => { sentBatches.push(emails); return { data: { data: [] } }; } } },
+      '223e4567-e89b-42d3-a456-426614174000'
+    );
+    assert.equal(recipientRows.get(fakeRecipient.id).status, 'suppressed');
+    assert.equal(recipientRows.get(fakeRecipient.id).lastError, 'RECIPIENT_DOMAIN_NOT_ALLOWED');
+    assert.equal(sentBatches.length, 1, 'claimed test-domain recipients must be suppressed before provider submission');
+    assert.equal(suppressed.processed, 1);
 
     const invalidTarget = await emailService.processAdminEmailBroadcastQueue(
       { batch: { send: async () => { throw new Error('must not send'); } } },
