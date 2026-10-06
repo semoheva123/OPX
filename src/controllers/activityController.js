@@ -451,7 +451,10 @@ async function submitDailyEvaluation(req, res) {
     const progress = getDailyTaskProgress(tier.code, paidTaskCount, todayAssignments, completions, Date.now());
     const taskWindow = progress.taskWindows.find(window => window.taskNumber === taskNumber);
     if (!taskWindow) return res.status(400).json({ error: 'مهمة التقييم غير موجودة ضمن خطة اليوم الحالية' });
-    if (taskWindow.remainingMs > 0) return res.status(429).json({ error: 'لم يحن موعد ظهور هذه المهمة بعد؛ تظهر مهمة جديدة كل 3 ساعات.', unlockAt: taskWindow.availableAt });
+    const taskIsUnlocked = progress.unlockedTaskNumbers.includes(taskNumber);
+    if (taskWindow.remainingMs > 0 && !taskIsUnlocked) {
+      return res.status(429).json({ error: 'لم يحن موعد ظهور هذه المهمة بعد؛ تظهر مهمة جديدة كل 3 ساعات.', unlockAt: taskWindow.availableAt });
+    }
     if (taskNumber > 2) {
       const previousTaskKey = `${tier.code}-task-${String(taskNumber - 1).padStart(2, '0')}`;
       if (!completions.some(item => item.taskKey === previousTaskKey)) {
