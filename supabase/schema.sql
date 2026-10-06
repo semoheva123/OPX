@@ -216,7 +216,7 @@ create table if not exists public.social_follows (
 create table if not exists public.social_posts (
   id uuid primary key default uuid_generate_v4(),
   author_id uuid references public.users(id) on delete set null,
-  author_label text not null default 'OPERIX AI',
+  author_label text not null default 'خدمة عملاء OPERIX',
   content text not null,
   hashtags text[] not null default '{}',
   image_url text default '',

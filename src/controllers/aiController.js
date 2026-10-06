@@ -1,15 +1,39 @@
 const Groq = require('groq-sdk');
 const dataAccess = require('../services/dataAccess');
 const User = dataAccess.user;
+const { getWithdrawalSchedule } = require('../services/weeklySchedule');
 
-function localReply(message, userName, userBalance, userTier) {
+function localReply(message, userName, userBalance, userTier, platformFacts = {}) {
   const text = message.toLowerCase();
-  if (text.includes('رصيد') || text.includes('محفظ')) return `رصيدك الحالي هو ${Number(userBalance).toFixed(2)} USDT، ومستواك الحالي ${userTier}. يمكنك مراجعة تفاصيل المحفظة من الرئيسية.`;
-  if (text.includes('مهم')) return 'افتح تبويب المهام وأنجز المهام المتاحة اليوم، وسيُضاف العائد المعتمد إلى رصيد أرباحك.';
-  if (text.includes('إحال') || text.includes('دع') || text.includes('فريق')) return 'راجع قسم الفريق لمتابعة الإحالات النشطة. كل 6 إحالات نشطة تفتح دورة للعجلة ودورة للصندوق.';
-  if (text.includes('ترقي') || text.includes('مستو')) return `مستواك الحالي ${userTier}. الترقية التالية تتطلب إكمال المستوى السابق وتوفر الإحالات النشطة والرصيد المطلوب.`;
-  if (text.includes('استثمار') || text.includes('ابدأ') || text.includes('فوائد')) return 'تستطيع استكشاف مستويات OPERIX ومقارنة السعر وعدد المهام والعائد التقديري قبل اتخاذ القرار. اختر المستوى المناسب لميزانيتك، وراجع شروط الإيداع والسحب لأن العوائد ليست مضمونة.';
-  return `أهلاً ${userName}، أنا مستشارك الرسمي في منصة OPERIX. أستطيع شرح الرصيد والمهام والإحالات والمستويات ومساعدتك على اختيار الخطوة المناسبة داخل المنصة دون ضغط؛ اكتب سؤالك بشكل محدد.`;
+  if (text.includes('رصيد') || text.includes('محفظ')) return `رصيد المحفظة المتاح المسجل لحسابك هو ${Number(userBalance).toFixed(2)} USDT، ومستواك الحالي ${userTier}. راجع تفاصيل الأرصدة وسجل الحركات من صفحة الرئيسية؛ وقد تختلف الأرصدة حسب نوع الرصيد وحالته.`;
+  if (text.includes('مهم') || text.includes('مهام')) return 'افتح تبويب المهام ثم اختر مهمة مدفوعة حالتها «متاحة». قد تتطلب المهام تقييمًا قبل الإنهاء، ويحدد النظام إتاحة المهام التالية وفق التسلسل وفترة الانتظار الظاهرة. لا تُحتسب أي مكافأة إلا بعد تأكيد نجاح المهمة.';
+  if (text.includes('سحب')) return `موعد السحب يعتمد على مستواك والجدول الحالي: ${platformFacts.withdrawalSchedule || 'تحقق من الموعد الظاهر في صفحة السحب'}. راجع الرسوم والشروط وحالة رصيدك من صفحة المحفظة قبل إرسال الطلب.`;
+  if (text.includes('إحال') || text.includes('دع') || text.includes('فريق')) return `راجع تبويب الفريق لمعرفة إحالاتك الفعلية والنشطة. إعداد المنصة الحالي يتطلب ${platformFacts.referralsPerCycle || 6} إحالات نشطة لاكتساب دورة لعبة، وتُعرض الدورات المتاحة في تبويب الألعاب.`;
+  if (text.includes('ترقي') || text.includes('مستو')) return `مستواك الحالي ${userTier}. تعرض صفحة المستويات الأسعار وشروط التفعيل والترقية المحدّثة؛ اختر المستوى المطلوب لمراجعة المبلغ النهائي وطرق الدفع المتاحة لحسابك. لا توجد ضرورة لإكمال إحالات للترقية إلا إذا أظهرت شروط الميزة ذلك.`;
+  if (text.includes('تواصل') || text.includes('شكوى') || text.includes('دعم') || text.includes('موظف')) return 'يمكنني شرح معلومات المنصة والإرشاد داخلها، لكنني لا أستطيع مراجعة معاملة أو فتح تذكرة نيابةً عنك. أرسل طلبك إلى فريق الدعم من الملف الشخصي/مركز الدعم وأرفق رقم العملية دون مشاركة كلمة المرور أو رموز التحقق.';
+  if (text.includes('استثمار') || text.includes('ابدأ') || text.includes('فوائد') || text.includes('ربح')) return 'يمكنك مراجعة تفاصيل المستوى ومبالغه والمهام وشروط الخدمة في صفحة المستويات قبل اتخاذ قرارك. المكافآت أو العوائد المعروضة تقديرية وليست مضمونة، ولا تودع إلا مبلغًا يمكنك تحمل مخاطر خسارته.';
+  return `أهلاً ${userName}، أنا خدمة العملاء الذكية في OPERIX. أساعدك على فهم الحساب والمهام والمستويات والإحالات والسحب اعتمادًا على بيانات المنصة الحالية. للشكوى أو مراجعة حركة مالية، تواصل مع فريق الدعم من داخل الحساب.`;
+}
+
+function buildPlatformKnowledge(levels = [], settings = {}, userTier = '') {
+  const currentLevel = levels.find(level => String(level.code).toUpperCase() === String(userTier).toUpperCase());
+  const levelFacts = levels.map(level => {
+    const taskLimit = Math.max(0, Number(level.tasks || 1) - 1);
+    return `${level.code}: اسم=${level.name}، مبلغ المستوى=${Number(level.price || 0)} USDT، حد المهام المدفوعة=${taskLimit}، العائد اليومي المعروض=${Number(level.dailyProfit || 0)} (تقديري)`;
+  }).join('؛ ') || 'بيانات المستويات غير متاحة الآن؛ لا تخمّن الأرقام';
+  const withdrawalSchedule = getWithdrawalSchedule(userTier, new Date());
+  return {
+    levelFacts,
+    currentLevelTaskLimit: currentLevel ? Math.max(0, Number(currentLevel.tasks || 1) - 1) : null,
+    referralsPerCycle: Math.max(1, Number(settings.referralsPerCycle) || 6),
+    withdrawalSchedule: withdrawalSchedule.message,
+    withdrawalDay: withdrawalSchedule.allowedDayName,
+    gameCycleRule: 'الدورات تُمنح وفق رصيد دورات الحساب وعدد الإحالات النشطة وإعداد اللعبة؛ لا تعد بمكافأة محددة قبل ظهورها في الحساب',
+    taskRule: 'المهام المجتمعية اختيارية وليست مهامًا مدفوعة؛ المهام المدفوعة تتطلب أن تظهر بحالة متاحة وقد تخضع لتقييم وتسلسل وانتظار',
+    upgradeRule: 'السعر وشروط التفعيل والترقية يعرضها النظام في صفحة المستويات وفي تأكيد الدفع؛ لا تفترض شرط إحالات أو إكمال مستوى سابق غير ظاهر في إعدادات الحساب',
+    financialRule: 'المكافآت والعوائد تقديرية وغير مضمونة، وطلبات السحب مرتبطة بتوفر الرصيد المستحق وجدول المستوى والتحقق وسياسات الرسوم',
+    supportRule: 'خدمة العملاء الذكية للإرشاد وليست وكيلًا لتنفيذ المعاملات أو حل النزاعات؛ الشكاوى والمعاملات تتطلب تذكرة عبر مركز الدعم'
+  };
 }
 
 async function askGemini(apiKey, systemPrompt, message) {
@@ -32,33 +56,36 @@ async function chat(req, res) {
     const { message, history, mode } = req.body;
     if (!message || typeof message !== 'string' || !message.trim()) return res.status(400).json({ reply: 'يرجى كتابة سؤالك أولاً.' });
     const user = await dataAccess.user.findById(req.user.id);
-    const userName = user ? user.email.split('@')[0] : 'المستخدم';
+    const userName = user ? String(user.email || 'المستخدم').split('@')[0] : 'المستخدم';
     const userBalance = user?.wallet?.balance || 0;
     const userTier = user?.tierCode || 'A1';
     const referrals = user?.referralCode ? await dataAccess.user.countDocuments({ referredBy: user.referralCode, isBanned: false }) : 0;
     const activeReferrals = user?.referralCode ? (await dataAccess.user.find({ referredBy: user.referralCode, isBanned: false })).filter(item => Number(item.wallet?.totalDeposits || 0) > 0).length : 0;
+    const [levels, gameSettings] = await Promise.all([
+      dataAccess.vipLevel.find({}, { sort: { price: 1 } }).catch(() => []),
+      dataAccess.gameSetting.findOne({ key: 'default' }).catch(() => null)
+    ]);
+    const platformFacts = buildPlatformKnowledge(Array.isArray(levels) ? levels : [], gameSettings || req.app.locals.gameSettings || {}, userTier);
     const context = `المهام اليوم: ${user?.todayCompletedTasks || 0}، الإحالات: ${referrals}، الإحالات النشطة: ${activeReferrals}، دورات العجلة: ${user?.wheelCredits || 0}، دورات الصندوق: ${user?.mysteryBoxCredits || 0}، المصادقة الثنائية: ${user?.twoFactorEnabled ? 'مفعلة' : 'غير مفعلة'}، محفظة السحب: ${user?.walletAddress ? 'مثبتة' : 'غير مثبتة'}.`;
-    const cleanMessage = message.trim().toLowerCase();
-    const flagKeywords = ['نصب', 'احتيال', 'سرقة', 'وهمي', 'فاشل', 'كذب', 'تزوير', 'حرام'];
-    if (flagKeywords.some(word => cleanMessage.includes(word))) return res.json({ reply: `أهلاً بك يا ${userName}! جميع المعاملات في المنصة تشفر وتدار بتبعية عالية لضمان الأمان. نهدف دائماً لتوفير بيئة استثمارية آمنة ومربحة لجميع أعضائنا.` });
-    const systemPrompt = `أنت "OPERIX AI Advisor"، المستشار الرسمي الذي يعمل لصالح منصة OPERIX.
-  هدفك شرح المنصة ومزاياها ومساعدة المستخدم على الاستفادة من المهام والمستويات والإحالات والخدمات المتاحة داخلها، مع ترشيح خيارات المنصة عندما تكون مناسبة لسؤال المستخدم.
-  تحدث بأسلوب مهني وإيجابي ومقنع وودود، لكن لا تضغط على المستخدم ولا تطلب منه استثمار مبلغ لا يستطيع تحمل خسارته.
-  كن واضحًا بأن العوائد تقديرية وليست مضمونة، واذكر شروط الإيداع والسحب والترقية والمخاطر عندما تكون مرتبطة بالسؤال. لا تختلق أرقامًا أو معاملات أو شهادات مستخدمين.
-  معلومات العميل الحالي: الاسم: ${userName}، الرصيد: ${userBalance}$، المستوى: ${userTier}. ${context}
-  نمط المساعدة الحالي: ${mode === 'account' ? 'مساعد الحساب' : mode === 'support' ? 'الدعم الفني' : 'مساعد المنصة'}.
-  أجب بإجابة مكتملة ومفيدة باللغة العربية الفصحى البسيطة، وبعدد مناسب من الجمل حسب السؤال. وجّه المستخدم إلى الخطوة المناسبة داخل المنصة دون وعود ربح مؤكدة.`;
+    const systemPrompt = `أنت «خدمة العملاء الذكية» لمنصة OPERIX. مهمتك شرح طريقة استخدام المنصة ومعلومات الحساب والخدمات الحالية باللغة العربية الواضحة والمهذبة.
+  مصدر الحقيقة عن تحديثات المنصة هو بيانات المستوى والإعدادات الحية والسياق أدناه، لا معلوماتك العامة أو الإصدارات السابقة. إذا كانت معلومة غير موجودة أو متعارضة، صرّح بأنك لا تستطيع تأكيدها ووجّه المستخدم إلى الصفحة المعنية أو مركز الدعم؛ لا تخمّن ولا تعد بأن جميع معلومات المحادثة جرى تحديثها من الإنترنت.
+  قواعد ثابتة: لا تضمن الأرباح أو العوائد ولا تحث على الإيداع أو الترقية. لا تدّع تشفيرًا أو ترخيصًا أو شراكة أو مراجعة معاملة ما لم يثبت ذلك في البيانات المعروضة. لا تطلب كلمة مرور أو رمز تحقق أو مفتاح محفظة. لا تعتبر المهام المجتمعية الاختيارية مهامًا مدفوعة. قل إن المهمة المدفوعة قابلة للتنفيذ فقط عندما تظهر متاحة؛ وقد تتطلب تقييمًا أو تسلسلًا وفترة انتظار. اشرح أن شروط الترقية والمبالغ النهائية تظهر في صفحة المستويات وتأكيد الدفع، ولا تخترع شروط إحالات أو إكمال مستوى. أخبر المشتكي بكيفية فتح تذكرة دعم بدل تقديم تطمينات عامة.
+  بيانات المستويات الحية: ${platformFacts.levelFacts}.
+  قواعد المنصة الحية: ${JSON.stringify(platformFacts)}.
+  بيانات العميل الحالي: الاسم ${userName}، رصيد المحفظة المعروض ${userBalance} USDT، المستوى ${userTier}. ${context}
+  نمط الخدمة: ${mode === 'account' ? 'مساعدة الحساب' : mode === 'support' ? 'إرشاد خدمة العملاء وتصعيد الحالات التي تتطلب فريق الدعم' : 'معلومات المنصة'}.
+  أجب بالعربية الفصحى وبشكل مباشر، اذكر الأرقام فقط إذا وردت في البيانات الحية أعلاه، ولا توحِ بأنك موظف بشري.`;
     const geminiKey = process.env.GEMINI_API_KEY;
     if (geminiKey) {
       try {
-        const safeHistory = Array.isArray(history) ? history.filter(item => item && ['user', 'assistant'].includes(item.role) && typeof item.content === 'string').slice(-8) : [];
+        const safeHistory = Array.isArray(history) ? history.filter(item => item && ['user', 'assistant'].includes(item.role) && typeof item.content === 'string').slice(-8).map(item => ({ ...item, content: item.content.slice(0, 2000) })) : [];
         const contextualMessage = safeHistory.length ? `سياق آخر المحادثة:\n${safeHistory.map(item => `${item.role === 'user' ? 'المستخدم' : 'المستشار'}: ${item.content}`).join('\n')}\n\nالسؤال الجديد: ${message}` : message;
         const reply = await askGemini(geminiKey.trim(), systemPrompt, contextualMessage);
-        if (reply && /[\u0600-\u06ff]/.test(reply)) return res.json({ reply, source: 'Gemini', suggestedAction: getSuggestedAction(message) });
+        if (reply && /[\u0600-\u06ff]/.test(reply)) return res.json({ reply, source: 'assistant', suggestedAction: getSuggestedAction(message) });
       } catch (error) { console.warn('فشل الاتصال بـ Gemini، سيتم تجربة البدائل:', error.message); }
     }
     const apiKey = process.env.GROQ_API_KEY || process.env.Boostai;
-    if (!apiKey) return res.json({ reply: `${localReply(message, userName, userBalance, userTier)} (الوضع المحلي مفعل حاليًا)`, source: 'local', suggestedAction: getSuggestedAction(message) });
+    if (!apiKey) return res.json({ reply: localReply(message, userName, userBalance, userTier, platformFacts), source: 'local', suggestedAction: getSuggestedAction(message) });
     const groq = new Groq({ apiKey: apiKey.trim() });
     let replyText;
     let lastError;
@@ -70,12 +97,12 @@ async function chat(req, res) {
         replyText = null;
       } catch (error) { lastError = error; console.warn(`فشل الاتصال بالنموذج ${model}:`, error.message); }
     }
-    if (replyText) return res.json({ reply: replyText.trim(), source: 'Groq', suggestedAction: getSuggestedAction(message) });
+    if (replyText) return res.json({ reply: replyText.trim(), source: 'assistant', suggestedAction: getSuggestedAction(message) });
     console.error('خطأ Groq API:', lastError);
-    res.json({ reply: `${localReply(message, userName, userBalance, userTier)} (تعذر الاتصال بالنموذج الخارجي)`, source: 'local', suggestedAction: getSuggestedAction(message) });
+    res.json({ reply: localReply(message, userName, userBalance, userTier, platformFacts), source: 'local', suggestedAction: getSuggestedAction(message) });
   } catch (error) {
     console.error('خطأ في مسار /api/ai/chat:', error);
-    res.status(500).json({ reply: 'حدث خطأ غير متوقع أثناء الاتصال بالمستشار الذكي.' });
+    res.status(500).json({ reply: 'تعذر إعداد الإجابة الآن. حاول مجددًا، أو تواصل مع فريق الدعم من داخل حسابك.' });
   }
 }
 
@@ -88,4 +115,4 @@ function getSuggestedAction(message) {
   return null;
 }
 
-module.exports = { chat };
+module.exports = { chat, localReply, buildPlatformKnowledge };

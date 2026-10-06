@@ -29,7 +29,7 @@ async function generateOfficialAiPost() {
     await AuditLog.create({ action: 'ai_post_blocked', details: { source: 'ai_generated', matchedWord: moderation.matchedWord, text: generatedText } });
     return { skipped: true, reason: 'banned_word', matchedWord: moderation.matchedWord };
   }
-  const post = await SocialPost.create({ authorId: null, authorLabel: '🤖 محتوى رسمي من OPERIX AI', content: generatedText, isOfficialAi: true, source: 'ai_generated', status: 'visible' });
+  const post = await SocialPost.create({ authorId: null, authorLabel: '🤖 خدمة عملاء OPERIX', content: generatedText, isOfficialAi: true, source: 'ai_generated', status: 'visible' });
   await AuditLog.create({ action: 'ai_post_published', targetId: String(post._id), details: { source: 'ai_generated', topic } });
   return { skipped: false, postId: post._id };
 }

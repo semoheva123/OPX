@@ -2296,7 +2296,7 @@ function updateTeamTreeData(stats) {
     }
 }
 
-/* --- 6. المهام والألعاب والمستشار الذكي --- */
+/* --- 6. المهام والألعاب وخدمة العملاء الذكية --- */
 async function completeTask(taskKey) {
     const btn = document.getElementById('btnCompleteTask');
     const token = localStorage.getItem('token');
@@ -2468,7 +2468,7 @@ async function sendAiMessage() {
     chatBox.scrollTop = chatBox.scrollHeight;
 
     const loadingId = 'ai-loading-' + Date.now();
-    chatBox.innerHTML += `<div id="${loadingId}" class="bg-slate-900 p-3 rounded-xl border border-slate-800 text-slate-400 animate-pulse">OPERIX AI: جاري التفكير والتحليل...</div>`;
+    chatBox.innerHTML += `<div id="${loadingId}" class="bg-slate-900 p-3 rounded-xl border border-slate-800 text-slate-400 animate-pulse">خدمة العملاء: جارٍ إعداد الإجابة...</div>`;
     chatBox.scrollTop = chatBox.scrollHeight;
 
     try {
@@ -2489,16 +2489,16 @@ async function sendAiMessage() {
             aiConversation.push({ role: 'assistant', content: data.reply });
             const action = data.suggestedAction ? `<button onclick="switchTab('${data.suggestedAction.tab}')" class="mt-2 text-[10px] text-amber-400 hover:underline">${escapeAiHtml(data.suggestedAction.label)} <i class="fa-solid fa-arrow-left mr-1"></i></button>` : '';
             const tools = `<div class="mt-2 flex gap-3 text-[10px] text-slate-500"><button onclick="copyAiText(this)" title="نسخ الرد"><i class="fa-regular fa-copy"></i> نسخ</button><button onclick="retryAiMessage()" title="إعادة المحاولة"><i class="fa-solid fa-rotate-right"></i> إعادة</button></div>`;
-            if (loadingEl) loadingEl.outerHTML = `<div class="ai-response bg-slate-900 p-3 rounded-xl border border-slate-800 text-slate-300">OPERIX AI: <span>${escapeAiHtml(data.reply)}</span>${action}${tools}<small class="block text-[9px] text-slate-600 mt-1">المصدر: ${escapeAiHtml(data.source || 'المستشار')}</small></div>`;
-            document.getElementById('aiSourceStatus').innerText = `المصدر: ${data.source || 'المستشار'} • آخر تحديث: ${new Date().toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' })}`;
+            if (loadingEl) loadingEl.outerHTML = `<div class="ai-response bg-slate-900 p-3 rounded-xl border border-slate-800 text-slate-300">خدمة العملاء: <span>${escapeAiHtml(data.reply)}</span>${action}${tools}<small class="block text-[9px] text-slate-600 mt-1">${data.source === 'local' ? 'رد إرشادي محلي' : 'تمت الإجابة باستخدام المساعد الذكي'}</small></div>`;
+            document.getElementById('aiSourceStatus').innerText = `خدمة العملاء الذكية • تحديث: ${new Date().toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' })}`;
             playBeep('win');
         } else {
-            if (loadingEl) loadingEl.outerHTML = `<div class="bg-rose-950/40 p-3 rounded-xl border border-rose-900 text-rose-300">OPERIX AI: ${escapeAiHtml(data.reply || data.error || 'عذراً، حدث خطأ في معالجة الطلب.')}</div>`;
+            if (loadingEl) loadingEl.outerHTML = `<div class="bg-rose-950/40 p-3 rounded-xl border border-rose-900 text-rose-300">خدمة العملاء: ${escapeAiHtml(data.reply || data.error || 'عذراً، حدث خطأ في معالجة الطلب.')}</div>`;
         }
     } catch (err) {
         const loadingEl = document.getElementById(loadingId);
         if (loadingEl) {
-            loadingEl.outerHTML = `<div class="bg-rose-950/40 p-3 rounded-xl border border-rose-900 text-rose-300">OPERIX AI: انتهت مهلة الرد. تحقق من اتصال الخادم ثم حاول مجددًا.</div>`;
+            loadingEl.outerHTML = `<div class="bg-rose-950/40 p-3 rounded-xl border border-rose-900 text-rose-300">خدمة العملاء: انتهت مهلة الرد. تحقق من اتصالك ثم حاول مجددًا.</div>`;
         }
     }
     if (sendButton) { sendButton.disabled = false; sendButton.classList.remove('opacity-50'); }
@@ -3021,18 +3021,18 @@ function renderSocialPostCard(post) {
     const avatar = post.authorProfileImage ? `<img src="${escapeSocialHtml(post.authorProfileImage)}" alt="" class="twitter-avatar-image">` : initials;
     const image = post.image_url ? `<div class="twitter-post-media"><img src="${escapeSocialHtml(post.image_url)}" alt="صورة مرفقة من ${escapeSocialHtml(authorLabel)}" loading="lazy"></div>` : '';
     const createdAt = post.createdAt ? new Date(post.createdAt).toLocaleString('ar') : 'إعلان رسمي';
-    const handle = isOfficialAi ? '@operix_ai' : post.authorUsername ? `@${escapeSocialHtml(post.authorUsername)}` : '@' + escapeSocialHtml(authorLabel.toLowerCase().replace(/\s+/g, ''));
+    const handle = isOfficialAi ? '@operix_support' : post.authorUsername ? `@${escapeSocialHtml(post.authorUsername)}` : '@' + escapeSocialHtml(authorLabel.toLowerCase().replace(/\s+/g, ''));
     return `<article data-social-post-id="${escapeSocialHtml(postId)}" class="twitter-post ${isOfficialAi ? 'border-amber-400/20' : ''}">
         <div class="twitter-post-inner">
             <div class="twitter-avatar"><div class="twitter-avatar-badge ${isOfficialAi ? 'bg-amber-400/15 text-amber-300' : ''}">${isOfficialAi ? '<i class="fa-solid fa-robot"></i>' : avatar}</div></div>
             <div class="twitter-post-content">
                 <div class="twitter-post-header">
                     <div class="twitter-user-meta">
-                        ${post.authorId && !isOfficialAi ? `<button type="button" class="twitter-author-button" onclick="openSocialUserCard('${escapeSocialHtml(post.authorId)}')">${escapeSocialHtml(authorLabel)}${isOfficialPlatform ? ' <i class="fa-solid fa-circle-check text-cyan-300" title="الحساب الرسمي"></i>' : ''}</button>` : `<strong>${escapeSocialHtml(authorLabel)}</strong>`}
+                        ${post.authorId && !isOfficialAi ? `<button type="button" class="twitter-author-button" onclick="openSocialUserCard('${escapeSocialHtml(post.authorId)}')">${escapeSocialHtml(authorLabel)}${isOfficialPlatform ? ' <i class="fa-solid fa-circle-check text-cyan-300" title="الحساب الرسمي"></i>' : ''}</button>` : `<strong>${isOfficialAi ? 'خدمة عملاء OPERIX' : escapeSocialHtml(authorLabel)}</strong>`}
                         <span>${handle}</span>
                         <span class="twitter-post-time">• ${createdAt}</span>
                     </div>
-                    ${isOfficialAi ? '<i class="fa-solid fa-shield-halved text-amber-300" title="محتوى رسمي من OPERIX AI"></i>' : '<button type="button" onclick="reportSocialPost(\'${escapeSocialHtml(postId)}\')" class="twitter-more" title="إبلاغ"><i class="fa-solid fa-ellipsis"></i></button>'}
+                    ${isOfficialAi ? '<i class="fa-solid fa-shield-halved text-amber-300" title="محتوى رسمي من خدمة عملاء OPERIX"></i>' : '<button type="button" onclick="reportSocialPost(\'${escapeSocialHtml(postId)}\')" class="twitter-more" title="إبلاغ"><i class="fa-solid fa-ellipsis"></i></button>'}
                 </div>
                 <div class="twitter-post-body"><p>${formattedContent}</p></div>
                 ${image}

@@ -1737,14 +1737,15 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
             </div>
         </div>
 
-        <!-- 4.4 تبويب المستشار الذكي (AI View) -->
+        <!-- 4.4 خدمة العملاء -->
         <div id="view-ai" class="space-y-4 hide">
             <div class="glass-card p-4 rounded-3xl space-y-3">
-                <div class="flex justify-between items-center"><h3 class="font-bold text-sm text-amber-400"><i class="fa-solid fa-robot mr-1"></i> مستشار OPERIX الذكي</h3><button onclick="clearAiChat()" title="مسح المحادثة" class="text-slate-500 hover:text-rose-300"><i class="fa-solid fa-trash-can"></i></button></div>
-                <div class="grid grid-cols-3 gap-1.5"><button onclick="setAiMode('platform')" id="aiModePlatform" class="py-2 rounded-lg bg-amber-500 text-slate-950 text-[10px] font-bold">مساعد المنصة</button><button onclick="setAiMode('account')" id="aiModeAccount" class="py-2 rounded-lg bg-slate-900 text-slate-400 text-[10px] font-bold">مساعد الحساب</button><button onclick="setAiMode('support')" id="aiModeSupport" class="py-2 rounded-lg bg-slate-900 text-slate-400 text-[10px] font-bold">الدعم</button></div>
+            <div class="flex justify-between items-center"><h3 class="font-bold text-sm text-amber-400"><i class="fa-solid fa-headset mr-1"></i> خدمة عملاء OPERIX الذكية</h3><button onclick="clearAiChat()" title="مسح المحادثة" class="text-slate-500 hover:text-rose-300"><i class="fa-solid fa-trash-can"></i></button></div>
+            <p class="text-[10px] leading-5 text-slate-400">مساعد ذكي يجيب وفق بيانات المنصة وإعداداتها الحالية. للشكوى أو مراجعة معاملة، تواصل مع فريق الدعم من الملف الشخصي.</p>
+            <div class="grid grid-cols-3 gap-1.5"><button onclick="setAiMode('platform')" id="aiModePlatform" class="py-2 rounded-lg bg-amber-500 text-slate-950 text-[10px] font-bold">معلومات المنصة</button><button onclick="setAiMode('account')" id="aiModeAccount" class="py-2 rounded-lg bg-slate-900 text-slate-400 text-[10px] font-bold">مساعد الحساب</button><button onclick="setAiMode('support')" id="aiModeSupport" class="py-2 rounded-lg bg-slate-900 text-slate-400 text-[10px] font-bold">خدمة العملاء</button></div>
                 <div id="aiQuickQuestions" class="flex gap-1.5 overflow-x-auto pb-1"><button onclick="askAiQuick('كيف أبدأ؟')" class="whitespace-nowrap bg-slate-900 border border-slate-800 px-2.5 py-1.5 rounded-lg text-[10px] text-slate-300">كيف أبدأ؟</button><button onclick="askAiQuick('ما المستوى المناسب لي؟')" class="whitespace-nowrap bg-slate-900 border border-slate-800 px-2.5 py-1.5 rounded-lg text-[10px] text-slate-300">المستوى المناسب</button><button onclick="askAiQuick('كيف أزيد إحالاتي؟')" class="whitespace-nowrap bg-slate-900 border border-slate-800 px-2.5 py-1.5 rounded-lg text-[10px] text-slate-300">زيادة الإحالات</button><button onclick="askAiQuick('كيف أستخدم الألعاب؟')" class="whitespace-nowrap bg-slate-900 border border-slate-800 px-2.5 py-1.5 rounded-lg text-[10px] text-slate-300">استخدام الألعاب</button></div>
                 <div id="aiChatBox" class="h-64 bg-slate-950 p-3 rounded-2xl border border-slate-800 overflow-y-auto space-y-2 text-xs">
-                    <div class="bg-slate-900 p-3 rounded-xl border border-slate-800 text-slate-300">مرحباً بك! أنا مستشارك الذكي، اسألني عن أفضل الاستراتيجيات لزيادة أرباحك.</div>
+                    <div class="bg-slate-900 p-3 rounded-xl border border-slate-800 text-slate-300">مرحباً بك في خدمة عملاء OPERIX. يمكنني مساعدتك بمعلومات المنصة والحساب، وسأوضح لك متى تحتاج إلى التواصل مع فريق الدعم.</div>
                 </div>
                 <div id="aiSourceStatus" class="text-[10px] text-slate-600">المصدر: بيانات المنصة وتعليمات المستشار</div>
                 <div class="flex gap-2">
@@ -2030,7 +2031,7 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
         </button>
         <button id="nav-ai" onclick="switchTab('ai')" class="flex flex-col items-center flex-1 text-slate-400 transition-all">
             <i class="fa-solid fa-robot text-base"></i>
-            <span class="text-[10px] font-bold mt-1">OPERIX AI</span>
+            <span class="text-[10px] font-bold mt-1">خدمة العملاء</span>
         </button>
         <button id="nav-team" onclick="switchTab('team')" class="flex flex-col items-center flex-1 text-slate-400 transition-all">
             <i class="fa-solid fa-users text-base"></i>
