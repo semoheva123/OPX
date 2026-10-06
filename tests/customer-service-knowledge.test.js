@@ -23,7 +23,12 @@ const referralReply = localReply('كم إحالة أحتاج للألعاب؟', 
 assert.match(referralReply, /9 إحالات نشطة/);
 
 const supportReply = localReply('أريد تقديم شكوى ومراجعة معاملة', 'member', 25, 'A2', knowledge);
-assert.match(supportReply, /مركز الدعم/);
+assert.match(supportReply, /«حسابي» من القائمة الرئيسية/);
+assert.match(supportReply, /«إعدادات المنصة والدعم»/);
+assert.match(supportReply, /«فتح تذكرة دعم»/);
+assert.match(supportReply, /«إرسال التذكرة»/);
+assert.match(supportReply, /تذاكرك السابقة/);
+assert.doesNotMatch(supportReply, /مركز الدعم.*القائمة الرئيسية/);
 assert.doesNotMatch(supportReply, /جميع المعاملات.*آمنة/);
 
 console.log('Customer service live-knowledge tests passed');
