@@ -84,6 +84,7 @@ assert.match(adminUi, /إرسال التحديث/);
 assert.match(adminUi, /تغيّر النص؛ أعد المعاينة/);
 assert.match(adminUi, /requestedDraftKey/);
 assert.match(adminUi, /emailBroadcastDeliveryReady/);
+assert.match(adminUi, /حساب الإدارة الموثّق على نطاق OPERIX الرسمي/);
 assert.match(adminUi, /عامل الإرسال المجدول/);
 assert.match(privacy, /إيقاف رسائل التحديثات/);
 assert.match(terms, /إلغاء رسائل التحديثات/);
