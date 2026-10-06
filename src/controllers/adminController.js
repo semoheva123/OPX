@@ -1238,7 +1238,7 @@ async function previewEmailBroadcast(req, res) {
       unsubscribeConfigured: Boolean(process.env.EMAIL_UNSUBSCRIBE_SECRET || process.env.JWT_SECRET)
     };
     deliveryReadiness.ready = Object.values(deliveryReadiness).every(Boolean);
-    return res.json({ success: true, subject, body, recipientCount: recipients.length, recipientPolicy: 'verified_non_opted_out_users', deliveryReadiness });
+    return res.json({ success: true, subject, body, recipientCount: recipients.length, recipientPolicy: 'verified_non_opted_out_users_and_official_admin', deliveryReadiness });
   } catch (error) {
     const validationMessage = emailBroadcastValidationError(error);
     if (validationMessage) return res.status(400).json({ success: false, error: validationMessage });

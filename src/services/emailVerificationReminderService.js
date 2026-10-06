@@ -6,6 +6,7 @@ const MAX_RECIPIENTS = 10000;
 const BATCH_SIZE = 100;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ALLOWED_EMAIL_DOMAINS = new Set([
+  'operix.website',
   'gmail.com', 'googlemail.com',
   'outlook.com', 'hotmail.com', 'hotmail.co.uk', 'hotmail.fr', 'hotmail.de', 'hotmail.es', 'hotmail.it', 'hotmail.ca', 'hotmail.com.au', 'hotmail.com.tr',
   'live.com', 'live.co.uk', 'live.fr', 'live.de', 'msn.com',

@@ -65,6 +65,7 @@ assert.deepEqual(reminderService.normalizeRecipients([
 ]), [{ userId: 'user-1', email: 'notverified@gmail.com' }]);
 assert.equal(reminderService.isAllowedRecipientEmail('valid@hotmail.com'), true);
 assert.equal(reminderService.isAllowedRecipientEmail('valid@outlook.com'), true);
+assert.equal(reminderService.isAllowedRecipientEmail('official@operix.website'), true);
 assert.equal(reminderService.isAllowedRecipientEmail('valid@example.org'), false);
 assert.equal(reminderService.isAllowedRecipientEmail('valid@example.test'), false);
 

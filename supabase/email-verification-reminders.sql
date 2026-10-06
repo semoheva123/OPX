@@ -47,6 +47,7 @@ immutable
 strict
 as $$
   select split_part(lower(btrim(p_email)), '@', 2) = any (array[
+    'operix.website',
     'gmail.com', 'googlemail.com',
     'outlook.com', 'hotmail.com', 'hotmail.co.uk', 'hotmail.fr', 'hotmail.de', 'hotmail.es', 'hotmail.it', 'hotmail.ca', 'hotmail.com.au', 'hotmail.com.tr',
     'live.com', 'live.co.uk', 'live.fr', 'live.de', 'msn.com',

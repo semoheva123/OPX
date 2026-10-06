@@ -15,6 +15,7 @@ const app = read('server.js');
 const worker = read('.github/workflows/admin-email-broadcast-worker.yml');
 const targetedWorker = read('.github/workflows/single-email-broadcast-worker.yml');
 const domainMigration = read('supabase/email-verification-reminder-domain-allowlist.sql');
+const adminAudienceMigration = read('supabase/admin-broadcast-include-official-admin.sql');
 const adminUi = read('admin.html');
 const privacy = read('privacy.html');
 const terms = read('terms.html');
@@ -33,9 +34,14 @@ const recipients = emailService.normalizeRecipients([
   { id: 'user-2', email: 'a@gmail.com' },
   { id: 'user-3', email: 'invalid' },
   { id: 'user-4', email: 'b@hotmail.com' },
-  { id: 'user-5', email: 'test@example.com' }
+  { id: 'user-5', email: 'test@example.com' },
+  { id: 'admin-1', email: 'official@operix.website' }
 ]);
-assert.deepEqual(recipients, [{ userId: 'user-1', email: 'a@gmail.com' }, { userId: 'user-4', email: 'b@hotmail.com' }]);
+assert.deepEqual(recipients, [
+  { userId: 'user-1', email: 'a@gmail.com' },
+  { userId: 'user-4', email: 'b@hotmail.com' },
+  { userId: 'admin-1', email: 'official@operix.website' }
+]);
 
 const validToken = emailService.createUnsubscribeToken('123e4567-e89b-42d3-a456-426614174000');
 assert.equal(emailService.verifyUnsubscribeToken(validToken), '123e4567-e89b-42d3-a456-426614174000');
@@ -69,6 +75,10 @@ assert.match(targetedWorker, /process-email-broadcasts/);
 assert.match(targetedWorker, /CAMPAIGN_ID/);
 assert.match(domainMigration, /email_broadcast_recipient_domain_guard/i);
 assert.match(domainMigration, /update public\.email_broadcast_recipients[\s\S]*?RECIPIENT_DOMAIN_NOT_ALLOWED/i);
+assert.match(adminAudienceMigration, /eligible\.role = 'admin'[\s\S]*?operix\.website/i);
+assert.match(adminAudienceMigration, /eligible\.email_verified = true/i);
+assert.match(adminAudienceMigration, /eligible\.email_updates_opt_out = false/i);
+assert.match(adminAudienceMigration, /email_broadcast_recipients[\s\S]*?operix\.website/i);
 assert.match(adminUi, /معاينة المحتوى وعدد المستلمين/);
 assert.match(adminUi, /إرسال التحديث/);
 assert.match(adminUi, /تغيّر النص؛ أعد المعاينة/);
@@ -96,12 +106,14 @@ function responseRecorder() {
     dataAccess.isSupabaseRuntime = () => true;
     dataAccess.user.findEmailBroadcastRecipients = async () => [
       { id: '123e4567-e89b-42d3-a456-426614174000', email: 'member@gmail.com' },
-      { id: '523e4567-e89b-42d3-a456-426614174000', email: 'fake@example.com' }
+      { id: '523e4567-e89b-42d3-a456-426614174000', email: 'fake@example.com' },
+      { id: '623e4567-e89b-42d3-a456-426614174000', email: 'official@operix.website' }
     ];
     const preview = responseRecorder();
     await adminController.previewEmailBroadcast({ body: { subject: 'Update', body: 'A new feature' } }, preview);
     assert.equal(preview.statusCode, 200);
-    assert.equal(preview.body.recipientCount, 1, 'preview excludes non-allowlisted test domains');
+    assert.equal(preview.body.recipientCount, 2, 'preview includes regular verified users and official admin while excluding test domains');
+    assert.equal(preview.body.recipientPolicy, 'verified_non_opted_out_users_and_official_admin');
     assert.equal(preview.body.deliveryReadiness.providerConfigured, false);
     assert.equal(preview.body.deliveryReadiness.senderConfigured, true);
     assert.equal(preview.body.deliveryReadiness.unsubscribeConfigured, true);
@@ -131,7 +143,7 @@ function responseRecorder() {
     }, created);
     assert.equal(created.statusCode, 202);
     assert.equal(queueCalls.length, 1);
-    assert.equal(queueCalls[0].args.p_recipients.length, 1);
+    assert.equal(queueCalls[0].args.p_recipients.length, 2);
 
     const recipientRows = new Map([['423e4567-e89b-42d3-a456-426614174000', { id: '423e4567-e89b-42d3-a456-426614174000', userId: '123e4567-e89b-42d3-a456-426614174000', email: 'member@gmail.com', status: 'sending' }]]);
     let campaignStatus = 'queued';

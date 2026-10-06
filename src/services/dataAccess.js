@@ -449,22 +449,29 @@ const dataAccess = {
       if (!isSupabaseRuntime() || !supabaseAdmin) return [];
       const maximum = Math.max(1, Math.min(10001, Number(limit) || 10001));
       const pageSize = 1000;
-      const recipients = [];
-      for (let offset = 0; offset < maximum; offset += pageSize) {
-        const requested = Math.min(pageSize, maximum - offset);
-        const { data, error } = await supabaseAdmin.from('users')
-          .select('id,email')
-          .eq('role', 'user')
-          .eq('email_verified', true)
-          .eq('is_banned', false)
-          .eq('email_updates_opt_out', false)
-          .order('id', { ascending: true })
-          .range(offset, offset + requested - 1);
-        if (error) throw error;
-        const page = data || [];
-        recipients.push(...page);
-        if (page.length < requested) break;
-      }
+      const fetchRecipients = async (role, officialDomainOnly = false) => {
+        const rows = [];
+        for (let offset = 0; offset < maximum; offset += pageSize) {
+          const requested = Math.min(pageSize, maximum - offset);
+          let query = supabaseAdmin.from('users')
+            .select('id,email')
+            .eq('role', role)
+            .eq('email_verified', true)
+            .eq('is_banned', false)
+            .eq('email_updates_opt_out', false);
+          if (officialDomainOnly) query = query.ilike('email', '%@operix.website');
+          const { data, error } = await query.order('id', { ascending: true }).range(offset, offset + requested - 1);
+          if (error) throw error;
+          const page = data || [];
+          rows.push(...page);
+          if (page.length < requested) break;
+        }
+        return rows;
+      };
+      const recipients = [
+        ...await fetchRecipients('user'),
+        ...await fetchRecipients('admin', true)
+      ];
       return normalizeSupabaseResult(recipients);
     },
     async findEmailVerificationReminderRecipients(limit = 10001) {
