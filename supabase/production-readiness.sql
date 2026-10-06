@@ -8,7 +8,7 @@ create table if not exists public.daily_task_completions (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid not null references public.users(id) on delete cascade,
   task_key text not null,
-  task_date date not null default (now() at time zone 'UTC')::date,
+  task_date date not null default ((now() at time zone 'Europe/Istanbul')::date),
   gross_amount numeric(18,4) not null default 0,
   usdt_amount numeric(18,4) not null default 0,
   opx_amount numeric(18,4) not null default 0,
@@ -70,7 +70,7 @@ create table if not exists public.daily_task_submissions (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid not null references public.users(id) on delete cascade,
   task_key text not null,
-  task_date date not null default (now() at time zone 'UTC')::date,
+  task_date date not null default ((now() at time zone 'Europe/Istanbul')::date),
   assignment_id uuid references public.daily_task_assignments(id) on delete set null,
   entity_key text not null default '',
   target_category text not null check (target_category in ('technology', 'ai', 'crypto')),
@@ -132,7 +132,7 @@ on conflict (key) do update set referrals_per_cycle = 6, updated_at = now();
 create or replace function public.operix_guard_weekend_task_completion()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
-  if extract(dow from (now() at time zone 'UTC')::date) in (5, 6)
+  if extract(dow from (now() at time zone 'Europe/Istanbul')::date) in (5, 6)
       or extract(dow from new.task_date) in (5, 6) then
     raise exception using errcode = 'P0001', message = 'TASK_HOLIDAY';
   end if;
@@ -148,7 +148,7 @@ create or replace function public.operix_guard_tier_withdrawal_day()
 returns trigger language plpgsql security definer set search_path = public as $$
 declare
   user_tier text;
-  request_day integer := extract(dow from (now() at time zone 'UTC')::date)::integer;
+  request_day integer := extract(dow from (now() at time zone 'Europe/Istanbul')::date)::integer;
   allowed_day integer;
 begin
   if new.type <> 'withdraw' then return new; end if;
@@ -182,7 +182,7 @@ declare
   wallet_row wallet_balances%rowtype;
   level_row vip_levels%rowtype;
   assignment_row daily_task_assignments%rowtype;
-  task_day date := (now() at time zone 'UTC')::date;
+  task_day date := (now() at time zone 'Europe/Istanbul')::date;
   max_tasks integer;
   requested_task_number integer;
   completed_count integer;

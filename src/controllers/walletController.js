@@ -190,7 +190,7 @@ async function withdrawSupabase(req, res) {
     return res.json({ success: true, emailSent, message: emailSent ? 'تم تقديم طلب السحب وإرسال إشعار إلى بريدك الإلكتروني' : 'تم تقديم طلب السحب، لكن تعذر إرسال إشعار البريد حاليًا', wallet: result.wallet, withdrawal });
   } catch (error) {
     if (error?.message === 'INSUFFICIENT_PROFIT') return res.status(400).json({ error: 'رصيد الأرباح غير كافٍ' });
-    if (error?.message === 'WITHDRAWAL_DAY_NOT_ALLOWED') return res.status(403).json({ success: false, code: 'WITHDRAWAL_DAY_NOT_ALLOWED', error: 'موعد طلب السحب لمستواك غير متاح اليوم. A1/A2 يوم الجمعة، وبقية المستويات يوم السبت (UTC).' });
+    if (error?.message === 'WITHDRAWAL_DAY_NOT_ALLOWED') return res.status(403).json({ success: false, code: 'WITHDRAWAL_DAY_NOT_ALLOWED', error: 'موعد طلب السحب لمستواك غير متاح اليوم. A1/A2 يوم الجمعة، وبقية المستويات يوم السبت (Europe/Istanbul).' });
     if (error?.message === 'IDEMPOTENCY_KEY_REUSED') return res.status(409).json({ error: 'أُعيد استخدام مفتاح الطلب لبيانات سحب مختلفة؛ أنشئ طلبًا جديدًا.' });
     if (error?.code === '23505') {
       try {

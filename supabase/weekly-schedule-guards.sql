@@ -9,7 +9,7 @@ security definer
 set search_path = public
 as $$
 begin
-  if extract(dow from (now() at time zone 'UTC')::date) in (5, 6)
+  if extract(dow from (now() at time zone 'Europe/Istanbul')::date) in (5, 6)
       or extract(dow from new.task_date) in (5, 6) then
     raise exception using errcode = 'P0001', message = 'TASK_HOLIDAY';
   end if;
@@ -30,7 +30,7 @@ set search_path = public
 as $$
 declare
   user_tier text;
-  request_day integer := extract(dow from (now() at time zone 'UTC')::date)::integer;
+  request_day integer := extract(dow from (now() at time zone 'Europe/Istanbul')::date)::integer;
   allowed_day integer;
 begin
   if new.type <> 'withdraw' then return new; end if;
