@@ -1271,7 +1271,25 @@ async function createEmailBroadcast(req, res) {
     });
     const campaignId = String(created?.id || created?.campaignId || created?.campaign_id || '');
     if (!campaignId) throw new Error('EMAIL_BROADCAST_ID_MISSING');
-    return res.status(202).json({ success: true, campaignId, recipientCount: recipients.length, auditRecorded: true, message: 'تمت جدولة حملة البريد. سيُرسل النظام الرسائل على دفعات آمنة.' });
+    let delivery = null;
+    try {
+      delivery = await adminEmailBroadcastService.processAdminEmailBroadcastQueue(req.app.locals.resend, campaignId);
+    } catch (deliveryError) {
+      console.error(`Immediate email broadcast processing failed (${campaignId}):`, deliveryError.message);
+    }
+    const deliveryMessage = delivery?.sentCount > 0
+      ? `بدأ تسليم ${delivery.sentCount} رسالة إلى مزود البريد${delivery.queuedCount ? `؛ بقي ${delivery.queuedCount} في الطابور` : ''}.`
+      : delivery?.failedCount > 0
+        ? `أُنشئت الحملة لكن تعذر تسليم ${delivery.failedCount} رسالة؛ راجع سجل الحملة قبل إعادة المحاولة.`
+        : 'أُضيفت الحملة إلى الطابور؛ سيحاول العامل المجدول إرسال ما تبقى تلقائيًا.';
+    return res.status(202).json({
+      success: true,
+      campaignId,
+      recipientCount: recipients.length,
+      auditRecorded: true,
+      delivery,
+      message: deliveryMessage
+    });
   } catch (error) {
     const validationMessage = emailBroadcastValidationError(error);
     if (validationMessage) return res.status(400).json({ success: false, error: validationMessage });

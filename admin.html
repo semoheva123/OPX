@@ -458,7 +458,7 @@ body.modal-open{overflow:hidden}
             <div class="glass-card rounded-3xl overflow-hidden border border-slate-800"><div class="p-4 border-b border-slate-800"><h3 class="text-sm font-bold text-white">سجل الحملات وقياس الوصول</h3></div><div class="overflow-x-auto"><table class="w-full text-right text-xs"><thead class="bg-slate-900/80 text-slate-400"><tr><th class="p-4">الحملة</th><th class="p-4">الجمهور</th><th class="p-4">الحالة</th><th class="p-4">داخلي</th><th class="p-4">Push</th><th class="p-4">مقروء</th></tr></thead><tbody id="tblBroadcastsBody"></tbody></table></div></div>
 
             <section class="glass-card rounded-3xl border border-cyan-500/20 p-5 sm:p-6 space-y-4" aria-labelledby="emailBroadcastHeading">
-                <div class="flex items-start gap-3"><span class="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-cyan-400/20 bg-cyan-400/10 text-cyan-300"><i class="fa-solid fa-envelope-open-text"></i></span><div><h3 id="emailBroadcastHeading" class="text-base font-black text-white">تحديثات المنصة عبر البريد</h3><p class="mt-1 text-[10px] leading-5 text-slate-400">تُرسل للمستخدمين العاديين ذوي البريد الموثّق، ولحساب الإدارة الموثّق على نطاق OPERIX الرسمي فقط. تُستبعد الحسابات المحظورة أو الملغية للاشتراك ونطاقات الاختبار. الجدولة تضيف الحملة إلى الطابور ولا تعني التسليم الفوري؛ يلزم إعداد Resend وعامل الإرسال المجدول.</p></div></div>
+                <div class="flex items-start gap-3"><span class="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-cyan-400/20 bg-cyan-400/10 text-cyan-300"><i class="fa-solid fa-envelope-open-text"></i></span><div><h3 id="emailBroadcastHeading" class="text-base font-black text-white">تحديثات المنصة عبر البريد</h3><p class="mt-1 text-[10px] leading-5 text-slate-400">تُرسل للمستخدمين العاديين ذوي البريد الموثّق، ولحساب الإدارة الموثّق على نطاق OPERIX الرسمي فقط. تُستبعد الحسابات المحظورة أو الملغية للاشتراك ونطاقات الاختبار. عند التأكيد يحاول النظام الإرسال فورًا، ويعالج العامل المجدول أي دفعات متبقية تلقائيًا.</p></div></div>
                 <div id="emailBroadcastReadiness" class="hidden rounded-2xl border border-slate-800 bg-slate-950/60 p-3" aria-live="polite"></div>
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
                     <label class="block text-[10px] font-bold text-slate-400">عنوان البريد <span class="font-normal text-slate-600">(حتى 150 حرفًا)</span><input id="emailBroadcastSubject" maxlength="150" oninput="invalidateEmailBroadcastPreview()" placeholder="مثال: تحديث جديد في OPERIX" class="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-xs text-white outline-none focus:border-cyan-400"><span id="emailBroadcastSubjectCount" class="mt-1 block text-left text-[9px] text-slate-600" aria-live="polite">0 / 150</span></label>
@@ -1886,7 +1886,7 @@ body.modal-open{overflow:hidden}
                 });
                 const data = await response.json();
                 if (!response.ok || !data.success) throw new Error(data.error || 'تعذر جدولة حملة البريد');
-                showToast(data.message || 'أُضيفت الحملة إلى الطابور؛ سيعالجها عامل الإرسال المجدول.');
+                showToast(data.message || 'تمت جدولة الحملة وبدء محاولة الإرسال.');
                 document.getElementById('emailBroadcastSubject').value = '';
                 document.getElementById('emailBroadcastBody').value = '';
                 document.getElementById('emailBroadcastConfirmation').value = '';

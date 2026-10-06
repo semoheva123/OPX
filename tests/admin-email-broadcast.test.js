@@ -22,6 +22,7 @@ const terms = read('terms.html');
 
 const previousSecret = process.env.EMAIL_UNSUBSCRIBE_SECRET;
 const previousFrom = process.env.EMAIL_FROM;
+const originalQueueProcessor = emailService.processAdminEmailBroadcastQueue;
 process.env.EMAIL_UNSUBSCRIBE_SECRET = 'test-only-unsubscribe-signing-secret';
 process.env.EMAIL_FROM = 'OPERIX <updates@operix.website>';
 
@@ -51,6 +52,11 @@ assert.match(announcement.html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/, 'ann
 assert.doesNotMatch(announcement.html, /<script>alert/);
 assert.match(announcement.headers['List-Unsubscribe-Post'], /One-Click/);
 assert.match(announcement.text, /إلغاء الاشتراك/);
+assert.match(announcement.html, /<table role="presentation"/);
+assert.match(announcement.html, /class="email-shell" width="100%"/);
+assert.match(announcement.html, /font-size:16px/);
+assert.match(announcement.html, /dir="rtl"/);
+assert.doesNotMatch(announcement.html, /letter-spacing:1px/);
 
 for (const source of [migration, schema]) {
   assert.match(source, /email_updates_opt_out/i);
@@ -85,7 +91,8 @@ assert.match(adminUi, /تغيّر النص؛ أعد المعاينة/);
 assert.match(adminUi, /requestedDraftKey/);
 assert.match(adminUi, /emailBroadcastDeliveryReady/);
 assert.match(adminUi, /حساب الإدارة الموثّق على نطاق OPERIX الرسمي/);
-assert.match(adminUi, /عامل الإرسال المجدول/);
+assert.match(adminUi, /يحاول النظام الإرسال فورًا/);
+assert.match(adminUi, /يعالج العامل المجدول أي دفعات متبقية تلقائيًا/);
 assert.match(privacy, /إيقاف رسائل التحديثات/);
 assert.match(terms, /إلغاء رسائل التحديثات/);
 
@@ -105,6 +112,11 @@ function responseRecorder() {
   };
   try {
     dataAccess.isSupabaseRuntime = () => true;
+    const immediateAttempts = [];
+    emailService.processAdminEmailBroadcastQueue = async (_resend, campaignId) => {
+      immediateAttempts.push(campaignId);
+      return { sentCount: 1, queuedCount: 0, failedCount: 0 };
+    };
     dataAccess.user.findEmailBroadcastRecipients = async () => [
       { id: '123e4567-e89b-42d3-a456-426614174000', email: 'member@gmail.com' },
       { id: '523e4567-e89b-42d3-a456-426614174000', email: 'fake@example.com' },
@@ -145,7 +157,9 @@ function responseRecorder() {
     assert.equal(created.statusCode, 202);
     assert.equal(queueCalls.length, 1);
     assert.equal(queueCalls[0].args.p_recipients.length, 2);
+    assert.deepEqual(immediateAttempts, ['223e4567-e89b-42d3-a456-426614174000'], 'campaign creation immediately invokes the targeted processor');
 
+    emailService.processAdminEmailBroadcastQueue = originalQueueProcessor;
     const recipientRows = new Map([['423e4567-e89b-42d3-a456-426614174000', { id: '423e4567-e89b-42d3-a456-426614174000', userId: '123e4567-e89b-42d3-a456-426614174000', email: 'member@gmail.com', status: 'sending' }]]);
     let campaignStatus = 'queued';
     const campaignSearches = [];
@@ -219,6 +233,7 @@ function responseRecorder() {
     dataAccess.emailBroadcast.updateOne = originals.broadcastUpdate;
     dataAccess.emailBroadcastRecipient.countDocuments = originals.recipientCount;
     dataAccess.emailBroadcastRecipient.updateMany = originals.recipientUpdate;
+    emailService.processAdminEmailBroadcastQueue = originalQueueProcessor;
     if (previousSecret === undefined) delete process.env.EMAIL_UNSUBSCRIBE_SECRET;
     else process.env.EMAIL_UNSUBSCRIBE_SECRET = previousSecret;
     if (previousFrom === undefined) delete process.env.EMAIL_FROM;
