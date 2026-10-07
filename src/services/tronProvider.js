@@ -2,6 +2,13 @@ const { TronWeb } = require('tronweb');
 const blockchainService = require('./blockchainService');
 
 const DEFAULT_TRON_ENDPOINT = 'https://api.trongrid.io';
+const PROVIDER_COOLDOWN_MS = Math.max(5000, Number(process.env.TRON_PROVIDER_COOLDOWN_MS) || 30000);
+const providerCooldowns = new Map();
+const PUBLIC_RPC_PROVIDERS = Object.freeze([
+  { id: 'trongrid', label: 'TronGrid Mainnet HTTP', url: DEFAULT_TRON_ENDPOINT, freePublic: true, supportsNativeHttp: true },
+  { id: 'publicnode', label: 'PublicNode TRON Mainnet HTTP', url: 'https://tron-rpc.publicnode.com', freePublic: true, supportsNativeHttp: true },
+  { id: 'ankr', label: 'Ankr TRON REST endpoint', env: 'TRON_ANKR_RPC_URL', freePublic: false, supportsNativeHttp: true }
+]);
 
 function normalizeEndpoint(value) {
   const endpoint = String(value || '').trim().replace(/\/+$/, '');
@@ -22,12 +29,40 @@ function parseEndpointList(value) {
   return String(value || '').split(',').map(item => item.trim()).filter(Boolean);
 }
 
+function isTransientProviderError(error) {
+  return /TRON_PROVIDER_HTTP_(?:429|5\d\d)|429|rate.?limit|frequency.?limit|quota|computing resources|timeout|timed out|ECONN|ENOTFOUND|EAI_AGAIN|fetch failed|network|socket|TRON_PROVIDER_INVALID_RESPONSE/i.test(String(error?.message || error || ''));
+}
+
+function orderedAvailableEndpoints(endpoints) {
+  const unique = uniqueEndpoints(endpoints);
+  const now = Date.now();
+  return unique
+    .map((endpoint, index) => ({ endpoint, index, unavailableUntil: providerCooldowns.get(endpoint) || 0 }))
+    .sort((left, right) => {
+      const leftCooling = left.unavailableUntil > now;
+      const rightCooling = right.unavailableUntil > now;
+      return Number(leftCooling) - Number(rightCooling) || left.index - right.index;
+    })
+    .map(item => item.endpoint);
+}
+
+function noteProviderSuccess(endpoint) {
+  providerCooldowns.delete(endpoint);
+}
+
+function noteProviderFailure(endpoint, error) {
+  if (isTransientProviderError(error)) providerCooldowns.set(endpoint, Date.now() + PROVIDER_COOLDOWN_MS);
+}
+
 function getRpcEndpoints() {
   const config = blockchainService.getBlockchainConfig().TRC20;
   const primary = process.env.TRON_RPC_URL || config.rpcUrl || DEFAULT_TRON_ENDPOINT;
   const configuredFallbacks = parseEndpointList(process.env.TRON_RPC_FALLBACK_URLS);
-  const legacyTronGrid = process.env.TRONGRID_API_URL || DEFAULT_TRON_ENDPOINT;
-  return uniqueEndpoints([primary, ...configuredFallbacks, legacyTronGrid]);
+  const providerDefaults = PUBLIC_RPC_PROVIDERS
+    .filter(provider => provider.id !== 'ankr')
+    .map(provider => provider.url);
+  const configuredAnkr = String(process.env.TRON_ANKR_RPC_URL || '').trim();
+  return uniqueEndpoints([primary, ...configuredFallbacks, ...providerDefaults, configuredAnkr]);
 }
 
 function getIndexerEndpoints() {
@@ -67,23 +102,26 @@ function createTronWeb(options = {}) {
 }
 
 async function withTronWeb(operation, options = {}) {
-  const endpoints = uniqueEndpoints(options.endpoints || getRpcEndpoints());
+  const endpoints = orderedAvailableEndpoints(options.endpoints || getRpcEndpoints());
   if (!endpoints.length) throw new Error('TRON_RPC_ENDPOINTS_NOT_CONFIGURED');
   let lastError;
   const createClient = options.createClient || createTronWebForEndpoint;
   for (const endpoint of endpoints) {
     try {
       const tronWeb = createClient(endpoint, { privateKey: options.privateKey });
-      return await operation(tronWeb, endpoint);
+      const result = await operation(tronWeb, endpoint);
+      noteProviderSuccess(endpoint);
+      return result;
     } catch (error) {
       lastError = error;
+      noteProviderFailure(endpoint, error);
     }
   }
   throw lastError || new Error('TRON_RPC_PROVIDERS_UNAVAILABLE');
 }
 
 async function requestJsonWithFallback(urls, path, options = {}) {
-  const endpoints = uniqueEndpoints(urls);
+  const endpoints = orderedAvailableEndpoints(urls);
   if (!endpoints.length) throw new Error('TRON_HTTP_ENDPOINTS_NOT_CONFIGURED');
   const fetcher = options.fetcher || global.fetch;
   let lastError;
@@ -97,18 +135,23 @@ async function requestJsonWithFallback(urls, path, options = {}) {
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(`TRON_PROVIDER_HTTP_${response.status}`);
+      if (body?.Error || (body?.success === false && body?.error) || body?.error) throw new Error(`TRON_PROVIDER_RESPONSE_ERROR:${String(body.Error || body.error).slice(0, 180)}`);
       if (typeof options.validateBody === 'function' && !options.validateBody(body)) throw new Error('TRON_PROVIDER_INVALID_RESPONSE');
+      noteProviderSuccess(endpoint);
       return { body, endpoint };
     } catch (error) {
       lastError = error;
+      noteProviderFailure(endpoint, error);
     }
   }
   throw lastError || new Error('TRON_HTTP_PROVIDERS_UNAVAILABLE');
 }
 
 module.exports = {
+  PUBLIC_RPC_PROVIDERS,
   normalizeEndpoint,
   uniqueEndpoints,
+  isTransientProviderError,
   getRpcEndpoints,
   getIndexerEndpoints,
   getSolidityEndpoints,
