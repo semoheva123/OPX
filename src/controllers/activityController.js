@@ -175,15 +175,6 @@ const SUPPLEMENTAL_TASK_ACTIONS = [
   { label: 'حدّث', description: 'تأكد من حداثة المعلومات والإعدادات المرتبطة.', instructions: ['افتح الإعداد أو السجل المناسب.', 'راجع المعلومات الحالية.', 'حدّث ما يحتاج إلى تصحيح فقط.', 'تحقق من حفظ التغييرات.'] }
 ];
 
-const COMMUNITY_DAILY_TASK = {
-  taskKeySuffix: 'community',
-  requirement: 'community_engagement',
-  title: 'شارك وتفاعل في مجتمع OPERIX',
-  description: 'انشر منشورًا أصليًا عن OPERIX، ثم أضف تعليقًا مفيدًا إلى منشور ظاهر لعضو آخر.',
-  icon: 'fa-users',
-  instructions: ['افتح تبويب المجتمع.', 'انشر منشورًا أصليًا يذكر OPERIX أو أوبيريكس.', 'أضف تعليقًا مفيدًا إلى منشور ظاهر لعضو آخر اليوم.', 'هذه مشاركة اختيارية؛ لا يلزم إتمامها لاستلام مكافآت التقييم.']
-};
-
 function hasDailyPlatformPost(posts, userId, dayStart) {
   const startTime = new Date(dayStart).getTime();
   return (Array.isArray(posts) ? posts : []).some(post =>
@@ -218,7 +209,7 @@ function buildSupplementalTask(tierCode, number, supplementalIndex) {
   };
 }
 
-function buildDailyTasks(tierCode, adminTasks = [], completedKeys = new Set(), locked = false, dailyProfit = 0, communityTaskStatus = {}) {
+function buildDailyTasks(tierCode, adminTasks = [], completedKeys = new Set(), locked = false, dailyProfit = 0) {
   const taskLimit = Array.isArray(adminTasks) ? adminTasks.length : 0;
   const categoryWeights = {
     technology: 0.95,
@@ -248,11 +239,7 @@ function buildDailyTasks(tierCode, adminTasks = [], completedKeys = new Set(), l
   const adjustment = Number((Number(dailyProfit || 0) - rewardTotal).toFixed(4));
   if (rewards.length) rewards[rewards.length - 1] = Number((rewards[rewards.length - 1] + adjustment).toFixed(4));
 
-  const communityTask = communityTaskStatus
-    ? buildOptionalCommunityTask(tierCode, communityTaskStatus)
-    : buildOptionalCommunityTask(tierCode, { communityEngagement: true });
-
-  const evaluationTasks = adminTasks.map((configuredTask, index) => {
+  return adminTasks.map((configuredTask, index) => {
     const template = configuredTask || {};
     const taskNumber = Number(template.taskNumber) || index + 2;
     const taskKey = `${tierCode}-task-${String(taskNumber).padStart(2, '0')}`;
@@ -278,28 +265,6 @@ function buildDailyTasks(tierCode, adminTasks = [], completedKeys = new Set(), l
       locked
     };
   });
-
-  return [communityTask, ...evaluationTasks];
-}
-
-function buildOptionalCommunityTask(tierCode, communityTaskStatus = {}) {
-  const communityEngaged = Boolean(communityTaskStatus.communityEngagement || (communityTaskStatus.communityPost && communityTaskStatus.communityInteraction));
-  const completed = communityEngaged;
-  return {
-    taskKey: `${tierCode}-${COMMUNITY_DAILY_TASK.taskKeySuffix}`,
-    number: 0,
-    icon: COMMUNITY_DAILY_TASK.icon,
-    title: COMMUNITY_DAILY_TASK.title,
-    description: COMMUNITY_DAILY_TASK.description,
-    instructions: COMMUNITY_DAILY_TASK.instructions,
-    requirement: COMMUNITY_DAILY_TASK.requirement,
-    requirementMet: completed,
-    reward: 0,
-    paid: false,
-    optional: true,
-    completed,
-    locked: false
-  };
 }
 
 function getGameConfig(req, res) {
@@ -346,11 +311,6 @@ async function getDailyTasks(req, res) {
       dataAccess.socialPost.find({ authorId: user.id, status: 'visible', createdAt: { $gte: todayStart } }, { select: 'authorId content status createdAt', limit: 100 }),
       dataAccess.socialPost.find({ authorId: { $ne: user.id }, status: 'visible' }, { select: 'authorId comments likedBy status', sort: { createdAt: -1 }, limit: 1000 })
     ]);
-    const communityTaskStatus = {
-      communityPost: hasDailyPlatformPost(todayUserPosts, user.id, todayStart),
-      communityInteraction: hasDailyCommunityInteraction(otherMembersPosts, user.id, todayStart)
-    };
-    const optionalCommunityTask = buildOptionalCommunityTask(tier.code, communityTaskStatus);
     const taskLimit = Math.max(0, Math.min(50, Number(tier.tasks || 0) - 1));
     const active = hasPaidFeatureAccess(user) || Number(user.wallet?.totalDeposits || 0) > 0;
     if (schedule.holiday) {
@@ -362,7 +322,7 @@ async function getDailyTasks(req, res) {
         active,
         completedCount: 0,
         pendingPaidTaskCount: taskLimit,
-        tasks: [optionalCommunityTask]
+        tasks: []
       });
     }
     const evaluationAssignments = await assignDailyEvaluationEntities({
@@ -382,8 +342,8 @@ async function getDailyTasks(req, res) {
     const dailyProfit = Number(tier.dailyProfit || 0);
     const now = Date.now();
     const progress = getDailyTaskProgress(tier.code, taskLimit, evaluationAssignments, paidCompletions, now);
-    const allPaidTasks = buildDailyTasks(tier.code, evaluationAssignments, completedKeys, !active, dailyProfit, communityTaskStatus);
-    const pendingPaidTasks = allPaidTasks.filter(task => !task.completed && task.requirement !== 'community_engagement');
+    const allPaidTasks = buildDailyTasks(tier.code, evaluationAssignments, completedKeys, !active, dailyProfit);
+    const pendingPaidTasks = allPaidTasks.filter(task => !task.completed);
     const visiblePaidTasks = !active
       ? pendingPaidTasks.slice(0, 1).map(task => ({ ...task, locked: true, lockReason: 'tier_inactive' }))
       : pendingPaidTasks
@@ -403,7 +363,6 @@ async function getDailyTasks(req, res) {
       nextTaskAvailableAt: progress.availableAt,
       cooldownRemainingSeconds: progress.remainingSeconds,
       planStartedAt: progress.planStartedAt,
-      communityTask: optionalCommunityTask,
       tasks
     });
   } catch (error) {
