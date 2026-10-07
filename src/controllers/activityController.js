@@ -27,7 +27,7 @@ function getDailyTaskProgress(tierCode, paidTaskCount, assignments = [], complet
       const taskMatch = taskKey.match(/-task-(\d+)$/);
       const taskNumber = Number(item.taskNumber ?? (taskMatch ? taskMatch[1] : 0));
       const createdAtMs = new Date(item.createdAt || item.created_at || '').getTime();
-      if (!Number.isFinite(taskNumber) || taskNumber < 2) return null;
+      if (!Number.isFinite(taskNumber) || taskNumber < 1) return null;
       return { taskNumber, createdAtMs, taskKey: `${tierCode}-task-${String(taskNumber).padStart(2, '0')}` };
     })
     .filter(Boolean)
@@ -38,10 +38,10 @@ function getDailyTaskProgress(tierCode, paidTaskCount, assignments = [], complet
     : Number(currentNow);
 
   const taskWindows = [];
-  const maxTaskNumber = Math.max(2, Number(paidTaskCount || 0) + 1);
-  for (let taskNumber = 2; taskNumber <= maxTaskNumber; taskNumber += 1) {
+  const maxTaskNumber = Math.max(1, Number(paidTaskCount || 0));
+  for (let taskNumber = 1; taskNumber <= maxTaskNumber; taskNumber += 1) {
     const taskKey = `${tierCode}-task-${String(taskNumber).padStart(2, '0')}`;
-    const availableAtMs = planStartedAt + Math.max(0, taskNumber - 2) * DAILY_TASK_COOLDOWN_MS;
+    const availableAtMs = planStartedAt + Math.max(0, taskNumber - 1) * DAILY_TASK_COOLDOWN_MS;
     const window = {
       taskNumber,
       taskKey,
@@ -241,7 +241,7 @@ function buildDailyTasks(tierCode, adminTasks = [], completedKeys = new Set(), l
 
   return adminTasks.map((configuredTask, index) => {
     const template = configuredTask || {};
-    const taskNumber = Number(template.taskNumber) || index + 2;
+    const taskNumber = Number(template.taskNumber) || index + 1;
     const taskKey = `${tierCode}-task-${String(taskNumber).padStart(2, '0')}`;
     return {
       taskKey,
@@ -311,7 +311,7 @@ async function getDailyTasks(req, res) {
       dataAccess.socialPost.find({ authorId: user.id, status: 'visible', createdAt: { $gte: todayStart } }, { select: 'authorId content status createdAt', limit: 100 }),
       dataAccess.socialPost.find({ authorId: { $ne: user.id }, status: 'visible' }, { select: 'authorId comments likedBy status', sort: { createdAt: -1 }, limit: 1000 })
     ]);
-    const taskLimit = Math.max(0, Math.min(50, Number(tier.tasks || 0) - 1));
+    const taskLimit = Math.max(0, Math.min(50, Number(tier.tasks || 0)));
     const active = hasPaidFeatureAccess(user) || Number(user.wallet?.totalDeposits || 0) > 0;
     if (schedule.holiday) {
       return res.json({
@@ -419,7 +419,7 @@ async function submitDailyEvaluation(req, res) {
     const match = taskKey.match(new RegExp(`^${String(tier.code).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-task-(\\d+)$`));
     const taskNumber = match ? Number(match[1]) : 0;
     const today = utcDateString();
-    const assignment = taskNumber >= 2 ? await dataAccess.dailyTaskAssignment.findOne({ userId: user.id || user._id, tierCode: tier.code, taskDate: today, taskNumber }) : null;
+    const assignment = taskNumber >= 1 ? await dataAccess.dailyTaskAssignment.findOne({ userId: user.id || user._id, tierCode: tier.code, taskDate: today, taskNumber }) : null;
     if (!assignment) return res.status(400).json({ error: 'مهمة التقييم غير موجودة ضمن خطة اليوم الحالية' });
 
     const [completions, todayAssignments] = await Promise.all([
@@ -434,10 +434,10 @@ async function submitDailyEvaluation(req, res) {
     if (taskWindow.remainingMs > 0 && !taskIsUnlocked) {
       return res.status(429).json({ error: 'لم يحن موعد ظهور هذه المهمة بعد؛ حاول مرة أخرى لاحقًا.', unlockAt: taskWindow.availableAt });
     }
-    if (taskNumber > 2) {
+    if (taskNumber > 1) {
       const previousTaskKey = `${tier.code}-task-${String(taskNumber - 1).padStart(2, '0')}`;
       if (!completions.some(item => item.taskKey === previousTaskKey)) {
-        return res.status(409).json({ error: 'أكمل مهمة التقييم السابقة أولًا؛ المشاركة المجتمعية اختيارية.' });
+        return res.status(409).json({ error: 'أكمل مهمة التقييم السابقة أولًا.' });
       }
     }
 

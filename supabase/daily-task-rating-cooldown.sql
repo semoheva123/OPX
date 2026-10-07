@@ -34,13 +34,13 @@ begin
 
   select * into level_row from vip_levels where code = user_row.tier_code;
   if level_row.id is null then raise exception using errcode = 'P0002', message = 'VIP_LEVEL_NOT_FOUND'; end if;
-  max_tasks := greatest(coalesce(level_row.tasks, 1) - 1, 0);
+  max_tasks := greatest(coalesce(level_row.tasks, 1), 1);
   if p_task_key ~ ('^' || user_row.tier_code || '-task-[0-9]+$') then
     requested_task_number := substring(p_task_key from '[0-9]+$')::integer;
   else
     raise exception using errcode = 'P0001', message = 'INVALID_TASK_KEY';
   end if;
-  if requested_task_number < 2 or requested_task_number > max_tasks + 1 then raise exception using errcode = 'P0001', message = 'INVALID_TASK_KEY'; end if;
+  if requested_task_number < 1 or requested_task_number > max_tasks then raise exception using errcode = 'P0001', message = 'INVALID_TASK_KEY'; end if;
 
   if requested_task_number > 1 then
     select * into assignment_row
@@ -139,9 +139,9 @@ begin
   else
     raise exception using errcode = 'P0001', message = 'INVALID_TASK_KEY';
   end if;
-  if task_number < 2 then raise exception using errcode = 'P0001', message = 'INVALID_TASK_KEY'; end if;
+  if task_number < 1 then raise exception using errcode = 'P0001', message = 'INVALID_TASK_KEY'; end if;
 
-  if task_number > 2 then
+  if task_number > 1 then
     previous_task_key := current_tier || '-task-' || lpad((task_number - 1)::text, 2, '0');
     if not exists (
       select 1 from public.daily_task_completions
@@ -153,7 +153,7 @@ begin
     from public.daily_task_assignments
     where user_id = new.user_id and tier_code = current_tier and task_date = new.task_date;
     if plan_started_at is null
-      or plan_started_at + ((task_number - 2) * interval '2 hours') > clock_timestamp() then
+      or plan_started_at + ((task_number - 1) * interval '2 hours') > clock_timestamp() then
       raise exception using errcode = 'P0001', message = 'TASK_COOLDOWN_ACTIVE';
     end if;
   end if;

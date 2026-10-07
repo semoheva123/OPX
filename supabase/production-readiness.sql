@@ -48,7 +48,7 @@ create table if not exists public.daily_task_assignments (
   user_id uuid not null references public.users(id) on delete cascade,
   tier_code text not null,
   task_date date not null,
-  task_number integer not null check (task_number >= 2),
+  task_number integer not null check (task_number >= 1),
   category text not null check (category in ('technology', 'ai', 'crypto')),
   entity_key text not null,
   entity_name text not null,
@@ -203,13 +203,13 @@ begin
 
   select * into level_row from vip_levels where code = user_row.tier_code;
   if level_row.id is null then raise exception using errcode = 'P0002', message = 'VIP_LEVEL_NOT_FOUND'; end if;
-  max_tasks := greatest(coalesce(level_row.tasks, 1) - 1, 0);
+  max_tasks := greatest(coalesce(level_row.tasks, 1), 1);
   if p_task_key ~ ('^' || user_row.tier_code || '-task-[0-9]+$') then
     requested_task_number := substring(p_task_key from '[0-9]+$')::integer;
   else
     raise exception using errcode = 'P0001', message = 'INVALID_TASK_KEY';
   end if;
-  if requested_task_number < 2 or requested_task_number > max_tasks + 1 then
+  if requested_task_number < 1 or requested_task_number > max_tasks then
     raise exception using errcode = 'P0001', message = 'INVALID_TASK_KEY';
   end if;
 

@@ -29,7 +29,7 @@ function responseRecorder() {
   let rpcCalls = 0;
   let completionRows = [];
   let assignmentCreatedAt = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
-  const assignmentRows = () => [2, 3, 4].map(taskNumber => ({ taskNumber, createdAt: assignmentCreatedAt }));
+  const assignmentRows = () => [1, 2, 3].map(taskNumber => ({ taskNumber, createdAt: assignmentCreatedAt }));
   try {
     dataAccess.user.findById = async () => ({ id: 'user-1', tierCode: 'A2', wallet: { totalDeposits: 100 } });
     dataAccess.vipLevel.findOne = async () => ({ code: 'A2', tasks: 3, dailyTasks: [{ targetCategory: 'ai', targetName: 'Example AI' }] });
@@ -43,14 +43,14 @@ function responseRecorder() {
     dataAccess.callSupabaseRpc = async (name, args) => {
       rpcCalls++;
       assert.equal(name, 'operix_daily_task_complete_atomic');
-      assert.match(args.p_task_key, /^A2-task-0[2-4]$/);
+      assert.match(args.p_task_key, /^A2-task-0[1-3]$/);
       return { grossAmount: 0.95, wallet: {} };
     };
 
     const validRequest = {
       user: { id: 'user-1' },
       body: {
-        taskKey: 'A2-task-02',
+        taskKey: 'A2-task-01',
         rating: 4,
         selectedTag: 'الدقة'
       }
@@ -61,8 +61,8 @@ function responseRecorder() {
     assert.equal(validResponse.body.success, true);
     assert.equal(saved.length, 1);
     assert.equal(saved[0].targetCategory, 'ai', 'the target must come from the admin configuration');
-    assert.equal(saved[0].targetName, 'Example AI 2', 'the target must not be client-selected');
-    assert.equal(saved[0].assignmentId, 'assignment-2');
+    assert.equal(saved[0].targetName, 'Example AI 1', 'the target must not be client-selected');
+    assert.equal(saved[0].assignmentId, 'assignment-1');
     assert.equal(saved[0].selectedTag, 'الدقة');
     assert.equal(saved[0].rating, 4);
     assert.equal(saved[0].feedback, '', 'rating-only evaluations should not require or persist a note');
@@ -74,29 +74,29 @@ function responseRecorder() {
     completionRows = [];
     await activityController.submitDailyEvaluation({
       user: { id: 'user-1' },
-      body: { taskKey: 'A2-task-03', rating: 4, selectedTag: 'الدقة' }
+      body: { taskKey: 'A2-task-02', rating: 4, selectedTag: 'الدقة' }
     }, outOfSequenceResponse);
     assert.equal(outOfSequenceResponse.statusCode, 409, 'paid evaluations remain sequential without requiring community completion');
     assert.equal(saved.length, savedBeforeSequenceError, 'out-of-sequence evaluations must not be saved');
     assert.equal(rpcCalls, rpcBeforeSequenceError, 'out-of-sequence evaluations must not call the reward RPC');
 
     const accruedBacklogResponse = responseRecorder();
-    completionRows = [{ taskKey: 'A2-task-02', createdAt: new Date(Date.now() - 10 * 60 * 1000).toISOString() }];
+    completionRows = [{ taskKey: 'A2-task-01', createdAt: new Date(Date.now() - 10 * 60 * 1000).toISOString() }];
     await activityController.submitDailyEvaluation({
       user: { id: 'user-1' },
-      body: { taskKey: 'A2-task-03', rating: 3, selectedTag: 'الدقة' }
+      body: { taskKey: 'A2-task-02', rating: 3, selectedTag: 'الدقة' }
     }, accruedBacklogResponse);
     assert.equal(accruedBacklogResponse.statusCode, 200, 'a task already accrued in the 2-hour release schedule can be completed immediately after its predecessor');
-    assert.equal(saved.at(-1).taskKey, 'A2-task-03');
+    assert.equal(saved.at(-1).taskKey, 'A2-task-02');
 
     assignmentCreatedAt = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-    completionRows = [{ taskKey: 'A2-task-02', createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString() }];
+    completionRows = [{ taskKey: 'A2-task-01', createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString() }];
     const notYetReleasedResponse = responseRecorder();
     const savedBeforeRelease = saved.length;
     const rpcBeforeRelease = rpcCalls;
     await activityController.submitDailyEvaluation({
       user: { id: 'user-1' },
-      body: { taskKey: 'A2-task-03', rating: 3, selectedTag: 'الدقة' }
+      body: { taskKey: 'A2-task-02', rating: 3, selectedTag: 'الدقة' }
     }, notYetReleasedResponse);
     assert.equal(notYetReleasedResponse.statusCode, 429, 'a future task must remain locked until its plan-start release time');
     assert.equal(saved.length, savedBeforeRelease, 'not-yet-released evaluations must not be saved');
@@ -107,7 +107,7 @@ function responseRecorder() {
     const noCommunityPrerequisiteResponse = responseRecorder();
     await activityController.submitDailyEvaluation({
       user: { id: 'user-1' },
-      body: { taskKey: 'A2-task-02', rating: 3, selectedTag: 'الدقة' }
+      body: { taskKey: 'A2-task-01', rating: 3, selectedTag: 'الدقة' }
     }, noCommunityPrerequisiteResponse);
     assert.equal(noCommunityPrerequisiteResponse.statusCode, 200, 'the first paid evaluation is immediately available without any community action');
     assert.equal(saved.at(-1).feedback, '');

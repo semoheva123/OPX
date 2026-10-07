@@ -72,7 +72,7 @@ const tierLimits = { 'A1': 33, 'A2': 35, 'A3': 40, 'A4': 45, 'A5': 50 };
 function getTaskLimitForTier(tierCode = currentUserTier) {
     const tier = tiersData.find(item => item.code === tierCode);
     const totalPlanTasks = Number(tier?.tasks) > 0 ? Number(tier.tasks) : (tierLimits[tierCode] || 33);
-    return Math.max(0, totalPlanTasks - 1);
+    return Math.max(0, totalPlanTasks);
 }
 
 // تهيئة التطبيق عند اكتمال تحميل عناصر الصفحة

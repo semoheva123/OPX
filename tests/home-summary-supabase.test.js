@@ -52,7 +52,7 @@ function responseRecorder() {
       { code: 'A3', name: 'A3', price: 350, dailyProfit: 8, tasks: 18 },
       { code: 'A4', name: 'A4', price: 750, dailyProfit: 16, tasks: 22 }
     ];
-    dataAccess.dailyTaskCompletion.find = async () => [{ taskKey: 'A3-community' }, { taskKey: 'A3-task-02' }];
+    dataAccess.dailyTaskCompletion.find = async () => [{ taskKey: 'A3-task-01' }, { taskKey: 'A3-task-02' }];
 
     const response = responseRecorder();
     await userController.getHomeSummary({ user: { id: user.id } }, response);

@@ -27,7 +27,7 @@ assert.equal(tasks.length, 2, 'يجب أن تضم الخطة مهام تقييم
 assert.equal(typeof tasks[0].title, 'string', 'يجب أن تحتوي المهمة على عنوان');
 assert.equal(Array.isArray(tasks[0].instructions), true, 'يجب أن تحتوي المهمة على قائمة إرشادات');
 assert.equal(typeof tasks[0].reward, 'number', 'يجب أن تحتوي المهمة على قيمة مكافأة');
-assert.equal(tasks[0].taskKey, 'A1-task-02');
+assert.equal(tasks[0].taskKey, 'A1-task-01');
 assert.equal(tasks[0].requirement, 'evaluation');
 assert.equal(tasks[0].targetName, 'Example Systems');
 assert.equal(tasks[0].targetSummary, 'شركة تقنية للاختبار.');
@@ -36,27 +36,27 @@ assert.equal(tasks[1].targetCategory, 'ai');
 assert.equal(tasks[1].targetImageUrl, 'https://images.example.test/ai.png');
 const now = Date.parse('2031-06-01T12:00:00.000Z');
 const initialProgress = activityController.getDailyTaskProgress('A1', 3, [], now);
-assert.equal(initialProgress.nextTaskNumber, 2, 'the first paid task key is task-02 in the live database plan');
+assert.equal(initialProgress.nextTaskNumber, 1, 'the first paid task key is task-01 in the live database plan');
 assert.equal(initialProgress.availableAt, new Date(now).toISOString(), 'the first task is available immediately');
 assert.equal(initialProgress.remainingMs, 0, 'the first task should never be locked at launch');
 assert.equal(initialProgress.remainingSeconds, 0, 'the first task should be instantly ready');
 const backlogTasks = [
-  { taskKey: 'A1-task-02', createdAt: new Date(now - 2 * 60 * 60 * 1000).toISOString() },
-  { taskKey: 'A1-task-03', createdAt: new Date(now - 4 * 60 * 60 * 1000).toISOString() },
-  { taskKey: 'A1-task-04', createdAt: new Date(now - 6 * 60 * 60 * 1000).toISOString() }
+  { taskKey: 'A1-task-01', createdAt: new Date(now - 2 * 60 * 60 * 1000).toISOString() },
+  { taskKey: 'A1-task-02', createdAt: new Date(now - 4 * 60 * 60 * 1000).toISOString() },
+  { taskKey: 'A1-task-03', createdAt: new Date(now - 6 * 60 * 60 * 1000).toISOString() }
 ];
 const backlog = activityController.getDailyTaskProgress('A1', 4, backlogTasks, now);
-assert.deepEqual(backlog.unlockedTaskNumbers, [2, 3, 4, 5], 'the backlog should keep all due paid tasks visible once their actual task numbers unlock');
-assert.equal(backlog.nextTaskNumber, 2, 'the first due paid task remains the real task-02 key in the backlog queue');
-const stageStartProgress = activityController.getDailyTaskProgress('A3', 6, [{ taskNumber: 2, createdAt: new Date(now).toISOString() }], [], now);
-assert.equal(stageStartProgress.taskWindows[1].remainingMs, 2 * 60 * 60 * 1000, 'task-03 should release exactly two hours after the start of the daily plan');
+assert.deepEqual(backlog.unlockedTaskNumbers, [1, 2, 3, 4], 'the backlog should keep all due paid tasks visible once their actual task numbers unlock');
+assert.equal(backlog.nextTaskNumber, 1, 'the first due paid task remains the real task-01 key in the backlog queue');
+const stageStartProgress = activityController.getDailyTaskProgress('A3', 6, [{ taskNumber: 1, createdAt: new Date(now).toISOString() }], [], now);
+assert.equal(stageStartProgress.taskWindows[1].remainingMs, 2 * 60 * 60 * 1000, 'task-02 should release exactly two hours after the start of the daily plan');
 const sixPaidTaskAssignments = Array.from({ length: 6 }, (_, index) => ({
-	taskNumber: index + 2,
+	taskNumber: index + 1,
 	createdAt: new Date(now - 12 * 60 * 60 * 1000).toISOString()
 }));
 const sixPaidTaskProgress = activityController.getDailyTaskProgress('A3', 6, sixPaidTaskAssignments, [], now);
-assert.equal(sixPaidTaskProgress.taskWindows.at(-1).taskNumber, 7, 'six paid evaluations map to assignment keys task-02 through task-07');
-assert.deepEqual(sixPaidTaskProgress.unlockedTaskNumbers, [2, 3, 4, 5, 6, 7], 'all six paid tasks accumulate after their release windows pass');
+assert.equal(sixPaidTaskProgress.taskWindows.at(-1).taskNumber, 6, 'six paid evaluations map to assignment keys task-01 through task-06');
+assert.deepEqual(sixPaidTaskProgress.unlockedTaskNumbers, [1, 2, 3, 4, 5, 6], 'all six paid tasks accumulate after their release windows pass');
 const stripeTask = activityController.buildDailyTasks('A1', [
 	{ entityKey: 'finance:stripe', entityName: 'Stripe, Inc.', category: 'finance', summary: 'خدمة مالية.', imageUrl: '', submissionComplete: false }
 ], new Set(), false, 1)[0];
@@ -92,11 +92,11 @@ assert.match(migration, /operix_enforce_daily_task_sequence_and_cooldown/i);
 assert.match(ratingCooldownMigration, /TASK_COOLDOWN_ACTIVE/i);
 assert.match(ratingCooldownMigration, /interval '2 hours'/i);
 assert.doesNotMatch(ratingCooldownMigration, /length\(trim\(submission\.feedback\)\) between 10 and 500/i);
-assert.match(ratingCooldownMigration, /requested_task_number > max_tasks \+ 1/i, 'task keys start at task-02, so the final paid assignment is max_tasks + 1');
-assert.match(ratingCooldownMigration, /max_tasks := greatest\(coalesce\(level_row\.tasks, 1\) - 1, 0\)/i, 'the fixed optional community card must be excluded from the paid task count');
+assert.match(ratingCooldownMigration, /requested_task_number > max_tasks/i, 'task keys start at task-01, so the final paid assignment remains within the configured task count');
+assert.match(ratingCooldownMigration, /max_tasks := greatest\(coalesce\(level_row\.tasks, 1\), 1\)/i, 'the paid task count must start from the real first paid task without subtracting one');
 assert.match(ratingCooldownMigration, /if max_tasks < 1 then raise exception/i, 'the paid reward calculation must never divide by zero');
 assert.doesNotMatch(ratingCooldownMigration, /OPTIONAL_TASK_NO_REWARD|tier_code \|\| '-community'/i, 'the database must never keep an optional community task reward path');
-assert.match(ratingCooldownMigration, /plan_started_at \+ \(\(task_number - 2\) \* interval '2 hours'\)/i, 'the database release window must accrue from plan start, not the previous completion time');
+assert.match(ratingCooldownMigration, /plan_started_at \+ \(\(task_number - 1\) \* interval '2 hours'\)/i, 'the database release window must accrue from plan start, not the previous completion time');
 assert.match(ratingCooldownMigration, /total_daily_reward \+ gross_reward > coalesce\(level_row\.daily_profit, 0\)/i, 'the replacement task RPC must preserve the fixed daily reward cap');
 assert.match(ratingCooldownMigration, /DAILY_CAP_REACHED/i, 'the database must reject task rewards that exceed the daily cap');
 assert.match(schema, /daily_task_submissions/);
