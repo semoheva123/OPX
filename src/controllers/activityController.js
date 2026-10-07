@@ -352,7 +352,19 @@ async function getDailyTasks(req, res) {
           const window = progress.taskWindows.find(item => item.taskNumber === task.assignmentNumber);
           return { ...task, availableAt: window?.availableAt || null, locked: false, lockReason: null };
         });
-    const tasks = visiblePaidTasks;
+    const fallbackVisibleTasks = visiblePaidTasks.length
+      ? visiblePaidTasks
+      : pendingPaidTasks.slice(0, 1).map(task => {
+          const window = progress.taskWindows.find(item => item.taskNumber === task.assignmentNumber);
+          const remainingMs = Number(window?.remainingMs || 0);
+          return {
+            ...task,
+            availableAt: window?.availableAt || progress.availableAt || null,
+            locked: remainingMs > 0,
+            lockReason: remainingMs > 0 ? 'cooldown' : null
+          };
+        });
+    const tasks = fallbackVisibleTasks;
     return res.json({
       success: true,
       tier: { code: tier.code, name: tier.name, taskLimit, dailyProfit },

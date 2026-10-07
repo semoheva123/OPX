@@ -317,7 +317,7 @@ async function assignDailyEvaluationEntities({ userId, tierCode, totalTaskCount,
     const daySeed = dayNumber(date) + simpleHash(userId);
 
     for (let index = assignments.length; index < targetCount; index++) {
-      const taskNumber = index + 2;
+      const taskNumber = index + 1;
       const preferredCategory = CATEGORY_ROTATION[(daySeed + index) % CATEGORY_ROTATION.length];
       let assignment = null;
       let attempts = 0;

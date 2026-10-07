@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const dataAccess = require('../src/services/dataAccess');
 const activityController = require('../src/controllers/activityController');
 const automation = require('../src/services/dailyTaskAutomation');
 const weeklySchedule = require('../src/services/weeklySchedule');
@@ -118,5 +119,51 @@ assert.doesNotMatch(client, /ملاحظة قصيرة|data-evaluation-field="feed
 assert.match(client, /data-task-cooldown/, 'the only next task should show a cooldown countdown when locked');
 assert.doesNotMatch(client, /مشاركة مجتمعية اختيارية — خارج المهام المدفوعة/, 'community engagement must no longer be exposed as a separate task');
 assert.doesNotMatch(client, /isCommunityTask \? "switchTab\('feed'\)" : isEvaluationTask/, 'the client must no longer treat the community task as a distinct card');
+
+(async () => {
+  const userBackup = dataAccess.user.findById;
+  const vipBackup = dataAccess.vipLevel.findOne;
+  const socialBackup = dataAccess.socialPost.find;
+  const assignmentBackup = dataAccess.dailyTaskAssignment.find;
+  const submissionBackup = dataAccess.dailyTaskSubmission.find;
+  const completionBackup = dataAccess.dailyTaskCompletion.find;
+
+  try {
+    dataAccess.user.findById = async () => ({ id: 'user-1', tierCode: 'A1', wallet: { totalDeposits: 50 } });
+    dataAccess.vipLevel.findOne = async () => ({ code: 'A1', name: 'A1', tasks: 3, dailyProfit: 1.5 });
+    dataAccess.socialPost.find = async () => [];
+    dataAccess.dailyTaskAssignment.find = async ({ userId, tierCode, taskDate }) => {
+      if (userId === 'user-1' && tierCode === 'A1' && taskDate) {
+        return [
+          { taskNumber: 1, entityName: 'Alpha Systems', category: 'technology', entityKey: 'wiki:alpha-systems', summary: 'Alpha summary', createdAt: new Date('2031-06-01T12:00:00.000Z').toISOString() },
+          { taskNumber: 2, entityName: 'Beta Systems', category: 'technology', entityKey: 'wiki:beta-systems', summary: 'Beta summary', createdAt: new Date('2031-06-01T12:00:00.000Z').toISOString() },
+          { taskNumber: 3, entityName: 'Gamma Systems', category: 'technology', entityKey: 'wiki:gamma-systems', summary: 'Gamma summary', createdAt: new Date('2031-06-01T12:00:00.000Z').toISOString() }
+        ];
+      }
+      return [];
+    };
+    dataAccess.dailyTaskSubmission.find = async () => [];
+    dataAccess.dailyTaskCompletion.find = async () => [];
+
+    const req = { user: { id: 'user-1' } };
+    const res = {
+      json(payload) {
+        assert.ok(Array.isArray(payload.tasks), 'returned task list must be an array');
+        assert.ok(payload.tasks.length > 0, 'a valid active tier must still expose at least the first task');
+        assert.equal(payload.tasks[0].taskKey, 'A1-task-01');
+      },
+      status() { return { json() { throw new Error('unexpected error response'); } }; }
+    };
+
+    await activityController.getDailyTasks(req, res);
+  } finally {
+    dataAccess.user.findById = userBackup;
+    dataAccess.vipLevel.findOne = vipBackup;
+    dataAccess.socialPost.find = socialBackup;
+    dataAccess.dailyTaskAssignment.find = assignmentBackup;
+    dataAccess.dailyTaskSubmission.find = submissionBackup;
+    dataAccess.dailyTaskCompletion.find = completionBackup;
+  }
+})();
 
 console.log('daily-task-board test: OK');
