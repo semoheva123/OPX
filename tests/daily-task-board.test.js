@@ -84,7 +84,7 @@ assert.equal(activityController.hasDailyCommunityInteraction([
 assert.equal(activityController.hasDailyCommunityInteraction([
 	{ authorId: 'user-1', status: 'visible', likedBy: ['user-1'], comments: [{ authorId: 'user-1', status: 'visible', createdAt: '2026-10-03T10:00:00.000Z' }] }
 ], 'user-1', dayStart), false, 'التفاعل مع المنشور الشخصي لا يستوفي المهمة');
-assert.doesNotMatch(schema, /COMMUNITY_TASK_REQUIRED/);
+assert.doesNotMatch(schema, /COMMUNITY_TASK_REQUIRED|OPTIONAL_TASK_NO_REWARD|tier_code \|\| '-community'/i, 'database must not enforce a community task again');
 assert.match(schema, /EVALUATION_REQUIRED/);
 assert.doesNotMatch(schema, /length\(trim\(submission\.feedback\)\) between 10 and 500/i, 'notes must not be a completion requirement');
 assert.match(schema, /operix_enforce_daily_task_sequence_and_cooldown/i);
@@ -95,7 +95,7 @@ assert.doesNotMatch(ratingCooldownMigration, /length\(trim\(submission\.feedback
 assert.match(ratingCooldownMigration, /requested_task_number > max_tasks \+ 1/i, 'task keys start at task-02, so the final paid assignment is max_tasks + 1');
 assert.match(ratingCooldownMigration, /max_tasks := greatest\(coalesce\(level_row\.tasks, 1\) - 1, 0\)/i, 'the fixed optional community card must be excluded from the paid task count');
 assert.match(ratingCooldownMigration, /if max_tasks < 1 then raise exception/i, 'the paid reward calculation must never divide by zero');
-assert.match(ratingCooldownMigration, /OPTIONAL_TASK_NO_REWARD/, 'the database must never pay the optional community card');
+assert.doesNotMatch(ratingCooldownMigration, /OPTIONAL_TASK_NO_REWARD|tier_code \|\| '-community'/i, 'the database must never keep an optional community task reward path');
 assert.match(ratingCooldownMigration, /plan_started_at \+ \(\(task_number - 2\) \* interval '2 hours'\)/i, 'the database release window must accrue from plan start, not the previous completion time');
 assert.match(ratingCooldownMigration, /total_daily_reward \+ gross_reward > coalesce\(level_row\.daily_profit, 0\)/i, 'the replacement task RPC must preserve the fixed daily reward cap');
 assert.match(ratingCooldownMigration, /DAILY_CAP_REACHED/i, 'the database must reject task rewards that exceed the daily cap');
@@ -105,7 +105,7 @@ assert.match(schema, /daily_task_entities/);
 assert.match(schema, /enable row level security/i);
 assert.match(schema, /grant execute on function public\.operix_daily_task_complete_atomic\(uuid, text\) to service_role/i);
 assert.match(migration, /create or replace function public\.operix_daily_task_complete_atomic/i);
-assert.doesNotMatch(migration, /COMMUNITY_TASK_REQUIRED/);
+assert.doesNotMatch(migration, /COMMUNITY_TASK_REQUIRED|OPTIONAL_TASK_NO_REWARD|tier_code \|\| '-community'/i, 'database migration must not keep the removed community task rules');
 assert.match(migration, /EVALUATION_REQUIRED/);
 assert.match(adminController, /evaluationCount \+ 1/, 'task count must follow the fixed community task plus the admin-controlled evaluation count');
 assert.match(client, /button\.disabled = !currentUserTierActive/, 'the daily task card must remain an entry to the plan after all tasks are marked complete');

@@ -204,9 +204,7 @@ begin
   select * into level_row from vip_levels where code = user_row.tier_code;
   if level_row.id is null then raise exception using errcode = 'P0002', message = 'VIP_LEVEL_NOT_FOUND'; end if;
   max_tasks := greatest(coalesce(level_row.tasks, 1) - 1, 0);
-  if p_task_key = (user_row.tier_code || '-community') then
-    raise exception using errcode = 'P0001', message = 'OPTIONAL_TASK_NO_REWARD';
-  elsif p_task_key ~ ('^' || user_row.tier_code || '-task-[0-9]+$') then
+  if p_task_key ~ ('^' || user_row.tier_code || '-task-[0-9]+$') then
     requested_task_number := substring(p_task_key from '[0-9]+$')::integer;
   else
     raise exception using errcode = 'P0001', message = 'INVALID_TASK_KEY';
