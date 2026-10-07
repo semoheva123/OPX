@@ -29,8 +29,12 @@ assert.equal(typeof tasks[0].title, 'string', 'يجب أن تحتوي المهم
 assert.equal(Array.isArray(tasks[0].instructions), true, 'يجب أن تحتوي المهمة على قائمة إرشادات');
 assert.equal(typeof tasks[0].reward, 'number', 'يجب أن تحتوي المهمة على قيمة مكافأة');
 assert.equal(tasks[0].taskKey, 'A1-task-01');
+assert.equal(tasks[0].number, 1, 'the visible task number must match the actual task key');
 assert.equal(tasks[0].requirement, 'evaluation');
 assert.equal(tasks[0].targetName, 'Example Systems');
+const shiftedTask = activityController.buildDailyTasks('A3', [{ taskNumber: 2, entityName: 'Shifted Systems', category: 'technology', summary: 'مهمة shifted.', imageUrl: '', submissionComplete: false }], new Set(), false, 1)[0];
+assert.equal(shiftedTask.taskKey, 'A3-task-02', 'the board must respect the real assignment task number even when it is not the first rendered card');
+assert.equal(shiftedTask.number, 2, 'the visible numbering must match the real task key instead of the filtered index');
 assert.equal(tasks[0].targetSummary, 'شركة تقنية للاختبار.');
 assert.ok(tasks[0].tags.includes('الخصوصية'));
 assert.equal(tasks[1].targetCategory, 'ai');

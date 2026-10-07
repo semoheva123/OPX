@@ -263,7 +263,7 @@ function buildDailyTasks(tierCode, adminTasks = [], completedKeys = new Set(), l
     const taskKey = `${tierCode}-task-${String(taskNumber).padStart(2, '0')}`;
     return {
       taskKey,
-      number: index + 1,
+      number: taskNumber,
       assignmentNumber: taskNumber,
       icon: 'fa-magnifying-glass-chart',
       title: `قيّم ${String(template.entityName || 'الجهة المحددة')}`,
