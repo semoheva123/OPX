@@ -1,6 +1,6 @@
 const crypto = require('crypto');
-const { TronWeb } = require('tronweb');
 const blockchainService = require('./blockchainService');
+const tronProvider = require('./tronProvider');
 
 const TRANSFER_ABI_V2 = {
   name: 'transfer',
@@ -64,34 +64,36 @@ function getPrivateKey(network) {
 
 function createTronWeb(network, privateKey) {
   const config = blockchainService.getBlockchainConfig().TRC20;
-  const apiKey = String(process.env.TRONGRID_API_KEY || '').trim();
-  const headers = apiKey ? { 'TRON-PRO-API-KEY': apiKey } : {};
-  const tronWeb = new TronWeb({ fullHost: config.apiUrl, privateKey, headers });
+  const endpoints = tronProvider.getRpcEndpoints();
+  if (!endpoints.length) throw new Error('TRON_RPC_ENDPOINTS_NOT_CONFIGURED');
+  const tronWeb = tronProvider.createTronWebForEndpoint(endpoints[0], { privateKey });
   if (!tronWeb.isAddress(config.tokenContract)) throw new Error('INVALID_TRON_USDT_CONTRACT');
-  return { tronWeb, config };
+  return { tronWeb, config, endpoints };
 }
 
 async function prepareTrc20Payout({ recipient, amount }) {
   const privateKey = getPrivateKey('TRC20');
-  const { tronWeb, config } = createTronWeb('TRC20', privateKey);
+  const { tronWeb, config, endpoints } = createTronWeb('TRC20', privateKey);
   if (!tronWeb.isAddress(recipient)) throw new Error('INVALID_TRC20_RECIPIENT');
   const normalizedRecipient = tronWeb.address.fromHex(tronWeb.address.toHex(recipient.trim()));
   const amountUnits = parseTokenUnits(amount, config.decimals);
   const senderAddress = tronWeb.defaultAddress.base58;
-  const token = await tronWeb.contract().at(config.tokenContract);
-  const tokenBalance = BigInt(String(await token.balanceOf(senderAddress).call()));
+  const tokenBalance = await tronProvider.withTronWeb(async client => {
+    const token = await client.contract().at(config.tokenContract);
+    return BigInt(String(await token.balanceOf(senderAddress).call()));
+  }, { endpoints, privateKey });
   if (tokenBalance < amountUnits) throw new Error('PAYOUT_TOKEN_BALANCE_INSUFFICIENT');
   const feeLimit = BigInt(process.env.TRON_WITHDRAWAL_FEE_LIMIT_SUN || '100000000');
   if (feeLimit <= 0n || feeLimit > 1_000_000_000n) throw new Error('TRON_WITHDRAWAL_FEE_LIMIT_INVALID');
-  const nativeBalance = BigInt(String(await tronWeb.trx.getBalance(senderAddress)));
+  const nativeBalance = await tronProvider.withTronWeb(async client => BigInt(String(await client.trx.getBalance(senderAddress))), { endpoints, privateKey });
   const minimumTrx = BigInt(process.env.TRON_WITHDRAWAL_MIN_TRX_SUN || feeLimit.toString());
   if (nativeBalance < (minimumTrx > feeLimit ? minimumTrx : feeLimit)) throw new Error('PAYOUT_NATIVE_GAS_BALANCE_INSUFFICIENT');
 
   // Get public reference-block data, then construct/sign locally without ever sending the private key to the RPC.
-  const blockHeader = await tronWeb.trx.getCurrentRefBlockParams();
+  const blockHeader = await tronProvider.withTronWeb(client => client.trx.getCurrentRefBlockParams(), { endpoints, privateKey });
   blockHeader.timestamp = Date.now();
   blockHeader.expiration = blockHeader.timestamp + 60 * 60 * 1000;
-  const wrapper = await tronWeb.transactionBuilder.triggerSmartContract(
+  const wrapper = await tronProvider.withTronWeb(client => client.transactionBuilder.triggerSmartContract(
     config.tokenContract,
     'transfer(address,uint256)',
     {
@@ -100,7 +102,7 @@ async function prepareTrc20Payout({ recipient, amount }) {
     },
     [],
     senderAddress
-  );
+  ), { endpoints, privateKey });
   const unsignedTransaction = wrapper?.transaction;
   if (!wrapper?.result?.result || !unsignedTransaction?.txID) throw new Error('TRON_PAYOUT_TRANSACTION_BUILD_FAILED');
   const signedTransaction = await tronWeb.trx.sign(unsignedTransaction, privateKey);
@@ -127,35 +129,32 @@ async function broadcastPreparedPayout(network, encryptedPayload) {
   if (normalizedNetwork !== 'TRC20') throw new Error('UNSUPPORTED_WITHDRAWAL_NETWORK');
   const privateKey = getPrivateKey(normalizedNetwork);
   const payload = decryptSignedPayload(normalizedNetwork, privateKey, encryptedPayload);
-  const { tronWeb } = createTronWeb(normalizedNetwork, privateKey);
-  const result = await tronWeb.trx.sendRawTransaction(payload.signedTransaction);
-  if (result?.result !== true && String(result?.code || '').toUpperCase() !== 'DUP_TRANSACTION_ERROR') {
-    throw new Error('TRON_PAYOUT_BROADCAST_NOT_ACCEPTED');
-  }
+  const { endpoints } = createTronWeb(normalizedNetwork, privateKey);
+  await tronProvider.withTronWeb(async client => {
+    const response = await client.trx.sendRawTransaction(payload.signedTransaction);
+    if (response?.result !== true && String(response?.code || '').toUpperCase() !== 'DUP_TRANSACTION_ERROR') throw new Error('TRON_PAYOUT_BROADCAST_NOT_ACCEPTED');
+    return response;
+  }, { endpoints, privateKey });
   return { accepted: true, txHash: payload.signedTransaction.txID };
 }
 
 async function inspectPayout(network, txHash, encryptedPayload) {
   const normalizedNetwork = String(network || '').toUpperCase();
   if (normalizedNetwork !== 'TRC20') throw new Error('UNSUPPORTED_WITHDRAWAL_NETWORK');
-  const config = blockchainService.getBlockchainConfig().TRC20;
+  const solidityEndpoints = tronProvider.getSolidityEndpoints();
   const payload = decryptSignedPayload(normalizedNetwork, getPrivateKey(normalizedNetwork), encryptedPayload);
   if (String(payload.signedTransaction?.txID || '').toLowerCase() !== String(txHash || '').toLowerCase()) {
     throw new Error('PAYOUT_HASH_MISMATCH');
   }
-  const apiKey = String(process.env.TRONGRID_API_KEY || '').trim();
-  const url = `${String(process.env.TRONGRID_SOLIDITY_API_URL || config.apiUrl).replace(/\/$/, '')}/walletsolidity/gettransactioninfobyid`;
-  const response = await fetch(url, {
-    method: 'POST', headers: { 'content-type': 'application/json', ...(apiKey ? { 'TRON-PRO-API-KEY': apiKey } : {}) },
-    body: JSON.stringify({ value: txHash }), signal: AbortSignal.timeout(10000)
+  const { body: info } = await tronProvider.requestJsonWithFallback(solidityEndpoints, 'walletsolidity/gettransactioninfobyid', {
+    timeoutMs: 10000,
+    request: { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ value: txHash }) }
   });
-  if (!response.ok) throw new Error('TRON_CONFIRMATION_PROVIDER_ERROR');
-  const info = await response.json();
   const expiration = Number(payload.signedTransaction.raw_data.expiration);
   if (!info?.id) {
-    const tronWeb = createTronWeb(normalizedNetwork, getPrivateKey(normalizedNetwork)).tronWeb;
+    const rpcEndpoints = tronProvider.getRpcEndpoints();
     // Do not turn provider/network errors into proof that the transaction is absent.
-    const observedTransaction = await tronWeb.trx.getTransaction(txHash);
+    const observedTransaction = await tronProvider.withTronWeb(client => client.trx.getTransaction(txHash), { endpoints: rpcEndpoints, privateKey: getPrivateKey(normalizedNetwork) });
     return classifyTronConfirmation({ txHash, info, observedTransaction, expiration });
   }
   return classifyTronConfirmation({ txHash, info, expiration });

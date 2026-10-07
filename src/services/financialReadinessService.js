@@ -1,5 +1,5 @@
-const { TronWeb } = require('tronweb');
 const blockchainService = require('./blockchainService');
+const tronProvider = require('./tronProvider');
 const tronDepositService = require('./tronDepositService');
 const { checkSupabaseConnection, supabaseAdmin } = require('../config/supabase');
 
@@ -14,6 +14,7 @@ async function checkFinancialReadiness() {
     payoutKeyValid: false,
     payoutKeyFailure: null,
     tronProviderReachable: false,
+    tronIndexerReachable: false,
     payoutBalancesReadable: false,
     payoutUsdtFunded: false,
     payoutTrxSufficient: false
@@ -53,28 +54,33 @@ async function checkFinancialReadiness() {
   const config = blockchainService.getBlockchainConfig().TRC20;
   const privateKey = String(process.env.TRON_WITHDRAWAL_PRIVATE_KEY || '').trim();
   checks.payoutKeyConfigured = Boolean(privateKey);
-  const apiKey = String(process.env.TRONGRID_API_KEY || '').trim();
-  const headers = apiKey ? { 'TRON-PRO-API-KEY': apiKey } : {};
-
   let readOnlyTronWeb;
   try {
-    readOnlyTronWeb = new TronWeb({ fullHost: config.apiUrl, headers });
+    readOnlyTronWeb = tronProvider.createTronWeb();
     checks.tronUsdtContractValid = readOnlyTronWeb.isAddress(config.tokenContract);
   } catch {
     checks.tronUsdtContractValid = false;
   }
 
   try {
-    const response = await fetch(`${config.apiUrl}/wallet/getnowblock`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', ...headers },
-      body: '{}',
-      signal: AbortSignal.timeout(12000)
+    const { body: block } = await tronProvider.requestJsonWithFallback(tronProvider.getRpcEndpoints(), 'wallet/getnowblock', {
+      timeoutMs: 12000,
+      request: { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }
     });
-    const block = await response.json().catch(() => ({}));
-    checks.tronProviderReachable = response.ok && Boolean(block.blockID || block.block_header?.raw_data?.number !== undefined);
+    checks.tronProviderReachable = Boolean(block.blockID || block.block_header?.raw_data?.number !== undefined);
   } catch {
     checks.tronProviderReachable = false;
+  }
+
+  try {
+    const indexerPath = `v1/accounts/${encodeURIComponent(config.tokenContract)}/transactions/trc20?only_confirmed=true&contract_address=${encodeURIComponent(config.tokenContract)}&limit=1`;
+    const { body: indexedTransfers } = await tronProvider.requestJsonWithFallback(tronProvider.getIndexerEndpoints(), indexerPath, {
+      timeoutMs: 12000,
+      validateBody: body => Array.isArray(body?.data)
+    });
+    checks.tronIndexerReachable = Array.isArray(indexedTransfers?.data);
+  } catch {
+    checks.tronIndexerReachable = false;
   }
 
   let tronWeb;
@@ -82,7 +88,7 @@ async function checkFinancialReadiness() {
     checks.payoutKeyFailure = 'missing';
   } else {
     try {
-      tronWeb = new TronWeb({ fullHost: config.apiUrl, privateKey, headers });
+      tronWeb = tronProvider.createTronWeb({ privateKey });
       const derivedPayoutAddress = tronWeb.defaultAddress.base58;
       checks.payoutKeyValid = Boolean(derivedPayoutAddress && tronWeb.isAddress(derivedPayoutAddress));
       if (!checks.payoutKeyValid) checks.payoutKeyFailure = 'address_derivation_failed';
@@ -94,10 +100,12 @@ async function checkFinancialReadiness() {
   if (checks.payoutKeyValid && checks.tronUsdtContractValid && checks.tronProviderReachable) {
     try {
       const senderAddress = tronWeb.defaultAddress.base58;
-      const token = await tronWeb.contract().at(config.tokenContract);
       const [tokenBalance, trxBalance] = await Promise.all([
-        token.balanceOf(senderAddress).call(),
-        tronWeb.trx.getBalance(senderAddress)
+        tronProvider.withTronWeb(async client => {
+          const token = await client.contract().at(config.tokenContract);
+          return token.balanceOf(senderAddress).call();
+        }, { endpoints: tronProvider.getRpcEndpoints(), privateKey }),
+        tronProvider.withTronWeb(client => client.trx.getBalance(senderAddress), { endpoints: tronProvider.getRpcEndpoints(), privateKey })
       ]);
       checks.payoutBalancesReadable = true;
       checks.payoutUsdtFunded = BigInt(String(tokenBalance)) > 0n;
@@ -110,7 +118,7 @@ async function checkFinancialReadiness() {
   }
 
   const readyForControlledTest = checks.supabaseReachable && checks.financialSchemaReady && checks.noUnresolvedPayouts &&
-    checks.depositXpubDerivesAddress && checks.tronUsdtContractValid && checks.payoutKeyConfigured &&
+    checks.depositXpubDerivesAddress && checks.tronUsdtContractValid && (!switches.depositsEnabled || checks.tronIndexerReachable) && checks.payoutKeyConfigured &&
     checks.payoutKeyValid && checks.tronProviderReachable && checks.payoutBalancesReadable &&
     checks.payoutUsdtFunded && checks.payoutTrxSufficient;
 

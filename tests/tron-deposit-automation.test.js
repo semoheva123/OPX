@@ -27,6 +27,8 @@ assert.match(financialReadiness, /payoutTrxSufficient/);
 assert.match(financialReadiness, /payoutBalancesReadable/);
 assert.match(financialReadiness, /noUnresolvedPayouts/);
 assert.match(financialReadiness, /payoutKeyFailure/);
+assert.match(financialReadiness, /tronIndexerReachable/);
+assert.match(financialReadiness, /getIndexerEndpoints/);
 assert.doesNotMatch(financialReadiness, /sendRawTransaction|preparePayout|broadcastPreparedPayout/);
 assert.match(queueWorkflow, /\/api\/internal\/cron\/process-tron-deposits/);
 assert.doesNotMatch(blockchainService, /PLATFORM_(?:TRON|BSC)_DEPOSIT_ADDRESS|verifyDeposit|getDepositAddresses/);

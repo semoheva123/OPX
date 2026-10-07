@@ -1,6 +1,6 @@
 const { HDNodeWallet, computeAddress } = require('ethers');
-const { TronWeb } = require('tronweb');
 const blockchainService = require('./blockchainService');
+const tronProvider = require('./tronProvider');
 const dataAccess = require('./dataAccess');
 const realtimeService = require('./realtimeService');
 
@@ -10,15 +10,14 @@ const PAGE_SIZE = 200;
 const MAX_PAGES_PER_ADDRESS = 10;
 
 function getTronWeb() {
-  const config = blockchainService.getBlockchainConfig().TRC20;
-  const apiKey = String(process.env.TRONGRID_API_KEY || '').trim();
-  return new TronWeb({
-    fullHost: config.apiUrl,
-    headers: apiKey ? { 'TRON-PRO-API-KEY': apiKey } : {}
-  });
+  return tronProvider.createTronWeb();
 }
 
-function normalizeTronAddress(value, tronWeb = getTronWeb()) {
+function getLocalTronWeb() {
+  return tronProvider.createTronWebForEndpoint('http://127.0.0.1');
+}
+
+function normalizeTronAddress(value, tronWeb = getLocalTronWeb()) {
   if (!value) return '';
   try {
     return String(tronWeb.address.toHex(String(value).trim())).replace(/^0x/i, '').toLowerCase();
@@ -35,8 +34,9 @@ function deriveDepositAddress(derivationIndex) {
   const accountNode = HDNodeWallet.fromExtendedKey(extendedPublicKey);
   const child = accountNode.deriveChild(index);
   const ethereumAddress = computeAddress(child.publicKey);
-  const tronAddress = getTronWeb().address.fromHex(`41${ethereumAddress.slice(2)}`);
-  if (!getTronWeb().isAddress(tronAddress)) throw new Error('DERIVED_TRON_DEPOSIT_ADDRESS_INVALID');
+  const tronWeb = getLocalTronWeb();
+  const tronAddress = tronWeb.address.fromHex(`41${ethereumAddress.slice(2)}`);
+  if (!tronWeb.isAddress(tronAddress)) throw new Error('DERIVED_TRON_DEPOSIT_ADDRESS_INVALID');
   return tronAddress;
 }
 
@@ -62,15 +62,12 @@ function formatUsdt(rawAmount) {
   return fractional ? `${whole}.${fractional}` : String(whole);
 }
 
-async function fetchTronGrid(url) {
-  const apiKey = String(process.env.TRONGRID_API_KEY || '').trim();
-  const response = await fetch(url, {
-    headers: apiKey ? { 'TRON-PRO-API-KEY': apiKey } : {},
-    signal: AbortSignal.timeout(12000)
+async function fetchTronGrid(path) {
+  const result = await tronProvider.requestJsonWithFallback(tronProvider.getIndexerEndpoints(), path, {
+    timeoutMs: 12000,
+    validateBody: body => Array.isArray(body?.data)
   });
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(`TRONGRID_HTTP_${response.status}`);
-  return body;
+  return result.body;
 }
 
 async function processAddress(addressRow) {
@@ -97,7 +94,7 @@ async function processAddress(addressRow) {
       limit: String(PAGE_SIZE)
     });
     if (fingerprint) params.set('fingerprint', fingerprint);
-    const result = await fetchTronGrid(`${config.apiUrl}/v1/accounts/${encodeURIComponent(addressRow.address)}/transactions/trc20?${params}`);
+    const result = await fetchTronGrid(`v1/accounts/${encodeURIComponent(addressRow.address)}/transactions/trc20?${params}`);
     const transfers = Array.isArray(result.data) ? result.data : [];
     pages++;
 

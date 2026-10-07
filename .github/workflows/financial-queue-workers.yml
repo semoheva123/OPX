@@ -9,6 +9,9 @@ on:
       - '.github/workflows/financial-queue-workers.yml'
       - 'server.js'
       - 'src/config/supabase.js'
+      - 'src/services/blockchainService.js'
+      - 'src/services/tronProvider.js'
+      - 'src/services/tronDepositService.js'
       - 'src/services/financialReadinessService.js'
       - 'src/services/withdrawalPayoutService.js'
       - 'src/controllers/walletController.js'
@@ -17,6 +20,7 @@ on:
       - 'supabase/withdrawal-validation-hardening.sql'
       - 'tests/automatic-withdrawals.test.js'
       - 'tests/tron-deposit-automation.test.js'
+      - 'tests/tron-provider-failover.test.js'
   schedule:
     - cron: '*/5 * * * *'
   workflow_dispatch:
