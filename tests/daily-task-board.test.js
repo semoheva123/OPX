@@ -125,8 +125,14 @@ assert.doesNotMatch(client, /isCommunityTask \? "switchTab\('feed'\)" : isEvalua
   const vipBackup = dataAccess.vipLevel.findOne;
   const socialBackup = dataAccess.socialPost.find;
   const assignmentBackup = dataAccess.dailyTaskAssignment.find;
+  const assignmentFindOneBackup = dataAccess.dailyTaskAssignment.findOne;
   const submissionBackup = dataAccess.dailyTaskSubmission.find;
+  const submissionFindOneBackup = dataAccess.dailyTaskSubmission.findOne;
+  const submissionUpdateOneBackup = dataAccess.dailyTaskSubmission.updateOne;
+  const submissionCreateBackup = dataAccess.dailyTaskSubmission.create;
   const completionBackup = dataAccess.dailyTaskCompletion.find;
+  const completionFindOneBackup = dataAccess.dailyTaskCompletion.findOne;
+  const callSupabaseRpcBackup = dataAccess.callSupabaseRpc;
 
   try {
     dataAccess.user.findById = async () => ({ id: 'user-1', tierCode: 'A1', wallet: { totalDeposits: 50 } });
@@ -142,12 +148,35 @@ assert.doesNotMatch(client, /isCommunityTask \? "switchTab\('feed'\)" : isEvalua
       }
       return [];
     };
+    dataAccess.dailyTaskAssignment.findOne = async ({ userId, tierCode, taskDate, taskNumber }) => {
+      if (userId === 'user-5' && tierCode === 'A1' && taskDate && taskNumber === 5) {
+        return { id: 'assignment-5', taskNumber: 5, category: 'technology', entityKey: 'wiki:delta-systems', entityName: 'Delta Systems', allowedTags: ['الأمان', 'الشفافية', 'المنفعة'] };
+      }
+      return null;
+    };
     dataAccess.dailyTaskSubmission.find = async () => [];
-    dataAccess.dailyTaskCompletion.find = async () => [];
+    dataAccess.dailyTaskSubmission.findOne = async () => null;
+    dataAccess.dailyTaskSubmission.updateOne = async () => ({ success: true });
+    dataAccess.dailyTaskSubmission.create = async () => ({ success: true });
+    dataAccess.dailyTaskCompletion.find = async ({ userId, taskDate }) => {
+      if (userId === 'user-5' && taskDate) {
+        return [
+          { taskKey: 'A1-task-01' },
+          { taskKey: 'A1-task-02' },
+          { taskKey: 'A1-task-03' },
+          { taskKey: 'A1-task-04' }
+        ];
+      }
+      return [];
+    };
+    dataAccess.dailyTaskCompletion.findOne = async () => null;
+    dataAccess.callSupabaseRpc = async () => ({ success: true, taskKey: 'A1-task-05', grossAmount: 0.45 });
 
     const req = { user: { id: 'user-1' } };
+    let latestPayload = null;
     const res = {
       json(payload) {
+        latestPayload = payload;
         assert.ok(Array.isArray(payload.tasks), 'returned task list must be an array');
         assert.ok(payload.tasks.length > 0, 'a valid active tier must still expose at least the first task');
         assert.equal(payload.tasks[0].taskKey, 'A1-task-01');
@@ -156,13 +185,49 @@ assert.doesNotMatch(client, /isCommunityTask \? "switchTab\('feed'\)" : isEvalua
     };
 
     await activityController.getDailyTasks(req, res);
+    assert.equal(latestPayload.tasks[0].locked, false, 'the first paid task must be executable immediately when the daily plan starts');
+
+    const tierFiveReq = {
+      user: { id: 'user-5' },
+      body: { taskKey: 'A1-task-05', rating: 4, selectedTag: 'الخصوصية' }
+    };
+    const tierFiveRes = {
+      statusCode: null,
+      payload: null,
+      status(code) { this.statusCode = code; return this; },
+      json(payload) { this.payload = payload; return payload; }
+    };
+    dataAccess.user.findById = async () => ({ id: 'user-5', tierCode: 'A1', wallet: { totalDeposits: 50 } });
+    dataAccess.vipLevel.findOne = async () => ({ code: 'A1', name: 'A1', tasks: 5, dailyProfit: 2.5 });
+    dataAccess.dailyTaskAssignment.find = async ({ userId, tierCode, taskDate }) => {
+      if (userId === 'user-5' && tierCode === 'A1' && taskDate) {
+        const planStarted = Date.now() - 10 * 60 * 60 * 1000;
+        return [
+          { taskNumber: 1, category: 'technology', entityKey: 'wiki:alpha-systems', entityName: 'Alpha Systems', allowedTags: ['الأمان', 'الشفافية'], createdAt: new Date(planStarted).toISOString() },
+          { taskNumber: 2, category: 'technology', entityKey: 'wiki:beta-systems', entityName: 'Beta Systems', allowedTags: ['الأمان', 'الشفافية'], createdAt: new Date(planStarted).toISOString() },
+          { taskNumber: 3, category: 'technology', entityKey: 'wiki:gamma-systems', entityName: 'Gamma Systems', allowedTags: ['الأمان', 'الشفافية'], createdAt: new Date(planStarted).toISOString() },
+          { taskNumber: 4, category: 'technology', entityKey: 'wiki:delta-systems', entityName: 'Delta Systems', allowedTags: ['الأمان', 'الشفافية'], createdAt: new Date(planStarted).toISOString() },
+          { taskNumber: 5, category: 'technology', entityKey: 'wiki:epsilon-systems', entityName: 'Epsilon Systems', allowedTags: ['الأمان', 'الشفافية'], createdAt: new Date(planStarted).toISOString() }
+        ];
+      }
+      return [];
+    };
+    await activityController.submitDailyEvaluation(tierFiveReq, tierFiveRes);
+    assert.equal(tierFiveRes.statusCode, null, 'the final paid task should still be executable when the tier contains five paid tasks');
+    assert.equal(tierFiveRes.payload.success, true, 'the valid task five submission should succeed');
   } finally {
     dataAccess.user.findById = userBackup;
     dataAccess.vipLevel.findOne = vipBackup;
     dataAccess.socialPost.find = socialBackup;
     dataAccess.dailyTaskAssignment.find = assignmentBackup;
+    dataAccess.dailyTaskAssignment.findOne = assignmentFindOneBackup;
     dataAccess.dailyTaskSubmission.find = submissionBackup;
+    dataAccess.dailyTaskSubmission.findOne = submissionFindOneBackup;
+    dataAccess.dailyTaskSubmission.updateOne = submissionUpdateOneBackup;
+    dataAccess.dailyTaskSubmission.create = submissionCreateBackup;
     dataAccess.dailyTaskCompletion.find = completionBackup;
+    dataAccess.dailyTaskCompletion.findOne = completionFindOneBackup;
+    dataAccess.callSupabaseRpc = callSupabaseRpcBackup;
   }
 })();
 

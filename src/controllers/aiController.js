@@ -40,7 +40,7 @@ function localReply(message, userName, userBalance, userTier, platformFacts = {}
   }
   if (has('مهمة', 'المهام', 'التقييم', 'مهمات', 'task')) {
     const problem = has('مشكلة', 'لا استطيع', 'ما اقدر', 'غير متاح', 'تعذر', 'خطا', 'لم يحفظ', 'لم تكتمل');
-    return `في تبويب «المهام» تظهر مهام التقييم المدفوعة للمستوى ${userTier}، بحد يومي ${platformFacts.currentLevelTaskLimit ?? 'الموضح في الشاشة'}؛ وعدّ المهام المدفوعة يساوي عدد مهام المستوى ناقص المهمة التمهيدية. افتح المهمة المتاحة، قيّمها من 1 إلى 5 واختر جانب التقييم ثم أرسل؛ المهمة المجتمعية اختيارية ولا تمنح مكافأة. الخطة تتجدد عند بداية اليوم في Europe/Istanbul، وتتوقف الجمعة والسبت، وتفتح المهام المدفوعة بفاصل ساعتين مع اشتراط إنهاء المهمة السابقة قبل التالية. ${problem ? 'عند فشل الحفظ لا ترسل تقييمًا مكررًا فورًا: حدّث قائمة المهام، راجع سجل الرصيد والإنجاز، ثم أرسل للدعم نص الخطأ ومفتاح المهمة والوقت.' : 'تأكد من ظهور الحالة «متاحة»؛ لا تُعد المهمة مكتملة حتى يؤكد النظام نجاح الإنهاء وتظهر المكافأة في الرصيد والسجل.'}`;
+    return `في تبويب «المهام» تظهر مهام التقييم المدفوعة للمستوى ${userTier}، بحد يومي ${platformFacts.currentLevelTaskLimit ?? 'الموضح في الشاشة'}؛ وعدّ المهام المدفوعة يطابق عدد مهام المستوى فعليًا بدون إضافة مهمة مجتمع. افتح المهمة المتاحة، قيّمها من 1 إلى 5 واختر جانب التقييم ثم أرسل؛ المهمة المجتمعية غير موجودة في المسار المدفوع. الخطة تتجدد عند بداية اليوم في Europe/Istanbul، وتتوقف الجمعة والسبت، وتفتح المهام المدفوعة بفاصل ساعتين مع اشتراط إنهاء المهمة السابقة قبل التالية. ${problem ? 'عند فشل الحفظ لا ترسل تقييمًا مكررًا فورًا: حدّث قائمة المهام، راجع سجل الرصيد والإنجاز، ثم أرسل للدعم نص الخطأ ومفتاح المهمة والوقت.' : 'تأكد من ظهور الحالة «متاحة»؛ لا تُعد المهمة مكتملة حتى يؤكد النظام نجاح الإنهاء وتظهر المكافأة في الرصيد والسجل.'}`;
   }
   if (has('لعبة', 'العاب', 'العاب', 'عجلة', 'الصندوق', 'صندوق', 'دورة', 'spin', 'game')) {
     const gameRanges = platformFacts.gameRewardRanges || 'نطاق المكافأة وإعدادات الدورة تظهر في تبويب «الألعاب»';
@@ -81,7 +81,7 @@ function normalizeSupportText(value) {
 function buildPlatformKnowledge(levels = [], settings = {}, userTier = '', vaultContracts = [], account = {}) {
   const currentLevel = levels.find(level => String(level.code).toUpperCase() === String(userTier).toUpperCase());
   const levelFacts = levels.map(level => {
-    const taskLimit = Math.max(0, Number(level.tasks || 1) - 1);
+    const taskLimit = Math.max(0, Number(level.tasks || 1));
     const dailyOpx = getTierDailyOpxConversion(level.code);
     return `${level.code}: الاسم=${level.name}؛ السعر=${Number(level.price || 0)} USDT؛ المهام المدفوعة يوميًا=${taskLimit}؛ العائد اليومي المعروض=${Number(level.dailyProfit || 0)} USDT (تقديري)؛ توزيع OPX اليومي=${dailyOpx} USDT قيمة داخلية`;
   }).join('؛ ') || 'بيانات المستويات غير متاحة الآن؛ لا تخمّن الأرقام';
@@ -94,7 +94,7 @@ function buildPlatformKnowledge(levels = [], settings = {}, userTier = '', vault
   try { withdrawalMax = withdrawalPayoutService.getMaxPayoutAmount(); } catch { withdrawalMax = null; }
   return {
     levelFacts,
-    currentLevelTaskLimit: currentLevel ? Math.max(0, Number(currentLevel.tasks || 1) - 1) : null,
+    currentLevelTaskLimit: currentLevel ? Math.max(0, Number(currentLevel.tasks || 1)) : null,
     referralsPerCycle: Math.max(1, Number(settings.referralsPerCycle) || 6),
     withdrawalSchedule: withdrawalSchedule.message,
     withdrawalDay: withdrawalSchedule.allowedDayName,
@@ -110,7 +110,7 @@ function buildPlatformKnowledge(levels = [], settings = {}, userTier = '', vault
     referralCashRewards: '$1 لتفعيل إحالة مباشرة في A1، $2 في A2، و$5 في A3؛ مكافأة واحدة لكل مستوى مؤهل',
     referralCampaignPoints: 'نقطة واحدة لتفعيل مباشر في A1، نقطتان في A2، و4 نقاط في A3؛ النقاط لا تساوي مبلغ المكافأة النقدية',
     a4ReferralMilestone: '300 إحالة مباشرة نشطة مؤهلة لفتح تفعيل A4 المجاني مع مكافأة $100 في رصيد الأرباح، مرة واحدة وفق أهلية الحساب',
-    taskRule: 'حد المهام المدفوعة اليومي يساوي قيمة tasks في إعداد المستوى ناقص المهمة التمهيدية؛ المهام التقييمية تتطلب تقييم 1–5 واختيار جانب مسموح؛ التقييم يُسجل ثم يجري إنهاء ذري للمهمة والمكافأة، ولا تعرض المنصة مراجعة بشرية لكل تقييم؛ يشترط تسلسل إنهاء المهام المدفوعة وفاصل ساعتين بين ظهورها؛ اليوم يبدأ وفق Europe/Istanbul؛ الجمعة والسبت عطلة مهام؛ التفاعل المجتمعي اختياري وبلا مكافأة',
+    taskRule: 'حد المهام المدفوعة اليومي يساوي قيمة tasks في إعداد المستوى فعليًا؛ المهام التقييمية تتطلب تقييم 1–5 واختيار جانب مسموح؛ التقييم يُسجل ثم يجري إنهاء ذري للمهمة والمكافأة، ولا تعرض المنصة مراجعة بشرية لكل تقييم؛ يشترط تسلسل إنهاء المهام المدفوعة وفاصل ساعتين بين ظهورها؛ اليوم يبدأ وفق Europe/Istanbul؛ الجمعة والسبت عطلة مهام؛ لا توجد مهمة مجتمعية مدفوعة في المسار الحالي',
     gameCycleRule: `تتطلب دورة اللعبة ${Math.max(1, Number(settings.referralsPerCycle) || 6)} إحالات مباشرة نشطة مع تفعيل الحساب، ويخصم الاستخدام دورة؛ الأرصدة المتاحة تظهر بجوار اللعبة؛ الحد اليومي ${Number(settings.dailyGameRewardCap || 100)} USDT؛ مكافأة اللعب توزع حاليًا 70% USDT و30% OPX`,
     upgradeRule: `السعر وشروط التفعيل والترقية تظهر في تبويب المستويات والتأكيد؛ أول تفعيل مدفوع يكلف سعر المستوى كاملًا، ثم تحسب الترقية بفرق السعر؛ لا يشترط تسلسل مستويات أو إحالات للترقية العادية؛ تفعيل A4 المجاني يتطلب الإنجاز المؤهل؛ OPX الداخلي بسعر حساب الترقية ${OPX_INTERNAL_USD_PRICE} USDT لكل OPX ويغطي بحد أقصى ${Math.round(OPX_MAX_UPGRADE_DISCOUNT_SHARE * 100)}% أو ${OPX_MAX_UPGRADE_VALUE_USD} USDT أيهما أقل، والباقي USDT؛ OPX غير قابل للسحب`,
     depositRule: String(process.env.TRON_DEPOSIT_AUTOMATION_ENABLED || '').toLowerCase() === 'true'

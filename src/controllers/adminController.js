@@ -569,8 +569,33 @@ async function disableUserTwoFactor(req, res) {
 }
 
 async function resetDailyTasks(req, res) {
-  try { await User.updateMany({}, { $set: { todayCompletedTasks: 0 } }); await createAudit(req, 'reset_daily_tasks'); res.json({ success: true, message: 'تم إعادة تعيين المهام اليومية لجميع المستخدمين بنجاح' }); }
-  catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
+  try {
+    const { userId, taskDate } = req.body || {};
+    const targetDate = taskDate || new Date().toISOString().slice(0, 10);
+    if (dataAccess.isSupabaseRuntime()) {
+      const cleanupTarget = userId ? { userId, taskDate: targetDate } : { taskDate: targetDate };
+      const resetQueries = [
+        supabaseAdmin && supabaseAdmin.from('daily_task_completions').delete().eq('task_date', cleanupTarget.taskDate),
+        supabaseAdmin && supabaseAdmin.from('daily_task_submissions').delete().eq('task_date', cleanupTarget.taskDate),
+        supabaseAdmin && supabaseAdmin.from('daily_task_assignments').delete().eq('task_date', cleanupTarget.taskDate)
+      ];
+      if (cleanupTarget.userId) {
+        resetQueries[0] = supabaseAdmin && supabaseAdmin.from('daily_task_completions').delete().eq('user_id', cleanupTarget.userId).eq('task_date', cleanupTarget.taskDate);
+        resetQueries[1] = supabaseAdmin && supabaseAdmin.from('daily_task_submissions').delete().eq('user_id', cleanupTarget.userId).eq('task_date', cleanupTarget.taskDate);
+        resetQueries[2] = supabaseAdmin && supabaseAdmin.from('daily_task_assignments').delete().eq('user_id', cleanupTarget.userId).eq('task_date', cleanupTarget.taskDate);
+      }
+      await Promise.all(resetQueries.filter(Boolean));
+      await createAudit(req, 'reset_daily_tasks', userId || null, { targetDate, scope: userId ? 'user' : 'all' });
+      return res.json({ success: true, message: userId ? 'تم إعادة تعيين المهام اليومية لهذا المستخدم بنجاح' : 'تم إعادة تعيين المهام اليومية لجميع المستخدمين في اليوم الحالي بنجاح' });
+    }
+
+    await User.updateMany({}, { $set: { todayCompletedTasks: 0 } });
+    await createAudit(req, 'reset_daily_tasks');
+    res.json({ success: true, message: 'تم إعادة تعيين المهام اليومية لجميع المستخدمين بنجاح' });
+  } catch (err) {
+    console.error('resetDailyTasks error:', err);
+    res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' });
+  }
 }
 
 async function toggleBan(req, res) {

@@ -1159,7 +1159,10 @@ begin
     ) then raise exception using errcode = 'P0001', message = 'TASK_SEQUENCE_REQUIRED'; end if;
     select min(created_at) into plan_started_at from public.daily_task_assignments
       where user_id = new.user_id and tier_code = current_tier and task_date = new.task_date;
-    if plan_started_at is null or plan_started_at + ((task_number - 1) * interval '2 hours') > clock_timestamp() then
+    if plan_started_at is null or plan_started_at > clock_timestamp() then
+      plan_started_at := clock_timestamp();
+    end if;
+    if plan_started_at + ((task_number - 1) * interval '2 hours') > clock_timestamp() then
       raise exception using errcode = 'P0001', message = 'TASK_COOLDOWN_ACTIVE';
     end if;
   end if;

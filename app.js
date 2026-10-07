@@ -2149,7 +2149,8 @@ function renderDailyTaskDetail(data) {
                 </div>
             </div>
         </div>` : '';
-        const evaluationForm = isEvaluationTask && isExpanded && !task.locked ? `<div class="mt-3 space-y-3 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3" data-evaluation-form="${escapeAiHtml(task.taskKey)}">
+        const isTaskExecutableNow = !task.completed && (!task.locked || Number(task.assignmentNumber || task.number || 0) === 1 || (task.availableAt && new Date(task.availableAt).getTime() <= Date.now()));
+        const evaluationForm = isEvaluationTask && isExpanded && isTaskExecutableNow ? `<div class="mt-3 space-y-3 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3" data-evaluation-form="${escapeAiHtml(task.taskKey)}">
             <p class="text-[10px] leading-5 text-cyan-100">قيّم هذه الخدمة بشكل سريع وصادق، فقط من خلال تجربتك أو ما رأيته عنها.</p>
             <fieldset><legend class="text-[10px] text-slate-300">التقييم</legend><input data-evaluation-field="rating" type="hidden" value=""><div class="mt-1 flex flex-row-reverse justify-end gap-1" role="radiogroup" aria-label="التقييم من نجمة إلى خمس نجوم">${[1, 2, 3, 4, 5].map(rating => `<button type="button" role="radio" aria-checked="false" data-rating="${rating}" onclick="setDailyEvaluationRating('${escapeAiHtml(task.taskKey)}', ${rating})" class="rounded-lg p-1 text-2xl text-slate-600 transition-colors" aria-label="${rating} من 5 نجوم"><i class="fa-solid fa-star"></i></button>`).join('')}</div></fieldset>
             <label class="block text-[10px] text-slate-300">جانب التقييم

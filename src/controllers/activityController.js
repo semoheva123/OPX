@@ -7,6 +7,25 @@ const { getTaskSchedule } = require('../services/weeklySchedule');
 
 const DAILY_TASK_COOLDOWN_MS = 2 * 60 * 60 * 1000;
 
+function normalizeTaskKey(value) {
+  if (value === null || value === undefined) return '';
+  return String(value).trim();
+}
+
+function getTaskKeyFromRecord(record) {
+  if (!record || typeof record !== 'object') return '';
+  return normalizeTaskKey(record.taskKey || record.task_key || record.key || '');
+}
+
+function getTaskNumberFromRecord(record) {
+  if (!record || typeof record !== 'object') return 0;
+  const directNumber = Number(record.taskNumber ?? record.task_number ?? record.number ?? 0);
+  if (Number.isFinite(directNumber) && directNumber > 0) return directNumber;
+  const taskKey = getTaskKeyFromRecord(record);
+  const match = taskKey.match(/-task-(\d+)$/);
+  return match ? Number(match[1]) : 0;
+}
+
 function getDailyTaskProgress(tierCode, paidTaskCount, assignments = [], completions = [], now = Date.now()) {
   let effectiveAssignments = Array.isArray(assignments) ? assignments : [];
   let effectiveCompletions = Array.isArray(completions) ? completions : [];
@@ -18,14 +37,12 @@ function getDailyTaskProgress(tierCode, paidTaskCount, assignments = [], complet
   }
 
   const completionKeys = new Set(effectiveCompletions
-    .map(item => String(item.taskKey || ''))
+    .map(item => getTaskKeyFromRecord(item))
     .filter(taskKey => taskKey.startsWith(`${tierCode}-task-`)));
 
   const normalizedAssignments = effectiveAssignments
     .map(item => {
-      const taskKey = String(item.taskKey || '');
-      const taskMatch = taskKey.match(/-task-(\d+)$/);
-      const taskNumber = Number(item.taskNumber ?? (taskMatch ? taskMatch[1] : 0));
+      const taskNumber = getTaskNumberFromRecord(item);
       const createdAtMs = new Date(item.createdAt || item.created_at || '').getTime();
       if (!Number.isFinite(taskNumber) || taskNumber < 1) return null;
       return { taskNumber, createdAtMs, taskKey: `${tierCode}-task-${String(taskNumber).padStart(2, '0')}` };
@@ -33,8 +50,9 @@ function getDailyTaskProgress(tierCode, paidTaskCount, assignments = [], complet
     .filter(Boolean)
     .sort((left, right) => left.taskNumber - right.taskNumber);
 
-  const planStartedAt = normalizedAssignments.length
-    ? Math.min(...normalizedAssignments.map(item => item.createdAtMs).filter(Number.isFinite))
+  const assignmentStartTimes = normalizedAssignments.map(item => item.createdAtMs).filter(Number.isFinite);
+  const planStartedAt = assignmentStartTimes.length
+    ? Math.min(currentNow, Math.min(...assignmentStartTimes))
     : Number(currentNow);
 
   const taskWindows = [];
@@ -335,10 +353,10 @@ async function getDailyTasks(req, res) {
       dataAccess.dailyTaskSubmission.find({ userId: user.id, taskDate: today }, { select: 'taskKey' }),
       dataAccess.dailyTaskCompletion.find({ userId: user.id, taskDate: today }, { sort: { createdAt: 1 } })
     ]);
-    const submittedTaskKeys = new Set(evaluationSubmissions.map(submission => submission.taskKey));
-    evaluationAssignments.forEach(assignment => { assignment.submissionComplete = submittedTaskKeys.has(`${tier.code}-task-${String(assignment.taskNumber).padStart(2, '0')}`); });
-    const paidCompletions = completions.filter(item => /^.+-task-\d+$/.test(String(item.taskKey || '')));
-    const completedKeys = new Set(paidCompletions.map(item => item.taskKey));
+    const submittedTaskKeys = new Set(evaluationSubmissions.map(submission => getTaskKeyFromRecord(submission)));
+    evaluationAssignments.forEach(assignment => { assignment.submissionComplete = submittedTaskKeys.has(`${tier.code}-task-${String(Number(assignment.taskNumber ?? assignment.task_number ?? 1)).padStart(2, '0')}`); });
+    const paidCompletions = completions.filter(item => /^.+-task-\d+$/.test(getTaskKeyFromRecord(item)));
+    const completedKeys = new Set(paidCompletions.map(item => getTaskKeyFromRecord(item)));
     const dailyProfit = Number(tier.dailyProfit || 0);
     const now = Date.now();
     const progress = getDailyTaskProgress(tier.code, taskLimit, evaluationAssignments, paidCompletions, now);
@@ -433,12 +451,16 @@ async function submitDailyEvaluation(req, res) {
     const today = utcDateString();
     const assignment = taskNumber >= 1 ? await dataAccess.dailyTaskAssignment.findOne({ userId: user.id || user._id, tierCode: tier.code, taskDate: today, taskNumber }) : null;
     if (!assignment) return res.status(400).json({ error: 'مهمة التقييم غير موجودة ضمن خطة اليوم الحالية' });
+    const assignmentCategory = String(assignment.category || assignment.targetCategory || assignment.target_category || assignment.category_name || 'technology').toLowerCase();
+    const assignmentEntityName = String(assignment.entityName || assignment.entity_name || assignment.targetName || assignment.name || '');
+    const assignmentEntityKey = String(assignment.entityKey || assignment.entity_key || assignment.targetKey || assignment.key || '');
+    const assignmentId = assignment.id || assignment._id || null;
 
     const [completions, todayAssignments] = await Promise.all([
       dataAccess.dailyTaskCompletion.find({ userId: user.id || user._id, taskDate: today }, { sort: { createdAt: 1 } }),
       dataAccess.dailyTaskAssignment.find({ userId: user.id || user._id, tierCode: tier.code, taskDate: today }, { sort: { taskNumber: 1 }, limit: 100 })
     ]);
-    const paidTaskCount = Math.max(0, Math.min(50, Number(tier.tasks || 0) - 1));
+    const paidTaskCount = Math.max(0, Math.min(50, Number(tier.tasks || 0)));
     const progress = getDailyTaskProgress(tier.code, paidTaskCount, todayAssignments, completions, Date.now());
     const taskWindow = progress.taskWindows.find(window => window.taskNumber === taskNumber);
     if (!taskWindow) return res.status(400).json({ error: 'مهمة التقييم غير موجودة ضمن خطة اليوم الحالية' });
@@ -448,14 +470,15 @@ async function submitDailyEvaluation(req, res) {
     }
     if (taskNumber > 1) {
       const previousTaskKey = `${tier.code}-task-${String(taskNumber - 1).padStart(2, '0')}`;
-      if (!completions.some(item => item.taskKey === previousTaskKey)) {
+      const previousCompleted = completions.some(item => getTaskKeyFromRecord(item) === previousTaskKey);
+      if (!previousCompleted) {
         return res.status(409).json({ error: 'أكمل مهمة التقييم السابقة أولًا.' });
       }
     }
 
     const rating = Number(req.body?.rating);
     const selectedTag = String(req.body?.selectedTag || '').trim();
-    const allowedTags = getEvaluationTags(assignment.category);
+    const allowedTags = getEvaluationTags(assignmentCategory);
     if (!Number.isInteger(rating) || rating < 1 || rating > 5 || !allowedTags.includes(selectedTag)) {
       return res.status(400).json({ error: 'اختر تقييمًا من نجمة إلى خمس نجوم وحدد جانب التقييم.' });
     }
@@ -466,10 +489,10 @@ async function submitDailyEvaluation(req, res) {
       userId: user.id || user._id,
       taskKey,
       taskDate: today,
-      assignmentId: assignment.id || assignment._id,
-      entityKey: assignment.entityKey,
-      targetCategory: assignment.category,
-      targetName: assignment.entityName,
+      assignmentId: assignmentId,
+      entityKey: assignmentEntityKey,
+      targetCategory: assignmentCategory,
+      targetName: assignmentEntityName,
       rating,
       selectedTag,
       feedback: '',
