@@ -104,7 +104,7 @@ function buildPlatformKnowledge(levels = [], settings = {}, userTier = '', vault
     vaultContractFacts,
     withdrawalMinimum: 20,
     withdrawalMaximum: withdrawalMax,
-    withdrawalFee: `10% من المبلغ؛ الحد الأدنى 20 USDT؛ الحد الأعلى العام الحالي ${withdrawalMax ?? 'غير متاح'} USDT إضافة إلى سقف المستوى/الأسبوع`,
+    withdrawalFee: '10% من المبلغ؛ الحد الأدنى 20 USDT',
     withdrawalAutomationEnabled: String(process.env.WITHDRAWAL_PAYOUTS_ENABLED || '').toLowerCase() === 'true',
     depositAutomationEnabled: String(process.env.TRON_DEPOSIT_AUTOMATION_ENABLED || '').toLowerCase() === 'true',
     referralCashRewards: '$1 لتفعيل إحالة مباشرة في A1، $2 في A2، و$5 في A3؛ مكافأة واحدة لكل مستوى مؤهل',

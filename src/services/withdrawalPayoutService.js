@@ -10,7 +10,7 @@ const TRANSFER_ABI_V2 = {
   stateMutability: 'nonpayable'
 };
 const MAX_BROADCAST_ATTEMPTS = 10;
-const DEFAULT_MAX_PAYOUT_AMOUNT = 5000;
+const DEFAULT_MAX_PAYOUT_AMOUNT = 100;
 
 function getMaxPayoutAmount() {
   const configured = String(process.env.WITHDRAWAL_MAX_SINGLE_USDT || '').trim();

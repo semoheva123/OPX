@@ -105,7 +105,7 @@ async function withdrawSupabase(req, res) {
     catch { return res.status(503).json({ error: 'إعداد الحد الأقصى للسحب غير صالح؛ لم يُحجز أي رصيد.' }); }
     const feeSummary = calculateHybridWithdrawalFee(amountText);
     if (!Number.isFinite(withdrawNum) || withdrawNum < MIN_WITHDRAWAL_AMOUNT) return res.status(400).json({ error: `الحد الأدنى للسحب هو ${MIN_WITHDRAWAL_AMOUNT}$ USDT` });
-    if (withdrawNum > maxPayoutAmount) return res.status(400).json({ error: `الحد الأقصى للسحب هو ${maxPayoutAmount}$ USDT` });
+    if (withdrawNum > maxPayoutAmount) return res.status(400).json({ error: 'المبلغ خارج النطاق المسموح للسحب' });
     if (!walletAddress || typeof walletAddress !== 'string' || !walletAddress.trim()) return res.status(400).json({ error: 'يرجى إدخال عنوان المحفظة' });
     const normalizedWalletAddress = walletAddress.trim();
     const normalizedNetwork = String(walletNetwork || '').trim().toUpperCase();

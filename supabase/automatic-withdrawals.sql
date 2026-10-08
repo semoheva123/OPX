@@ -26,7 +26,7 @@ declare
   normalized_network text := upper(trim(coalesce(p_network, '')));
 begin
   if normalized_network <> 'TRC20' then raise exception using errcode = 'P0001', message = 'INVALID_WITHDRAWAL_NETWORK'; end if;
-  if p_amount is null or p_amount < 20 or p_amount > 5000 or p_amount <> round(p_amount, 4)
+  if p_amount is null or p_amount < 20 or p_amount > 100 or p_amount <> round(p_amount, 4)
       or p_fee is null or p_fee < 0 or p_fee <> round(p_amount * 0.10, 4)
       or p_net_amount is null or p_net_amount <= 0 or p_net_amount <> round(p_amount - p_fee, 4) then
     raise exception using errcode = 'P0001', message = 'INVALID_WITHDRAWAL_AMOUNT';

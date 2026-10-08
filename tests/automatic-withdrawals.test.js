@@ -17,6 +17,7 @@ const queueWorkflow = read('.github/workflows/financial-queue-workers.yml');
 
 assert.equal(payout.parseTokenUnits('20', 6), 20_000_000n);
 assert.equal(payout.parseTokenUnits('1.250001', 6), 1_250_001n);
+assert.equal(payout.getMaxPayoutAmount(), 100, 'single withdrawal cap must be 100 USD in the backend');
 assert.throws(() => payout.parseTokenUnits('1.0000001', 6), /INVALID_PAYOUT_AMOUNT/);
 assert.throws(() => payout.parseTokenUnits('-1', 6), /INVALID_PAYOUT_AMOUNT/);
 assert.equal(walletControllerModule.calculateHybridWithdrawalFee(20.001).feeAmount, 2.0001, '10% withdrawal fee must be applied before net payout');
@@ -45,6 +46,7 @@ assert.deepEqual(payout.decryptSignedPayload('BEP20', privateKey, sealed), { raw
 assert.throws(() => payout.decryptSignedPayload('BEP20', 'wrong-key', sealed));
 
 assert.match(migration, /create table if not exists public\.withdrawal_payouts/i);
+assert.match(migration, /p_amount is null or p_amount < 20 or p_amount > 100/i, 'database withdrawal RPC must enforce 20 minimum and 100 maximum');
 assert.match(migration, /enable row level security/i);
 assert.match(migration, /revoke all privileges on table public\.withdrawal_payouts from public, anon, authenticated/i);
 assert.match(migration, /for update/i, 'payout claim/rejection must lock the withdrawal row');
