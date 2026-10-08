@@ -804,7 +804,7 @@ async function handleResetRequest(e) {
     const btn = document.getElementById('btnSendOtp');
 
     if(!email) {
-        showToast('يرجى إدخال البريد الإلكتروني');
+        showToast('يرجى إدخال البريد الإلكتروني أولًا.');
         return;
     }
 
@@ -819,14 +819,14 @@ async function handleResetRequest(e) {
         });
         const data = await res.json();
         if(res.ok) {
-            showToast('✅ تم إرسال رمز التحقق إلى بريدك الإلكتروني بنجاح', 'win');
+            showToast('✅ تم إرسال رمز التحقق إلى بريدك الإلكتروني بنجاح.', 'win');
             document.getElementById('resetRequestForm').classList.add('hide');
             document.getElementById('resetConfirmForm').classList.remove('hide');
         } else {
-            showToast('❌ ' + (data.error || 'فشل إرسال الرمز'));
+            showToast('❌ ' + (data.error || 'تعذّر إرسال الرمز الآن. حاول مرة أخرى.'));
         }
     } catch(err) {
-        showToast('❌ خطأ في الاتصال بالخادم');
+        showToast('❌ تعذّر الاتصال بالخادم الآن. حاول مرة أخرى.');
     } finally {
         btn.disabled = false;
         btn.innerText = 'إرسال رمز التحقق';
@@ -841,7 +841,7 @@ async function handleResetConfirm(e) {
     const btn = document.getElementById('btnResetSubmit');
 
     if(!otp || !newPassword) {
-        showToast('يرجى ملء جميع الحقول المطلوبة');
+        showToast('يرجى ملء جميع الحقول المطلوبة.');
         return;
     }
 
@@ -856,15 +856,15 @@ async function handleResetConfirm(e) {
         });
         const data = await res.json();
         if(res.ok) {
-            showToast('🎉 تم تغيير كلمة المرور بنجاح! يمكنك الآن تسجيل الدخول', 'win');
+            showToast('🎉 تم تغيير كلمة المرور بنجاح. يمكنك الآن تسجيل الدخول.', 'win');
             closeForgotPasswordModal();
             document.getElementById('loginEmail').value = email;
             document.getElementById('loginPassword').value = '';
         } else {
-            showToast('❌ ' + (data.error || 'رمز التحقق غير صحيح أو منتهي الصلاحية'));
+            showToast('❌ ' + (data.error || 'رمز التحقق غير صحيح أو منتهي الصلاحية.'));
         }
     } catch(err) {
-        showToast('❌ خطأ في الاتصال بالخادم');
+        showToast('❌ تعذّر الاتصال بالخادم الآن. حاول مرة أخرى.');
     } finally {
         btn.disabled = false;
         btn.innerText = 'تحديث كلمة المرور والدخول';
@@ -889,13 +889,13 @@ async function handleLogin(e) {
         const data = await res.json();
         if(res.ok && data.token) {
             localStorage.setItem('token', data.token);
-            showToast('تم تسجيل الدخول بنجاح وحماية المحفظة');
+            showToast('تم تسجيل الدخول بنجاح. مرحبًا بك في المنصة.');
             loadUserProfile();
         } else {
-            showToast(data.error || 'خطأ في تسجيل الدخول');
+            showToast(data.error || 'تعذّر تسجيل الدخول. التحقق من البيانات ثم حاول مرة أخرى.');
         }
     } catch(err) {
-        showToast('خطأ في الاتصال بالخادم');
+        showToast('تعذّر الاتصال بالخادم الآن. حاول مرة أخرى.');
     } finally {
         btn.disabled = false;
         btn.innerText = 'دخول المنصة';
@@ -910,7 +910,7 @@ async function handleRegister(e) {
     const referralCode = document.getElementById('regReferralCode').value.trim();
     const btn = document.getElementById('btnRegisterSubmit');
 
-    if (password !== passwordConfirm) { showToast('كلمتا المرور غير متطابقتين'); return; }
+    if (password !== passwordConfirm) { showToast('كلمتا المرور غير متطابقتين.'); return; }
     btn.disabled = true;
     btn.innerText = 'جاري إنشاء الحساب...';
 
@@ -924,14 +924,14 @@ async function handleRegister(e) {
         if(res.ok) {
             localStorage.removeItem('operix_ref_code');
             localStorage.removeItem('ag_ref_code');
-            showToast(data.message || 'تم إنشاء الحساب والمحفظة بنجاح، يرجى الدخول');
+            showToast(data.message || 'تم إنشاء الحساب بنجاح. يمكنك تسجيل الدخول الآن.');
             switchAuthTab('login');
             document.getElementById('loginEmail').value = email;
         } else {
-            showToast(data.error || 'خطأ في التسجيل');
+            showToast(data.error || 'تعذّر إنشاء الحساب. حاول مرة أخرى.');
         }
     } catch(err) {
-        showToast('خطأ في الاتصال');
+        showToast('تعذّر الاتصال بالخادم الآن. حاول مرة أخرى.');
     } finally {
         btn.disabled = false;
         btn.innerText = 'إنشاء حساب ومحفظة خاصة';

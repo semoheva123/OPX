@@ -100,9 +100,9 @@ async function register(req, res) {
     res.status(201).json({ success: true, message: `تم إنشاء الحساب بنجاح.${emailWarning}` });
   } catch (err) {
     console.error('Register error:', err.message);
-    if (err.code === '23505' && String(err.message || '').toLowerCase().includes('username')) return res.status(409).json({ error: 'اسم المستخدم يجب أن يطابق البريد الإلكتروني المسجل' });
-    if (err.code === '23505' && String(err.message || '').toLowerCase().includes('email')) return res.status(409).json({ error: 'البريد الإلكتروني مسجل بالفعل' });
-    res.status(400).json({ error: 'فشل في إنشاء الحساب' });
+    if (err.code === '23505' && String(err.message || '').toLowerCase().includes('username')) return res.status(409).json({ error: 'اسم المستخدم يجب أن يطابق البريد الإلكتروني المسجل.' });
+    if (err.code === '23505' && String(err.message || '').toLowerCase().includes('email')) return res.status(409).json({ error: 'البريد الإلكتروني مسجل بالفعل.' });
+    res.status(400).json({ error: 'تعذّر إنشاء الحساب. تحقق من البيانات ثم حاول مرة أخرى.' });
   }
 }
 
