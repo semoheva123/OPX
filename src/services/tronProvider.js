@@ -128,11 +128,17 @@ async function requestJsonWithFallback(urls, path, options = {}) {
   for (const endpoint of endpoints) {
     const url = `${endpoint}/${String(path || '').replace(/^\/+/, '')}`;
     try {
-      const response = await fetcher(url, {
+      const request = {
         ...options.request,
         headers: headersForEndpoint(endpoint, options.request?.headers || {}),
         signal: options.request?.signal || AbortSignal.timeout(options.timeoutMs || 12000)
-      });
+      };
+      let response = await fetcher(url, request);
+      if ((response.status === 401 || response.status === 403) && request.headers['TRON-PRO-API-KEY']) {
+        const publicHeaders = { ...request.headers };
+        delete publicHeaders['TRON-PRO-API-KEY'];
+        response = await fetcher(url, { ...request, headers: publicHeaders });
+      }
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(`TRON_PROVIDER_HTTP_${response.status}`);
       if (body?.Error || (body?.success === false && body?.error) || body?.error) throw new Error(`TRON_PROVIDER_RESPONSE_ERROR:${String(body.Error || body.error).slice(0, 180)}`);

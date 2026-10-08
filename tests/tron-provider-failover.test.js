@@ -75,6 +75,22 @@ const originalEnv = Object.fromEntries(envKeys.map(key => [key, process.env[key]
     });
     assert.ok(cooldownOrder[0].startsWith('https://indexer.final.example/'), 'healthy endpoint is preferred while failed nodes cool down');
 
+    process.env.TRON_INDEXER_URL = 'https://api.trongrid.io';
+    process.env.TRON_INDEXER_FALLBACK_URLS = '';
+    const authFallbackRequests = [];
+    const authFallbackResult = await provider.requestJsonWithFallback(provider.getIndexerEndpoints(), 'v1/accounts/T123/transactions/trc20', {
+      fetcher: async (url, options) => {
+        authFallbackRequests.push({ url, headers: options.headers });
+        if (options.headers['TRON-PRO-API-KEY']) return { ok: false, status: 403, json: async () => ({ error: 'key rejected' }) };
+        return { ok: true, status: 200, json: async () => ({ data: [] }) };
+      },
+      validateBody: body => Array.isArray(body?.data)
+    });
+    assert.equal(authFallbackRequests.length, 2, 'rejected TronGrid credentials retry once against its public endpoint');
+    assert.equal(authFallbackRequests[0].headers['TRON-PRO-API-KEY'], 'secret-test-key');
+    assert.equal(authFallbackRequests[1].headers['TRON-PRO-API-KEY'], undefined, 'the rejected key is omitted from the public retry');
+    assert.equal(authFallbackResult.endpoint, 'https://api.trongrid.io');
+
     const visitedClients = [];
     const operationResult = await provider.withTronWeb(async (client, endpoint) => {
       visitedClients.push(endpoint);
