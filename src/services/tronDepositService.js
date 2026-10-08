@@ -3,11 +3,13 @@ const blockchainService = require('./blockchainService');
 const tronProvider = require('./tronProvider');
 const dataAccess = require('./dataAccess');
 const realtimeService = require('./realtimeService');
+const { depositConfirmedTemplate } = require('./emailTemplates');
 
 const TRON_DECIMALS = 6;
 const LOOKBACK_MS = 2 * 60 * 1000;
 const PAGE_SIZE = 200;
 const MAX_PAGES_PER_ADDRESS = 10;
+const emailFrom = String(process.env.EMAIL_FROM || '').trim();
 
 function getTronWeb() {
   return tronProvider.createTronWeb();
@@ -70,7 +72,39 @@ async function fetchTronGrid(path) {
   return result.body;
 }
 
-async function processAddress(addressRow) {
+function formatDepositReceiptAmount(value) {
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount <= 0) return '';
+  return amount.toFixed(6).replace(/\.?0+$/, '');
+}
+
+async function sendDepositConfirmationEmail(resend, userId, transaction) {
+  if (!resend?.emails?.send || !emailFrom || !transaction?.id || !transaction?.txHash) return { sent: false, reason: 'EMAIL_PROVIDER_NOT_CONFIGURED' };
+  try {
+    const user = await dataAccess.user.findById(userId);
+    if (!user?.email || !user.emailVerified) return { sent: false, reason: 'VERIFIED_EMAIL_REQUIRED' };
+    const amount = formatDepositReceiptAmount(transaction.amount);
+    if (!amount) return { sent: false, reason: 'INVALID_DEPOSIT_RECEIPT_AMOUNT' };
+    const result = await resend.emails.send({
+      from: emailFrom,
+      to: user.email,
+      subject: 'تم تأكيد إيداع USDT في حسابك - OPERIX',
+      html: depositConfirmedTemplate({
+        amount,
+        transactionId: transaction.id,
+        txHash: transaction.txHash,
+        creditedAt: transaction.createdAt ? new Date(transaction.createdAt).toLocaleString('ar') : new Date().toLocaleString('ar')
+      })
+    });
+    if (result?.error) throw new Error(result.error.message || 'EMAIL_PROVIDER_REJECTED');
+    return { sent: true };
+  } catch (error) {
+    console.error('TRON deposit confirmation email failed:', error.message);
+    return { sent: false, reason: 'EMAIL_DELIVERY_FAILED' };
+  }
+}
+
+async function processAddress(addressRow, resend) {
   const config = blockchainService.getBlockchainConfig().TRC20;
   const tronWeb = getTronWeb();
   const expectedTo = normalizeTronAddress(addressRow.address, tronWeb);
@@ -84,6 +118,8 @@ async function processAddress(addressRow) {
   let pages = 0;
   let credited = 0;
   let duplicates = 0;
+  let emailNotificationsSent = 0;
+  let emailNotificationsFailed = 0;
 
   do {
     const params = new URLSearchParams({
@@ -119,6 +155,9 @@ async function processAddress(addressRow) {
       });
       if (result?.credited) {
         credited++;
+        const emailResult = await sendDepositConfirmationEmail(resend, addressRow.userId, result.transaction);
+        if (emailResult.sent) emailNotificationsSent++;
+        else if (emailResult.reason !== 'EMAIL_PROVIDER_NOT_CONFIGURED' && emailResult.reason !== 'VERIFIED_EMAIL_REQUIRED') emailNotificationsFailed++;
         try {
           await realtimeService.publish('user_data_changed', { reason: 'deposit_created', timestamp: new Date().toISOString() }, { userId: addressRow.userId });
           await realtimeService.publish('admin_transaction_created', { transactionId: result.transaction?.id, type: 'deposit', userId: addressRow.userId }, { scope: 'admin' });
@@ -136,10 +175,10 @@ async function processAddress(addressRow) {
 
   const nextCursor = new Date(Math.max(newestTimestamp, Date.now() - LOOKBACK_MS));
   await dataAccess.tronDepositAddress.updateOne({ userId: addressRow.userId }, { lastScannedAt: nextCursor });
-  return { userId: addressRow.userId, pages, credited, duplicates, cursor: nextCursor.toISOString() };
+  return { userId: addressRow.userId, pages, credited, duplicates, emailNotificationsSent, emailNotificationsFailed, cursor: nextCursor.toISOString() };
 }
 
-async function processTronDepositQueue() {
+async function processTronDepositQueue(resend) {
   if (String(process.env.TRON_DEPOSIT_AUTOMATION_ENABLED || '').toLowerCase() !== 'true') {
     return { processed: 0, skipped: true, reason: 'TRON_DEPOSIT_AUTOMATION_DISABLED' };
   }
@@ -151,7 +190,7 @@ async function processTronDepositQueue() {
   const results = [];
   for (const address of addresses) {
     try {
-      results.push(await processAddress(address));
+      results.push(await processAddress(address, resend));
     } catch (error) {
       console.error(`TRON deposit scan failed for ${address.address}:`, error.message);
       results.push({ userId: address.userId, error: error.message });
@@ -160,4 +199,4 @@ async function processTronDepositQueue() {
   return { processed: results.length, results };
 }
 
-module.exports = { deriveDepositAddress, ensureUserDepositAddress, processTronDepositQueue };
+module.exports = { deriveDepositAddress, ensureUserDepositAddress, processTronDepositQueue, formatDepositReceiptAmount, sendDepositConfirmationEmail };

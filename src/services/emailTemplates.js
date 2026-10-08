@@ -206,6 +206,27 @@ function withdrawalRequestTemplate({ amount, transactionId, walletAddress, reque
   });
 }
 
+function depositConfirmedTemplate({ amount, transactionId, txHash, creditedAt }) {
+  return renderEmailTemplate({
+    title: 'تم تأكيد إيداع USDT',
+    preheader: `تمت إضافة ${amount} USDT إلى رصيد حسابك`,
+    heading: 'تم تأكيد الإيداع بنجاح',
+    description: `تم تأكيد تحويلك على شبكة TRC20 وإضافة ${amount} USDT إلى رصيد الإيداع في حسابك على OPERIX.`,
+    actionText: 'فتح حسابي',
+    actionUrl: `${process.env.APP_URL || 'https://operix.website'}/`,
+    highlightTitle: 'المبلغ المضاف إلى الحساب',
+    highlightValue: `${amount} USDT`,
+    details: [
+      { label: 'رقم العملية', value: transactionId },
+      { label: 'الشبكة', value: 'TRC20' },
+      { label: 'هاش التحويل', value: txHash },
+      ...(creditedAt ? [{ label: 'وقت التأكيد', value: creditedAt }] : [])
+    ],
+    secondaryText: 'إذا لم تكن أنت من أجرى هذا التحويل، تواصل مع الدعم من داخل حسابك. لا تشارك كلمة المرور أو رموز التحقق.',
+    footerNote: 'تم إرسال هذا الإيصال تلقائيًا بعد تأكيد الإيداع وتسجيله في رصيد حسابك.'
+  });
+}
+
 function withdrawalCompletedTemplate({ amount, transactionId, walletAddress, completedAt }) {
   return renderEmailTemplate({
     title: 'تم إتمام عملية السحب',
@@ -269,6 +290,7 @@ module.exports = {
   twoFactorTemplate,
   withdrawalEmailCodeTemplate,
   withdrawalRequestTemplate,
+  depositConfirmedTemplate,
   withdrawalCompletedTemplate,
   withdrawalRejectedTemplate,
   adminInviteTemplate

@@ -134,14 +134,6 @@ async function withdrawSupabase(req, res) {
     const user = await dataAccess.user.findById(req.user.id);
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     const withdrawalSchedule = getWithdrawalSchedule(user.tierCode, new Date());
-    if (!withdrawalSchedule.allowed) {
-      return res.status(403).json({
-        success: false,
-        code: 'WITHDRAWAL_DAY_NOT_ALLOWED',
-        error: `${withdrawalSchedule.message} موعدك التالي: ${withdrawalSchedule.nextAvailableAt}.`,
-        schedule: withdrawalSchedule
-      });
-    }
     const fullFeatureAccess = hasFullFeatureAccess(user);
     if (!user.emailVerified) return res.status(400).json({ error: 'يجب تأكيد بريدك الإلكتروني قبل طلب السحب' });
     if (!user.walletAddress || String(user.walletAddress).trim() !== normalizedWalletAddress) return res.status(400).json({ error: 'عنوان المحفظة لا يطابق العنوان المثبت في حسابك' });
@@ -190,6 +182,14 @@ async function withdrawSupabase(req, res) {
 
     const normalizedEmailCode = String(emailCode).trim();
     if (!/^[0-9]{6}$/.test(normalizedEmailCode)) return res.status(400).json({ error: 'أدخل رمز البريد المكوّن من 6 أرقام.' });
+    if (!withdrawalSchedule.allowed) {
+      return res.status(403).json({
+        success: false,
+        code: 'WITHDRAWAL_DAY_NOT_ALLOWED',
+        error: `${withdrawalSchedule.message} موعدك التالي: ${withdrawalSchedule.nextAvailableAt}.`,
+        schedule: withdrawalSchedule
+      });
+    }
     const codeAccepted = await dataAccess.callSupabaseRpc('operix_withdrawal_email_code_consume_atomic', {
       p_user_id: req.user.id,
       p_code_hash: hashWithdrawalEmailCode(req.user.id, normalizedEmailCode),

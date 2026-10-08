@@ -549,7 +549,6 @@ function renderHomeSummary(summary) {
     if (healthLabel) healthLabel.innerText = `${healthScore}%`;
     if (healthProgress) healthProgress.style.width = `${healthScore}%`;
     if (healthMessage) {
-        if (!healthChecks.twoFactor) missingChecks.push('فعّل المصادقة الثنائية');
         if (!healthChecks.wallet) missingChecks.push('ثبّت عنوان محفظة السحب');
         if (!healthChecks.deposit) missingChecks.push('أكمل أول إيداع لتفعيل الحساب');
         if (!healthChecks.activity) missingChecks.push('سجّل أول نشاط مالي معتمد');
@@ -3329,9 +3328,11 @@ function syncWithdrawalScheduleUI() {
         status.classList.toggle('text-amber-100', !schedule.allowed);
     }
     if (button && !button.dataset.submitting) {
-        button.disabled = !schedule.allowed;
-        button.classList.toggle('opacity-50', !schedule.allowed);
-        button.classList.toggle('cursor-not-allowed', !schedule.allowed);
+        const codeRequested = !document.getElementById('withdrawEmailCodePanel')?.classList.contains('hidden');
+        button.disabled = !schedule.allowed && codeRequested;
+        button.classList.toggle('opacity-50', button.disabled);
+        button.classList.toggle('cursor-not-allowed', button.disabled);
+        button.innerText = codeRequested ? 'تأكيد طلب السحب' : 'إرسال رمز التأكيد إلى البريد';
     }
     return schedule;
 }
