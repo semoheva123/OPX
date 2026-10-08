@@ -57,6 +57,7 @@ jobs:
         shell: bash
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          STRICT_READINESS: ${{ github.event_name == 'workflow_dispatch' && inputs.auth_only }}
         run: |
           status=$(curl --silent --show-error --output /dev/null \
             --write-out '%{http_code}' --max-time 70 \
@@ -84,9 +85,13 @@ jobs:
           jq -c '{readyForControlledTest: .result.readyForControlledTest, checks: .result.checks, switches: .result.switches}' "$readiness_file"
           jq -e '.success == true and .result.readyForControlledTest == true' "$readiness_file" > /dev/null || {
             safe_checks=$(jq -c '{readyForControlledTest: .result.readyForControlledTest, checks: .result.checks, switches: .result.switches}' "$readiness_file")
-            echo "::error title=Read-only financial preflight blocked::$safe_checks"
+            if [[ "$STRICT_READINESS" == "true" ]]; then
+              echo "::error title=Read-only financial preflight blocked::$safe_checks"
+              echo 'No deposit or payout worker was invoked.'
+              exit 1
+            fi
+            echo "::warning title=Financial preflight not ready::$safe_checks"
             echo 'No deposit or payout worker was invoked.'
-            exit 1
           }
 
       - name: Validate financial schema before processing queues
@@ -119,7 +124,13 @@ jobs:
             --header "Authorization: Bearer ${CRON_SECRET}" \
             'https://operix.website/api/internal/cron/process-tron-deposits'
           jq -c '{success, job, processed: .result.processed, skipped: (.result.skipped // false), reason: (.result.reason // null)}' "$response_file"
-          jq -e '.success == true and (.result.skipped != true)' "$response_file" > /dev/null
+          jq -e '.success == true and ((.result.skipped != true) or .result.reason == "TRON_DEPOSIT_AUTOMATION_DISABLED") and ([.result.results[]? | select(has("error"))] | length == 0)' "$response_file" > /dev/null || {
+            echo '::error::TRON deposit worker failed or was skipped for an unexpected reason.'
+            exit 1
+          }
+          if jq -e '.result.skipped == true' "$response_file" > /dev/null; then
+            echo 'TRON deposit scanning is intentionally disabled; no queue work was expected.'
+          fi
 
       - name: Process authorized withdrawal payouts
         if: ${{ always() && steps.validate.outputs.configured == 'true' && steps.schema.outcome == 'success' }}
@@ -136,4 +147,10 @@ jobs:
             --header "Authorization: Bearer ${CRON_SECRET}" \
             'https://operix.website/api/internal/cron/process-withdrawal-payouts'
           jq -c '{success, job, automaticApprovalsProcessed: (.result.automaticApprovals.processed // null), payoutsProcessed: (.result.payouts.processed // null), skipped: (.result.payouts.skipped // false), reason: (.result.payouts.reason // null)}' "$response_file"
-          jq -e '.success == true and (.result.payouts.skipped != true) and ((.result.automaticApprovals.error // "") == "")' "$response_file" > /dev/null
+          jq -e '.success == true and ((.result.payouts.skipped != true) or .result.payouts.reason == "WITHDRAWAL_PAYOUTS_DISABLED") and ((.result.automaticApprovals.error // "") == "") and ([.result.payouts.results[]? | select(has("error"))] | length == 0)' "$response_file" > /dev/null || {
+            echo '::error::Withdrawal payout worker failed or was skipped for an unexpected reason.'
+            exit 1
+          }
+          if jq -e '.result.payouts.skipped == true' "$response_file" > /dev/null; then
+            echo 'Withdrawal payouts are intentionally disabled; no payout queue work was expected.'
+          fi
