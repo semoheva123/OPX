@@ -90,8 +90,10 @@ function getDailyTaskProgress(tierCode, paidTaskCount, assignments = [], complet
 
 function splitHybridReward(amount) {
   const value = Number(amount) || 0;
-  const usdtAmount = Number((value * 0.7).toFixed(4));
-  const opxAmount = Number((value * 0.3).toFixed(4));
+  const withdrawableShare = 0.9;
+  const internalShare = 0.1;
+  const usdtAmount = Number((value * withdrawableShare).toFixed(4));
+  const opxAmount = Number((value * internalShare).toFixed(4));
   return { usdtAmount, opxAmount };
 }
 

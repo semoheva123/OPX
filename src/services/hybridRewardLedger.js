@@ -1,5 +1,5 @@
-const USDT_REWARD_SHARE = 0.7;
-const OPX_REWARD_SHARE = 0.3;
+const USDT_REWARD_SHARE = 0.9;
+const OPX_REWARD_SHARE = 0.1;
 
 function splitReward(amount) {
   const grossAmount = Number(amount) || 0;

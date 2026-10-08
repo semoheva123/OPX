@@ -40,7 +40,11 @@ function calculateFinancialAccounting({ transactions = [], users = [], vaults = 
   const depositInflow = deposits.reduce((sum, transaction) => sum + amount(transaction.amount), 0);
   const confirmedWithdrawalGross = withdrawals.reduce((sum, transaction) => sum + amount(transaction.amount), 0);
   const confirmedWithdrawalCash = withdrawals.reduce((sum, transaction) => sum + amount(transaction.netAmount || transaction.amount), 0);
-  const withdrawalFeeIncome = withdrawals.reduce((sum, transaction) => sum + amount(transaction.feeAmount), 0);
+  const withdrawalFeeEntries = ledger.filter(entry => entry.type === 'withdrawal_fee_income' && entry.status === 'approved');
+  const recordedWithdrawalFeeReferences = new Set(withdrawalFeeEntries.map(entry => String(entry.referenceId || '')).filter(Boolean));
+  const withdrawalFeeIncome = withdrawalFeeEntries.reduce((sum, entry) => sum + amount(entry.amount), 0) +
+    withdrawals.filter(transaction => !recordedWithdrawalFeeReferences.has(String(transaction.id || transaction._id || '')))
+      .reduce((sum, transaction) => sum + amount(transaction.feeAmount), 0);
   const tierRevenueUsdt = tierActivations.reduce((sum, transaction) => sum + amount(transaction.usdtAmount), 0);
   const tierOpxUnits = tierActivations.reduce((sum, transaction) => sum + amount(transaction.opxAmount), 0);
   const rewardCreditsUsdt = rewards.reduce((sum, transaction) => sum + amount(transaction.usdtAmount), 0);

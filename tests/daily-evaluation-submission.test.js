@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict');
 const dataAccess = require('../src/services/dataAccess');
 const activityController = require('../src/controllers/activityController');
+const { splitReward } = require('../src/services/hybridRewardLedger');
 
 const originals = {
   findUser: dataAccess.user.findById,
@@ -25,6 +26,10 @@ function responseRecorder() {
 }
 
 (async () => {
+  const rewardSplit = splitReward(100);
+  assert.equal(rewardSplit.usdtAmount, 90, 'task and game rewards should reserve 90% for withdrawable balance');
+  assert.equal(rewardSplit.opxAmount, 10, 'task and game rewards should assign 10% to internal balance');
+
   const saved = [];
   let rpcCalls = 0;
   let completionRows = [];

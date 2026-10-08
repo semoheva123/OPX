@@ -3478,14 +3478,14 @@ function updateHybridWithdrawFee() {
     const amountText = String(amountInput.value || '').trim();
     const amountMatch = amountText.match(/^(?:0|[1-9]\d*)(?:\.(\d{1,4}))?$/);
     if (!amountMatch) {
-        feeSummary.innerHTML = 'الرسوم: 5% + 2$ • الحد الأدنى: 20$';
+        feeSummary.innerHTML = 'الرسوم: 10% • الحد الأدنى: 20$';
         return;
     }
     const [whole, fraction = ''] = amountText.split('.');
     const amountUnits = BigInt(whole) * 10000n + BigInt(fraction.padEnd(4, '0') || '0');
-    const feeCents = (amountUnits * 5n + 5000n) / 10000n + 200n;
-    const feeAmount = Number(feeCents) / 100;
-    const netAmount = Number(amountUnits - feeCents * 100n) / 10000;
+    const feeUnits = (amountUnits * 10n) / 100n;
+    const feeAmount = Number(feeUnits) / 10000;
+    const netAmount = Number(amountUnits - feeUnits) / 10000;
     feeSummary.innerHTML = `الرسوم: <span class="text-amber-300 font-bold">$${feeAmount.toFixed(2)}</span> • صافي الدفع: <span class="text-emerald-300 font-bold">$${netAmount.toFixed(2)}</span> • الحد الأدنى: <span class="text-slate-300">20$</span>`;
 }
 

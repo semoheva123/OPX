@@ -19,8 +19,9 @@ assert.equal(payout.parseTokenUnits('20', 6), 20_000_000n);
 assert.equal(payout.parseTokenUnits('1.250001', 6), 1_250_001n);
 assert.throws(() => payout.parseTokenUnits('1.0000001', 6), /INVALID_PAYOUT_AMOUNT/);
 assert.throws(() => payout.parseTokenUnits('-1', 6), /INVALID_PAYOUT_AMOUNT/);
-assert.equal(walletControllerModule.calculateHybridWithdrawalFee(20.001).netAmount, 17.001, 'net payout must preserve the database-supported four decimal places');
-assert.equal(walletControllerModule.calculateHybridWithdrawalFee('20.1').feeAmount, 3.01, 'fee rounding must match PostgreSQL numeric rounding');
+assert.equal(walletControllerModule.calculateHybridWithdrawalFee(20.001).feeAmount, 2.0001, '10% withdrawal fee must be applied before net payout');
+assert.equal(walletControllerModule.calculateHybridWithdrawalFee(20.001).netAmount, 18.0009, 'net payout must equal value minus the 10% fee');
+assert.equal(walletControllerModule.calculateHybridWithdrawalFee('20.1').feeAmount, 2.01, '10% fee rounding must match the database-supported four decimal places');
 assert.equal(walletControllerModule.sameWithdrawalIntent(
 	{ amount: 20.001, feeAmount: 3, netAmount: 17.001, walletAddress: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8', network: 'TRC20' },
 	{ amount: 20.001, feeAmount: 3, netAmount: 17.001, walletAddress: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8', network: 'TRC20' }

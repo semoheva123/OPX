@@ -27,7 +27,7 @@ declare
 begin
   if normalized_network <> 'TRC20' then raise exception using errcode = 'P0001', message = 'INVALID_WITHDRAWAL_NETWORK'; end if;
   if p_amount is null or p_amount < 20 or p_amount > 5000 or p_amount <> round(p_amount, 4)
-      or p_fee is null or p_fee < 0 or p_fee <> round(p_amount * 0.05 + 2, 2)
+      or p_fee is null or p_fee < 0 or p_fee <> round(p_amount * 0.10, 4)
       or p_net_amount is null or p_net_amount <= 0 or p_net_amount <> round(p_amount - p_fee, 4) then
     raise exception using errcode = 'P0001', message = 'INVALID_WITHDRAWAL_AMOUNT';
   end if;
@@ -85,6 +85,21 @@ create index if not exists withdrawal_payouts_queue_idx on public.withdrawal_pay
 alter table public.withdrawal_payouts enable row level security;
 revoke all privileges on table public.withdrawal_payouts from public, anon, authenticated;
 grant all privileges on table public.withdrawal_payouts to service_role;
+
+alter table public.financial_ledger drop constraint if exists financial_ledger_type_check;
+alter table public.financial_ledger add constraint financial_ledger_type_check
+  check (type in ('deposit','withdraw','reward','staking_reward','referral_commission','upgrade_deduction','token_burn','vault_lock','vault_release','vault_early_release','vault_penalty','admin_adjustment','withdrawal_fee_income'));
+create unique index if not exists financial_ledger_withdrawal_fee_revenue_ref_idx
+  on public.financial_ledger(reference_id) where source = 'withdrawal_fee_revenue';
+
+insert into public.financial_ledger(user_id,type,currency,amount,fee_amount,net_amount,balance_before,balance_after,status,source,reference_id,notes,metadata,created_at)
+select tx.user_id,'withdrawal_fee_income','USDT',tx.fee_amount,0,tx.fee_amount,0,0,'approved','withdrawal_fee_revenue',tx.id::text,
+  'Withdrawal fee recognized after payout confirmation',
+  jsonb_build_object('transactionAmount',tx.amount,'payoutNetAmount',tx.net_amount,'txHash',tx.tx_hash),
+  coalesce(tx.updated_at,tx.created_at,now())
+from public.transactions tx
+where tx.type='withdraw' and tx.status='approved' and tx.fee_amount>0
+on conflict (reference_id) where source='withdrawal_fee_revenue' do nothing;
 
 create or replace function public.operix_admin_withdrawal_claim_atomic(p_transaction_id uuid, p_admin_user_id uuid)
 returns jsonb language plpgsql security definer set search_path = public as $$
@@ -244,6 +259,13 @@ begin
   update transactions set status='approved', tx_hash=payout.tx_hash, network=payout.network, updated_at=now() where id=tx.id returning * into tx;
   update financial_ledger set status='approved', metadata=coalesce(metadata,'{}'::jsonb) || jsonb_build_object('network',payout.network,'txHash',payout.tx_hash,'senderAddress',payout.sender_address,'confirmations',p_confirmations)
     where reference_id=tx.id::text and source='withdrawal_request';
+  if tx.fee_amount > 0 then
+    insert into financial_ledger(user_id,type,currency,amount,fee_amount,net_amount,balance_before,balance_after,status,source,reference_id,notes,metadata)
+      values(tx.user_id,'withdrawal_fee_income','USDT',tx.fee_amount,0,tx.fee_amount,0,0,'approved','withdrawal_fee_revenue',tx.id::text,
+        'Withdrawal fee recognized after payout confirmation',
+        jsonb_build_object('transactionAmount',tx.amount,'payoutNetAmount',tx.net_amount,'txHash',payout.tx_hash,'network',payout.network))
+      on conflict (reference_id) where source='withdrawal_fee_revenue' do nothing;
+  end if;
   insert into audit_logs(action, entity, metadata, created_at)
     values('withdrawal_payout_paid', tx.id::text, jsonb_build_object('network',payout.network,'amount',payout.amount,'txHash',payout.tx_hash,'confirmations',p_confirmations), now());
   return jsonb_build_object('duplicate', false, 'payout', row_to_json(payout), 'transaction', row_to_json(tx));

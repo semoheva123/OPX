@@ -46,7 +46,7 @@ function localReply(message, userName, userBalance, userTier, platformFacts = {}
     const gameRanges = platformFacts.gameRewardRanges || 'نطاق المكافأة وإعدادات الدورة تظهر في تبويب «الألعاب»';
     const problem = has('مشكلة', 'لا تعمل', 'لا استطيع', 'ما اقدر', 'خطا', 'لم تظهر');
     const cycleRequirement = account.paidFeatureAccess ? 'حسابك لديه صلاحية وصول خاصة؛ اعتمد عدد الدورات الظاهر بجانب اللعبة' : `تتطلب الدورة ${platformFacts.referralsPerCycle || 6} إحالات نشطة مع تفعيل الحساب/المستوى`;
-    return `تبويب «الألعاب» يحتوي عجلة الحظ والصندوق المجهول وسجل المكافآت والإحصاءات. ${cycleRequirement}؛ عدد الدورات المتاح لحسابك هو ${account.wheelCredits ?? 'المعروض بجانب اللعبة'} للعجلة و${account.mysteryBoxCredits ?? 'المعروض بجانب اللعبة'} للصندوق. نطاقات المكافآت الحالية: ${gameRanges}، ويُوزع إجمالي مكافأة اللعب 70% USDT و30% OPX حسب الإعداد الحالي. لا يوجد ضمان لمكافأة بعينها، وتخضع المكافآت للسقف اليومي الظاهر بالإعدادات.${problem ? ' إذا كانت لديك دورة والزر لا يعمل، تأكد من حالة المستوى والحد اليومي ثم حدّث الحساب؛ أرسل رسالة الخطأ للدعم.' : ''}`;
+    return `تبويب «الألعاب» يحتوي عجلة الحظ والصندوق المجهول وسجل المكافآت والإحصاءات. ${cycleRequirement}؛ عدد الدورات المتاح لحسابك هو ${account.wheelCredits ?? 'المعروض بجانب اللعبة'} للعجلة و${account.mysteryBoxCredits ?? 'المعروض بجانب اللعبة'} للصندوق. نطاقات المكافآت الحالية: ${gameRanges}، ويُوزع إجمالي مكافأة اللعب 90% USDT و10% OPX حسب الإعداد الحالي. لا يوجد ضمان لمكافأة بعينها، وتخضع المكافآت للسقف اليومي الظاهر بالإعدادات.${problem ? ' إذا كانت لديك دورة والزر لا يعمل، تأكد من حالة المستوى والحد اليومي ثم حدّث الحساب؛ أرسل رسالة الخطأ للدعم.' : ''}`;
   }
   if (has('فريق', 'احالة', 'احالات', 'دعوة', 'دعوات', 'رابط الدعوة', 'referral', 'نقاط الحملة', 'مكافأة إحالة', 'مكافآت إحالة')) {
     const problem = has('مشكلة', 'لم تصل', 'لم تظهر', 'خطا', 'ناقص');
@@ -81,7 +81,7 @@ function normalizeSupportText(value) {
 function buildPlatformKnowledge(levels = [], settings = {}, userTier = '', vaultContracts = [], account = {}) {
   const currentLevel = levels.find(level => String(level.code).toUpperCase() === String(userTier).toUpperCase());
   const levelFacts = levels.map(level => {
-    const taskLimit = Math.max(0, Number(level.tasks || 1));
+    const taskLimit = Math.max(0, Number(level.tasks || 1) - 1);
     const dailyOpx = getTierDailyOpxConversion(level.code);
     return `${level.code}: الاسم=${level.name}؛ السعر=${Number(level.price || 0)} USDT؛ المهام المدفوعة يوميًا=${taskLimit}؛ العائد اليومي المعروض=${Number(level.dailyProfit || 0)} USDT (تقديري)؛ توزيع OPX اليومي=${dailyOpx} USDT قيمة داخلية`;
   }).join('؛ ') || 'بيانات المستويات غير متاحة الآن؛ لا تخمّن الأرقام';
@@ -94,7 +94,7 @@ function buildPlatformKnowledge(levels = [], settings = {}, userTier = '', vault
   try { withdrawalMax = withdrawalPayoutService.getMaxPayoutAmount(); } catch { withdrawalMax = null; }
   return {
     levelFacts,
-    currentLevelTaskLimit: currentLevel ? Math.max(0, Number(currentLevel.tasks || 1)) : null,
+    currentLevelTaskLimit: currentLevel ? Math.max(0, Number(currentLevel.tasks || 1) - 1) : null,
     referralsPerCycle: Math.max(1, Number(settings.referralsPerCycle) || 6),
     withdrawalSchedule: withdrawalSchedule.message,
     withdrawalDay: withdrawalSchedule.allowedDayName,
@@ -104,19 +104,19 @@ function buildPlatformKnowledge(levels = [], settings = {}, userTier = '', vault
     vaultContractFacts,
     withdrawalMinimum: 20,
     withdrawalMaximum: withdrawalMax,
-    withdrawalFee: `5% من المبلغ + 2 USDT؛ الحد الأدنى 20 USDT؛ الحد الأعلى العام الحالي ${withdrawalMax ?? 'غير متاح'} USDT إضافة إلى سقف المستوى/الأسبوع`,
+    withdrawalFee: `10% من المبلغ؛ الحد الأدنى 20 USDT؛ الحد الأعلى العام الحالي ${withdrawalMax ?? 'غير متاح'} USDT إضافة إلى سقف المستوى/الأسبوع`,
     withdrawalAutomationEnabled: String(process.env.WITHDRAWAL_PAYOUTS_ENABLED || '').toLowerCase() === 'true',
     depositAutomationEnabled: String(process.env.TRON_DEPOSIT_AUTOMATION_ENABLED || '').toLowerCase() === 'true',
     referralCashRewards: '$1 لتفعيل إحالة مباشرة في A1، $2 في A2، و$5 في A3؛ مكافأة واحدة لكل مستوى مؤهل',
     referralCampaignPoints: 'نقطة واحدة لتفعيل مباشر في A1، نقطتان في A2، و4 نقاط في A3؛ النقاط لا تساوي مبلغ المكافأة النقدية',
     a4ReferralMilestone: '300 إحالة مباشرة نشطة مؤهلة لفتح تفعيل A4 المجاني مع مكافأة $100 في رصيد الأرباح، مرة واحدة وفق أهلية الحساب',
-    taskRule: 'حد المهام المدفوعة اليومي يساوي قيمة tasks في إعداد المستوى فعليًا؛ المهام التقييمية تتطلب تقييم 1–5 واختيار جانب مسموح؛ التقييم يُسجل ثم يجري إنهاء ذري للمهمة والمكافأة، ولا تعرض المنصة مراجعة بشرية لكل تقييم؛ يشترط تسلسل إنهاء المهام المدفوعة وفاصل ساعتين بين ظهورها؛ اليوم يبدأ وفق Europe/Istanbul؛ الجمعة والسبت عطلة مهام؛ لا توجد مهمة مجتمعية مدفوعة في المسار الحالي',
-    gameCycleRule: `تتطلب دورة اللعبة ${Math.max(1, Number(settings.referralsPerCycle) || 6)} إحالات مباشرة نشطة مع تفعيل الحساب، ويخصم الاستخدام دورة؛ الأرصدة المتاحة تظهر بجوار اللعبة؛ الحد اليومي ${Number(settings.dailyGameRewardCap || 100)} USDT؛ مكافأة اللعب توزع حاليًا 70% USDT و30% OPX`,
+    taskRule: 'حد المهام المدفوعة اليومي يساوي قيمة tasks في إعداد المستوى فعليًا ناقص واحد لتطابق قائمة المهمة الحالية؛ المهام التقييمية تتطلب تقييم 1–5 واختيار جانب مسموح؛ التقييم يُسجل ثم يجري إنهاء ذري للمهمة والمكافأة، ولا تعرض المنصة مراجعة بشرية لكل تقييم؛ يشترط تسلسل إنهاء المهام المدفوعة وفاصل ساعتين بين ظهورها؛ التفاعل المجتمعي اختياري وبلا مكافأة؛ اليوم يبدأ وفق Europe/Istanbul؛ الجمعة والسبت عطلة مهام؛ لا توجد مهمة مجتمعية مدفوعة في المسار الحالي',
+    gameCycleRule: `تتطلب دورة اللعبة ${Math.max(1, Number(settings.referralsPerCycle) || 6)} إحالات مباشرة نشطة مع تفعيل الحساب، ويخصم الاستخدام دورة؛ الأرصدة المتاحة تظهر بجوار اللعبة؛ الحد اليومي ${Number(settings.dailyGameRewardCap || 100)} USDT؛ مكافأة اللعب توزع حاليًا 90% USDT و10% OPX`,
     upgradeRule: `السعر وشروط التفعيل والترقية تظهر في تبويب المستويات والتأكيد؛ أول تفعيل مدفوع يكلف سعر المستوى كاملًا، ثم تحسب الترقية بفرق السعر؛ لا يشترط تسلسل مستويات أو إحالات للترقية العادية؛ تفعيل A4 المجاني يتطلب الإنجاز المؤهل؛ OPX الداخلي بسعر حساب الترقية ${OPX_INTERNAL_USD_PRICE} USDT لكل OPX ويغطي بحد أقصى ${Math.round(OPX_MAX_UPGRADE_DISCOUNT_SHARE * 100)}% أو ${OPX_MAX_UPGRADE_VALUE_USD} USDT أيهما أقل، والباقي USDT؛ OPX غير قابل للسحب`,
     depositRule: String(process.env.TRON_DEPOSIT_AUTOMATION_ENABLED || '').toLowerCase() === 'true'
       ? 'USDT فقط على TRON (TRC20) عبر عنوان آلي شخصي من الرئيسية؛ لا يوجد إدخال يدوي لـTxHash؛ لا ترسل قبل التأكد من أن العنوان ظاهر ومتاح في حسابك.'
       : 'الإيداع الآلي TRC20 غير مفعّل حاليًا؛ يجب ألا يُطلب من المستخدم إرسال أموال أو استعمال عنوان قديم، ويُوجّه إلى حالة الخدمة والدعم.',
-    withdrawalRule: `USDT فقط على TRC20؛ المصدر رصيد الأرباح المتاح؛ الحد الأدنى 20 USDT؛ الرسوم 5% + 2 USDT؛ موعد ${userTier}: ${withdrawalSchedule.message}; يتطلب بريدًا موثقًا و2FA وعنوانًا مثبتًا مطابقًا، ويظهر الطلب في السجل وقد يبقى قيد المراجعة.`,
+    withdrawalRule: `USDT فقط على TRC20؛ المصدر رصيد الأرباح المتاح؛ الحد الأدنى 20 USDT؛ الرسوم 10% من المبلغ؛ موعد ${userTier}: ${withdrawalSchedule.message}; يتطلب بريدًا موثقًا و2FA وعنوانًا مثبتًا مطابقًا، ويظهر الطلب في السجل وقد يبقى قيد المراجعة.`,
     tabGuides: {
       home: 'الرئيسية: الرصيد الإجمالي وتفصيل USDT (إيداع/أرباح) وOPX، التقدم اليومي، نشاط الحساب، سجل زمني، تحديث السوق الخارجي OPXUSD من Bitfinex. سعر السوق ليس سعرًا داخليًا ولا عائدًا أو توصية.',
       community: 'المجتمع: موجز كل المنشورات أو المتابَعين، نشر نص وصورة، إعجاب وتعليق ومتابعة ملفات اجتماعية ورسائل خاصة؛ المحتوى يخضع للإشراف.',

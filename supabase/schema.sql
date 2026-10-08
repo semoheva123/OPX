@@ -88,7 +88,7 @@ create table if not exists public.wallet_balances (
 create table if not exists public.financial_ledger (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid not null references public.users(id) on delete cascade,
-  type text not null check (type in ('deposit','withdraw','reward','staking_reward','referral_commission','upgrade_deduction','token_burn','vault_lock','vault_release','vault_early_release','vault_penalty','admin_adjustment')),
+  type text not null check (type in ('deposit','withdraw','reward','staking_reward','referral_commission','upgrade_deduction','token_burn','vault_lock','vault_release','vault_early_release','vault_penalty','admin_adjustment','withdrawal_fee_income')),
   currency text not null default 'USDT' check (currency in ('USDT','OPX')),
   amount numeric(18,4) not null default 0,
   fee_amount numeric(18,4) not null default 0,
@@ -997,18 +997,7 @@ begin
 
   if max_tasks < 1 then raise exception using errcode = 'P0001', message = 'NO_PAID_TASKS_CONFIGURED'; end if;
   gross_reward := round(coalesce(level_row.daily_profit, 2.5) / max_tasks, 4);
-  opx_reward := round(
-    least(
-      coalesce(level_row.daily_profit, 2.5),
-      case upper(level_row.code)
-        when 'A1' then 0.05
-        when 'A2' then 0.10
-        when 'A3' then 0.15
-        else 0
-      end
-    ) / max_tasks,
-    4
-  );
+  opx_reward := round(gross_reward * 0.10, 4);
   usdt_reward := round(gross_reward - opx_reward, 4);
   balance_before := wallet_row.balance;
 
@@ -1236,18 +1225,7 @@ begin
   end if;
 
   gross_reward := round(coalesce(level_row.daily_profit, 2.5) / max_tasks, 4);
-  opx_reward := round(
-    least(
-      coalesce(level_row.daily_profit, 2.5),
-      case upper(level_row.code)
-        when 'A1' then 0.05
-        when 'A2' then 0.10
-        when 'A3' then 0.15
-        else 0
-      end
-    ) / max_tasks,
-    4
-  );
+  opx_reward := round(gross_reward * 0.10, 4);
   usdt_reward := round(gross_reward - opx_reward, 4);
   balance_before := wallet_row.balance;
   select coalesce(sum(gross_amount), 0) into total_daily_reward

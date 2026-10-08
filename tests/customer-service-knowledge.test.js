@@ -24,7 +24,7 @@ assert.equal(knowledge.referralsPerCycle, 9);
 assert.equal(knowledge.vaultMinimum, 10);
 assert.match(knowledge.vaultContractFacts, /90 يوم/);
 assert.match(knowledge.gameRewardRanges, /2–8/);
-assert.match(knowledge.withdrawalFee, /5%.*2 USDT/);
+assert.match(knowledge.withdrawalFee, /10%/);
 assert.match(knowledge.withdrawalSchedule, /الجمعة/);
 assert.match(knowledge.taskRule, /التفاعل المجتمعي اختياري وبلا مكافأة/);
 assert.match(knowledge.taskRule, /ساعتين/);
@@ -44,7 +44,7 @@ const depositReply = localReply('أين أجد عنوان الإيداع؟', 'me
 assert.match(depositReply, /لا ترسل أي أموال/);
 
 const withdrawalReply = localReply('ما رسوم السحب؟', 'member', 25, 'A2', knowledge);
-assert.match(withdrawalReply, /5%/);
+assert.match(withdrawalReply, /10%/);
 assert.match(withdrawalReply, /TRC20/);
 
 const vaultReply = localReply('كيف أسترد الخزنة؟', 'member', 25, 'A2', knowledge);

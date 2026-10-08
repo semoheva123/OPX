@@ -20,9 +20,9 @@ function calculateHybridWithdrawalFee(amount) {
   if (!match) return { feeAmount: Number.NaN, netAmount: Number.NaN };
   const [whole, fraction = ''] = String(amount).trim().split('.');
   const amountUnits = BigInt(whole) * 10000n + BigInt(fraction.padEnd(4, '0') || '0');
-  const feeCents = (amountUnits * 5n + 5000n) / 10000n + 200n;
-  const netUnits = amountUnits - feeCents * 100n;
-  return { feeAmount: Number(feeCents) / 100, netAmount: Number(netUnits) / 10000 };
+  const feeUnits = (amountUnits * 10n) / 100n;
+  const netUnits = amountUnits - feeUnits;
+  return { feeAmount: Number(feeUnits) / 10000, netAmount: Number(netUnits) / 10000 };
 }
 
 function sameWithdrawalIntent(existing, intent) {
