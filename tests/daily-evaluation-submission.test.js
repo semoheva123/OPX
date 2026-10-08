@@ -80,6 +80,21 @@ function responseRecorder() {
     assert.equal(saved.length, savedBeforeSequenceError, 'out-of-sequence evaluations must not be saved');
     assert.equal(rpcCalls, rpcBeforeSequenceError, 'out-of-sequence evaluations must not call the reward RPC');
 
+    const missingPreviousAssignmentResponse = responseRecorder();
+    const originalFindOne = dataAccess.dailyTaskAssignment.findOne;
+    dataAccess.dailyTaskAssignment.findOne = async ({ taskNumber }) => {
+      if (taskNumber === 1) return null;
+      return { id: `assignment-${taskNumber}`, taskNumber, category: 'ai', entityKey: `wiki:example-ai-${taskNumber}`, entityName: `Example AI ${taskNumber}`, allowedTags: ['الدقة', 'الخصوصية'] };
+    };
+    completionRows = [];
+    await activityController.submitDailyEvaluation({
+      user: { id: 'user-1' },
+      body: { taskKey: 'A2-task-02', rating: 3, selectedTag: 'الدقة' }
+    }, missingPreviousAssignmentResponse);
+    assert.equal(missingPreviousAssignmentResponse.statusCode, 200, 'the first visible task must remain executable if the previous assignment is missing from the live plan');
+    assert.equal(saved.at(-1).taskKey, 'A2-task-02');
+    dataAccess.dailyTaskAssignment.findOne = originalFindOne;
+
     const accruedBacklogResponse = responseRecorder();
     completionRows = [{ taskKey: 'A2-task-01', createdAt: new Date(Date.now() - 10 * 60 * 1000).toISOString() }];
     await activityController.submitDailyEvaluation({
@@ -111,7 +126,7 @@ function responseRecorder() {
     }, noCommunityPrerequisiteResponse);
     assert.equal(noCommunityPrerequisiteResponse.statusCode, 200, 'the first paid evaluation is immediately available without any community action');
     assert.equal(saved.at(-1).feedback, '');
-    assert.equal(rpcCalls, 3);
+    assert.equal(rpcCalls, 4, 'successful first-visible-task completions should still call the reward RPC');
 
     const invalidResponse = responseRecorder();
     const savedBeforeInvalid = saved.length;

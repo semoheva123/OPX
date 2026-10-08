@@ -2121,7 +2121,7 @@ function renderDailyTaskDetail(data) {
         return;
     }
     const allTasks = Array.isArray(data.tasks) ? data.tasks : [];
-    const tasks = allTasks.filter(task => !task.completed);
+    const tasks = allTasks.filter(task => !task.completed).slice(0, 5);
     const taskLimit = Math.max(1, Number(data.taskLimit ?? data.tier?.taskLimit ?? tasks.length ?? allTasks.length ?? 1));
     const completedCount = Math.min(Number(data.completedCount || 0), taskLimit);
     window.__latestDailyTasks = allTasks;

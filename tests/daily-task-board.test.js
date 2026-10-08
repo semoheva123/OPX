@@ -121,6 +121,7 @@ assert.match(client, /targetImageUrl.*alt.*targetName|brand.*task\.targetName/, 
 assert.match(client, /style="width:96px;height:48px".*object-fit:contain/, 'the company logo should use a fixed landscape tile and preserve the source aspect ratio');
 assert.doesNotMatch(client, /ملاحظة قصيرة|data-evaluation-field="feedback"/, 'the task evaluation form must not ask for a short note');
 assert.match(client, /data-task-cooldown/, 'the only next task should show a cooldown countdown when locked');
+assert.match(client, /slice\(0,\s*5\)/, 'the visible daily list must never exceed five active tasks');
 assert.doesNotMatch(client, /مشاركة مجتمعية اختيارية — خارج المهام المدفوعة/, 'community engagement must no longer be exposed as a separate task');
 assert.doesNotMatch(client, /isCommunityTask \? "switchTab\('feed'\)" : isEvaluationTask/, 'the client must no longer treat the community task as a distinct card');
 

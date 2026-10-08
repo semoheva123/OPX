@@ -382,7 +382,7 @@ async function getDailyTasks(req, res) {
             lockReason: remainingMs > 0 ? 'cooldown' : null
           };
         });
-    const tasks = fallbackVisibleTasks;
+    const tasks = fallbackVisibleTasks.slice(0, 5);
     return res.json({
       success: true,
       tier: { code: tier.code, name: tier.name, taskLimit, dailyProfit },
@@ -469,10 +469,14 @@ async function submitDailyEvaluation(req, res) {
       return res.status(429).json({ error: 'لم يحن موعد ظهور هذه المهمة بعد؛ حاول مرة أخرى لاحقًا.', unlockAt: taskWindow.availableAt });
     }
     if (taskNumber > 1) {
-      const previousTaskKey = `${tier.code}-task-${String(taskNumber - 1).padStart(2, '0')}`;
-      const previousCompleted = completions.some(item => getTaskKeyFromRecord(item) === previousTaskKey);
-      if (!previousCompleted) {
-        return res.status(409).json({ error: 'أكمل مهمة التقييم السابقة أولًا.' });
+      const previousTaskNumber = taskNumber - 1;
+      const previousTaskKey = `${tier.code}-task-${String(previousTaskNumber).padStart(2, '0')}`;
+      const previousAssignment = await dataAccess.dailyTaskAssignment.findOne({ userId: user.id || user._id, tierCode: tier.code, taskDate: today, taskNumber: previousTaskNumber });
+      if (previousAssignment) {
+        const previousCompleted = completions.some(item => getTaskKeyFromRecord(item) === previousTaskKey);
+        if (!previousCompleted) {
+          return res.status(409).json({ error: 'أكمل مهمة التقييم السابقة أولًا.' });
+        }
       }
     }
 
