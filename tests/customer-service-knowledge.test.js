@@ -52,7 +52,8 @@ assert.match(vaultReply, /90 يوم/);
 assert.match(vaultReply, /لا يمكن الاسترداد قبل تاريخ الاستحقاق/);
 
 const profileReply = localReply('كيف أفعل المصادقة الثنائية في حسابي؟', 'member', 25, 'A2', knowledge);
-assert.match(profileReply, /امسح QR/);
+assert.match(profileReply, /رمزًا لمرة واحدة يصلك إلى بريدك الموثق/);
+assert.doesNotMatch(profileReply, /امسح QR|Google Authenticator/);
 
 const communityReply = localReply('كيف أنشر في المجتمع؟', 'member', 25, 'A2', knowledge);
 assert.match(communityReply, /الرسائل الخاصة/);

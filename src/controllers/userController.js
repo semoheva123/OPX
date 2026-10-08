@@ -1,19 +1,10 @@
 const bcrypt = require('bcryptjs');
-const { authenticator } = require('otplib');
-const QRCode = require('qrcode');
-const { twoFactorTemplate } = require('../services/emailTemplates');
-
-const generateSecret = () => authenticator.generateSecret();
-const generateURI = ({ issuer, label, secret }) => authenticator.keyuri(label, issuer, secret);
-const verifySync = ({ token, secret }) => ({ valid: authenticator.check(token, secret) });
-const crypto = require('crypto');
 const { syncGameCredits } = require('../services/gameAccess');
 const dataAccess = require('../services/dataAccess');
 const User = dataAccess.user;
 const Transaction = dataAccess.transaction;
 const VipLevel = dataAccess.vipLevel;
 const Session = dataAccess.session;
-const emailFrom = String(process.env.EMAIL_FROM || '').trim();
 const imgbbStorage = require('../services/imgbbStorage');
 const { hasPaidFeatureAccess } = require('../services/paidFeatureAccess');
 
@@ -228,8 +219,7 @@ async function getUpgradeHistory(req, res) {
         ? vipLevels.find(level => Number(level.price) > Number(currentLevel.price)) || null
         : vipLevels.find(level => Number(level.price) > Number(user.wallet?.totalDeposits || 0)) || null;
       const healthChecks = {
-        email: Boolean(user.email),
-        twoFactor: Boolean(user.twoFactorEnabled),
+        email: Boolean(user.emailVerified),
         wallet: Boolean(user.walletAddress?.trim()),
         deposit: hasPaidFeatureAccess(user) || Number(user.wallet?.totalDeposits) > 0,
         activity: approvedTransactions.length > 0
@@ -246,7 +236,7 @@ async function getUpgradeHistory(req, res) {
           week: Number(sumEarningsSince(weekStart).toFixed(2)),
           month: Number(sumEarningsSince(monthStart).toFixed(2))
         },
-        health: Object.values(healthChecks).filter(Boolean).length * 20,
+        health: Math.round(Object.values(healthChecks).filter(Boolean).length / Object.keys(healthChecks).length * 100),
         healthChecks,
         referralCount,
         pendingTransactions: pendingTransactions.length,
@@ -285,13 +275,12 @@ async function getUpgradeHistory(req, res) {
     const currentLevel = user.tierCode ? await VipLevel.findOne({ code: user.tierCode }).select('price') : null;
     const nextLevel = await VipLevel.findOne({ price: { $gt: Number(currentLevel?.price ?? user.wallet?.totalDeposits ?? 0) } }).sort({ price: 1 }).select('code name price dailyProfit tasks');
     const healthChecks = {
-      email: Boolean(user.email),
-      twoFactor: Boolean(user.twoFactorEnabled),
+      email: Boolean(user.emailVerified),
       wallet: Boolean(user.walletAddress?.trim()),
       deposit: hasPaidFeatureAccess(user) || Number(user.wallet?.totalDeposits) > 0,
       activity: approvedTransactions.length > 0
     };
-    const health = Object.values(healthChecks).filter(Boolean).length * 20;
+    const health = Math.round(Object.values(healthChecks).filter(Boolean).length / Object.keys(healthChecks).length * 100);
     const timeline = [
       { type: 'registered', date: user.createdAt, title: 'إنشاء الحساب' },
       ...approvedTransactions.slice(0, 6).map(transaction => ({ type: transaction.type, date: transaction.createdAt, amount: transaction.amount, title: transaction.type }))
@@ -313,70 +302,6 @@ async function getUpgradeHistory(req, res) {
 
 async function getHomeSummary(req, res) {
   return getUpgradeHistory(req, res);
-}
-
-async function sendTwoFactorCode(req, res) {
-  try {
-    const resend = req.app.locals.resend;
-    const user = await dataAccess.user.findById(req.user.id);
-    if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
-    if (!user.twoFactorEnabled) return res.status(400).json({ error: 'فعّل المصادقة الثنائية أولاً من قسم حسابي' });
-
-    const code = crypto.randomInt(100000, 1000000).toString();
-    await dataAccess.user.updateOne({ id: req.user.id }, { twoFactorCode: code, twoFactorExpire: new Date(Date.now() + 5 * 60 * 1000) });
-
-    if (resend) {
-      try {
-        await resend.emails.send({
-          from: emailFrom,
-          to: user.email,
-          subject: 'رمز التحقق الثنائي (2FA) - OPERIX',
-          html: twoFactorTemplate({ code, expiresInMinutes: 5 })
-        });
-        return res.json({ success: true, message: 'تم إرسال رمز التحقق الثنائي إلى بريدك الإلكتروني' });
-      } catch (emailError) {
-        console.error('2FA email send failed:', emailError.message);
-      }
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: resend ? 'تم إنشاء رمز التحقق، لكن إرسال البريد فشل.' : 'خدمة البريد غير مهيأة. تم إنشاء رمز التحقق محليًا للاختبار.',
-      devCode: process.env.NODE_ENV !== 'production' || process.env.DEBUG_RESET_OTP === 'true' ? code : undefined
-    });
-  } catch (err) { res.status(500).json({ error: 'خطأ في إرسال الرمز' }); }
-}
-
-async function toggleTwoFactor(req, res) {
-  try {
-    if (typeof req.body.enabled !== 'boolean') return res.status(400).json({ error: 'حالة المصادقة غير صالحة' });
-    if (req.body.enabled) return res.status(400).json({ error: 'استخدم إعداد Google Authenticator ثم أكد الرمز أولاً' });
-    const user = await dataAccess.user.updateOne({ id: req.user.id }, { twoFactorEnabled: req.body.enabled });
-    if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
-    res.json({ success: true, enabled: user.twoFactorEnabled, message: user.twoFactorEnabled ? 'تم تفعيل المصادقة الثنائية' : 'تم تعطيل المصادقة الثنائية' });
-  } catch (err) { res.status(500).json({ error: 'حدث خطأ في حفظ إعداد المصادقة' }); }
-}
-
-async function setupTwoFactor(req, res) {
-  try {
-    const user = await dataAccess.user.findById(req.user.id);
-    if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
-    if (user.twoFactorEnabled) return res.status(400).json({ error: 'المصادقة الثنائية مفعلة بالفعل' });
-    const secret = generateSecret();
-    await dataAccess.user.updateOne({ id: req.user.id }, { twoFactorSecret: secret });
-    const otpauth = generateURI({ issuer: 'OPERIX', label: user.email, secret });
-    res.json({ success: true, qrCode: await QRCode.toDataURL(otpauth), secret });
-  } catch (err) { res.status(500).json({ error: 'تعذر إعداد Google Authenticator' }); }
-}
-
-async function confirmTwoFactor(req, res) {
-  try {
-    const user = await dataAccess.user.findById(req.user.id);
-    if (!user || !user.twoFactorSecret) return res.status(400).json({ error: 'ابدأ إعداد Google Authenticator أولاً' });
-    if (!verifySync({ token: String(req.body.code || '').trim(), secret: user.twoFactorSecret }).valid) return res.status(400).json({ error: 'رمز Google Authenticator غير صحيح' });
-    await dataAccess.user.updateOne({ id: req.user.id }, { twoFactorEnabled: true });
-    res.json({ success: true, enabled: true, message: 'تم تفعيل Google Authenticator بنجاح' });
-  } catch (err) { res.status(500).json({ error: 'تعذر تأكيد المصادقة الثنائية' }); }
 }
 
 async function changePassword(req, res) {
@@ -403,4 +328,4 @@ async function subscribePush(req, res) {
   } catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
 }
 
-module.exports = { getProfile, sanitizeProfileUser, updateUsername, setWalletAddress, updateProfileImage, updateSocialProfile, getReferrals, getReferralRewards, getGrowth, getUpgradeHistory, getHomeSummary, sendTwoFactorCode, toggleTwoFactor, setupTwoFactor, confirmTwoFactor, changePassword, subscribePush };
+module.exports = { getProfile, sanitizeProfileUser, updateUsername, setWalletAddress, updateProfileImage, updateSocialProfile, getReferrals, getReferralRewards, getGrowth, getUpgradeHistory, getHomeSummary, changePassword, subscribePush };

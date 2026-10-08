@@ -46,7 +46,8 @@ assert.match(validator, /daily_task_entities/);
 assert.match(validator, /milestone_reward_awards/);
 assert.match(validator, /table: 'tron_deposit_addresses', columns: 'user_id,derivation_index,address,last_scanned_at'/);
 assert.match(validator, /table: 'withdrawal_payouts', columns: 'id,transaction_id,network,status,tx_hash,signed_payload,next_attempt_at'/);
-for (const table of ['tron_deposit_addresses', 'tron_deposit_address_sequences', 'tron_deposit_events', 'withdrawal_payouts']) {
+assert.match(validator, /table: 'withdrawal_email_codes', columns: 'user_id,code_hash,intent_hash,expires_at,attempts,sent_at'/);
+for (const table of ['tron_deposit_addresses', 'tron_deposit_address_sequences', 'tron_deposit_events', 'withdrawal_payouts', 'withdrawal_email_codes']) {
   assert.ok(validator.includes(`'${table}'`), `${table} must be checked by the production readiness validator`);
   assert.match(supabaseConfig, new RegExp(`'${table}'`), `${table} must be probed by production health`);
 }
@@ -56,6 +57,7 @@ for (const table of ['email_verification_reminder_campaigns', 'email_verificatio
 assert.match(validator, /email_verification_reminder_sent_at/);
 assert.match(supabaseConfig, /depositTablesReady/);
 assert.match(supabaseConfig, /payoutTableReady/);
+assert.match(supabaseConfig, /withdrawalEmailCodesReady/);
 assert.match(supabaseConfig, /missingDepositTables/);
 assert.match(app, /financialSchema: supabase\?\.financialSchema/);
 assert.match(sitemap, /<loc>https:\/\/operix\.website\//);

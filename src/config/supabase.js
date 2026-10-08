@@ -32,6 +32,7 @@ async function checkSupabaseConnection() {
   const financialSchema = {
     depositTablesReady: false,
     payoutTableReady: false,
+    withdrawalEmailCodesReady: false,
     missingDepositTables: ['tron_deposit_addresses', 'tron_deposit_address_sequences', 'tron_deposit_events'],
     ready: false
   };
@@ -54,10 +55,14 @@ async function checkSupabaseConnection() {
   const payoutCheck = await supabaseAdmin.from('withdrawal_payouts')
     .select('id,transaction_id,network,status,tx_hash,signed_payload,next_attempt_at').limit(0)
     .then(({ error: tableError }) => !tableError).catch(() => false);
+  const withdrawalEmailCodesCheck = await supabaseAdmin.from('withdrawal_email_codes')
+    .select('user_id,code_hash,intent_hash,expires_at,attempts,sent_at').limit(0)
+    .then(({ error: tableError }) => !tableError).catch(() => false);
   financialSchema.depositTablesReady = depositChecks.every(check => check.ready);
   financialSchema.payoutTableReady = payoutCheck;
+  financialSchema.withdrawalEmailCodesReady = withdrawalEmailCodesCheck;
   financialSchema.missingDepositTables = depositChecks.filter(check => !check.ready).map(check => check.table);
-  financialSchema.ready = financialSchema.depositTablesReady && financialSchema.payoutTableReady;
+  financialSchema.ready = financialSchema.depositTablesReady && financialSchema.payoutTableReady && financialSchema.withdrawalEmailCodesReady;
   return { configured: true, reachable: true, error: null, financialSchema };
 }
 

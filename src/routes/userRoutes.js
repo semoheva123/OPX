@@ -14,10 +14,6 @@ router.get('/referral-rewards', verifyToken, userController.getReferralRewards);
 router.get('/growth', verifyToken, userController.getGrowth);
 router.get('/upgrade-history', verifyToken, userController.getUpgradeHistory);
 router.get('/home-summary', verifyToken, userController.getHomeSummary);
-router.post('/2fa/send-code', verifyToken, userController.sendTwoFactorCode);
-router.post('/2fa/toggle', verifyToken, userController.toggleTwoFactor);
-router.post('/2fa/setup', verifyToken, userController.setupTwoFactor);
-router.post('/2fa/confirm', verifyToken, userController.confirmTwoFactor);
 router.post('/change-password', verifyToken, userController.changePassword);
 router.post('/push/subscribe', verifyToken, userController.subscribePush);
 

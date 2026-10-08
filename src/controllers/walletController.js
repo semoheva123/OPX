@@ -1,10 +1,9 @@
-const { authenticator } = require('otplib');
+const crypto = require('crypto');
 const emailFrom = String(process.env.EMAIL_FROM || '').trim();
 const { TronWeb } = require('tronweb');
 
-const verifySync = ({ token, secret }) => ({ valid: authenticator.check(token, secret) });
 const realtimeService = require('../services/realtimeService');
-const { withdrawalRequestTemplate } = require('../services/emailTemplates');
+const { withdrawalEmailCodeTemplate, withdrawalRequestTemplate } = require('../services/emailTemplates');
 const { recordLedgerEntry } = require('../services/financialLedger');
 const { hasFullFeatureAccess } = require('../services/paidFeatureAccess');
 const withdrawalPayoutService = require('../services/withdrawalPayoutService');
@@ -14,6 +13,20 @@ const { getWithdrawalSchedule } = require('../services/weeklySchedule');
 const SecurityEvent = dataAccess.securityEvent;
 
 const MIN_WITHDRAWAL_AMOUNT = 20;
+const WITHDRAWAL_EMAIL_CODE_TTL_MS = 10 * 60 * 1000;
+
+function hashWithdrawalEmailCode(userId, code) {
+  const secret = String(process.env.JWT_SECRET || '');
+  if (secret.length < 32) throw new Error('WITHDRAWAL_EMAIL_CODE_SECRET_NOT_CONFIGURED');
+  return crypto.createHmac('sha256', secret).update(`withdrawal-email-code:${userId}:${code}`).digest('hex');
+}
+
+function hashWithdrawalIntent({ userId, idempotencyKey, amount, walletAddress, network }) {
+  const secret = String(process.env.JWT_SECRET || '');
+  if (secret.length < 32) throw new Error('WITHDRAWAL_EMAIL_CODE_SECRET_NOT_CONFIGURED');
+  const intent = JSON.stringify({ userId: String(userId), idempotencyKey, amount: Number(amount).toFixed(4), walletAddress, network });
+  return crypto.createHmac('sha256', secret).update(`withdrawal-intent:${intent}`).digest('hex');
+}
 
 function calculateHybridWithdrawalFee(amount) {
   const match = String(amount ?? '').trim().match(/^(?:0|[1-9]\d*)(?:\.(\d{1,4}))?$/);
@@ -92,7 +105,7 @@ async function withdraw(req, res) {
 async function withdrawSupabase(req, res) {
   let withdrawalIntent = null;
   try {
-    const { amount, walletAddress, walletNetwork, twoFactorCode, asset, currency } = req.body;
+    const { amount, walletAddress, walletNetwork, emailCode, asset, currency } = req.body;
     const requestedAsset = String(asset || currency || '').trim().toUpperCase();
     if (requestedAsset && requestedAsset !== 'USDT') return res.status(400).json({ error: 'السحب متاح بعملة USDT فقط؛ رصيد OPX الداخلي غير قابل للسحب.' });
     const idempotencyKey = String(req.get('Idempotency-Key') || '').trim();
@@ -131,8 +144,6 @@ async function withdrawSupabase(req, res) {
     }
     const fullFeatureAccess = hasFullFeatureAccess(user);
     if (!user.emailVerified) return res.status(400).json({ error: 'يجب تأكيد بريدك الإلكتروني قبل طلب السحب' });
-    if (!user.twoFactorEnabled || !user.twoFactorSecret) return res.status(400).json({ error: 'يجب تفعيل المصادقة الثنائية قبل طلب السحب' });
-    if (!twoFactorCode || !verifySync({ token: String(twoFactorCode).trim(), secret: user.twoFactorSecret }).valid) return res.status(400).json({ error: 'رمز المصادقة الثنائية غير صحيح' });
     if (!user.walletAddress || String(user.walletAddress).trim() !== normalizedWalletAddress) return res.status(400).json({ error: 'عنوان المحفظة لا يطابق العنوان المثبت في حسابك' });
     if (String(user.walletNetwork || '').toUpperCase() !== normalizedNetwork) return res.status(400).json({ error: 'شبكة السحب لا تطابق الشبكة المثبتة مع العنوان' });
     if (!fullFeatureAccess && Number(user.wallet?.profitBalance || 0) < MIN_WITHDRAWAL_AMOUNT) return res.status(400).json({ error: `الحد الأدنى لرصيد الأرباح للسحب هو ${MIN_WITHDRAWAL_AMOUNT}$` });
@@ -143,6 +154,49 @@ async function withdrawSupabase(req, res) {
     const weekStart = new Date(); weekStart.setUTCHours(0, 0, 0, 0); weekStart.setUTCDate(weekStart.getUTCDate() - 6);
     const weekly = await dataAccess.transaction.find({ userId: req.user.id, type: 'withdraw', status: { $in: ['pending', 'approved'] }, createdAt: { $gte: weekStart } });
     if (!fullFeatureAccess && weekly.reduce((sum, item) => sum + Number(item.amount || 0), 0) + withdrawNum > maxLimit) return res.status(400).json({ error: `تجاوزت الحد الأسبوعي للسحب البالغ ${maxLimit}$` });
+
+    const intentHash = hashWithdrawalIntent({ userId: req.user.id, idempotencyKey, amount: withdrawNum, walletAddress: normalizedWalletAddress, network: normalizedNetwork });
+    const resend = req.app.locals.resend;
+    if (!String(emailCode || '').trim()) {
+      if (!resend?.emails?.send || !emailFrom) return res.status(503).json({ error: 'خدمة إرسال رمز تأكيد السحب إلى البريد غير متاحة حاليًا.' });
+      const code = crypto.randomInt(100000, 1000000).toString();
+      const issued = await dataAccess.callSupabaseRpc('operix_withdrawal_email_code_issue_atomic', {
+        p_user_id: req.user.id,
+        p_code_hash: hashWithdrawalEmailCode(req.user.id, code),
+        p_intent_hash: intentHash,
+        p_expires_at: new Date(Date.now() + WITHDRAWAL_EMAIL_CODE_TTL_MS).toISOString()
+      });
+      if (issued !== true) return res.status(429).json({ error: 'أُرسل رمز مؤخرًا. انتظر دقيقة قبل طلب رمز جديد.', code: 'WITHDRAWAL_EMAIL_CODE_COOLDOWN' });
+      try {
+        const emailResult = await resend.emails.send({
+          from: emailFrom,
+          to: user.email,
+          subject: 'رمز تأكيد طلب السحب - OPERIX',
+          html: withdrawalEmailCodeTemplate({ code, expiresInMinutes: 10, amount: withdrawNum.toFixed(4) })
+        });
+        if (emailResult?.error) throw new Error(emailResult.error.message || 'EMAIL_PROVIDER_REJECTED');
+      } catch (emailError) {
+        await dataAccess.callSupabaseRpc('operix_withdrawal_email_code_clear_atomic', { p_user_id: req.user.id, p_intent_hash: intentHash }).catch(() => {});
+        console.error('Withdrawal email code send failed:', emailError.message);
+        return res.status(502).json({ error: 'تعذر إرسال رمز السحب. لم يتم حجز أي رصيد؛ حاول مرة أخرى.' });
+      }
+      return res.status(202).json({
+        success: true,
+        verificationRequired: true,
+        message: 'أرسلنا رمز تأكيد صالحًا لمدة 10 دقائق إلى بريدك الإلكتروني المسجل. أدخله لإكمال طلب السحب.',
+        emailHint: String(user.email).replace(/^(.{1,2})[^@]*/, '$1•••')
+      });
+    }
+
+    const normalizedEmailCode = String(emailCode).trim();
+    if (!/^[0-9]{6}$/.test(normalizedEmailCode)) return res.status(400).json({ error: 'أدخل رمز البريد المكوّن من 6 أرقام.' });
+    const codeAccepted = await dataAccess.callSupabaseRpc('operix_withdrawal_email_code_consume_atomic', {
+      p_user_id: req.user.id,
+      p_code_hash: hashWithdrawalEmailCode(req.user.id, normalizedEmailCode),
+      p_intent_hash: intentHash
+    });
+    if (codeAccepted !== true) return res.status(400).json({ error: 'رمز البريد غير صحيح أو منتهي أو مرتبط بتفاصيل سحب مختلفة.' });
+
     const risk = await calculateWithdrawalRiskSupabase(user, withdrawNum, req.ip);
     const result = await dataAccess.callSupabaseRpc('operix_withdraw_atomic', {
       p_user_id: req.user.id,
@@ -164,7 +218,6 @@ async function withdrawSupabase(req, res) {
     }
     await realtimeService.publish('user_data_changed', { reason: 'withdrawal_created', timestamp: new Date().toISOString() }, { userId: req.user.id });
     await realtimeService.publish('admin_transaction_created', { transactionId: withdrawal.id, type: 'withdraw', userId: req.user.id, riskLevel: withdrawal.riskLevel, riskScore: withdrawal.riskScore }, { scope: 'admin' });
-    const resend = req.app.locals.resend;
     let emailSent = false;
     if (resend && user.email && emailFrom) {
       try {
@@ -189,6 +242,7 @@ async function withdrawSupabase(req, res) {
     }
     return res.json({ success: true, emailSent, message: emailSent ? 'تم تقديم طلب السحب وإرسال إشعار إلى بريدك الإلكتروني' : 'تم تقديم طلب السحب، لكن تعذر إرسال إشعار البريد حاليًا', wallet: result.wallet, withdrawal });
   } catch (error) {
+    if (error?.message === 'WITHDRAWAL_EMAIL_CODE_SECRET_NOT_CONFIGURED') return res.status(503).json({ error: 'خدمة تأكيد السحب غير مهيأة بأمان؛ لم يُحجز أي رصيد.' });
     if (error?.message === 'INSUFFICIENT_PROFIT') return res.status(400).json({ error: 'رصيد الأرباح غير كافٍ' });
     if (error?.message === 'WITHDRAWAL_DAY_NOT_ALLOWED') return res.status(403).json({ success: false, code: 'WITHDRAWAL_DAY_NOT_ALLOWED', error: 'موعد طلب السحب لمستواك غير متاح اليوم. A1/A2 يوم الجمعة، وبقية المستويات يوم السبت (Europe/Istanbul).' });
     if (error?.message === 'IDEMPOTENCY_KEY_REUSED') return res.status(409).json({ error: 'أُعيد استخدام مفتاح الطلب لبيانات سحب مختلفة؛ أنشئ طلبًا جديدًا.' });

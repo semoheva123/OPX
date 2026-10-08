@@ -468,14 +468,13 @@ function renderHomeSummaryFallback() {
     if (!currentUserData) return;
     const fallbackHealthChecks = {
         email: Boolean(currentUserData.emailVerified),
-        twoFactor: Boolean(currentUserData.twoFactorEnabled),
         wallet: Boolean((currentUserData.walletAddress || currentUserData.withdrawWallet || '').trim()),
         deposit: Boolean(currentUserData.paidFeatureAccess || Number(currentUserData.wallet?.totalDeposits) > 0),
         activity: false
     };
     renderHomeSummary({
         todayEarned: 0,
-        health: Object.values(fallbackHealthChecks).filter(Boolean).length * 20,
+        health: Math.round(Object.values(fallbackHealthChecks).filter(Boolean).length / Object.keys(fallbackHealthChecks).length * 100),
         healthChecks: fallbackHealthChecks,
         referralCount: currentUserData.teamStats?.l1 || 0,
         completedTasks: currentUserData.todayCompletedTasks || 0,
@@ -577,7 +576,6 @@ function renderHomeSummary(summary) {
 
     const opportunities = [];
     if (tierActive && completedTasks < taskLimit) opportunities.push(`أكمل ${taskLimit - completedTasks} مهمة متبقية اليوم`);
-    if (!currentUserData?.twoFactorEnabled) opportunities.push({ text: 'فعّل المصادقة الثنائية لحماية السحب', action: "switchTab('profile')" });
     if (tierActive && completedTasks < taskLimit) opportunities[0] = { text: `أكمل ${taskLimit - completedTasks} مهمة متبقية اليوم`, action: "switchTab('travel')" };
     if (!(currentUserData?.walletAddress || currentUserData?.withdrawWallet || '').trim()) opportunities.push({ text: 'ثبّت عنوان محفظة السحب من قسم حسابي', action: "switchTab('profile')" });
     if (summary.referralCount < 6) opportunities.push({ text: `لديك ${6 - summary.referralCount} إحالات للوصول إلى دورة الألعاب`, action: "switchTab('team')" });
@@ -1359,7 +1357,7 @@ function updateProfileUI() {
 
     updateTierDisplay();
     updateProfileAvatar(currentUserData.profileImage);
-    updateVerificationStatus(currentUserData.twoFactorEnabled);
+    updateVerificationStatus();
     updateProfileSecuritySummary();
     updateReferralRewardTotal();
 
@@ -1451,7 +1449,6 @@ async function loadReferralRewardHistory() {
 function updateProfileSecuritySummary() {
     const checks = [
         { id: 'profileEmailStatus', done: Boolean(currentUserData?.emailVerified), text: 'البريد: موثق', pending: 'البريد: غير موثق' },
-        { id: 'profileTwoFactorStatus', done: Boolean(currentUserData?.twoFactorEnabled), text: '2FA: مفعلة', pending: '2FA: غير مفعلة' },
         { id: 'profileWalletStatus', done: Boolean((currentUserData?.walletAddress || currentUserData?.withdrawWallet || '').trim()), text: 'المحفظة: مثبتة', pending: 'المحفظة: غير مثبتة' }
     ];
     const completed = checks.filter(check => check.done).length;
@@ -1473,20 +1470,13 @@ function updateProfileSecuritySummary() {
 function updateVerificationStatus() {
     const status = document.getElementById('lblVerificationStatus');
     if (!status) return;
-    const isComplete = Boolean(currentUserData?.emailVerified && currentUserData?.twoFactorEnabled && (currentUserData?.walletAddress || currentUserData?.withdrawWallet || '').trim());
+    const isComplete = Boolean(currentUserData?.emailVerified && (currentUserData?.walletAddress || currentUserData?.withdrawWallet || '').trim());
     status.className = isComplete
         ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold px-3 py-1 rounded-full'
         : 'bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[10px] font-bold px-3 py-1 rounded-full';
     status.innerHTML = isComplete
         ? '<i class="fa-solid fa-circle-check mr-1"></i> إعداد الحساب مكتمل'
         : '<i class="fa-solid fa-circle-xmark mr-1"></i> يحتاج إكمال الإعداد';
-}
-
-function updateTwoFactorStatus(isEnabled) {
-    const label = document.getElementById('twoFactorStatusText');
-    if (!label) return;
-    label.innerText = isEnabled ? 'مفعلة' : 'غير مفعلة';
-    label.className = isEnabled ? 'text-emerald-300 font-normal mr-1' : 'text-rose-300 font-normal mr-1';
 }
 
 function updateProfileAvatar(profileImage) {
@@ -1733,9 +1723,6 @@ async function loadUserProfileInternal() {
             document.getElementById('lblUserEmail').innerText = data.user.email || '';
             document.getElementById('lblCompletedTasks').innerText = data.user.todayCompletedTasks || 0;
             document.getElementById('lblReferralCode').innerText = data.user.referralCode || 'OPERIX99';
-            const twoFactorToggle = document.getElementById('toggle2FA');
-            if (twoFactorToggle) twoFactorToggle.checked = Boolean(data.user.twoFactorEnabled);
-            updateTwoFactorStatus(Boolean(data.user.twoFactorEnabled));
             const emailVerificationStatus = document.getElementById('lblEmailVerificationStatus');
             if (emailVerificationStatus) {
                 emailVerificationStatus.className = data.user.emailVerified ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 text-[10px] font-bold px-3 py-1 rounded-full' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[10px] font-bold px-3 py-1 rounded-full';
@@ -1803,7 +1790,6 @@ async function loadUserProfileInternal() {
 function onboardingState() {
     return [
         { label: 'تأكيد البريد الإلكتروني', done: Boolean(currentUserData?.emailVerified), action: () => { closeOnboarding(); switchTab('profile'); document.getElementById('btnVerifyEmailProfile')?.click(); } },
-        { label: 'تفعيل المصادقة الثنائية', done: Boolean(currentUserData?.twoFactorEnabled), action: () => { closeOnboarding(); switchTab('profile'); } },
         { label: 'تثبيت محفظة السحب', done: Boolean((currentUserData?.walletAddress || currentUserData?.withdrawWallet || '').trim()), action: () => { closeOnboarding(); switchTab('profile'); document.getElementById('profileWalletAddress')?.focus(); } }
     ];
 }
@@ -2049,7 +2035,6 @@ function renderTaskBoard(completed, maximum) {
     }[activeTier.code] || { title: `نفّذ مهمة المستوى ${activeTier.code}`, description: 'أكمل المهمة اليومية ضمن خطة المستوى المفعّل.' };
     const tasks = [
         { id: 'email', category: 'priority', icon: 'fa-envelope-circle-check', title: 'أكد بريدك الإلكتروني', description: 'ارفع جاهزية الحساب واستقبل تنبيهات العمليات المهمة.', done: Boolean(currentUserData?.emailVerified), action: "switchTab('profile'); document.getElementById('btnVerifyEmailProfile')?.click()", status: 'جاهزية الحساب', badge: 'أمان' },
-        { id: 'twoFactor', category: 'priority', icon: 'fa-shield-halved', title: 'فعّل المصادقة الثنائية', description: 'أضف طبقة حماية قبل السحب والعمليات الحساسة.', done: Boolean(currentUserData?.twoFactorEnabled), action: "switchTab('profile'); document.getElementById('toggle2FA')?.focus()", status: 'جاهزية الحساب', badge: 'حماية' },
         { id: 'wallet', category: 'priority', icon: 'fa-wallet', title: 'ثبّت محفظة السحب', description: 'أدخل عنوانًا صحيحًا لتجهيز مسار السحب الآمن.', done: Boolean((currentUserData?.walletAddress || currentUserData?.withdrawWallet || '').trim()), action: "switchTab('profile'); document.getElementById('profileWalletAddress')?.focus()", status: 'جاهزية الحساب', badge: 'محفظة' },
         { id: 'daily', category: 'operations', icon: 'fa-bolt', title: currentUserTierActive && completed >= maximum ? 'راجع خطة مهام اليوم' : currentUserTierActive ? tierTask.title : 'مهام المستوى اليومية', description: currentUserTierActive ? `${tierTask.description} الحد اليومي: ${maximum} مهمة.` : 'تتطلب هذه المهمة إيداعًا وتفعيل المستوى الأول.', done: false, locked: !currentUserTierActive, action: 'openDailyTasks()', status: currentUserTierActive ? completed >= maximum ? 'خطة اليوم' : 'تشغيلية' : 'غير متاحة', badge: 'مكافأة' },
     ];
@@ -2591,80 +2576,6 @@ function openChangePasswordModal() {
 function closeChangePasswordModal() {
     const modal = document.getElementById('changePasswordModal');
     if (modal) modal.classList.add('hide');
-}
-
-function toggle2FASetting(checkbox) {
-    const isEnabled = checkbox.checked;
-    if (isEnabled) {
-        checkbox.checked = false;
-        setupGoogleAuthenticator();
-        return;
-    }
-    const token = localStorage.getItem('token');
-    fetch('/api/user/2fa/toggle', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ enabled: isEnabled })
-    }).then(async response => {
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'فشل حفظ إعداد المصادقة');
-        if (currentUserData) currentUserData.twoFactorEnabled = data.enabled;
-        updateVerificationStatus(data.enabled);
-        updateTwoFactorStatus(data.enabled);
-        showToast(data.message, isEnabled ? 'win' : 'default');
-    }).catch(error => {
-        checkbox.checked = !isEnabled;
-        showToast(`❌ ${error.message}`);
-    });
-}
-
-async function setupGoogleAuthenticator() {
-    try {
-        const setupResponse = await fetch('/api/user/2fa/setup', {
-            method: 'POST', headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
-        const setup = await setupResponse.json();
-        if (!setupResponse.ok) throw new Error(setup.error || 'تعذر إعداد المصادقة');
-        document.getElementById('authenticatorQrCode').src = setup.qrCode;
-        document.getElementById('authenticatorSecret').innerText = setup.secret;
-        document.getElementById('authenticatorConfirmCode').value = '';
-        document.getElementById('authenticatorSetupModal').classList.remove('hide');
-    } catch (error) {
-        showToast(`❌ ${error.message}`);
-    }
-}
-
-function closeAuthenticatorSetup() {
-    const modal = document.getElementById('authenticatorSetupModal');
-    if (modal) modal.classList.add('hide');
-}
-
-async function confirmGoogleAuthenticator(event) {
-    event.preventDefault();
-    const button = document.getElementById('btnConfirmAuthenticator');
-    const code = document.getElementById('authenticatorConfirmCode').value.trim();
-    button.disabled = true;
-    button.innerText = 'جاري التحقق...';
-    try {
-        const response = await fetch('/api/user/2fa/confirm', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-            body: JSON.stringify({ code })
-        });
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.error || 'الرمز غير صحيح');
-        currentUserData.twoFactorEnabled = true;
-        document.getElementById('toggle2FA').checked = true;
-        updateVerificationStatus(true);
-        updateTwoFactorStatus(true);
-        closeAuthenticatorSetup();
-        showToast('✅ تم ربط Google Authenticator وتوثيق الحساب', 'win');
-    } catch (error) {
-        showToast(`❌ ${error.message}`);
-    } finally {
-        button.disabled = false;
-        button.innerText = 'تأكيد وتفعيل المصادقة';
-    }
 }
 
 async function handleChangePasswordSubmit(event) {
@@ -3427,9 +3338,21 @@ function syncWithdrawalScheduleUI() {
 
 function openWithdrawModal() {
     document.getElementById('withdrawModal').classList.remove('hide');
+    document.getElementById('withdrawEmailCodePanel')?.classList.add('hidden');
+    document.getElementById('withdrawEmailCode').value = '';
+    const button = document.getElementById('btnSubmitWithdraw');
+    if (button) button.innerText = 'إرسال رمز التأكيد إلى البريد';
     syncWithdrawalScheduleUI();
 }
-function closeWithdrawModal() { document.getElementById('withdrawModal').classList.add('hide'); }
+function closeWithdrawModal() {
+    document.getElementById('withdrawModal').classList.add('hide');
+    document.getElementById('withdrawEmailCodePanel')?.classList.add('hidden');
+    document.getElementById('withdrawEmailCode').value = '';
+    sessionStorage.removeItem('operix_withdraw_key');
+    sessionStorage.removeItem('operix_withdraw_intent');
+    const button = document.getElementById('btnSubmitWithdraw');
+    if (button) button.innerText = 'إرسال رمز التأكيد إلى البريد';
+}
 
 async function loadDepositAddress() {
     try {
@@ -3451,24 +3374,6 @@ async function confirmDeposit(event) {
     event?.preventDefault();
     showToast('يتم اكتشاف إيداعات TRC20 وإضافتها تلقائيًا بعد تأكيد الشبكة.');
     return false;
-}
-
-async function sendWithdraw2FACode() {
-    const token = localStorage.getItem('token');
-    try {
-        const res = await fetch('/api/user/2fa/send-code', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await res.json();
-        if (res.ok) {
-            showToast('✅ تم إرسال رمز التحقق الثنائي (2FA) إلى بريدك الإلكتروني', 'win');
-        } else {
-            showToast('❌ ' + (data.error || 'فشل إرسال الرمز'));
-        }
-    } catch (err) {
-        showToast('❌ خطأ في الاتصال بالخادم');
-    }
 }
 
 function updateHybridWithdrawFee() {
@@ -3493,7 +3398,6 @@ async function submitWithdraw() {
     const amount = parseFloat(document.getElementById('withdrawAmount').value);
     const walletAddress = document.getElementById('withdrawWallet').value.trim();
     const walletNetwork = document.getElementById('withdrawWalletNetwork').value;
-    const twoFactorCode = document.getElementById('withdraw2faCode').value.trim();
     const token = localStorage.getItem('token');
     const btn = document.getElementById('btnSubmitWithdraw');
     const schedule = syncWithdrawalScheduleUI();
@@ -3514,31 +3418,45 @@ async function submitWithdraw() {
     }
     if (!walletNetwork) { showToast('يرجى اختيار شبكة السحب'); return; }
 
-    if (!twoFactorCode) {
-        showToast('يرجى إدخال رمز التحقق الثنائي (2FA)');
-        return;
-    }
-
     btn.disabled = true;
     btn.dataset.submitting = 'true';
     try {
+        const intentFingerprint = JSON.stringify({ amount: Number(amount).toFixed(4), walletAddress, walletNetwork });
+        if (sessionStorage.getItem('operix_withdraw_intent') !== intentFingerprint) {
+            sessionStorage.removeItem('operix_withdraw_key');
+            document.getElementById('withdrawEmailCodePanel')?.classList.add('hidden');
+            document.getElementById('withdrawEmailCode').value = '';
+            sessionStorage.setItem('operix_withdraw_intent', intentFingerprint);
+        }
+        const emailCode = document.getElementById('withdrawEmailCode').value.trim();
         const idempotencyKey = sessionStorage.getItem('operix_withdraw_key') || (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
         sessionStorage.setItem('operix_withdraw_key', idempotencyKey);
         const res = await fetch('/api/wallet/withdraw', {
             method: 'POST',
             headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'Idempotency-Key': idempotencyKey},
-            body: JSON.stringify({ amount, walletAddress, walletNetwork, twoFactorCode })
+            body: JSON.stringify({ amount, walletAddress, walletNetwork, ...(emailCode ? { emailCode } : {}) })
         });
         const data = await res.json();
+        if (res.status === 202 && data.verificationRequired) {
+            document.getElementById('withdrawEmailCodePanel')?.classList.remove('hidden');
+            document.getElementById('withdrawEmailCode')?.focus();
+            btn.innerText = 'تأكيد طلب السحب';
+            showToast(data.message || 'تم إرسال رمز التأكيد إلى بريدك الإلكتروني', 'win');
+            return;
+        }
         if(res.ok) {
             showToast('تم تقديم طلب السحب وخصم المبلغ من محفظتك بنجاح');
             closeWithdrawModal();
             sessionStorage.removeItem('operix_withdraw_key');
+            sessionStorage.removeItem('operix_withdraw_intent');
+            document.getElementById('withdrawEmailCode').value = '';
+            document.getElementById('withdrawEmailCodePanel')?.classList.add('hidden');
+            btn.innerText = 'إرسال رمز التأكيد إلى البريد';
             if (data.wallet) updateWalletData(data.wallet);
             await loadUserProfile(); // مزامنة وتحديث قيم الرصيد في الأماكن كافة فور نجاح الطلب
         } else {
             if (data.code === 'WITHDRAWAL_DAY_NOT_ALLOWED') syncWithdrawalScheduleUI();
-            showToast(data.error || 'رصيد المحفظة لا يكفي أو رمز 2FA غير صحيح');
+            showToast(data.error || 'تعذر إكمال طلب السحب');
         }
     } catch(err) {
         showToast('خطأ في الاتصال');
@@ -3546,6 +3464,12 @@ async function submitWithdraw() {
         delete btn.dataset.submitting;
         syncWithdrawalScheduleUI();
     }
+}
+
+function requestWithdrawalEmailCodeAgain() {
+    const codeInput = document.getElementById('withdrawEmailCode');
+    if (codeInput) codeInput.value = '';
+    return submitWithdraw();
 }
 
 async function openHistoryModal() {
@@ -3688,14 +3612,14 @@ function changeLanguage(language) {
         ar: {
             displayName: 'User', email: 'user@domain.com', earnings: 'إجمالي الأرباح المكتسبة', withdrawn: 'السحوبات الناجحة',
             referral: 'رابط الدعوة السريع', copy: 'نسخ', walletTitle: 'محفظة السحب المعتمدة', walletLabel: 'عنوان المحفظة (TRC20)',
-            security: 'الأمان والحماية', changePassword: 'تغيير كلمة المرور', twoFactor: 'المصادقة الثنائية (2FA)',
+            security: 'الأمان والحماية', changePassword: 'تغيير كلمة المرور', withdrawalEmailCode: 'رمز تأكيد السحب عبر البريد',
             sessions: 'الأجهزة والجلسات النشطة', preferences: 'إعدادات المنصة والدعم', sounds: 'الأصوات والتنبيهات', language: 'لغة التطبيق',
             support: 'الدعم الفني الخارجي', terms: 'شروط الاستخدام', privacy: 'سياسة الخصوصية', logout: 'تسجيل الخروج من الحساب'
         },
         en: {
             displayName: 'User', email: 'user@domain.com', earnings: 'Total earnings', withdrawn: 'Successful withdrawals',
             referral: 'Quick referral link', copy: 'Copy', walletTitle: 'Approved withdrawal wallet', walletLabel: 'Wallet address (TRC20)',
-            security: 'Security', changePassword: 'Change password', twoFactor: 'Two-factor authentication (2FA)',
+            security: 'Security', changePassword: 'Change password', withdrawalEmailCode: 'Withdrawal email verification',
             sessions: 'Active devices and sessions', preferences: 'Platform settings and support', sounds: 'Sounds and alerts', language: 'Application language',
             support: 'External support', terms: 'Terms of use', privacy: 'Privacy policy', logout: 'Log out of account'
         }

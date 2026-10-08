@@ -27,7 +27,8 @@ async function main() {
     { table: 'tron_deposit_addresses', columns: 'user_id,derivation_index,address,last_scanned_at' },
     { table: 'tron_deposit_address_sequences', columns: 'id,next_index' },
     { table: 'tron_deposit_events', columns: 'id,transaction_id,user_id,tx_hash,event_index,to_address,amount' },
-    { table: 'withdrawal_payouts', columns: 'id,transaction_id,network,status,tx_hash,signed_payload,next_attempt_at' }
+    { table: 'withdrawal_payouts', columns: 'id,transaction_id,network,status,tx_hash,signed_payload,next_attempt_at' },
+    { table: 'withdrawal_email_codes', columns: 'user_id,code_hash,intent_hash,expires_at,attempts,sent_at' }
   ];
   const results = [];
 

@@ -1,0 +1,45 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const read = relative => fs.readFileSync(path.join(__dirname, '..', relative), 'utf8');
+const migration = read('supabase/withdrawal-email-verification.sql');
+const walletController = read('src/controllers/walletController.js');
+const userController = read('src/controllers/userController.js');
+const adminController = read('src/controllers/adminController.js');
+const userRoutes = read('src/routes/userRoutes.js');
+const authController = read('src/controllers/authController.js');
+const indexHtml = read('index.html');
+const appJs = read('app.js');
+const emailTemplates = read('src/services/emailTemplates.js');
+const readiness = read('src/config/supabase.js');
+
+assert.match(migration, /create table if not exists public\.withdrawal_email_codes/i);
+assert.match(migration, /enable row level security/i);
+assert.match(migration, /revoke all privileges on table public\.withdrawal_email_codes from public, anon, authenticated/i);
+assert.match(migration, /grant all privileges on table public\.withdrawal_email_codes to service_role/i);
+assert.match(migration, /attempts between 0 and 5/i);
+assert.match(migration, /interval '60 seconds'/i, 'resend cooldown must be database enforced');
+assert.match(migration, /interval '10 minutes'/i, 'code expiry must be database bounded');
+assert.match(migration, /delete from public\.withdrawal_email_codes where user_id = p_user_id/i, 'valid codes are consumed atomically and once');
+assert.match(migration, /operix_withdrawal_email_code_consume_atomic/i);
+assert.match(walletController, /crypto\.randomInt\(100000, 1000000\)/);
+assert.match(walletController, /createHmac\('sha256'/);
+assert.match(walletController, /operix_withdrawal_email_code_issue_atomic/);
+assert.match(walletController, /operix_withdrawal_email_code_consume_atomic/);
+assert.match(walletController, /withdrawalEmailCodeTemplate/);
+assert.match(walletController, /verificationRequired: true/);
+assert.match(walletController, /if \(!user\.emailVerified\)/, 'verified email is required');
+assert.doesNotMatch(walletController, /user\.twoFactorEnabled|user\.twoFactorSecret|twoFactorCode/, 'user withdrawal must not require TOTP');
+assert.doesNotMatch(adminController, /!user\.twoFactorEnabled/, 'automatic user withdrawals must not depend on the removed user TOTP setup');
+assert.doesNotMatch(userController, /setupTwoFactor|confirmTwoFactor|sendTwoFactorCode|toggleTwoFactor/);
+assert.doesNotMatch(userRoutes, /2fa/i, 'user TOTP endpoints must be removed');
+assert.match(authController, /adminTwoFactorEnabled/, 'admin TOTP must remain enabled');
+assert.match(indexHtml, /withdrawEmailCode/);
+assert.match(indexHtml, /requestWithdrawalEmailCodeAgain/);
+assert.doesNotMatch(indexHtml, /withdraw2faCode|toggle2FA|authenticatorSetupModal|Google Authenticator/i);
+assert.doesNotMatch(appJs, /twoFactorEnabled|toggle2FA|GoogleAuthenticator|\/2fa/);
+assert.match(emailTemplates, /function withdrawalEmailCodeTemplate/);
+assert.match(readiness, /withdrawal_email_codes/);
+
+console.log('Withdrawal email verification tests: ok');

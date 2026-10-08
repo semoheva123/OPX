@@ -9,7 +9,7 @@ function localReply(message, userName, userBalance, userTier, platformFacts = {}
   const text = normalizeSupportText(message);
   const has = (...terms) => terms.some(term => text.includes(normalizeSupportText(term)));
   const account = platformFacts.account || {};
-  const tickets = 'من تبويب «حسابي» ← «إعدادات المنصة والدعم» ← «فتح تذكرة دعم». اكتب عنوانًا واضحًا وتفاصيل المشكلة ثم اضغط «إرسال التذكرة»؛ وتظهر تذاكرك السابقة وردود الفريق وحالة كل تذكرة في النافذة نفسها. لا ترسل كلمة المرور أو رمز 2FA أو المفتاح الخاص للمحفظة.';
+  const tickets = 'من تبويب «حسابي» ← «إعدادات المنصة والدعم» ← «فتح تذكرة دعم». اكتب عنوانًا واضحًا وتفاصيل المشكلة ثم اضغط «إرسال التذكرة»؛ وتظهر تذاكرك السابقة وردود الفريق وحالة كل تذكرة في النافذة نفسها. لا ترسل كلمة المرور أو رمز تأكيد السحب أو المفتاح الخاص للمحفظة.';
   const transactionStatus = { approved: 'معتمدة', completed: 'مكتملة', pending: 'قيد المعالجة', rejected: 'مرفوضة', processing: 'قيد المعالجة' };
   const vaultStatus = { active: 'مجمّدة', matured: 'مستحقة للاسترداد', claimed: 'تم استردادها', closed: 'منتهية' };
 
@@ -23,7 +23,7 @@ function localReply(message, userName, userBalance, userTier, platformFacts = {}
     const problem = has('مشكلة', 'لم يصل', 'ما وصل', 'متاخر', 'معلق', 'مرفوض', 'خطا', 'تعذر');
     const fee = platformFacts.withdrawalFee || 'تظهر الرسوم والمبلغ الصافي قبل التأكيد';
     const payoutState = platformFacts.withdrawalAutomationEnabled === false ? 'تنفيذ الدفع الآلي غير مفعّل بحسب الإعداد الحالي؛ لا تعتبر الطلب مدفوعًا حتى تتغير حالته في السجل.' : 'يبقى الطلب قيد المراجعة حتى تتغير حالته في السجل.';
-    return `السحب بعملة USDT وعلى TRC20 فقط، ويُخصم من رصيد الأرباح المتاح لا من رصيد الإيداع أو OPX. الحد الأدنى ${platformFacts.withdrawalMinimum || 20} USDT والرسوم الحالية ${fee}؛ وموعد مستوى ${userTier}: ${platformFacts.withdrawalSchedule || 'اعتمد الموعد المعروض في نافذة السحب'}. يلزم توثيق البريد وتفعيل 2FA وتطابق عنوان TRC20 المثبت؛ ${payoutState} راجع سجل المعاملات قبل إعادة المحاولة.${problem ? ' إذا ظل معلقًا أو رُفض، أرسل رقم المعاملة وحالتها للدعم ولا تنشئ طلبًا مكررًا.' : ''}`;
+    return `السحب بعملة USDT وعلى TRC20 فقط، ويُخصم من رصيد الأرباح المتاح لا من رصيد الإيداع أو OPX. الحد الأدنى ${platformFacts.withdrawalMinimum || 20} USDT والرسوم الحالية ${fee}؛ وموعد مستوى ${userTier}: ${platformFacts.withdrawalSchedule || 'اعتمد الموعد المعروض في نافذة السحب'}. يلزم توثيق البريد وتأكيد الطلب برمز لمرة واحدة يُرسل إلى بريد الحساب وتطابق عنوان TRC20 المثبت؛ ${payoutState} راجع سجل المعاملات قبل إعادة المحاولة.${problem ? ' إذا ظل معلقًا أو رُفض، أرسل رقم المعاملة وحالتها للدعم ولا تنشئ طلبًا مكررًا.' : ''}`;
   }
   if (has('معاملة', 'معاملاتي', 'العمليات الاخيرة', 'حالة الطلب', 'حاله الطلب', 'سجل المعاملات')) {
     const recent = Array.isArray(account.recentTransactions) ? account.recentTransactions : [];
@@ -64,9 +64,9 @@ function localReply(message, userName, userBalance, userTier, platformFacts = {}
     const balance = Number(userBalance || 0).toFixed(2);
     const problem = has('مشكلة', 'صفر', 'لا يظهر', 'لم يظهر', 'خطا', 'نسي', 'لا استطيع');
     const securityAdvice = has('2fa', 'مصادقة')
-      ? account.twoFactorEnabled ? 'المصادقة الثنائية مفعلة في حسابك. إذا فقدت الوصول للمُصدّق، لا ترسل الرموز؛ تواصل عبر تذكرة دعم موثقة.' : 'لتفعيل 2FA افتح «حسابي» ← «إعدادات الأمان» ← المصادقة الثنائية، امسح QR في تطبيق المصادقة ثم أدخل الرمز الحالي للتأكيد.'
-      : 'لحماية الحساب وثّق البريد، فعّل 2FA وثبّت عنوان TRC20؛ لا تشارك كلمة المرور أو رموز التحقق أو المفتاح الخاص.';
-    return `في «حسابي» تجد الملف الاجتماعي، إعداد المحفظة، أمان الحساب، البريد، 2FA والجلسات وتذكرة الدعم؛ اسم المستخدم هو بريد الحساب. رصيدك الإجمالي الظاهر ${balance} USDT (إيداع ${Number(account.depositBalance || 0).toFixed(2)}، أرباح ${Number(account.profitBalance || 0).toFixed(2)}) ورصيد OPX ${Number(account.opxBalance || 0).toFixed(4)}؛ ومستواك ${userTier}. ${problem ? 'إذا ظهر رصيد صفرًا أو بيانات قديمة، حدّث الرئيسية ثم افتح سجل المعاملات؛ لا ترسل بيانات الدخول. إذا استمر الفرق أرسل لقطة شاشة ووقت المشكلة للدعم.' : securityAdvice}`;
+      ? 'لم تعد بحاجة إلى إعداد تطبيق مصادقة للمستخدمين. عند إرسال طلب سحب، ابدأ الطلب ثم أدخل رمزًا لمرة واحدة يصلك إلى بريدك الموثق؛ لا تشارك الرمز مع أحد.'
+      : 'لحماية الحساب وثّق البريد وثبّت عنوان TRC20؛ رمز تأكيد السحب يُرسل إلى بريدك عند الطلب. لا تشارك كلمة المرور أو رمز البريد أو المفتاح الخاص.';
+    return `في «حسابي» تجد الملف الاجتماعي، إعداد المحفظة، أمان الحساب، البريد والجلسات وتذكرة الدعم؛ اسم المستخدم هو بريد الحساب. رصيدك الإجمالي الظاهر ${balance} USDT (إيداع ${Number(account.depositBalance || 0).toFixed(2)}، أرباح ${Number(account.profitBalance || 0).toFixed(2)}) ورصيد OPX ${Number(account.opxBalance || 0).toFixed(4)}؛ ومستواك ${userTier}. ${problem ? 'إذا ظهر رصيد صفرًا أو بيانات قديمة، حدّث الرئيسية ثم افتح سجل المعاملات؛ لا ترسل بيانات الدخول. إذا استمر الفرق أرسل لقطة شاشة ووقت المشكلة للدعم.' : securityAdvice}`;
   }
   if (has('مجتمع', 'منشور', 'تعليق', 'رسالة خاصة', 'متابعة', 'feed', 'هاشتاغ')) return 'تبويب «المجتمع» يتيح تصفح المنشورات، النشر والتعليق والتفاعل والمتابعة والرسائل الخاصة. اكتب منشورًا مناسبًا، ويمكن إرفاق صورة ضمن حد الحجم الظاهر؛ للإبلاغ عن محتوى أو مشكلة مراسلة، استخدم أدوات المحتوى أو افتح تذكرة من «حسابي». لا تنشر بيانات مالية أو أسرار حسابك.';
   if (has('مشكلة', 'خطا', 'تعذر', 'لا يعمل', 'لا تعمل', 'لا استطيع', 'ما اقدر', 'لم يظهر', 'لم تظهر')) return `لحل المشكلة: حدّث الصفحة، تأكد من الاتصال، ثم افتح التبويب المعني وراجع حالة العنصر وسجل المعاملات؛ لا تكرر أي عملية مالية قبل التحقق من نتيجتها. أرسل للدعم اسم التبويب، نص الخطأ، وقت حدوثه، ومعرّف العملية إن وجد عبر ${tickets}`;
@@ -116,7 +116,7 @@ function buildPlatformKnowledge(levels = [], settings = {}, userTier = '', vault
     depositRule: String(process.env.TRON_DEPOSIT_AUTOMATION_ENABLED || '').toLowerCase() === 'true'
       ? 'USDT فقط على TRON (TRC20) عبر عنوان آلي شخصي من الرئيسية؛ لا يوجد إدخال يدوي لـTxHash؛ لا ترسل قبل التأكد من أن العنوان ظاهر ومتاح في حسابك.'
       : 'الإيداع الآلي TRC20 غير مفعّل حاليًا؛ يجب ألا يُطلب من المستخدم إرسال أموال أو استعمال عنوان قديم، ويُوجّه إلى حالة الخدمة والدعم.',
-    withdrawalRule: `USDT فقط على TRC20؛ المصدر رصيد الأرباح المتاح؛ الحد الأدنى 20 USDT؛ الرسوم 10% من المبلغ؛ موعد ${userTier}: ${withdrawalSchedule.message}; يتطلب بريدًا موثقًا و2FA وعنوانًا مثبتًا مطابقًا، ويظهر الطلب في السجل وقد يبقى قيد المراجعة.`,
+    withdrawalRule: `USDT فقط على TRC20؛ المصدر رصيد الأرباح المتاح؛ الحد الأدنى 20 USDT؛ الرسوم 10% من المبلغ؛ موعد ${userTier}: ${withdrawalSchedule.message}; يتطلب بريدًا موثقًا ورمز تأكيد لمرة واحدة يصل إلى البريد وعنوانًا مثبتًا مطابقًا، ويظهر الطلب في السجل وقد يبقى قيد المراجعة.`,
     tabGuides: {
       home: 'الرئيسية: الرصيد الإجمالي وتفصيل USDT (إيداع/أرباح) وOPX، التقدم اليومي، نشاط الحساب، سجل زمني، تحديث السوق الخارجي OPXUSD من Bitfinex. سعر السوق ليس سعرًا داخليًا ولا عائدًا أو توصية.',
       community: 'المجتمع: موجز كل المنشورات أو المتابَعين، نشر نص وصورة، إعجاب وتعليق ومتابعة ملفات اجتماعية ورسائل خاصة؛ المحتوى يخضع للإشراف.',
@@ -125,7 +125,7 @@ function buildPlatformKnowledge(levels = [], settings = {}, userTier = '', vault
       tasks: 'المهام: مهام تقييم شركات/منتجات تظهر حسب مستوى الحساب؛ فتح بطاقة المهمة، قراءة بيانات العنصر، اختيار تقييم ووسم، ثم إرسال. يوجد انتظار ساعتين وتسلسل إكمال؛ مهام المجتمع اختيارية وليست مدفوعة.',
       games: 'الألعاب: عجلة الحظ والصندوق المجهول، رصيد الدورات، نطاق الجوائز، سجل اللعب وإحصاءات المستخدم.',
       team: 'الفريق: رابط وكود الدعوة، مستويات الشبكة الثلاثة، النشط وغير النشط، مكافآت مباشرة وتقدم 300 إحالة لـA4.',
-      profile: 'حسابي: البريد واسم المستخدم المطابق له، ملف اجتماعي، صورة، رصيد/أرباح/إيداع/سحوبات/OPX، عنوان سحب TRC20 المثبت، 2FA، توثيق البريد، تغيير كلمة المرور والجلسات، تذاكر الدعم وإعداد اللغة.',
+      profile: 'حسابي: البريد واسم المستخدم المطابق له، ملف اجتماعي، صورة، رصيد/أرباح/إيداع/سحوبات/OPX، عنوان سحب TRC20 المثبت، رمز تأكيد السحب عبر البريد، توثيق البريد، تغيير كلمة المرور والجلسات، تذاكر الدعم وإعداد اللغة.',
       customerService: 'خدمة العملاء: أسئلة المنصة والحساب وحلول أولية؛ الشكوى أو الفروقات المالية أو المعاملات العالقة تصعّد بتذكرة من حسابي ثم إعدادات المنصة والدعم ثم فتح تذكرة دعم.'
     },
     account,
@@ -175,7 +175,6 @@ async function chat(req, res) {
       tierActive: Boolean(user?.isTierActivated || Number(wallet.totalDeposits || 0) > 0 || String(user?.email || '').toLowerCase() === 'official@operix.website'),
       paidFeatureAccess: String(user?.email || '').toLowerCase() === 'official@operix.website',
       emailVerified: Boolean(user?.emailVerified),
-      twoFactorEnabled: Boolean(user?.twoFactorEnabled),
       withdrawalWalletSet: Boolean(String(user?.walletAddress || '').trim()),
       todayCompletedTasks: Number(user?.todayCompletedTasks || 0),
       referrals,
@@ -186,7 +185,7 @@ async function chat(req, res) {
       recentVaults: (recentVaults || []).map(item => ({ status: item.status, amount: Number(item.amount || 0), durationDays: Number(item.durationDays || 0), maturityDate: item.maturityDate, expectedReturnRate: Number(item.expectedReturnRate || 0), incentiveAmount: Number(item.incentiveAmount || 0) }))
     };
     const platformFacts = buildPlatformKnowledge(Array.isArray(levels) ? levels : [], gameSettings || req.app.locals.gameSettings || {}, userTier, vaultContracts, account);
-    const context = `المهام اليوم: ${user?.todayCompletedTasks || 0}، الإحالات: ${referrals}، الإحالات النشطة: ${activeReferrals}، دورات العجلة: ${user?.wheelCredits || 0}، دورات الصندوق: ${user?.mysteryBoxCredits || 0}، المصادقة الثنائية: ${user?.twoFactorEnabled ? 'مفعلة' : 'غير مفعلة'}، محفظة السحب: ${user?.walletAddress ? 'مثبتة' : 'غير مثبتة'}.`;
+    const context = `المهام اليوم: ${user?.todayCompletedTasks || 0}، الإحالات: ${referrals}، الإحالات النشطة: ${activeReferrals}، دورات العجلة: ${user?.wheelCredits || 0}، دورات الصندوق: ${user?.mysteryBoxCredits || 0}، تأكيد السحب: رمز لمرة واحدة عبر البريد، محفظة السحب: ${user?.walletAddress ? 'مثبتة' : 'غير مثبتة'}.`;
     const safeHistory = Array.isArray(history) ? history.filter(item => item && ['user', 'assistant'].includes(item.role) && typeof item.content === 'string').slice(-8).map(item => ({ role: item.role, content: item.content.slice(0, 2000) })) : [];
     const systemPrompt = `أنت «خدمة العملاء الذكية» لمنصة OPERIX. مهمتك شرح طريقة استخدام المنصة ومعلومات الحساب والخدمات الحالية باللغة العربية الواضحة والمهذبة.
   مصدر الحقيقة عن تحديثات المنصة هو بيانات المستوى والإعدادات الحية والسياق أدناه، لا معلوماتك العامة أو الإصدارات السابقة. إذا كانت معلومة غير موجودة أو متعارضة، صرّح بأنك لا تستطيع تأكيدها ووجّه المستخدم إلى الصفحة المعنية أو مركز الدعم؛ لا تخمّن ولا تعد بأن جميع معلومات المحادثة جرى تحديثها من الإنترنت.

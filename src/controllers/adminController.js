@@ -1052,7 +1052,7 @@ async function processAutomaticWithdrawalApprovals() {
     try {
       const user = await dataAccess.user.findById(transaction.userId);
       const amount = Number(transaction.amount || 0);
-      if (!user || user.isBanned || !user.emailVerified || !user.twoFactorEnabled ||
+      if (!user || user.isBanned || !user.emailVerified ||
           String(user.walletNetwork || '').toUpperCase() !== 'TRC20' ||
           String(user.walletAddress || '').trim() !== String(transaction.walletAddress || '').trim() ||
           !/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(String(transaction.walletAddress || '').trim())) {

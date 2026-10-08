@@ -166,6 +166,26 @@ function twoFactorTemplate({ code, expiresInMinutes = 5 }) {
   });
 }
 
+function withdrawalEmailCodeTemplate({ code, expiresInMinutes = 10, amount }) {
+  return renderEmailTemplate({
+    title: 'رمز تأكيد السحب',
+    preheader: 'أدخل الرمز لإكمال طلب السحب من حسابك',
+    heading: 'تأكيد طلب السحب',
+    description: `أدخل هذا الرمز في حسابك لإكمال طلب سحب بقيمة ${amount} USDT. لن يتم حجز أو خصم أي رصيد قبل التحقق من الرمز.`,
+    actionText: '',
+    actionUrl: '#',
+    highlightTitle: 'رمز تأكيد السحب',
+    highlightValue: code,
+    details: [
+      { label: 'مبلغ الطلب', value: `${amount} USDT` },
+      { label: 'مدة الصلاحية', value: `${expiresInMinutes} دقائق` },
+      { label: 'الاستخدام', value: 'مرة واحدة فقط' }
+    ],
+    secondaryText: 'لا تشارك هذا الرمز مع أي شخص. إذا لم تطلب السحب، تجاهل الرسالة وغيّر كلمة مرور حسابك.',
+    footerNote: 'تم إرسال هذه الرسالة تلقائيًا لحماية طلب السحب في OPERIX.'
+  });
+}
+
 function withdrawalRequestTemplate({ amount, transactionId, walletAddress, requestedAt }) {
   return renderEmailTemplate({
     title: 'تم تقديم طلب سحب جديد',
@@ -247,6 +267,7 @@ module.exports = {
   emailVerificationTemplate,
   passwordResetTemplate,
   twoFactorTemplate,
+  withdrawalEmailCodeTemplate,
   withdrawalRequestTemplate,
   withdrawalCompletedTemplate,
   withdrawalRejectedTemplate,
