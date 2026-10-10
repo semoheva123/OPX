@@ -39,7 +39,7 @@ begin
   select p_user_id, p_code_hash, p_intent_hash, p_expires_at, 0, now(), now()
   where exists (
     select 1 from public.users
-    where id = p_user_id and role = 'user' and is_banned = false and email_verified = true
+    where id = p_user_id and is_banned = false and email_verified = true
   )
   on conflict (user_id) do update
     set code_hash = excluded.code_hash,

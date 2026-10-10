@@ -4,6 +4,7 @@ const path = require('node:path');
 
 const read = relative => fs.readFileSync(path.join(__dirname, '..', relative), 'utf8');
 const migration = read('supabase/withdrawal-email-verification.sql');
+const adminRoleFix = read('supabase/withdrawal-email-verification-admin-role-fix.sql');
 const walletController = read('src/controllers/walletController.js');
 const userController = read('src/controllers/userController.js');
 const adminController = read('src/controllers/adminController.js');
@@ -23,6 +24,9 @@ assert.match(migration, /interval '60 seconds'/i, 'resend cooldown must be datab
 assert.match(migration, /interval '10 minutes'/i, 'code expiry must be database bounded');
 assert.match(migration, /delete from public\.withdrawal_email_codes where user_id = p_user_id/i, 'valid codes are consumed atomically and once');
 assert.match(migration, /operix_withdrawal_email_code_consume_atomic/i);
+assert.doesNotMatch(migration, /role\s*=\s*'user'/i, 'verified administrative accounts may request a code on the user withdrawal flow');
+assert.match(adminRoleFix, /where id = p_user_id and is_banned = false and email_verified = true/i);
+assert.doesNotMatch(adminRoleFix, /role\s*=\s*'user'/i);
 assert.match(walletController, /crypto\.randomInt\(100000, 1000000\)/);
 assert.match(walletController, /createHmac\('sha256'/);
 assert.match(walletController, /operix_withdrawal_email_code_issue_atomic/);
