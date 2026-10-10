@@ -42,6 +42,9 @@ assert.match(indexHtml, /requestWithdrawalEmailCodeAgain/);
 assert.match(appJs, /button\.disabled = !schedule\.allowed && codeRequested/);
 assert.doesNotMatch(indexHtml, /withdraw2faCode|toggle2FA|authenticatorSetupModal|Google Authenticator/i);
 assert.doesNotMatch(appJs, /twoFactorEnabled|toggle2FA|GoogleAuthenticator|\/2fa/);
+assert.match(appJs, /if \(!schedule\.allowed && emailCode\)/, 'schedule must gate final withdrawal but not email-code request');
+assert.match(appJs, /timeZone: 'Europe\/Istanbul'/, 'browser schedule timezone must match the server');
+assert.match(appJs, /يمكنك طلب رمز البريد الآن/);
 assert.match(emailTemplates, /function withdrawalEmailCodeTemplate/);
 assert.match(readiness, /withdrawal_email_codes/);
 

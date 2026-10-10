@@ -1948,8 +1948,11 @@ function getTierWithdrawalSchedule(tierCode = currentUserData?.tierCode || curre
     const normalizedTier = String(tierCode || '').trim().toUpperCase();
     const allowedDay = normalizedTier === 'A1' || normalizedTier === 'A2' ? 5 : 6;
     const allowedDayName = allowedDay === 5 ? 'الجمعة' : 'السبت';
-    const allowed = date.getUTCDay() === allowedDay;
-    return { allowed, allowedDay, allowedDayName, tierCode: normalizedTier };
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Istanbul', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date);
+    const values = Object.fromEntries(parts.filter(part => part.type !== 'literal').map(part => [part.type, Number(part.value)]));
+    const currentDay = new Date(Date.UTC(values.year, values.month - 1, values.day)).getUTCDay();
+    const allowed = currentDay === allowedDay;
+    return { allowed, allowedDay, allowedDayName, currentDay, tierCode: normalizedTier, timezone: 'Europe/Istanbul' };
 }
 
 function getActiveTaskTier() {
@@ -3314,12 +3317,11 @@ function syncWithdrawalScheduleUI() {
     const status = document.getElementById('withdrawalScheduleStatus');
     const button = document.getElementById('btnSubmitWithdraw');
     const schedule = getTierWithdrawalSchedule();
-    const day = new Date().getUTCDay();
-    const todayName = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'][day];
+    const todayName = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'][schedule.currentDay];
     if (status) {
         status.innerText = schedule.allowed
-            ? `اليوم ${todayName}: يمكنك تقديم طلب السحب لمستوى ${schedule.tierCode} اليوم. (UTC)`
-            : `موعد السحب لمستوى ${schedule.tierCode}: يوم ${schedule.allowedDayName} فقط. اليوم ${todayName}؛ أرسل الطلب في الموعد المحدد. (UTC)`;
+            ? `اليوم ${todayName}: يمكنك تقديم طلب السحب لمستوى ${schedule.tierCode} اليوم. (توقيت إسطنبول)`
+            : `موعد السحب لمستوى ${schedule.tierCode}: يوم ${schedule.allowedDayName} فقط. اليوم ${todayName}؛ يمكنك طلب رمز البريد الآن، وإكمال السحب في الموعد المحدد. (توقيت إسطنبول)`;
         status.classList.toggle('border-emerald-500/20', schedule.allowed);
         status.classList.toggle('bg-emerald-500/5', schedule.allowed);
         status.classList.toggle('text-emerald-100', schedule.allowed);
@@ -3403,8 +3405,9 @@ async function submitWithdraw() {
     const btn = document.getElementById('btnSubmitWithdraw');
     const schedule = syncWithdrawalScheduleUI();
 
-    if (!schedule.allowed) {
-        showToast(`طلبات السحب لمستوى ${schedule.tierCode} متاحة يوم ${schedule.allowedDayName} فقط (UTC)`);
+    const emailCode = document.getElementById('withdrawEmailCode').value.trim();
+    if (!schedule.allowed && emailCode) {
+        showToast(`طلبات السحب لمستوى ${schedule.tierCode} متاحة يوم ${schedule.allowedDayName} فقط (توقيت إسطنبول)`);
         return;
     }
 
@@ -3429,7 +3432,6 @@ async function submitWithdraw() {
             document.getElementById('withdrawEmailCode').value = '';
             sessionStorage.setItem('operix_withdraw_intent', intentFingerprint);
         }
-        const emailCode = document.getElementById('withdrawEmailCode').value.trim();
         const idempotencyKey = sessionStorage.getItem('operix_withdraw_key') || (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
         sessionStorage.setItem('operix_withdraw_key', idempotencyKey);
         const res = await fetch('/api/wallet/withdraw', {
