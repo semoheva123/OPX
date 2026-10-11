@@ -2082,6 +2082,21 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
                 </div>
             </div>
 
+            <div id="nowPaymentsAmountPanel" class="hidden space-y-2 rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
+                <label for="nowPaymentsDepositAmount" class="block text-[10px] text-slate-400 font-bold">مبلغ الإيداع المطلوب (USDT)</label>
+                <div class="flex items-center gap-2">
+                    <input id="nowPaymentsDepositAmount" type="number" min="1" max="1000000" step="0.0001" value="10" inputmode="decimal" class="w-full rounded-xl border border-slate-800 bg-slate-950/70 p-3 text-left text-xs font-mono text-white outline-none focus:border-amber-400" dir="ltr">
+                    <button id="nowPaymentsCreateButton" type="button" onclick="createNowPaymentsDeposit()" class="rounded-xl bg-amber-500 px-3 py-3 text-[10px] font-black text-slate-950 whitespace-nowrap">إنشاء طلب جديد</button>
+                </div>
+                <div id="nowPaymentsPaymentDetails" class="hidden space-y-2 pt-2">
+                    <div class="mx-auto w-fit rounded-2xl bg-white p-2"><img id="nowPaymentsQrCode" class="h-40 w-40" alt="رمز QR لإيداع USDT على TRC20"></div>
+                    <p class="text-center text-[10px] text-slate-400">أرسل المبلغ المحدد تمامًا إلى العنوان أدناه</p>
+                    <p class="text-center text-sm font-black text-emerald-300"><span id="nowPaymentsPayAmount">—</span> USDT (TRC20)</p>
+                    <p class="text-center text-[9px] text-slate-500">سيضاف إلى رصيدك <span id="nowPaymentsCreditAmount">—</span> USDT بعد تأكيد NOWPayments.</p>
+                    <p class="text-center text-[9px] text-slate-600">رقم الدفع: <span id="nowPaymentsPaymentId" class="font-mono"></span></p>
+                </div>
+            </div>
+
             <div class="deposit-address-box p-3 rounded-2xl space-y-2">
                 <span class="text-[10px] text-slate-400 font-bold block">عنوان محفظة الإيداع</span>
                 <div class="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-950/50 p-2">
@@ -2094,7 +2109,12 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
 
             <div class="space-y-3">
                 <div class="deposit-info-panel rounded-2xl p-3 text-[11px] leading-5">
-                    أرسل USDT على شبكة TRON (TRC20) إلى عنوان الإيداع الخاص بحسابك. سيُرصد التحويل ويُضاف الرصيد تلقائيًا بعد تأكيد الشبكة، دون الحاجة لإدخال المبلغ أو TxHash.
+                    أرسل USDT على شبكة TRON (TRC20) إلى العنوان الظاهر. بعد تأكيد التحويل، أدخل TxHash لإثبات الإيداع. لا تستخدم الشبكة نفسها لإرسال عملات أخرى.
+                </div>
+                <div id="sharedDepositClaimPanel" class="hidden space-y-2">
+                    <label for="sharedDepositTxHash" class="block text-[10px] text-slate-400">هاش التحويل (TxHash)</label>
+                    <input id="sharedDepositTxHash" type="text" maxlength="64" autocomplete="off" spellcheck="false" placeholder="64 خانة سداسية عشرية" class="w-full rounded-xl border border-slate-800 bg-slate-950/70 p-3 text-left text-[10px] font-mono text-slate-100 outline-none focus:border-amber-400" dir="ltr">
+                    <button id="sharedDepositClaimButton" type="button" onclick="claimSharedDeposit()" class="w-full rounded-xl bg-emerald-400 py-3 text-xs font-black text-slate-950">تحقق وأضف الإيداع</button>
                 </div>
                 <div id="depositModalStatus" class="text-[10px] text-center font-bold text-slate-300"></div>
                 <button type="button" onclick="closeDepositModal()" class="deposit-action-btn w-full py-3.5 text-slate-950 font-black rounded-xl text-xs shadow-lg active:scale-95 transition-all">تم، سأنتظر التأكيد</button>

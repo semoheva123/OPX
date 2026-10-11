@@ -106,6 +106,13 @@ function buildIndexerRequest(endpoint, path) {
   try { hostname = new URL(endpoint).hostname.toLowerCase(); } catch { }
   if (hostname !== 'apilist.tronscanapi.com') return { url: `${endpoint}/${String(path || '').replace(/^\/+/, '')}` };
 
+  const txEventsMatch = parsedPath.pathname.match(/^\/v1\/transactions\/([a-fA-F0-9]{64})\/events$/);
+  if (txEventsMatch) {
+    const url = new URL('/api/transaction-info', endpoint);
+    url.searchParams.set('hash', txEventsMatch[1].toLowerCase());
+    return { url: url.toString(), transactionId: txEventsMatch[1].toLowerCase(), transactionEvents: true };
+  }
+
   const match = parsedPath.pathname.match(/^\/v1\/accounts\/([^/]+)\/transactions\/trc20$/);
   if (!match) return { url: `${endpoint}/${String(path || '').replace(/^\/+/, '')}` };
   const source = parsedPath.searchParams;
@@ -129,6 +136,23 @@ function buildIndexerRequest(endpoint, path) {
 
 function normalizeIndexerBody(body, request) {
   if (!request.tronscan) return body;
+  if (request.transactionEvents) {
+    const transfers = Array.isArray(body?.trc20TransferInfo) ? body.trc20TransferInfo : [];
+    const confirmed = (body?.confirmed === true || body?.confirmed === 'true') && String(body?.contractRet || '').toUpperCase() === 'SUCCESS';
+    return {
+      data: confirmed ? transfers
+        .filter(transfer => String(transfer?.type || '').toLowerCase() === 'transfer' && transfer?.to_address && transfer?.from_address)
+        .map((transfer, eventIndex) => ({
+          transaction_id: request.transactionId,
+          event_name: 'Transfer',
+          event_index: eventIndex,
+          contract_address: transfer.contract_address,
+          block_timestamp: Number(body.timestamp || 0),
+          result: { from: transfer.from_address, to: transfer.to_address, value: String(transfer.amount_str ?? '') }
+        })) : [],
+      success: true
+    };
+  }
   const transfers = Array.isArray(body?.token_transfers) ? body.token_transfers : [];
   const data = transfers
     .filter(transfer => transfer?.confirmed === true && String(transfer.contractRet || '').toUpperCase() === 'SUCCESS' && String(transfer.event_type || '').toLowerCase() === 'transfer')

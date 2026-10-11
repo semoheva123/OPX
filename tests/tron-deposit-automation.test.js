@@ -51,6 +51,9 @@ assert.match(depositUi, /userDepositAddress/);
 
 const originalXpub = process.env.TRON_DEPOSIT_XPUB;
 const originalEnabled = process.env.TRON_DEPOSIT_AUTOMATION_ENABLED;
+const originalSharedMode = process.env.TRON_SHARED_DEPOSIT_MODE;
+const originalSharedAddress = process.env.TRON_SHARED_DEPOSIT_ADDRESS;
+
 (async () => {
   try {
     // Public ethers test mnemonic only; never use a test phrase for real deposits.
@@ -66,6 +69,13 @@ const originalEnabled = process.env.TRON_DEPOSIT_AUTOMATION_ENABLED;
     const cursor = Date.parse('2026-10-11T18:00:00.000Z');
     assert.equal(deposits.getScanStartTimestamp(cursor), Date.parse('2026-10-10T18:00:00.000Z'),
       'each scan must recheck a 24-hour overlap so delayed indexer records can be recovered');
+    delete process.env.TRON_DEPOSIT_XPUB;
+    process.env.TRON_DEPOSIT_AUTOMATION_ENABLED = 'true';
+    process.env.TRON_SHARED_DEPOSIT_MODE = 'true';
+    process.env.TRON_SHARED_DEPOSIT_ADDRESS = 'TQk8R8L2D6Q7m4n8YXq7b6F3mK4Z7zgDq7';
+    const sharedMode = await deposits.processTronDepositQueue();
+    assert.equal(sharedMode.skipped, true, 'shared-address mode must bypass xpub-based child derivation');
+    assert.equal(sharedMode.reason, 'SHARED_DEPOSIT_MODE_ACTIVE');
     process.env.TRON_DEPOSIT_AUTOMATION_ENABLED = 'false';
     const disabled = await deposits.processTronDepositQueue();
     assert.equal(disabled.skipped, true, 'deposit scanning must remain disabled unless explicitly enabled');
@@ -78,5 +88,9 @@ const originalEnabled = process.env.TRON_DEPOSIT_AUTOMATION_ENABLED;
     else process.env.TRON_DEPOSIT_XPUB = originalXpub;
     if (originalEnabled === undefined) delete process.env.TRON_DEPOSIT_AUTOMATION_ENABLED;
     else process.env.TRON_DEPOSIT_AUTOMATION_ENABLED = originalEnabled;
+    if (originalSharedMode === undefined) delete process.env.TRON_SHARED_DEPOSIT_MODE;
+    else process.env.TRON_SHARED_DEPOSIT_MODE = originalSharedMode;
+    if (originalSharedAddress === undefined) delete process.env.TRON_SHARED_DEPOSIT_ADDRESS;
+    else process.env.TRON_SHARED_DEPOSIT_ADDRESS = originalSharedAddress;
   }
 })();

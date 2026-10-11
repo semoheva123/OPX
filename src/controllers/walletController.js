@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const emailFrom = String(process.env.EMAIL_FROM || '').trim();
 const { TronWeb } = require('tronweb');
+const QRCode = require('qrcode');
 
 const realtimeService = require('../services/realtimeService');
 const { withdrawalEmailCodeTemplate, withdrawalRequestTemplate } = require('../services/emailTemplates');
@@ -9,6 +10,7 @@ const { hasFullFeatureAccess } = require('../services/paidFeatureAccess');
 const withdrawalPayoutService = require('../services/withdrawalPayoutService');
 const dataAccess = require('../services/dataAccess');
 const tronDepositService = require('../services/tronDepositService');
+const paymentGatewayService = require('../services/paymentGatewayService');
 const { getWithdrawalSchedule } = require('../services/weeklySchedule');
 const SecurityEvent = dataAccess.securityEvent;
 
@@ -86,7 +88,47 @@ async function deposit(req, res) {
 }
 
 async function depositSupabase(req, res) {
-  return res.status(410).json({ success: false, error: 'أوقفنا إدخال TxHash اليدوي؛ تتم مطابقة الإيداعات تلقائيًا مع عنوان TRON المخصص لحسابك بعد تفعيل المراقبة.' });
+  const hash = String(req.body?.txHash || req.body?.tx_hash || '').trim();
+  try {
+    if (String(process.env.TRON_SHARED_DEPOSIT_MODE || '').toLowerCase() !== 'true') {
+      return res.status(410).json({ success: false, error: 'إيداع TxHash اليدوي غير مفعّل؛ استخدم عنوان الإيداع الظاهر في حسابك.' });
+    }
+    if (!dataAccess.isSupabaseRuntime()) return res.status(503).json({ success: false, error: 'خدمة الإيداع تتطلب قاعدة بيانات Supabase.' });
+    const sharedAddress = tronDepositService.getSharedDepositAddress();
+    const verified = await tronDepositService.verifySharedDepositTransfer(hash, sharedAddress);
+    const credit = await dataAccess.callSupabaseRpc('operix_tron_shared_deposit_credit_atomic', {
+      p_user_id: req.user.id,
+      p_tx_hash: verified.txHash,
+      p_event_index: verified.eventIndex,
+      p_from_address: verified.fromAddress,
+      p_to_address: verified.toAddress,
+      p_amount: verified.amount,
+      p_block_timestamp: verified.blockTimestamp
+    });
+    if (credit?.duplicate) return res.status(409).json({ success: false, duplicate: true, error: 'تم تسجيل هذا التحويل سابقًا؛ لا يمكن إيداع الهاش نفسه لحساب آخر.' });
+    if (!credit?.credited) throw new Error('TRON_SHARED_DEPOSIT_CREDIT_FAILED');
+
+    try {
+      await realtimeService.publish('user_data_changed', { reason: 'deposit_created', timestamp: new Date().toISOString() }, { userId: req.user.id });
+      await realtimeService.publish('admin_transaction_created', { transactionId: credit.transaction?.id, type: 'deposit', userId: req.user.id }, { scope: 'admin' });
+    } catch (error) {
+      console.error('Shared TRON deposit realtime notification failed:', error.message);
+    }
+    const resend = req.app?.locals?.resend;
+    await tronDepositService.sendDepositConfirmationEmail(resend, req.user.id, credit.transaction);
+    return res.status(201).json({ success: true, transaction: credit.transaction, wallet: credit.wallet, message: 'تم التحقق من تحويل USDT على TRC20 وإضافة الرصيد إلى محفظتك داخل المنصة.' });
+  } catch (error) {
+    const status = error.message === 'TRON_DEPOSIT_TX_HASH_ALREADY_CREDITED' ? 409
+      : /NOT_CONFIGURED|REQUIRES_SUPABASE|SHARED_DEPOSIT_MODE/.test(error.message) ? 503
+        : /INVALID_TRON_DEPOSIT_TX_HASH|TRANSFER_NOT_FOUND|INVALID_TRON_DEPOSIT_AMOUNT|PRECISION_UNSUPPORTED/.test(error.message) ? 400
+          : 503;
+    console.error('Shared TRON deposit verification failed:', error.message);
+    return res.status(status).json({ success: false, error: status === 400
+      ? 'لم يتم العثور على تحويل USDT TRC20 مؤكد إلى عنوان الإيداع الرئيسي لهذا الهاش.'
+      : status === 409 ? 'هذا التحويل مسجل مسبقًا ولا يمكن نسبه إلى أكثر من حساب.'
+        : status === 503 ? 'تعذر التحقق من الإيداع الآن؛ لم يُضف أي رصيد.'
+          : 'تعذر تسجيل الإيداع بعد التحقق.' });
+  }
 }
 
 async function getMyHistory(req, res) {
@@ -262,8 +304,27 @@ async function withdrawSupabase(req, res) {
 
 async function getDepositConfig(req, res) {
   try {
+    const nowPaymentsConfig = paymentGatewayService.getNowPaymentsConfig();
+    if (nowPaymentsConfig.apiKey && !nowPaymentsConfig.ipnSecret) {
+      return res.status(503).json({ success: false, error: 'يلزم إعداد NOWPAYMENTS_IPN_SECRET قبل تفعيل الإيداعات.' });
+    }
+    if (nowPaymentsConfig.apiKey) {
+      return res.json({ success: true, network: 'TRC20', provider: 'NOWPayments', paymentRequired: true, verification: 'ipn' });
+    }
     if (String(process.env.TRON_DEPOSIT_AUTOMATION_ENABLED || '').toLowerCase() !== 'true') {
       return res.status(503).json({ success: false, error: 'الإيداع الآلي قيد التجهيز ولم يُفعّل بعد.' });
+    }
+    if (String(process.env.TRON_SHARED_DEPOSIT_MODE || '').toLowerCase() === 'true') {
+      const address = tronDepositService.getSharedDepositAddress();
+      if (!address) return res.status(503).json({ success: false, error: 'عنوان الإيداع الرئيسي غير مضبوط.' });
+      return res.json({ success: true, network: 'TRC20', addresses: { TRC20: address }, automatic: false, verification: 'transaction_hash' });
+    }
+    if (!process.env.TRON_DEPOSIT_XPUB) {
+      const fallbackAddress = tronDepositService.getSharedDepositAddress();
+      if (fallbackAddress) {
+        return res.json({ success: true, network: 'TRC20', addresses: { TRC20: fallbackAddress }, automatic: false, verification: 'transaction_hash' });
+      }
+      return res.status(503).json({ success: false, error: 'إعداد عنوان الإيداع الرئيسي غير مكتمل.' });
     }
     const address = await tronDepositService.ensureUserDepositAddress(req.user.id);
     return res.json({ success: true, network: 'TRC20', addresses: { TRC20: address }, automatic: true });
@@ -274,4 +335,122 @@ async function getDepositConfig(req, res) {
   }
 }
 
-module.exports = { deposit, withdraw, getMyHistory, getDepositConfig, calculateHybridWithdrawalFee, sameWithdrawalIntent };
+async function createNowPaymentsDeposit(req, res) {
+  try {
+    if (!dataAccess.isSupabaseRuntime()) return res.status(503).json({ success: false, error: 'خدمة الإيداع تتطلب قاعدة بيانات Supabase.' });
+    const { apiKey, ipnSecret } = paymentGatewayService.getNowPaymentsConfig();
+    if (!apiKey) return res.status(503).json({ success: false, error: 'لم يتم إعداد بوابة NOWPayments بعد.' });
+    if (!ipnSecret) return res.status(503).json({ success: false, error: 'يلزم إعداد NOWPAYMENTS_IPN_SECRET قبل إنشاء طلب إيداع.' });
+
+    const priceAmount = paymentGatewayService.formatUsdtAmount(req.body?.amount);
+    const payment = await paymentGatewayService.createPayment({ userId: req.user.id, amount: priceAmount });
+    if (!TronWeb.isAddress(payment.payAddress)) throw new Error('NOWPAYMENTS_INVALID_TRON_ADDRESS');
+
+    await dataAccess.callSupabaseRpc('operix_nowpayments_deposit_order_register_atomic', {
+      p_payment_id: payment.paymentId,
+      p_order_id: payment.orderId,
+      p_user_id: payment.userId,
+      p_price_amount: payment.priceAmount,
+      p_pay_amount: payment.payAmount,
+      p_pay_currency: payment.payCurrency,
+      p_pay_address: payment.payAddress
+    });
+
+    const qrCode = await QRCode.toDataURL(payment.payAddress, { errorCorrectionLevel: 'M', margin: 1, width: 280 });
+    return res.status(201).json({
+      success: true,
+      provider: 'NOWPayments',
+      network: 'TRC20',
+      paymentId: payment.paymentId,
+      address: payment.payAddress,
+      payAmount: payment.payAmount,
+      payCurrency: payment.payCurrency,
+      creditAmount: payment.priceAmount,
+      priceCurrency: payment.priceCurrency,
+      qrCode,
+      status: payment.paymentStatus
+    });
+  } catch (error) {
+    const badRequest = error.message === 'INVALID_DEPOSIT_AMOUNT';
+    const status = badRequest ? 400 : /NOT_CONFIGURED|APP_URL/.test(error.message) ? 503 : 502;
+    console.error('NOWPayments payment creation failed:', error.message);
+    return res.status(status).json({
+      success: false,
+      error: badRequest ? 'أدخل مبلغًا بين 1 و1,000,000 USDT وبحد أقصى 4 منازل عشرية.'
+        : status === 503 ? 'إعدادات NOWPayments أو رابط الموقع غير مكتملة.'
+          : 'تعذر إنشاء طلب الدفع لدى NOWPayments؛ لم يتم إنشاء عنوان إيداع.'
+    });
+  }
+}
+
+async function handleNowPaymentsIpn(req, res) {
+  try {
+    const payload = req.body && typeof req.body === 'object' ? req.body : {};
+    const config = paymentGatewayService.getNowPaymentsConfig();
+    if (!config.ipnSecret) return res.status(503).json({ success: false, error: 'NOWPAYMENTS_IPN_SECRET_NOT_CONFIGURED' });
+    if (!paymentGatewayService.verifyIpnSignature(payload, paymentGatewayService.getIpnSignature(req), config.ipnSecret)) {
+      return res.status(401).json({ success: false, error: 'INVALID_NOWPAYMENTS_IPN_SIGNATURE' });
+    }
+
+    const paymentId = String(payload.payment_id || '').trim();
+    if (!/^\d+$/.test(paymentId)) return res.status(400).json({ success: false, error: 'INVALID_NOWPAYMENTS_PAYMENT_ID' });
+    if (String(payload.payment_status || '').toLowerCase() !== 'finished') {
+      return res.status(200).json({ success: true, ignored: true, status: String(payload.payment_status || '') });
+    }
+
+    const payment = await paymentGatewayService.getPaymentStatus(paymentId);
+    const order = paymentGatewayService.verifySignedOrderId(payment.order_id);
+    if (!order || String(payment.payment_id) !== paymentId) throw new Error('NOWPAYMENTS_ORDER_SIGNATURE_INVALID');
+    if (String(payment.payment_status || '').toLowerCase() !== 'finished') return res.status(200).json({ success: true, ignored: true, status: String(payment.payment_status || '') });
+    if (String(payment.pay_currency || '').toLowerCase() !== paymentGatewayService.PAYMENT_CURRENCY) throw new Error('NOWPAYMENTS_CURRENCY_MISMATCH');
+    if (String(payment.price_currency || '').toLowerCase() !== 'usd') throw new Error('NOWPAYMENTS_PRICE_CURRENCY_MISMATCH');
+    if (!TronWeb.isAddress(String(payment.pay_address || ''))) throw new Error('NOWPAYMENTS_INVALID_TRON_ADDRESS');
+
+    const expectedPrice = paymentGatewayService.formatUsdtAmount(order.amount);
+    const receivedPrice = paymentGatewayService.formatUsdtAmount(payment.price_amount);
+    if (expectedPrice !== receivedPrice) throw new Error('NOWPAYMENTS_PRICE_AMOUNT_MISMATCH');
+    if (String(payment.order_id) !== String(payload.order_id)) throw new Error('NOWPAYMENTS_IPN_ORDER_MISMATCH');
+    if (String(payload.pay_currency || '').toLowerCase() !== paymentGatewayService.PAYMENT_CURRENCY) throw new Error('NOWPAYMENTS_IPN_CURRENCY_MISMATCH');
+    if (String(payload.pay_address || '') !== String(payment.pay_address || '')) throw new Error('NOWPAYMENTS_IPN_ADDRESS_MISMATCH');
+
+    const actualPaid = Number(payment.actually_paid);
+    const requiredPayAmount = Number(payment.pay_amount);
+    if (!Number.isFinite(actualPaid) || !Number.isFinite(requiredPayAmount) || actualPaid <= 0 || actualPaid + 0.0000001 < requiredPayAmount) {
+      throw new Error('NOWPAYMENTS_PAYMENT_AMOUNT_INCOMPLETE');
+    }
+
+    const credit = await dataAccess.callSupabaseRpc('operix_nowpayments_deposit_credit_atomic', {
+      p_payment_id: paymentId,
+      p_order_id: String(payment.order_id),
+      p_user_id: order.userId,
+      p_payment_status: String(payment.payment_status),
+      p_pay_currency: String(payment.pay_currency),
+      p_pay_address: String(payment.pay_address),
+      p_price_amount: expectedPrice,
+      p_actually_paid: actualPaid,
+      p_tx_hash: paymentGatewayService.getPaymentTxHash(payment) || paymentGatewayService.buildPaymentReference(paymentId)
+    });
+
+    if (credit?.duplicate) return res.status(200).json({ success: true, duplicate: true, paymentId });
+    if (!credit?.credited) throw new Error('NOWPAYMENTS_DEPOSIT_CREDIT_FAILED');
+
+    try {
+      await realtimeService.publish('user_data_changed', { reason: 'deposit_created', timestamp: new Date().toISOString() }, { userId: order.userId });
+      await realtimeService.publish('admin_transaction_created', { transactionId: credit.transaction?.id, type: 'deposit', userId: order.userId }, { scope: 'admin' });
+    } catch (error) {
+      console.error('NOWPayments deposit realtime notification failed:', error.message);
+    }
+
+    const resend = req.app?.locals?.resend;
+    if (paymentGatewayService.getPaymentTxHash(payment)) {
+      await tronDepositService.sendDepositConfirmationEmail(resend, order.userId, credit.transaction);
+    }
+
+    return res.status(200).json({ success: true, message: 'NOWPayments deposit credited.', paymentId, transaction: credit.transaction });
+  } catch (error) {
+    console.error('NOWPayments IPN processing failed:', error.message);
+    return res.status(500).json({ success: false, error: 'NOWPAYMENTS_IPN_PROCESSING_FAILED' });
+  }
+}
+
+module.exports = { deposit, withdraw, getMyHistory, getDepositConfig, createNowPaymentsDeposit, handleNowPaymentsIpn, calculateHybridWithdrawalFee, sameWithdrawalIntent };

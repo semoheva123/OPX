@@ -3363,13 +3363,98 @@ async function loadDepositAddress() {
         const res = await fetch('/api/wallet/deposit-config', { headers: { Authorization: `Bearer ${token}` } });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'تعذر تجهيز عنوان الإيداع الآلي');
+        const gatewayPanel = document.getElementById('nowPaymentsAmountPanel');
+        const paymentDetails = document.getElementById('nowPaymentsPaymentDetails');
+        if (data.provider === 'NOWPayments' && data.paymentRequired) {
+            gatewayPanel?.classList.remove('hidden');
+            paymentDetails?.classList.add('hidden');
+            document.getElementById('sharedDepositClaimPanel')?.classList.add('hidden');
+            document.getElementById('userDepositAddress').value = '';
+            const status = document.getElementById('depositModalStatus');
+            if (status) status.textContent = 'جارٍ إنشاء طلب دفع USDT TRC20 جديد...';
+            await createNowPaymentsDeposit();
+            return;
+        }
+        gatewayPanel?.classList.add('hidden');
+        paymentDetails?.classList.add('hidden');
         document.getElementById('userDepositAddress').value = data.addresses?.TRC20 || 'العنوان غير مضبوط حالياً';
+        const sharedClaimPanel = document.getElementById('sharedDepositClaimPanel');
+        if (sharedClaimPanel) sharedClaimPanel.classList.toggle('hidden', data.verification !== 'transaction_hash');
         const status = document.getElementById('depositModalStatus');
-        if (status) status.textContent = 'المراقبة الآلية مفعلة لهذا العنوان؛ الرصيد يضاف بعد تأكيد التحويل.';
+        if (status) status.textContent = data.verification === 'transaction_hash'
+            ? 'بعد تأكيد التحويل على الشبكة، أرسل TxHash للتحقق. لا يُضاف الرصيد قبل مطابقة التحويل.'
+            : 'المراقبة الآلية مفعلة لهذا العنوان؛ الرصيد يضاف بعد تأكيد التحويل.';
     } catch (error) {
         document.getElementById('userDepositAddress').value = 'عنوان الإيداع غير متاح حالياً';
         const status = document.getElementById('depositModalStatus');
         if (status) status.textContent = error.message || 'تعذر تحميل العنوان';
+    }
+}
+
+async function createNowPaymentsDeposit() {
+    const amountInput = document.getElementById('nowPaymentsDepositAmount');
+    const button = document.getElementById('nowPaymentsCreateButton');
+    const status = document.getElementById('depositModalStatus');
+    const amount = String(amountInput?.value || '').trim();
+    if (!/^(?:0|[1-9]\d*)(?:\.\d{1,4})?$/.test(amount) || Number(amount) < 1) {
+        if (status) status.textContent = 'أدخل مبلغًا صالحًا لا يقل عن 1 USDT وبحد أقصى 4 منازل عشرية.';
+        amountInput?.focus();
+        return;
+    }
+    if (button) { button.disabled = true; button.textContent = 'جارٍ إنشاء الطلب...'; }
+    if (status) status.textContent = 'جارٍ طلب عنوان دفع مخصص من NOWPayments...';
+    try {
+        const response = await fetch('/api/wallet/deposit/nowpayments/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+            body: JSON.stringify({ amount })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'تعذر إنشاء طلب الدفع');
+        document.getElementById('userDepositAddress').value = data.address || '';
+        document.getElementById('nowPaymentsQrCode').src = data.qrCode || '';
+        document.getElementById('nowPaymentsPayAmount').textContent = String(data.payAmount || '—');
+        document.getElementById('nowPaymentsCreditAmount').textContent = String(data.creditAmount || amount);
+        document.getElementById('nowPaymentsPaymentId').textContent = String(data.paymentId || '');
+        document.getElementById('nowPaymentsPaymentDetails')?.classList.remove('hidden');
+        if (status) status.textContent = 'تم إنشاء الطلب. أرسل المبلغ الظاهر فقط إلى العنوان؛ سيُضاف الرصيد تلقائيًا بعد اكتمال التأكيد.';
+    } catch (error) {
+        document.getElementById('userDepositAddress').value = '';
+        document.getElementById('nowPaymentsPaymentDetails')?.classList.add('hidden');
+        if (status) status.textContent = error.message || 'تعذر إنشاء طلب الدفع لدى NOWPayments.';
+    } finally {
+        if (button) { button.disabled = false; button.textContent = 'إنشاء طلب جديد'; }
+    }
+}
+
+async function claimSharedDeposit() {
+    const input = document.getElementById('sharedDepositTxHash');
+    const button = document.getElementById('sharedDepositClaimButton');
+    const status = document.getElementById('depositModalStatus');
+    const txHash = String(input?.value || '').trim();
+    if (!/^[a-fA-F0-9]{64}$/.test(txHash)) {
+        if (status) status.textContent = 'أدخل TxHash صحيحًا من 64 خانة سداسية عشرية.';
+        return;
+    }
+    if (button) { button.disabled = true; button.textContent = 'جارٍ التحقق من الشبكة...'; }
+    if (status) status.textContent = 'نتحقق من تأكيد التحويل والعنوان والمبلغ على شبكة TRON.';
+    try {
+        const response = await fetch('/api/wallet/deposit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+            body: JSON.stringify({ txHash })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'تعذر التحقق من الإيداع');
+        if (status) status.textContent = data.message || 'تم التحقق من الإيداع وإضافته.';
+        input.value = '';
+        showToast(data.message || 'تم التحقق من الإيداع وإضافته إلى محفظتك', 'win');
+        await loadUserProfile();
+        await loadUserHistory?.();
+    } catch (error) {
+        if (status) status.textContent = error.message || 'تعذر التحقق من الإيداع؛ لم يُضف الرصيد.';
+    } finally {
+        if (button) { button.disabled = false; button.textContent = 'تحقق وأضف الإيداع'; }
     }
 }
 

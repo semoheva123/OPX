@@ -46,7 +46,12 @@ async function checkFinancialReadiness() {
   }
 
   try {
-    checks.depositXpubDerivesAddress = Boolean(tronDepositService.deriveDepositAddress(0));
+    if (String(process.env.TRON_SHARED_DEPOSIT_MODE || '').toLowerCase() === 'true') {
+      const sharedAddress = tronDepositService.getSharedDepositAddress();
+      checks.depositXpubDerivesAddress = Boolean(sharedAddress);
+    } else {
+      checks.depositXpubDerivesAddress = Boolean(tronDepositService.deriveDepositAddress(0));
+    }
   } catch {
     checks.depositXpubDerivesAddress = false;
   }

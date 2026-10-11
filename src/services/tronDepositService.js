@@ -34,6 +34,58 @@ function getScanStartTimestamp(cursorTimestamp) {
   return Number.isFinite(timestamp) ? Math.max(0, timestamp - LOOKBACK_MS) : 0;
 }
 
+function getSharedDepositAddress() {
+  const address = String(process.env.TRON_SHARED_DEPOSIT_ADDRESS || '').trim();
+  if (!address) return '';
+  const tronWeb = getLocalTronWeb();
+  if (!tronWeb.isAddress(address)) throw new Error('TRON_SHARED_DEPOSIT_ADDRESS_INVALID');
+  return tronWeb.address.fromHex(tronWeb.address.toHex(address));
+}
+
+async function verifySharedDepositTransfer(txHash, expectedAddress = getSharedDepositAddress()) {
+  const normalizedHash = String(txHash || '').trim().toLowerCase();
+  if (!/^[a-f0-9]{64}$/.test(normalizedHash)) throw new Error('INVALID_TRON_DEPOSIT_TX_HASH');
+  if (!expectedAddress) throw new Error('TRON_SHARED_DEPOSIT_ADDRESS_NOT_CONFIGURED');
+
+  const config = blockchainService.getBlockchainConfig().TRC20;
+  const tronWeb = getTronWeb();
+  const expectedTo = normalizeTronAddress(expectedAddress, tronWeb);
+  const expectedContract = normalizeTronAddress(config.tokenContract, tronWeb);
+  if (!expectedTo || !expectedContract) throw new Error('INVALID_TRON_DEPOSIT_CONFIGURATION');
+
+  const result = await tronProvider.requestJsonWithFallback(tronProvider.getIndexerEndpoints(),
+    `v1/transactions/${normalizedHash}/events?only_confirmed=true&limit=200`, {
+      timeoutMs: 12000,
+      validateBody: body => Array.isArray(body?.data)
+    });
+  const matchingTransfers = result.body.data.filter(event => {
+    const name = String(event.event_name || event.eventName || '').toLowerCase();
+    const contract = normalizeTronAddress(String(event.contract_address || ''), tronWeb);
+    const recipient = normalizeTronAddress(String(event.result?.to ?? event.result?.['1'] ?? ''), tronWeb);
+    return name === 'transfer' && contract === expectedContract && recipient === expectedTo;
+  });
+  if (!matchingTransfers.length) throw new Error('TRON_DEPOSIT_TRANSFER_NOT_FOUND_FOR_SHARED_ADDRESS');
+
+  const rawAmounts = matchingTransfers.map(event => String(event.result?.value ?? event.result?.['2'] ?? '').trim());
+  if (rawAmounts.some(value => !/^\d+$/.test(value) || BigInt(value) <= 0n)) throw new Error('INVALID_TRON_DEPOSIT_AMOUNT');
+  const rawTotal = rawAmounts.reduce((sum, value) => sum + BigInt(value), 0n);
+  // The wallet/transactions tables use 4 decimal places; refuse to silently truncate a valid 6-decimal chain amount.
+  if (rawTotal % 100n !== 0n) throw new Error('TRON_DEPOSIT_PRECISION_UNSUPPORTED');
+  const fromAddresses = [...new Set(matchingTransfers.map(event => {
+    const from = String(event.result?.from ?? event.result?.['0'] ?? '').trim();
+    return from ? getLocalTronWeb().address.fromHex(getLocalTronWeb().address.toHex(from)) : '';
+  }).filter(Boolean))];
+  return {
+    txHash: normalizedHash,
+    eventIndex: Math.min(...matchingTransfers.map(event => Number.isSafeInteger(Number(event.event_index)) ? Number(event.event_index) : 0)),
+    fromAddress: fromAddresses.join(','),
+    toAddress: expectedAddress,
+    amount: formatUsdt(rawTotal.toString()),
+    blockTimestamp: new Date(Math.max(...matchingTransfers.map(event => Number(event.block_timestamp || 0)))).toISOString(),
+    transferCount: matchingTransfers.length
+  };
+}
+
 function deriveDepositAddress(derivationIndex) {
   const extendedPublicKey = String(process.env.TRON_DEPOSIT_XPUB || '').trim();
   if (!extendedPublicKey) throw new Error('TRON_DEPOSIT_XPUB_NOT_CONFIGURED');
@@ -187,6 +239,9 @@ async function processTronDepositQueue(resend) {
   if (String(process.env.TRON_DEPOSIT_AUTOMATION_ENABLED || '').toLowerCase() !== 'true') {
     return { processed: 0, skipped: true, reason: 'TRON_DEPOSIT_AUTOMATION_DISABLED' };
   }
+  if (String(process.env.TRON_SHARED_DEPOSIT_MODE || '').toLowerCase() === 'true') {
+    return { processed: 0, skipped: true, reason: 'SHARED_DEPOSIT_MODE_ACTIVE' };
+  }
   if (!dataAccess.isSupabaseRuntime()) return { processed: 0, skipped: true, reason: 'SUPABASE_RUNTIME_REQUIRED' };
   if (!process.env.TRON_DEPOSIT_XPUB) return { processed: 0, skipped: true, reason: 'TRON_DEPOSIT_XPUB_NOT_CONFIGURED' };
 
@@ -204,4 +259,4 @@ async function processTronDepositQueue(resend) {
   return { processed: results.length, results };
 }
 
-module.exports = { deriveDepositAddress, ensureUserDepositAddress, processTronDepositQueue, formatDepositReceiptAmount, sendDepositConfirmationEmail, getScanStartTimestamp };
+module.exports = { deriveDepositAddress, ensureUserDepositAddress, processTronDepositQueue, formatDepositReceiptAmount, sendDepositConfirmationEmail, getScanStartTimestamp, getSharedDepositAddress, verifySharedDepositTransfer };
