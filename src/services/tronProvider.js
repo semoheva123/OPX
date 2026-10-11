@@ -5,6 +5,7 @@ const DEFAULT_TRON_ENDPOINT = 'https://api.trongrid.io';
 const DEFAULT_TRONSCAN_INDEXER = 'https://apilist.tronscanapi.com';
 const PROVIDER_COOLDOWN_MS = Math.max(5000, Number(process.env.TRON_PROVIDER_COOLDOWN_MS) || 30000);
 const providerCooldowns = new Map();
+const providerRequestTimes = new Map();
 const PUBLIC_RPC_PROVIDERS = Object.freeze([
   { id: 'trongrid', label: 'TronGrid Mainnet HTTP', url: DEFAULT_TRON_ENDPOINT, freePublic: true, supportsNativeHttp: true },
   { id: 'publicnode', label: 'PublicNode TRON Mainnet HTTP', url: 'https://tron-rpc.publicnode.com', freePublic: true, supportsNativeHttp: true },
@@ -66,6 +67,20 @@ function getRetryDelayMs(response, retryIndex) {
 
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function paceIndexerEndpoint(endpoint, options = {}) {
+  let hostname = '';
+  try { hostname = new URL(endpoint).hostname.toLowerCase(); } catch { }
+  if (hostname !== 'apilist.tronscanapi.com') return;
+  const configuredInterval = Number(options.tronscanMinIntervalMs ?? process.env.TRONSCAN_MIN_REQUEST_INTERVAL_MS);
+  const minIntervalMs = Number.isFinite(configuredInterval) && configuredInterval >= 0
+    ? Math.min(10000, configuredInterval)
+    : 1500;
+  const lastRequestAt = providerRequestTimes.get(endpoint) || 0;
+  const waitMs = Math.max(0, lastRequestAt + minIntervalMs - Date.now());
+  if (waitMs > 0) await delay(waitMs);
+  providerRequestTimes.set(endpoint, Date.now());
 }
 
 function getRpcEndpoints() {
@@ -192,6 +207,7 @@ async function requestJsonWithFallback(urls, path, options = {}) {
     for (let retryIndex = 0; retryIndex <= maxRateLimitRetries; retryIndex++) {
       let response;
       try {
+        await paceIndexerEndpoint(endpoint, options);
         const request = {
           ...options.request,
           headers: headersForEndpoint(endpoint, options.request?.headers || {}),
@@ -233,6 +249,7 @@ module.exports = {
   getIndexerEndpoints,
   buildIndexerRequest,
   normalizeIndexerBody,
+  paceIndexerEndpoint,
   getSolidityEndpoints,
   headersForEndpoint,
   createTronWeb,

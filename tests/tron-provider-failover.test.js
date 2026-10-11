@@ -108,6 +108,24 @@ const originalEnv = Object.fromEntries(envKeys.map(key => [key, process.env[key]
     assert.equal(tronscanResult.body.meta.fingerprint, '', 'a short final page must not request another page');
     const nextPage = provider.buildIndexerRequest('https://apilist.tronscanapi.com', 'v1/accounts/T123/transactions/trc20?limit=200&fingerprint=200&order_by=block_timestamp%2Casc');
     assert.equal(new URL(nextPage.url).searchParams.get('start'), '200', 'TronScan offset pagination must resume from the normalized fingerprint');
+    const tronscanRequestTimes = [];
+    await provider.requestJsonWithFallback(['https://apilist.tronscanapi.com'], 'v1/accounts/T123/transactions/trc20', {
+      fetcher: async () => {
+        tronscanRequestTimes.push(Date.now());
+        return { ok: true, status: 200, json: async () => ({ token_transfers: [] }) };
+      },
+      validateBody: body => Array.isArray(body?.data),
+      tronscanMinIntervalMs: 10
+    });
+    await provider.requestJsonWithFallback(['https://apilist.tronscanapi.com'], 'v1/accounts/T123/transactions/trc20', {
+      fetcher: async () => {
+        tronscanRequestTimes.push(Date.now());
+        return { ok: true, status: 200, json: async () => ({ token_transfers: [] }) };
+      },
+      validateBody: body => Array.isArray(body?.data),
+      tronscanMinIntervalMs: 10
+    });
+    assert.ok(tronscanRequestTimes[1] - tronscanRequestTimes[0] >= 8, 'free TronScan scans must be paced to avoid public API throttling');
 
     process.env.TRON_INDEXER_URL = 'https://api.trongrid.io';
     process.env.TRON_INDEXER_FALLBACK_URLS = '';
