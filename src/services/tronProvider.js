@@ -134,7 +134,7 @@ async function requestJsonWithFallback(urls, path, options = {}) {
         signal: options.request?.signal || AbortSignal.timeout(options.timeoutMs || 12000)
       };
       let response = await fetcher(url, request);
-      if ((response.status === 401 || response.status === 403) && request.headers['TRON-PRO-API-KEY']) {
+      if ((response.status === 401 || response.status === 403 || response.status === 429) && request.headers['TRON-PRO-API-KEY']) {
         const publicHeaders = { ...request.headers };
         delete publicHeaders['TRON-PRO-API-KEY'];
         response = await fetcher(url, { ...request, headers: publicHeaders });

@@ -91,6 +91,20 @@ const originalEnv = Object.fromEntries(envKeys.map(key => [key, process.env[key]
     assert.equal(authFallbackRequests[1].headers['TRON-PRO-API-KEY'], undefined, 'the rejected key is omitted from the public retry');
     assert.equal(authFallbackResult.endpoint, 'https://api.trongrid.io');
 
+    const quotaFallbackRequests = [];
+    const quotaFallbackResult = await provider.requestJsonWithFallback(provider.getIndexerEndpoints(), 'v1/accounts/T123/transactions/trc20', {
+      fetcher: async (url, options) => {
+        quotaFallbackRequests.push({ url, headers: options.headers });
+        if (options.headers['TRON-PRO-API-KEY']) return { ok: false, status: 429, json: async () => ({ error: 'API key quota exceeded' }) };
+        return { ok: true, status: 200, json: async () => ({ data: [{ transaction_id: 'public-fallback-transfer' }] }) };
+      },
+      validateBody: body => Array.isArray(body?.data)
+    });
+    assert.equal(quotaFallbackRequests.length, 2, 'a TronGrid key quota response retries once against the public indexer');
+    assert.equal(quotaFallbackRequests[0].headers['TRON-PRO-API-KEY'], 'secret-test-key');
+    assert.equal(quotaFallbackRequests[1].headers['TRON-PRO-API-KEY'], undefined, 'the rate-limited key is omitted from the public retry');
+    assert.equal(quotaFallbackResult.body.data[0].transaction_id, 'public-fallback-transfer');
+
     const visitedClients = [];
     const operationResult = await provider.withTronWeb(async (client, endpoint) => {
       visitedClients.push(endpoint);
