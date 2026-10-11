@@ -3369,6 +3369,8 @@ async function loadDepositAddress() {
             gatewayPanel?.classList.remove('hidden');
             paymentDetails?.classList.add('hidden');
             document.getElementById('sharedDepositClaimPanel')?.classList.add('hidden');
+            const instructions = document.getElementById('depositNetworkInstructions');
+            if (instructions) instructions.textContent = 'أرسل مبلغ USDT TRC20 الظاهر تمامًا إلى عنوان الدفع المخصص؛ لا حاجة لإدخال TxHash، وستُضاف القيمة المعروضة إلى رصيدك بعد تأكيد NOWPayments.';
             document.getElementById('userDepositAddress').value = '';
             const status = document.getElementById('depositModalStatus');
             if (status) status.textContent = 'جارٍ إنشاء طلب دفع USDT TRC20 جديد...';
@@ -3377,6 +3379,8 @@ async function loadDepositAddress() {
         }
         gatewayPanel?.classList.add('hidden');
         paymentDetails?.classList.add('hidden');
+        const instructions = document.getElementById('depositNetworkInstructions');
+        if (instructions) instructions.textContent = 'أرسل USDT على شبكة TRON (TRC20) إلى العنوان الظاهر. بعد تأكيد التحويل، أدخل TxHash لإثبات الإيداع. لا تستخدم الشبكة نفسها لإرسال عملات أخرى.';
         document.getElementById('userDepositAddress').value = data.addresses?.TRC20 || 'العنوان غير مضبوط حالياً';
         const sharedClaimPanel = document.getElementById('sharedDepositClaimPanel');
         if (sharedClaimPanel) sharedClaimPanel.classList.toggle('hidden', data.verification !== 'transaction_hash');

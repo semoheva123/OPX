@@ -42,10 +42,14 @@ async function main() {
   assert.equal(nowPayments.buildPaymentReference('123456').startsWith('NOWPAYMENTS:'), true);
   const routeSource = fs.readFileSync(path.join(__dirname, '../src/routes/walletRoutes.js'), 'utf8');
   const migration = fs.readFileSync(path.join(__dirname, '../supabase/nowpayments-trc20-deposits.sql'), 'utf8');
+  const appSource = fs.readFileSync(path.join(__dirname, '../app.js'), 'utf8');
+  const indexSource = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
   assert.match(routeSource, /wallet\/deposit\/nowpayments\/ipn/);
   assert.match(routeSource, /wallet\/deposit\/nowpayments\/create',\s*verifyToken/);
   assert.match(migration, /operix_nowpayments_deposit_credit_atomic/);
   assert.match(migration, /transaction_id uuid unique/);
+  assert.match(indexSource, /id="depositNetworkInstructions"/);
+  assert.match(appSource, /لا حاجة لإدخال TxHash/);
 
   const originalFetch = global.fetch;
   let sentRequest;
