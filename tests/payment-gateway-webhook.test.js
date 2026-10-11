@@ -15,9 +15,11 @@ async function main() {
   assert.throws(() => nowPayments.formatUsdtAmount('0.5'), /INVALID_DEPOSIT_AMOUNT/);
   assert.throws(() => nowPayments.formatUsdtAmount('1.12345'), /INVALID_DEPOSIT_AMOUNT/);
 
-  const signedOrder = nowPayments.createSignedOrderId('user-123', '25.5');
+  const userId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+  const signedOrder = nowPayments.createSignedOrderId(userId, '25.5');
+  assert.ok(signedOrder.length <= 64, 'NOWPayments order_id stays within 64 characters');
   const order = nowPayments.verifySignedOrderId(signedOrder);
-  assert.equal(order.userId, 'user-123');
+  assert.equal(order.userId, userId);
   assert.equal(order.amount, '25.5000');
   assert.equal(nowPayments.verifySignedOrderId(`${signedOrder}tampered`), null);
 
@@ -55,7 +57,7 @@ async function main() {
     };
   };
   try {
-    const payment = await nowPayments.createPayment({ userId: 'user-123', amount: '25.5' });
+    const payment = await nowPayments.createPayment({ userId, amount: '25.5' });
     assert.equal(payment.paymentId, '123456');
     assert.equal(payment.payAmount, '25.61000000');
     assert.equal(sentRequest.url, 'https://api.nowpayments.io/v1/payment');
@@ -64,7 +66,8 @@ async function main() {
     assert.equal(body.pay_currency, 'usdttrc20');
     assert.equal(body.price_currency, 'usd');
     assert.equal(body.ipn_callback_url, 'https://operix.example/api/wallet/deposit/nowpayments/ipn');
-    assert.equal(nowPayments.verifySignedOrderId(body.order_id).userId, 'user-123');
+    assert.ok(body.order_id.length <= 64);
+    assert.equal(nowPayments.verifySignedOrderId(body.order_id).userId, userId);
   } finally {
     global.fetch = originalFetch;
   }

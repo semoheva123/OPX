@@ -22,29 +22,39 @@ function formatUsdtAmount(value) {
 function createSignedOrderId(userId, amount) {
   const secret = String(process.env.JWT_SECRET || '').trim();
   if (secret.length < 32) throw new Error('DEPOSIT_ORDER_SECRET_NOT_CONFIGURED');
-  const order = {
-    userId: String(userId),
-    amount: formatUsdtAmount(amount),
-    nonce: crypto.randomUUID()
-  };
-  const encoded = Buffer.from(JSON.stringify(order)).toString('base64url');
-  const signature = crypto.createHmac('sha256', secret).update(encoded).digest('hex');
-  return `${encoded}.${signature}`;
+  const normalizedUserId = String(userId || '').trim().toLowerCase();
+  if (!/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(normalizedUserId)) {
+    throw new Error('INVALID_DEPOSIT_USER_ID');
+  }
+  const [whole, fraction = ''] = formatUsdtAmount(amount).split('.');
+  const amountUnits = (BigInt(whole) * 10000n + BigInt(fraction.padEnd(4, '0'))).toString(36);
+  const userBytes = Buffer.from(normalizedUserId.replace(/-/g, ''), 'hex');
+  const payload = `${userBytes.toString('base64url')}.${amountUnits}.${crypto.randomBytes(6).toString('base64url')}`;
+  const signature = crypto.createHmac('sha256', secret).update(payload).digest().subarray(0, 16).toString('base64url');
+  return `${payload}.${signature}`;
 }
 
 function verifySignedOrderId(orderId) {
-  const [encoded, suppliedSignature, ...extra] = String(orderId || '').split('.');
+  const [encodedUserId, amountUnitsText, nonce, suppliedSignature, ...extra] = String(orderId || '').split('.');
   const secret = String(process.env.JWT_SECRET || '').trim();
-  if (!encoded || !/^[a-f0-9]{64}$/i.test(suppliedSignature || '') || extra.length || secret.length < 32) return null;
-  const expectedSignature = crypto.createHmac('sha256', secret).update(encoded).digest('hex');
-  const expected = Buffer.from(expectedSignature, 'hex');
+  if (String(orderId || '').length > 64 || !encodedUserId || !/^[0-9a-z]{1,10}$/.test(amountUnitsText || '') ||
+      !/^[A-Za-z0-9_-]{8}$/.test(nonce || '') || !/^[A-Za-z0-9_-]{22}$/.test(suppliedSignature || '') || extra.length || secret.length < 32) return null;
+  const payload = `${encodedUserId}.${amountUnitsText}.${nonce}`;
+  const expected = crypto.createHmac('sha256', secret).update(payload).digest().subarray(0, 16);
   let supplied;
-  try { supplied = Buffer.from(suppliedSignature, 'hex'); } catch { return null; }
+  try { supplied = Buffer.from(suppliedSignature, 'base64url'); } catch { return null; }
   if (supplied.length !== expected.length || !crypto.timingSafeEqual(supplied, expected)) return null;
   try {
-    const order = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'));
-    if (!order.userId || !order.nonce || formatUsdtAmount(order.amount) !== order.amount) return null;
-    return order;
+    const userHex = Buffer.from(encodedUserId, 'base64url').toString('hex');
+    if (userHex.length !== 32) return null;
+    const userId = `${userHex.slice(0, 8)}-${userHex.slice(8, 12)}-${userHex.slice(12, 16)}-${userHex.slice(16, 20)}-${userHex.slice(20)}`;
+    const units = [...amountUnitsText].reduce((total, digit) => total * 36n + BigInt(parseInt(digit, 36)), 0n);
+    if (!/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(userId) || units < 10000n || units > 10000000000n) return null;
+    const whole = units / 10000n;
+    const fraction = String(units % 10000n).padStart(4, '0');
+    const amount = `${whole}.${fraction}`;
+    if (formatUsdtAmount(amount) !== amount) return null;
+    return { userId, amount, nonce };
   } catch {
     return null;
   }
