@@ -42,6 +42,8 @@ assert.match(queueWorkflow, /deposits_only:/, 'manual deposit recovery must have
 assert.match(queueWorkflow, /!inputs\.deposits_only/, 'a deposits-only run must not invoke withdrawal payouts');
 assert.match(queueWorkflow, /failedAddressScans:/, 'scheduled runs must report a safe count of address scan failures');
 assert.match(queueWorkflow, /safeErrorCodes:/, 'scheduled runs must expose safe machine error codes for diagnosis');
+assert.match(queueWorkflow, /creditedDeposits:/, 'scheduled runs should report aggregate successful credits without exposing user details');
+assert.match(queueWorkflow, /duplicateDeposits:/, 'scheduled runs should confirm idempotent handling of already credited transfers');
 assert.doesNotMatch(blockchainService, /PLATFORM_(?:TRON|BSC)_DEPOSIT_ADDRESS|verifyDeposit|getDepositAddresses/);
 assert.match(walletController, /return res\.status\(410\)/, 'manual TxHash deposits must remain disabled');
 assert.doesNotMatch(depositUi, /handleDepositSubmit|depositTxHash|platformWalletAddress|copyPlatformWalletAddress/);

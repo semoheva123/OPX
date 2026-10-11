@@ -128,7 +128,7 @@ jobs:
             --request POST \
             --header "Authorization: Bearer ${CRON_SECRET}" \
             'https://operix.website/api/internal/cron/process-tron-deposits'
-          jq -c '{success, job, processed: .result.processed, failedAddressScans: ([.result.results[]? | select(has("error"))] | length), safeErrorCodes: ([.result.results[]?.error? | select(type == "string") | select(test("^[A-Z0-9_]+$"))] | unique), skipped: (.result.skipped // false), reason: (.result.reason // null)}' "$response_file"
+          jq -c '{success, job, processed: .result.processed, creditedDeposits: ([.result.results[]?.credited // 0] | add // 0), duplicateDeposits: ([.result.results[]?.duplicates // 0] | add // 0), failedAddressScans: ([.result.results[]? | select(has("error"))] | length), safeErrorCodes: ([.result.results[]?.error? | select(type == "string") | select(test("^[A-Z0-9_]+$"))] | unique), skipped: (.result.skipped // false), reason: (.result.reason // null)}' "$response_file"
           jq -e '.success == true and ((.result.skipped != true) or .result.reason == "TRON_DEPOSIT_AUTOMATION_DISABLED") and ([.result.results[]? | select(has("error"))] | length == 0)' "$response_file" > /dev/null || {
             echo '::error::TRON deposit worker failed or was skipped for an unexpected reason.'
             exit 1
