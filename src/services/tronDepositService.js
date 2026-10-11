@@ -6,7 +6,8 @@ const realtimeService = require('./realtimeService');
 const { depositConfirmedTemplate } = require('./emailTemplates');
 
 const TRON_DECIMALS = 6;
-const LOOKBACK_MS = 2 * 60 * 1000;
+// Re-scan one day on every run so delayed indexer or worker runs cannot strand confirmed deposits.
+const LOOKBACK_MS = 24 * 60 * 60 * 1000;
 const PAGE_SIZE = 200;
 const MAX_PAGES_PER_ADDRESS = 10;
 const emailFrom = String(process.env.EMAIL_FROM || '').trim();
@@ -26,6 +27,11 @@ function normalizeTronAddress(value, tronWeb = getLocalTronWeb()) {
   } catch {
     return '';
   }
+}
+
+function getScanStartTimestamp(cursorTimestamp) {
+  const timestamp = Number(cursorTimestamp);
+  return Number.isFinite(timestamp) ? Math.max(0, timestamp - LOOKBACK_MS) : 0;
 }
 
 function deriveDepositAddress(derivationIndex) {
@@ -112,7 +118,7 @@ async function processAddress(addressRow, resend) {
   if (!expectedTo || !expectedContract) throw new Error('INVALID_TRON_DEPOSIT_CONFIGURATION');
 
   const priorCursor = addressRow.lastScannedAt ? new Date(addressRow.lastScannedAt).getTime() : new Date(addressRow.createdAt).getTime();
-  let minTimestamp = Math.max(0, priorCursor - LOOKBACK_MS);
+  let minTimestamp = getScanStartTimestamp(priorCursor);
   let newestTimestamp = Number.isFinite(priorCursor) ? priorCursor : Date.now() - LOOKBACK_MS;
   let fingerprint = '';
   let pages = 0;
@@ -199,4 +205,4 @@ async function processTronDepositQueue(resend) {
   return { processed: results.length, results };
 }
 
-module.exports = { deriveDepositAddress, ensureUserDepositAddress, processTronDepositQueue, formatDepositReceiptAmount, sendDepositConfirmationEmail };
+module.exports = { deriveDepositAddress, ensureUserDepositAddress, processTronDepositQueue, formatDepositReceiptAmount, sendDepositConfirmationEmail, getScanStartTimestamp };

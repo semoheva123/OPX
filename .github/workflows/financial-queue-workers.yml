@@ -30,6 +30,11 @@ on:
         type: boolean
         required: false
         default: false
+      deposits_only:
+        description: Process confirmed TRON deposits without invoking withdrawal payouts
+        type: boolean
+        required: false
+        default: false
 
 concurrency:
   group: financial-queue-workers
@@ -53,7 +58,7 @@ jobs:
           echo "configured=true" >> "$GITHUB_OUTPUT"
 
       - name: Verify CRON_SECRET without processing queues
-        if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.auth_only) }}
+        if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && (inputs.auth_only || inputs.deposits_only)) }}
         shell: bash
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
@@ -123,7 +128,7 @@ jobs:
             --request POST \
             --header "Authorization: Bearer ${CRON_SECRET}" \
             'https://operix.website/api/internal/cron/process-tron-deposits'
-          jq -c '{success, job, processed: .result.processed, skipped: (.result.skipped // false), reason: (.result.reason // null)}' "$response_file"
+          jq -c '{success, job, processed: .result.processed, failedAddressScans: ([.result.results[]? | select(has("error"))] | length), safeErrorCodes: ([.result.results[]?.error? | select(type == "string") | select(test("^[A-Z0-9_]+$"))] | unique), skipped: (.result.skipped // false), reason: (.result.reason // null)}' "$response_file"
           jq -e '.success == true and ((.result.skipped != true) or .result.reason == "TRON_DEPOSIT_AUTOMATION_DISABLED") and ([.result.results[]? | select(has("error"))] | length == 0)' "$response_file" > /dev/null || {
             echo '::error::TRON deposit worker failed or was skipped for an unexpected reason.'
             exit 1
@@ -133,7 +138,7 @@ jobs:
           fi
 
       - name: Process authorized withdrawal payouts
-        if: ${{ always() && steps.validate.outputs.configured == 'true' && steps.schema.outcome == 'success' }}
+        if: ${{ always() && steps.validate.outputs.configured == 'true' && steps.schema.outcome == 'success' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && !inputs.auth_only && !inputs.deposits_only)) }}
         shell: bash
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
