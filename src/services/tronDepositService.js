@@ -176,7 +176,6 @@ async function processAddress(addressRow, resend) {
     }
 
     fingerprint = String(result.meta?.fingerprint || '');
-    if (transfers.length < PAGE_SIZE) fingerprint = '';
   } while (fingerprint && pages < MAX_PAGES_PER_ADDRESS);
 
   const nextCursor = new Date(Math.max(newestTimestamp, Date.now() - LOOKBACK_MS));

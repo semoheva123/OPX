@@ -35,6 +35,7 @@ assert.match(financialReadiness, /noUnresolvedPayouts/);
 assert.match(financialReadiness, /payoutKeyFailure/);
 assert.match(financialReadiness, /tronIndexerReachable/);
 assert.match(financialReadiness, /getIndexerEndpoints/);
+assert.match(depositService, /getScanStartTimestamp/);
 assert.doesNotMatch(financialReadiness, /sendRawTransaction|preparePayout|broadcastPreparedPayout/);
 assert.match(queueWorkflow, /\/api\/internal\/cron\/process-tron-deposits/);
 assert.match(queueWorkflow, /deposits_only:/, 'manual deposit recovery must have a deposits-only option');

@@ -25,7 +25,7 @@ const originalEnv = Object.fromEntries(envKeys.map(key => [key, process.env[key]
     assert.ok(provider.PUBLIC_RPC_PROVIDERS.some(item => item.id === 'publicnode' && item.url === 'https://tron-rpc.publicnode.com' && item.freePublic));
     assert.ok(provider.PUBLIC_RPC_PROVIDERS.some(item => item.id === 'trongrid' && item.url === 'https://api.trongrid.io' && item.freePublic));
     assert.ok(provider.PUBLIC_RPC_PROVIDERS.some(item => item.id === 'ankr' && item.env === 'TRON_ANKR_RPC_URL' && !item.freePublic));
-    assert.deepEqual(provider.getIndexerEndpoints(), ['https://indexer.primary.example', 'https://indexer.backup.example', 'https://indexer.final.example']);
+    assert.deepEqual(provider.getIndexerEndpoints(), ['https://indexer.primary.example', 'https://indexer.backup.example', 'https://indexer.final.example', 'https://apilist.tronscanapi.com']);
     assert.deepEqual(provider.getSolidityEndpoints(), ['https://solidity.primary.example']);
     assert.equal(provider.normalizeEndpoint('ftp://not-supported.example'), '');
     assert.equal(provider.headersForEndpoint('https://rpc.primary.example')['TRON-PRO-API-KEY'], undefined, 'do not leak TronGrid secrets to another RPC vendor');
@@ -37,6 +37,7 @@ const originalEnv = Object.fromEntries(envKeys.map(key => [key, process.env[key]
     process.env.TRON_INDEXER_FALLBACK_URLS = '';
     process.env.TRONGRID_API_URL = '';
     assert.equal(provider.getIndexerEndpoints()[0], 'https://indexer.only.example');
+    assert.ok(provider.getIndexerEndpoints().includes('https://apilist.tronscanapi.com'), 'a free TronScan indexer is always available as the final TRC20 fallback');
     assert.notEqual(provider.getRpcEndpoints()[0], 'https://indexer.only.example', 'an indexer-only URL must not be silently used as a node RPC endpoint');
 
     process.env.TRON_RPC_URL = 'https://rpc.primary.example';
@@ -75,6 +76,38 @@ const originalEnv = Object.fromEntries(envKeys.map(key => [key, process.env[key]
       validateBody: body => Array.isArray(body?.data)
     });
     assert.ok(cooldownOrder[0].startsWith('https://indexer.final.example/'), 'healthy endpoint is preferred while failed nodes cool down');
+
+    process.env.TRON_INDEXER_URL = 'https://apilist.tronscanapi.com';
+    process.env.TRON_INDEXER_FALLBACK_URLS = '';
+    const tronscanHash = '5d2911b9b00afc26c6715534841c5480a631100b749d8c17fd9503877543c14a';
+    const tronscanResult = await provider.requestJsonWithFallback(provider.getIndexerEndpoints(), 'v1/accounts/TAjoaLvT6oFCp9StMmqgSzdx9iEs3FBx6P/transactions/trc20?only_confirmed=true&contract_address=TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t&min_timestamp=1791740907000&order_by=block_timestamp%2Casc&limit=200', {
+      fetcher: async url => {
+        const parsed = new URL(url);
+        assert.equal(parsed.pathname, '/api/token_trc20/transfers');
+        assert.equal(parsed.searchParams.get('relatedAddress'), 'TAjoaLvT6oFCp9StMmqgSzdx9iEs3FBx6P');
+        assert.equal(parsed.searchParams.get('contract_address'), 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t');
+        assert.equal(parsed.searchParams.get('start_timestamp'), '1791740907000');
+        assert.equal(parsed.searchParams.get('sort'), 'timestamp');
+        return { ok: true, status: 200, json: async () => ({ token_transfers: [{
+          transaction_id: tronscanHash,
+          from_address: 'TCLgK89AnXbC9rewvhNb9UgXCc2qJJpBXh',
+          to_address: 'TAjoaLvT6oFCp9StMmqgSzdx9iEs3FBx6P',
+          contract_address: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+          quant: '5000000',
+          block_ts: 1791740907000,
+          event_type: 'Transfer',
+          confirmed: true,
+          contractRet: 'SUCCESS'
+        }] }) };
+      },
+      validateBody: body => Array.isArray(body?.data)
+    });
+    assert.equal(tronscanResult.body.data[0].transaction_id, tronscanHash);
+    assert.equal(tronscanResult.body.data[0].value, '5000000');
+    assert.equal(tronscanResult.body.data[0].token_info.address, 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t');
+    assert.equal(tronscanResult.body.meta.fingerprint, '', 'a short final page must not request another page');
+    const nextPage = provider.buildIndexerRequest('https://apilist.tronscanapi.com', 'v1/accounts/T123/transactions/trc20?limit=200&fingerprint=200&order_by=block_timestamp%2Casc');
+    assert.equal(new URL(nextPage.url).searchParams.get('start'), '200', 'TronScan offset pagination must resume from the normalized fingerprint');
 
     process.env.TRON_INDEXER_URL = 'https://api.trongrid.io';
     process.env.TRON_INDEXER_FALLBACK_URLS = '';

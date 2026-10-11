@@ -2,6 +2,7 @@ const { TronWeb } = require('tronweb');
 const blockchainService = require('./blockchainService');
 
 const DEFAULT_TRON_ENDPOINT = 'https://api.trongrid.io';
+const DEFAULT_TRONSCAN_INDEXER = 'https://apilist.tronscanapi.com';
 const PROVIDER_COOLDOWN_MS = Math.max(5000, Number(process.env.TRON_PROVIDER_COOLDOWN_MS) || 30000);
 const providerCooldowns = new Map();
 const PUBLIC_RPC_PROVIDERS = Object.freeze([
@@ -81,7 +82,53 @@ function getRpcEndpoints() {
 function getIndexerEndpoints() {
   const config = blockchainService.getBlockchainConfig().TRC20;
   const primary = process.env.TRON_INDEXER_URL || config.indexerUrl || DEFAULT_TRON_ENDPOINT;
-  return uniqueEndpoints([primary, ...parseEndpointList(process.env.TRON_INDEXER_FALLBACK_URLS)]);
+  return uniqueEndpoints([primary, ...parseEndpointList(process.env.TRON_INDEXER_FALLBACK_URLS), DEFAULT_TRONSCAN_INDEXER]);
+}
+
+function buildIndexerRequest(endpoint, path) {
+  const parsedPath = new URL(String(path || '').replace(/^\/+/, ''), 'https://trongrid.invalid');
+  let hostname = '';
+  try { hostname = new URL(endpoint).hostname.toLowerCase(); } catch { }
+  if (hostname !== 'apilist.tronscanapi.com') return { url: `${endpoint}/${String(path || '').replace(/^\/+/, '')}` };
+
+  const match = parsedPath.pathname.match(/^\/v1\/accounts\/([^/]+)\/transactions\/trc20$/);
+  if (!match) return { url: `${endpoint}/${String(path || '').replace(/^\/+/, '')}` };
+  const source = parsedPath.searchParams;
+  const pageSize = Math.min(200, Math.max(1, Number(source.get('limit')) || 200));
+  const offset = Math.max(0, Number(source.get('fingerprint')) || 0);
+  const contractAddress = source.get('contract_address') || '';
+  const timestampOrder = source.get('order_by') || 'block_timestamp,desc';
+  const sort = timestampOrder.endsWith(',asc') ? 'timestamp' : '-timestamp';
+  const url = new URL('/api/token_trc20/transfers', endpoint);
+  url.search = new URLSearchParams({
+    limit: String(pageSize),
+    start: String(offset),
+    sort,
+    count: 'true',
+    relatedAddress: decodeURIComponent(match[1]),
+    ...(contractAddress ? { contract_address: contractAddress } : {}),
+    ...(source.has('min_timestamp') ? { start_timestamp: source.get('min_timestamp') } : {})
+  }).toString();
+  return { url: url.toString(), pageSize, offset, tronscan: true };
+}
+
+function normalizeIndexerBody(body, request) {
+  if (!request.tronscan) return body;
+  const transfers = Array.isArray(body?.token_transfers) ? body.token_transfers : [];
+  const data = transfers
+    .filter(transfer => transfer?.confirmed === true && String(transfer.contractRet || '').toUpperCase() === 'SUCCESS' && String(transfer.event_type || '').toLowerCase() === 'transfer')
+    .map(transfer => ({
+      transaction_id: transfer.transaction_id,
+      from: transfer.from_address,
+      to: transfer.to_address,
+      value: String(transfer.quant ?? ''),
+      block_timestamp: Number(transfer.block_ts || 0),
+      contract_address: transfer.contract_address,
+      token_info: { address: transfer.contract_address },
+      event_index: 0
+    }));
+  const hasMore = transfers.length >= request.pageSize;
+  return { data, meta: { fingerprint: hasMore ? String(request.offset + transfers.length) : '' } };
 }
 
 function getSolidityEndpoints() {
@@ -140,7 +187,8 @@ async function requestJsonWithFallback(urls, path, options = {}) {
   const maxRateLimitRetries = Math.max(0, Math.min(3, Number(options.maxRateLimitRetries ?? 2) || 0));
   let lastError;
   for (const endpoint of endpoints) {
-    const url = `${endpoint}/${String(path || '').replace(/^\/+/, '')}`;
+    const providerRequest = buildIndexerRequest(endpoint, path);
+    const url = providerRequest.url;
     for (let retryIndex = 0; retryIndex <= maxRateLimitRetries; retryIndex++) {
       let response;
       try {
@@ -159,8 +207,9 @@ async function requestJsonWithFallback(urls, path, options = {}) {
           await delay(getRetryDelayMs(response, retryIndex));
           continue;
         }
-        const body = await response.json().catch(() => ({}));
+        const rawBody = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(`TRON_PROVIDER_HTTP_${response.status}`);
+        const body = normalizeIndexerBody(rawBody, providerRequest);
         if (body?.Error || (body?.success === false && body?.error) || body?.error) throw new Error(`TRON_PROVIDER_RESPONSE_ERROR:${String(body.Error || body.error).slice(0, 180)}`);
         if (typeof options.validateBody === 'function' && !options.validateBody(body)) throw new Error('TRON_PROVIDER_INVALID_RESPONSE');
         noteProviderSuccess(endpoint);
@@ -182,6 +231,8 @@ module.exports = {
   isTransientProviderError,
   getRpcEndpoints,
   getIndexerEndpoints,
+  buildIndexerRequest,
+  normalizeIndexerBody,
   getSolidityEndpoints,
   headersForEndpoint,
   createTronWeb,
