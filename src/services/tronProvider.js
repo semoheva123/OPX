@@ -54,6 +54,19 @@ function noteProviderFailure(endpoint, error) {
   if (isTransientProviderError(error)) providerCooldowns.set(endpoint, Date.now() + PROVIDER_COOLDOWN_MS);
 }
 
+function getRetryDelayMs(response, retryIndex) {
+  const retryAfter = response?.headers?.get?.('retry-after');
+  const retryAfterSeconds = Number(retryAfter);
+  if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) return Math.min(5000, retryAfterSeconds * 1000);
+  const retryAfterDate = Date.parse(String(retryAfter || ''));
+  if (Number.isFinite(retryAfterDate)) return Math.min(5000, Math.max(0, retryAfterDate - Date.now()));
+  return Math.min(3000, 1000 * (retryIndex + 1));
+}
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 function getRpcEndpoints() {
   const config = blockchainService.getBlockchainConfig().TRC20;
   const primary = process.env.TRON_RPC_URL || config.rpcUrl || DEFAULT_TRON_ENDPOINT;
@@ -124,30 +137,39 @@ async function requestJsonWithFallback(urls, path, options = {}) {
   const endpoints = orderedAvailableEndpoints(urls);
   if (!endpoints.length) throw new Error('TRON_HTTP_ENDPOINTS_NOT_CONFIGURED');
   const fetcher = options.fetcher || global.fetch;
+  const maxRateLimitRetries = Math.max(0, Math.min(3, Number(options.maxRateLimitRetries ?? 2) || 0));
   let lastError;
   for (const endpoint of endpoints) {
     const url = `${endpoint}/${String(path || '').replace(/^\/+/, '')}`;
-    try {
-      const request = {
-        ...options.request,
-        headers: headersForEndpoint(endpoint, options.request?.headers || {}),
-        signal: options.request?.signal || AbortSignal.timeout(options.timeoutMs || 12000)
-      };
-      let response = await fetcher(url, request);
-      if ((response.status === 401 || response.status === 403 || response.status === 429) && request.headers['TRON-PRO-API-KEY']) {
-        const publicHeaders = { ...request.headers };
-        delete publicHeaders['TRON-PRO-API-KEY'];
-        response = await fetcher(url, { ...request, headers: publicHeaders });
+    for (let retryIndex = 0; retryIndex <= maxRateLimitRetries; retryIndex++) {
+      let response;
+      try {
+        const request = {
+          ...options.request,
+          headers: headersForEndpoint(endpoint, options.request?.headers || {}),
+          signal: options.request?.signal || AbortSignal.timeout(options.timeoutMs || 12000)
+        };
+        response = await fetcher(url, request);
+        if ((response.status === 401 || response.status === 403) && request.headers['TRON-PRO-API-KEY']) {
+          const publicHeaders = { ...request.headers };
+          delete publicHeaders['TRON-PRO-API-KEY'];
+          response = await fetcher(url, { ...request, headers: publicHeaders });
+        }
+        if (response.status === 429 && retryIndex < maxRateLimitRetries) {
+          await delay(getRetryDelayMs(response, retryIndex));
+          continue;
+        }
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(`TRON_PROVIDER_HTTP_${response.status}`);
+        if (body?.Error || (body?.success === false && body?.error) || body?.error) throw new Error(`TRON_PROVIDER_RESPONSE_ERROR:${String(body.Error || body.error).slice(0, 180)}`);
+        if (typeof options.validateBody === 'function' && !options.validateBody(body)) throw new Error('TRON_PROVIDER_INVALID_RESPONSE');
+        noteProviderSuccess(endpoint);
+        return { body, endpoint };
+      } catch (error) {
+        lastError = error;
+        noteProviderFailure(endpoint, error);
+        break;
       }
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(`TRON_PROVIDER_HTTP_${response.status}`);
-      if (body?.Error || (body?.success === false && body?.error) || body?.error) throw new Error(`TRON_PROVIDER_RESPONSE_ERROR:${String(body.Error || body.error).slice(0, 180)}`);
-      if (typeof options.validateBody === 'function' && !options.validateBody(body)) throw new Error('TRON_PROVIDER_INVALID_RESPONSE');
-      noteProviderSuccess(endpoint);
-      return { body, endpoint };
-    } catch (error) {
-      lastError = error;
-      noteProviderFailure(endpoint, error);
     }
   }
   throw lastError || new Error('TRON_HTTP_PROVIDERS_UNAVAILABLE');
