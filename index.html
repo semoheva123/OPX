@@ -101,6 +101,13 @@
             background: linear-gradient(135deg, rgba(34, 211, 238, 0.2), rgba(14, 116, 144, 0.18), rgba(15, 23, 42, 0.7));
         }
         .hide { display: none !important; }
+        body.is-booting #companyIntroView,
+        body.is-booting #authView,
+        body.is-booting #appView,
+        body.is-booting #liveTickerBar,
+        body.is-booting #appNavBar {
+            visibility: hidden !important;
+        }
         .modal-shell { opacity: 1; visibility: visible; transition: opacity .22s ease, visibility .22s ease; }
         .modal-shell.hide { display: flex !important; opacity: 0; visibility: hidden; pointer-events: none; }
         .modal-shell > div { transform: translateY(0) scale(1); transition: transform .24s cubic-bezier(.22,1,.36,1), opacity .22s ease; }
@@ -1350,7 +1357,7 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
 <div class="tech-grid-bg"></div>
 
     <!-- 1. شاشة التحميل (Loading View) -->
-    <div id="loadingView" class="fixed inset-0 bg-slate-950/95 z-50 flex flex-col items-center justify-center gap-5 backdrop-blur-sm">
+    <div id="loadingView" class="fixed inset-0 bg-slate-950 z-50 flex flex-col items-center justify-center gap-5 backdrop-blur-sm">
         <div class="operix-loader-shell" aria-label="شاشة تحميل OPERIX">
             <div class="operix-loader-stage"></div>
             <div class="operix-loader-backdrop"></div>
@@ -1391,6 +1398,7 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
         function hideLoadingView(delayMs = 900) {
             const loading = document.getElementById('loadingView');
             if (!loading) return;
+            document.body.classList.remove('is-booting');
             if (delayMs > 0) {
                 window.setTimeout(() => loading.classList.add('hide'), delayMs);
                 return;
@@ -1434,6 +1442,7 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
         }
 
         function applyInitialBootstrapState() {
+            document.body.classList.add('is-booting');
             if (localStorage.getItem('token')) {
                 showAuthenticatedShell();
             } else {
