@@ -3410,6 +3410,37 @@ function closeWithdrawModal() {
     if (button) button.innerText = 'إرسال رمز التأكيد إلى البريد';
 }
 
+function calculateNowPaymentsDepositPreview(amount) {
+    const text = String(amount ?? '').trim();
+    if (!/^(?:0|[1-9]\d*)(?:\.\d{1,4})?$/.test(text)) return null;
+    const [whole, fraction = ''] = text.split('.');
+    const principalUnits = BigInt(whole) * 10000n + BigInt(fraction.padEnd(4, '0'));
+    if (principalUnits < 10000n || principalUnits > 10000000000n) return null;
+    const surchargeUnits = (principalUnits + 50n) / 100n;
+    const formatUnits = units => `${units / 10000n}.${String(units % 10000n).padStart(4, '0')}`;
+    return {
+        depositAmount: formatUnits(principalUnits),
+        surchargeAmount: formatUnits(surchargeUnits),
+        chargeAmount: formatUnits(principalUnits + surchargeUnits)
+    };
+}
+
+function updateNowPaymentsDepositPreview() {
+    const amountInput = document.getElementById('nowPaymentsDepositAmount');
+    const preview = calculateNowPaymentsDepositPreview(amountInput?.value);
+    const depositAmount = document.getElementById('nowPaymentsPreviewDepositAmount');
+    const surchargeAmount = document.getElementById('nowPaymentsPreviewSurchargeAmount');
+    const chargeAmount = document.getElementById('nowPaymentsPreviewChargeAmount');
+    const status = document.getElementById('nowPaymentsFeePreviewStatus');
+    if (depositAmount) depositAmount.textContent = preview?.depositAmount || '—';
+    if (surchargeAmount) surchargeAmount.textContent = preview?.surchargeAmount || '—';
+    if (chargeAmount) chargeAmount.textContent = preview?.chargeAmount || '—';
+    if (status) status.textContent = preview
+        ? `إجمالي الفاتورة يشمل رسم 1% (${preview.surchargeAmount} USDT). لن يتم إرسال الأموال عند إنشاء الطلب؛ راجع عنوان الدفع والمبلغ قبل التحويل.`
+        : 'أدخل مبلغًا صحيحًا بين 1 و1,000,000 USDT وبحد أقصى 4 منازل عشرية لمعاينة الرسم والإجمالي.';
+    return preview;
+}
+
 async function loadDepositAddress() {
     try {
         const token = localStorage.getItem('token');
@@ -3422,12 +3453,14 @@ async function loadDepositAddress() {
             gatewayPanel?.classList.remove('hidden');
             paymentDetails?.classList.add('hidden');
             document.getElementById('sharedDepositClaimPanel')?.classList.add('hidden');
-            const instructions = document.getElementById('depositNetworkInstructions');
-            if (instructions) instructions.textContent = 'حدد المبلغ ثم أنشئ طلب الدفع. سيُعرض العنوان ورمز QR بشكل تلقائي.';
             document.getElementById('userDepositAddress').value = '';
+            const createButton = document.getElementById('nowPaymentsCreateButton');
+            if (createButton) { createButton.disabled = false; createButton.textContent = 'إنشاء طلب الدفع'; }
+            const instructions = document.getElementById('depositNetworkInstructions');
+            if (instructions) instructions.textContent = 'راجع ملخص المبلغ والرسم، ثم أنشئ طلب الدفع لعرض العنوان ورمز QR. إنشاء الطلب لا يرسل الأموال.';
+            updateNowPaymentsDepositPreview();
             const status = document.getElementById('depositModalStatus');
-            if (status) status.textContent = 'جارٍ إعداد طلب الدفع الجديد...';
-            await createNowPaymentsDeposit();
+            if (status) status.textContent = 'غيّر المبلغ لمعاينة رسم المنصة والإجمالي، ثم اختر «إنشاء طلب الدفع» للمتابعة.';
             return;
         }
         gatewayPanel?.classList.add('hidden');
@@ -3453,8 +3486,9 @@ async function createNowPaymentsDeposit() {
     const button = document.getElementById('nowPaymentsCreateButton');
     const status = document.getElementById('depositModalStatus');
     const amount = String(amountInput?.value || '').trim();
-    if (!/^(?:0|[1-9]\d*)(?:\.\d{1,4})?$/.test(amount) || Number(amount) < 1) {
-        if (status) status.textContent = 'أدخل مبلغًا صحيحًا لا يقل عن 1 USDT.';
+    const preview = updateNowPaymentsDepositPreview();
+    if (!preview) {
+        if (status) status.textContent = 'أدخل مبلغًا صحيحًا بين 1 و1,000,000 USDT وبحد أقصى 4 منازل عشرية.';
         amountInput?.focus();
         return;
     }
@@ -3468,6 +3502,9 @@ async function createNowPaymentsDeposit() {
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'تعذر إنشاء طلب الدفع');
+        if (String(data.depositAmount) !== preview.depositAmount || String(data.surchargeAmount) !== preview.surchargeAmount || String(data.chargeAmount) !== preview.chargeAmount) {
+            throw new Error('لم تتطابق الرسوم مع المعاينة. لا ترسل أي أموال؛ أغلق النافذة وتواصل مع الدعم.');
+        }
         document.getElementById('userDepositAddress').value = data.address || '';
         document.getElementById('nowPaymentsQrCode').src = data.qrCode || '';
         document.getElementById('nowPaymentsPayAmount').textContent = String(data.payAmount || '—');
@@ -3476,13 +3513,13 @@ async function createNowPaymentsDeposit() {
         document.getElementById('nowPaymentsChargeAmount').textContent = String(data.chargeAmount || data.depositAmount || amount);
         document.getElementById('nowPaymentsPaymentId').textContent = String(data.paymentId || '');
         document.getElementById('nowPaymentsPaymentDetails')?.classList.remove('hidden');
-        if (status) status.textContent = `تم إنشاء الطلب. أرسل ${data.payAmount} USDT إلى العنوان أعلاه. سيتم إضافة ${data.depositAmount} USDT بعد التأكيد.`;
+        if (status) status.textContent = `تم إنشاء الطلب بعد احتساب رسم 1% (${data.surchargeAmount} USDT). أرسل ${data.payAmount} USDT إلى العنوان أعلاه فقط؛ سيُضاف ${data.depositAmount} USDT بعد التأكيد.`;
     } catch (error) {
         document.getElementById('userDepositAddress').value = '';
         document.getElementById('nowPaymentsPaymentDetails')?.classList.add('hidden');
         if (status) status.textContent = error.message || 'تعذر إنشاء طلب الدفع لدى NOWPayments.';
     } finally {
-        if (button) { button.disabled = false; button.textContent = 'إنشاء الطلب'; }
+        if (button) { button.disabled = false; button.textContent = 'إنشاء طلب الدفع'; }
     }
 }
 

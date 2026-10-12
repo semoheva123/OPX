@@ -73,6 +73,11 @@ async function main() {
   assert.match(indexSource, /id="depositNetworkInstructions"/);
   assert.match(appSource, /رسم 1%/);
   assert.match(indexSource, /nowPaymentsSurchargeAmount/);
+  assert.match(indexSource, /id="nowPaymentsDepositPreview"/);
+  assert.match(indexSource, /رسم منصة 1%/);
+  assert.match(appSource, /function calculateNowPaymentsDepositPreview\(amount\)/);
+  const depositLoadFlow = appSource.slice(appSource.indexOf('async function loadDepositAddress()'), appSource.indexOf('async function createNowPaymentsDeposit()'));
+  assert.doesNotMatch(depositLoadFlow, /await createNowPaymentsDeposit\(\)/, 'opening the deposit modal must not create a payment before the user reviews the fee and total');
   assert.match(premiumStyles, /#depositModal > \.deposit-modal-shell[\s\S]*?overflow-y:\s*auto\s*!important/);
 
   const originalFetch = global.fetch;
