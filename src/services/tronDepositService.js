@@ -236,27 +236,8 @@ async function processAddress(addressRow, resend) {
 }
 
 async function processTronDepositQueue(resend) {
-  if (String(process.env.TRON_DEPOSIT_AUTOMATION_ENABLED || '').toLowerCase() !== 'true') {
-    return { processed: 0, skipped: true, reason: 'TRON_DEPOSIT_AUTOMATION_DISABLED' };
-  }
-  if (String(process.env.TRON_SHARED_DEPOSIT_MODE || '').toLowerCase() === 'true') {
-    return { processed: 0, skipped: true, reason: 'SHARED_DEPOSIT_MODE_ACTIVE' };
-  }
-  if (!dataAccess.isSupabaseRuntime()) return { processed: 0, skipped: true, reason: 'SUPABASE_RUNTIME_REQUIRED' };
-  if (!process.env.TRON_DEPOSIT_XPUB) return { processed: 0, skipped: true, reason: 'TRON_DEPOSIT_XPUB_NOT_CONFIGURED' };
-
-  const limit = Math.min(50, Math.max(1, Number(process.env.TRON_DEPOSIT_SCAN_BATCH || 10)));
-  const addresses = await dataAccess.tronDepositAddress.find({}, { sort: { lastScannedAt: 1, createdAt: 1 }, limit });
-  const results = [];
-  for (const address of addresses) {
-    try {
-      results.push(await processAddress(address, resend));
-    } catch (error) {
-      console.error(`TRON deposit scan failed for ${address.address}:`, error.message);
-      results.push({ userId: address.userId, error: error.message });
-    }
-  }
-  return { processed: results.length, results };
+  void resend;
+  return { processed: 0, skipped: true, reason: 'NOWPAYMENTS_ONLY' };
 }
 
 module.exports = { deriveDepositAddress, ensureUserDepositAddress, processTronDepositQueue, formatDepositReceiptAmount, sendDepositConfirmationEmail, getScanStartTimestamp, getSharedDepositAddress, verifySharedDepositTransfer };

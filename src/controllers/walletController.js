@@ -84,51 +84,7 @@ async function calculateWithdrawalRiskSupabase(user, amount, ip) {
 }
 
 async function deposit(req, res) {
-  return depositSupabase(req, res);
-}
-
-async function depositSupabase(req, res) {
-  const hash = String(req.body?.txHash || req.body?.tx_hash || '').trim();
-  try {
-    if (String(process.env.TRON_SHARED_DEPOSIT_MODE || '').toLowerCase() !== 'true') {
-      return res.status(410).json({ success: false, error: 'إيداع TxHash اليدوي غير مفعّل؛ استخدم عنوان الإيداع الظاهر في حسابك.' });
-    }
-    if (!dataAccess.isSupabaseRuntime()) return res.status(503).json({ success: false, error: 'خدمة الإيداع تتطلب قاعدة بيانات Supabase.' });
-    const sharedAddress = tronDepositService.getSharedDepositAddress();
-    const verified = await tronDepositService.verifySharedDepositTransfer(hash, sharedAddress);
-    const credit = await dataAccess.callSupabaseRpc('operix_tron_shared_deposit_credit_atomic', {
-      p_user_id: req.user.id,
-      p_tx_hash: verified.txHash,
-      p_event_index: verified.eventIndex,
-      p_from_address: verified.fromAddress,
-      p_to_address: verified.toAddress,
-      p_amount: verified.amount,
-      p_block_timestamp: verified.blockTimestamp
-    });
-    if (credit?.duplicate) return res.status(409).json({ success: false, duplicate: true, error: 'تم تسجيل هذا التحويل سابقًا؛ لا يمكن إيداع الهاش نفسه لحساب آخر.' });
-    if (!credit?.credited) throw new Error('TRON_SHARED_DEPOSIT_CREDIT_FAILED');
-
-    try {
-      await realtimeService.publish('user_data_changed', { reason: 'deposit_created', timestamp: new Date().toISOString() }, { userId: req.user.id });
-      await realtimeService.publish('admin_transaction_created', { transactionId: credit.transaction?.id, type: 'deposit', userId: req.user.id }, { scope: 'admin' });
-    } catch (error) {
-      console.error('Shared TRON deposit realtime notification failed:', error.message);
-    }
-    const resend = req.app?.locals?.resend;
-    await tronDepositService.sendDepositConfirmationEmail(resend, req.user.id, credit.transaction);
-    return res.status(201).json({ success: true, transaction: credit.transaction, wallet: credit.wallet, message: 'تم التحقق من تحويل USDT على TRC20 وإضافة الرصيد إلى محفظتك داخل المنصة.' });
-  } catch (error) {
-    const status = error.message === 'TRON_DEPOSIT_TX_HASH_ALREADY_CREDITED' ? 409
-      : /NOT_CONFIGURED|REQUIRES_SUPABASE|SHARED_DEPOSIT_MODE/.test(error.message) ? 503
-        : /INVALID_TRON_DEPOSIT_TX_HASH|TRANSFER_NOT_FOUND|INVALID_TRON_DEPOSIT_AMOUNT|PRECISION_UNSUPPORTED/.test(error.message) ? 400
-          : 503;
-    console.error('Shared TRON deposit verification failed:', error.message);
-    return res.status(status).json({ success: false, error: status === 400
-      ? 'لم يتم العثور على تحويل USDT TRC20 مؤكد إلى عنوان الإيداع الرئيسي لهذا الهاش.'
-      : status === 409 ? 'هذا التحويل مسجل مسبقًا ولا يمكن نسبه إلى أكثر من حساب.'
-        : status === 503 ? 'تعذر التحقق من الإيداع الآن؛ لم يُضف أي رصيد.'
-          : 'تعذر تسجيل الإيداع بعد التحقق.' });
-  }
+  return res.status(410).json({ success: false, error: 'الإيداع عبر TxHash أو التحويل المباشر غير مدعوم. أنشئ طلب الإيداع من بوابة NOWPayments داخل المنصة.' });
 }
 
 async function getMyHistory(req, res) {
@@ -305,33 +261,11 @@ async function withdrawSupabase(req, res) {
 async function getDepositConfig(req, res) {
   try {
     const nowPaymentsConfig = paymentGatewayService.getNowPaymentsConfig();
-    if (nowPaymentsConfig.apiKey && !nowPaymentsConfig.ipnSecret) {
-      return res.status(503).json({ success: false, error: 'يلزم إعداد NOWPAYMENTS_IPN_SECRET قبل تفعيل الإيداعات.' });
-    }
-    if (nowPaymentsConfig.apiKey) {
-      return res.json({ success: true, network: 'TRC20', provider: 'NOWPayments', paymentRequired: true, verification: 'ipn' });
-    }
-    if (String(process.env.TRON_DEPOSIT_AUTOMATION_ENABLED || '').toLowerCase() !== 'true') {
-      return res.status(503).json({ success: false, error: 'الإيداع الآلي قيد التجهيز ولم يُفعّل بعد.' });
-    }
-    if (String(process.env.TRON_SHARED_DEPOSIT_MODE || '').toLowerCase() === 'true') {
-      const address = tronDepositService.getSharedDepositAddress();
-      if (!address) return res.status(503).json({ success: false, error: 'عنوان الإيداع الرئيسي غير مضبوط.' });
-      return res.json({ success: true, network: 'TRC20', addresses: { TRC20: address }, automatic: false, verification: 'transaction_hash' });
-    }
-    if (!process.env.TRON_DEPOSIT_XPUB) {
-      const fallbackAddress = tronDepositService.getSharedDepositAddress();
-      if (fallbackAddress) {
-        return res.json({ success: true, network: 'TRC20', addresses: { TRC20: fallbackAddress }, automatic: false, verification: 'transaction_hash' });
-      }
-      return res.status(503).json({ success: false, error: 'إعداد عنوان الإيداع الرئيسي غير مكتمل.' });
-    }
-    const address = await tronDepositService.ensureUserDepositAddress(req.user.id);
-    return res.json({ success: true, network: 'TRC20', addresses: { TRC20: address }, automatic: true });
+    if (!paymentGatewayService.isNowPaymentsReady(nowPaymentsConfig)) return res.status(503).json({ success: false, provider: 'NOWPayments', error: 'بوابة NOWPayments غير جاهزة حاليًا؛ لا ترسل أي تحويل مباشر.' });
+    return res.json({ success: true, network: 'TRC20', provider: 'NOWPayments', paymentRequired: true, verification: 'ipn' });
   } catch (error) {
-    console.error('TRON deposit address provisioning failed:', error.message);
-    const status = /NOT_CONFIGURED|REQUIRES_SUPABASE/.test(error.message) ? 503 : 500;
-    return res.status(status).json({ success: false, error: status === 503 ? 'إعداد عنوان الإيداع الآلي غير مكتمل.' : 'تعذر تجهيز عنوان الإيداع الآن.' });
+    console.error('NOWPayments deposit configuration failed:', error.message);
+    return res.status(503).json({ success: false, provider: 'NOWPayments', error: 'بوابة NOWPayments غير متاحة حاليًا؛ لا ترسل أي تحويل مباشر.' });
   }
 }
 
@@ -341,6 +275,7 @@ async function createNowPaymentsDeposit(req, res) {
     const { apiKey, ipnSecret } = paymentGatewayService.getNowPaymentsConfig();
     if (!apiKey) return res.status(503).json({ success: false, error: 'لم يتم إعداد بوابة NOWPayments بعد.' });
     if (!ipnSecret) return res.status(503).json({ success: false, error: 'يلزم إعداد NOWPAYMENTS_IPN_SECRET قبل إنشاء طلب إيداع.' });
+    if (!paymentGatewayService.isNowPaymentsReady()) return res.status(503).json({ success: false, error: 'يلزم إعداد رابط HTTPS ومفتاح توقيع الطلب قبل إنشاء طلب الإيداع.' });
 
     const priceAmount = paymentGatewayService.formatUsdtAmount(req.body?.amount);
     const payment = await paymentGatewayService.createPayment({ userId: req.user.id, amount: priceAmount });
@@ -372,7 +307,7 @@ async function createNowPaymentsDeposit(req, res) {
     });
   } catch (error) {
     const badRequest = error.message === 'INVALID_DEPOSIT_AMOUNT';
-    const status = badRequest ? 400 : /NOT_CONFIGURED|APP_URL/.test(error.message) ? 503 : 502;
+    const status = badRequest ? 400 : /NOT_CONFIGURED|APP_URL|CONFIGURATION_INCOMPLETE/.test(error.message) ? 503 : 502;
     console.error('NOWPayments payment creation failed:', error.message);
     return res.status(status).json({
       success: false,

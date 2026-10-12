@@ -1,0 +1,20 @@
+-- DEPRECATED — DO NOT APPLY.
+--
+-- This file was an unintegrated proposal for shared-address deposit claims
+-- that would remain pending until reviewed by a finance administrator.
+-- OPERIX does not currently provide the matching claim/review API or admin
+-- workflow, so installing its tables/RPCs would create an orphaned financial
+-- path and could conflict with the existing transaction approval workflow.
+--
+-- The sole supported user deposit path is NOWPayments TRC20: apply
+-- nowpayments-trc20-deposits.sql and use its signed IPN flow to register and
+-- credit confirmed payment orders.
+--
+-- Direct shared-address TxHash deposits and per-user TRON scanning are disabled
+-- by the application. automatic-trc20-deposits.sql is a historical migration;
+-- do not apply it to a new NOWPayments-only environment.
+--
+-- No statements are intentionally executed by this file. If an admin-reviewed
+-- shared-address claim workflow is required, implement and test its wallet
+-- endpoint, admin review route/UI, ledger posting, audit events, and idempotent
+-- RPC together before adding a deployable migration.

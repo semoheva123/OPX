@@ -40,8 +40,8 @@ assert.match(taskReply, /فاصل ساعتين/);
 const referralReply = localReply('كم إحالة أحتاج للألعاب؟', 'member', 25, 'A2', knowledge);
 assert.match(referralReply, /9 إحالات نشطة/);
 
-const depositReply = localReply('أين أجد عنوان الإيداع؟', 'member', 25, 'A2', { ...knowledge, depositAutomationEnabled: false });
-assert.match(depositReply, /لا ترسل أي أموال/);
+const depositReply = localReply('أين أجد عنوان الإيداع؟', 'member', 25, 'A2', { ...knowledge, nowPaymentsConfigured: false });
+assert.match(depositReply, /لا ترسل أي تحويل مباشر/);
 
 const withdrawalReply = localReply('ما رسوم السحب؟', 'member', 25, 'A2', knowledge);
 assert.match(withdrawalReply, /10%/);

@@ -33,7 +33,7 @@ async function checkSupabaseConnection() {
     depositTablesReady: false,
     payoutTableReady: false,
     withdrawalEmailCodesReady: false,
-    missingDepositTables: ['tron_deposit_addresses', 'tron_deposit_address_sequences', 'tron_deposit_events'],
+    missingDepositTables: ['nowpayments_deposit_orders'],
     ready: false
   };
   if (!supabaseAdmin) return { configured: false, reachable: false, financialSchema };
@@ -42,9 +42,7 @@ async function checkSupabaseConnection() {
   if (error) return { configured: true, reachable: false, error: error.message, financialSchema };
 
   const depositTables = [
-    { table: 'tron_deposit_addresses', requiredColumns: 'user_id,derivation_index,address,last_scanned_at' },
-    { table: 'tron_deposit_address_sequences', requiredColumns: 'id,next_index' },
-    { table: 'tron_deposit_events', requiredColumns: 'id,transaction_id,user_id,tx_hash,event_index,to_address,amount' }
+    { table: 'nowpayments_deposit_orders', requiredColumns: 'payment_id,order_id,user_id,price_amount,pay_amount,pay_currency,pay_address,payment_status,transaction_id,tx_hash,actual_paid,credited_at' }
   ];
   const depositChecks = await Promise.all(depositTables.map(async ({ table, requiredColumns }) => ({
     table,

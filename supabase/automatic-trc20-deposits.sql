@@ -1,3 +1,6 @@
+-- LEGACY — retained for existing database history only. New OPERIX deployments
+-- use NOWPayments exclusively; do not apply this migration or enable direct
+-- TRON deposit scanning.
 -- Per-user TRON USDT deposit addresses and idempotent confirmed-deposit crediting.
 -- Generate TRON_DEPOSIT_XPUB offline from a dedicated seed at m/44'/195'/0'/0; never put the seed/private keys in Vercel.
 begin;

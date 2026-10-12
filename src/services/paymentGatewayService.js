@@ -11,6 +11,16 @@ function getNowPaymentsConfig() {
   };
 }
 
+function isNowPaymentsReady(config = getNowPaymentsConfig()) {
+  if (!config.apiKey || !config.ipnSecret || String(process.env.JWT_SECRET || '').trim().length < 32) return false;
+  try {
+    const callback = new URL(config.callbackUrl);
+    return callback.protocol === 'https:' && Boolean(callback.hostname);
+  } catch {
+    return false;
+  }
+}
+
 function formatUsdtAmount(value) {
   const text = String(value ?? '').trim();
   if (!/^(?:0|[1-9]\d*)(?:\.\d{1,4})?$/.test(text)) throw new Error('INVALID_DEPOSIT_AMOUNT');
@@ -86,7 +96,8 @@ function getIpnSignature(req) {
 async function createPayment({ userId, amount }) {
   const config = getNowPaymentsConfig();
   if (!config.apiKey) throw new Error('NOWPAYMENTS_API_KEY_NOT_CONFIGURED');
-  if (!process.env.APP_URL && !process.env.PUBLIC_APP_URL) throw new Error('APP_URL_NOT_CONFIGURED');
+  if (!config.ipnSecret) throw new Error('NOWPAYMENTS_IPN_SECRET_NOT_CONFIGURED');
+  if (!isNowPaymentsReady(config)) throw new Error('NOWPAYMENTS_CONFIGURATION_INCOMPLETE');
   const priceAmount = formatUsdtAmount(amount);
   const orderId = createSignedOrderId(userId, priceAmount);
   const response = await fetch(`${API_BASE_URL}/payment`, {
@@ -150,6 +161,7 @@ module.exports = {
   API_BASE_URL,
   PAYMENT_CURRENCY,
   getNowPaymentsConfig,
+  isNowPaymentsReady,
   formatUsdtAmount,
   createSignedOrderId,
   verifySignedOrderId,

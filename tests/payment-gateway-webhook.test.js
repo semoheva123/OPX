@@ -40,13 +40,22 @@ async function main() {
   assert.equal(nowPayments.verifyIpnSignature(ipn, 'invalid'), false);
   assert.equal(nowPayments.PAYMENT_CURRENCY, 'usdttrc20');
   assert.equal(nowPayments.buildPaymentReference('123456').startsWith('NOWPAYMENTS:'), true);
+  assert.equal(nowPayments.isNowPaymentsReady(), true);
+  assert.equal(nowPayments.isNowPaymentsReady({ apiKey: 'test-api-key', ipnSecret: 'test-ipn-secret', callbackUrl: 'http://operix.example/api/ipn' }), false,
+    'NOWPayments deposit configuration must require an HTTPS callback URL');
   const routeSource = fs.readFileSync(path.join(__dirname, '../src/routes/walletRoutes.js'), 'utf8');
+  const walletControllerSource = fs.readFileSync(path.join(__dirname, '../src/controllers/walletController.js'), 'utf8');
+  const tronDepositServiceSource = fs.readFileSync(path.join(__dirname, '../src/services/tronDepositService.js'), 'utf8');
   const migration = fs.readFileSync(path.join(__dirname, '../supabase/nowpayments-trc20-deposits.sql'), 'utf8');
   const appSource = fs.readFileSync(path.join(__dirname, '../app.js'), 'utf8');
   const indexSource = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
   const premiumStyles = fs.readFileSync(path.join(__dirname, '../styles/operix-premium.css'), 'utf8');
   assert.match(routeSource, /wallet\/deposit\/nowpayments\/ipn/);
   assert.match(routeSource, /wallet\/deposit\/nowpayments\/create',\s*verifyToken/);
+  assert.match(walletControllerSource, /بوابة NOWPayments غير جاهزة حاليًا؛ لا ترسل أي تحويل مباشر/);
+  assert.match(walletControllerSource, /إيداع TxHash|الإيداع عبر TxHash/);
+  assert.doesNotMatch(walletControllerSource, /ensureUserDepositAddress\(req\.user\.id\)/);
+  assert.match(tronDepositServiceSource, /reason: 'NOWPAYMENTS_ONLY'/);
   assert.match(migration, /operix_nowpayments_deposit_credit_atomic/);
   assert.match(migration, /transaction_id uuid unique/);
   assert.match(indexSource, /id="depositNetworkInstructions"/);
@@ -54,6 +63,11 @@ async function main() {
   assert.match(premiumStyles, /#depositModal > \.deposit-modal-shell[\s\S]*?overflow-y:\s*auto\s*!important/);
 
   const originalFetch = global.fetch;
+  const originalAppUrl = process.env.APP_URL;
+  process.env.APP_URL = 'http://operix.example';
+  await assert.rejects(() => nowPayments.createPayment({ userId, amount: '25.5' }), /NOWPAYMENTS_CONFIGURATION_INCOMPLETE/,
+    'payment creation must reject a non-HTTPS callback even when called directly');
+  process.env.APP_URL = originalAppUrl;
   let sentRequest;
   global.fetch = async (url, options) => {
     sentRequest = { url, options };

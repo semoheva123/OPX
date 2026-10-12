@@ -297,7 +297,7 @@ async function financialReadiness(req, res) {
         supabaseReachable: Boolean(checks.supabaseReachable),
         financialSchemaReady: Boolean(checks.financialSchemaReady),
         noUnresolvedPayouts: Boolean(checks.noUnresolvedPayouts),
-        depositXpubDerivesAddress: Boolean(checks.depositXpubDerivesAddress),
+        nowPaymentsConfigured: Boolean(checks.nowPaymentsConfigured),
         tronUsdtContractValid: Boolean(checks.tronUsdtContractValid),
         payoutKeyConfigured: Boolean(checks.payoutKeyConfigured),
         payoutKeyValid: Boolean(checks.payoutKeyValid),

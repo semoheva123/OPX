@@ -1,6 +1,6 @@
 const blockchainService = require('./blockchainService');
 const tronProvider = require('./tronProvider');
-const tronDepositService = require('./tronDepositService');
+const paymentGatewayService = require('./paymentGatewayService');
 const { checkSupabaseConnection, supabaseAdmin } = require('../config/supabase');
 
 async function checkFinancialReadiness() {
@@ -8,19 +8,20 @@ async function checkFinancialReadiness() {
     supabaseReachable: false,
     financialSchemaReady: false,
     noUnresolvedPayouts: false,
-    depositXpubDerivesAddress: false,
+    nowPaymentsConfigured: false,
     tronUsdtContractValid: false,
     payoutKeyConfigured: false,
     payoutKeyValid: false,
     payoutKeyFailure: null,
     tronProviderReachable: false,
-    tronIndexerReachable: false,
     payoutBalancesReadable: false,
     payoutUsdtFunded: false,
     payoutTrxSufficient: false
   };
+  const nowPaymentsConfig = paymentGatewayService.getNowPaymentsConfig();
+  checks.nowPaymentsConfigured = paymentGatewayService.isNowPaymentsReady(nowPaymentsConfig);
   const switches = {
-    depositsEnabled: String(process.env.TRON_DEPOSIT_AUTOMATION_ENABLED || '').toLowerCase() === 'true',
+    depositsEnabled: checks.nowPaymentsConfigured,
     payoutsEnabled: String(process.env.WITHDRAWAL_PAYOUTS_ENABLED || '').toLowerCase() === 'true',
     autoApprovalEnabled: String(process.env.WITHDRAWAL_AUTO_APPROVAL_ENABLED || '').toLowerCase() === 'true'
   };
@@ -45,17 +46,6 @@ async function checkFinancialReadiness() {
     }
   }
 
-  try {
-    if (String(process.env.TRON_SHARED_DEPOSIT_MODE || '').toLowerCase() === 'true') {
-      const sharedAddress = tronDepositService.getSharedDepositAddress();
-      checks.depositXpubDerivesAddress = Boolean(sharedAddress);
-    } else {
-      checks.depositXpubDerivesAddress = Boolean(tronDepositService.deriveDepositAddress(0));
-    }
-  } catch {
-    checks.depositXpubDerivesAddress = false;
-  }
-
   const config = blockchainService.getBlockchainConfig().TRC20;
   const privateKey = String(process.env.TRON_WITHDRAWAL_PRIVATE_KEY || '').trim();
   checks.payoutKeyConfigured = Boolean(privateKey);
@@ -75,17 +65,6 @@ async function checkFinancialReadiness() {
     checks.tronProviderReachable = Boolean(block.blockID || block.block_header?.raw_data?.number !== undefined);
   } catch {
     checks.tronProviderReachable = false;
-  }
-
-  try {
-    const indexerPath = `v1/accounts/${encodeURIComponent(config.tokenContract)}/transactions/trc20?only_confirmed=true&contract_address=${encodeURIComponent(config.tokenContract)}&limit=1`;
-    const { body: indexedTransfers } = await tronProvider.requestJsonWithFallback(tronProvider.getIndexerEndpoints(), indexerPath, {
-      timeoutMs: 12000,
-      validateBody: body => Array.isArray(body?.data)
-    });
-    checks.tronIndexerReachable = Array.isArray(indexedTransfers?.data);
-  } catch {
-    checks.tronIndexerReachable = false;
   }
 
   let tronWeb;
@@ -123,7 +102,7 @@ async function checkFinancialReadiness() {
   }
 
   const readyForControlledTest = checks.supabaseReachable && checks.financialSchemaReady && checks.noUnresolvedPayouts &&
-    checks.depositXpubDerivesAddress && checks.tronUsdtContractValid && (!switches.depositsEnabled || checks.tronIndexerReachable) && checks.payoutKeyConfigured &&
+    checks.nowPaymentsConfigured && checks.tronUsdtContractValid && checks.payoutKeyConfigured &&
     checks.payoutKeyValid && checks.tronProviderReachable && checks.payoutBalancesReadable &&
     checks.payoutUsdtFunded && checks.payoutTrxSufficient;
 
