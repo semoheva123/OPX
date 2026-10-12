@@ -14,8 +14,24 @@ function localReply(message, userName, userBalance, userTier, platformFacts = {}
   const transactionStatus = { approved: 'معتمدة', completed: 'مكتملة', pending: 'قيد المعالجة', rejected: 'مرفوضة', processing: 'قيد المعالجة' };
   const vaultStatus = { active: 'مجمّدة', matured: 'مستحقة للاسترداد', claimed: 'تم استردادها', closed: 'منتهية' };
 
+  if (has('ما الذي ينقص', 'ماذا ينقص', 'حالة حسابي', 'وضع حسابي', 'جاهزية الحساب', 'اكمل حسابي', 'الخطوات المطلوبة')) {
+    const nextSteps = [];
+    if (account.emailVerified === false) nextSteps.push('وثّق بريد الحساب من «حسابي» لاستقبال تنبيهات العمليات ورموز تأكيد السحب.');
+    if (account.withdrawalWalletSet === false) nextSteps.push('إذا رغبت باستخدام السحب مستقبلًا، ثبّت عنوان TRC20 من «حسابي» وتحقق منه بعناية.');
+    if (account.tierActive === false) nextSteps.push('المهام المدفوعة وبعض الميزات مرتبطة بحالة المستوى؛ راجع الشروط الظاهرة في «المستويات» قبل اتخاذ أي قرار مالي.');
+    const taskLimit = Number(platformFacts.currentLevelTaskLimit);
+    if (account.tierActive && Number.isFinite(taskLimit) && taskLimit > Number(account.todayCompletedTasks || 0)) {
+      nextSteps.push(`أنجزت ${Number(account.todayCompletedTasks || 0)} من ${taskLimit} مهمة مدفوعة متاحة حسب بيانات الحساب؛ راجع حالة المهمة التالية في «المهام».`);
+    }
+    return nextSteps.length
+      ? `هذه مراجعة إرشادية لما يظهر في بيانات حسابك، وليست توصية مالية:\n• ${nextSteps.join('\n• ')}\nلا يلزم اتخاذ إجراء مالي؛ راجع الشروط داخل كل قسم قبل المتابعة.`
+      : 'بحسب بيانات الحساب المتاحة هنا لا أرى خطوة أساسية معلّقة مؤكدة. راجع «حسابي» للتوثيق والمحفظة، والرئيسية للسجل، و«المهام» لحالة إنجاز اليوم. هذه قراءة إرشادية وليست تأكيدًا خارج البيانات المحمّلة.';
+  }
+  if (has('ماذا تستطيع', 'ما الذي تستطيع', 'كيف تساعدني', 'ماذا تقدم', 'ماذا يمكن')) {
+    return 'أساعدك في استخدام OPERIX خطوة بخطوة: أشرح الرئيسية والسجل، الإيداع والسحب، المهام، المستويات، الخزنة، الألعاب، الإحالات والمجتمع؛ وأراجع مؤشرات حسابك الآمنة مثل حالة التوثيق والمعاملات الحديثة. أستطيع توجيهك مباشرة إلى القسم أو فتح نافذة إجراء للمراجعة، لكن لا أنفذ تحويلًا أو تغييرًا ماليًا نيابةً عنك. وللشكوى أو مراجعة بشرية افتح تذكرة دعم من هنا.';
+  }
   if (has('شكوى', 'موظف', 'تذكرة', 'الدعم', 'دعم فني', 'اتواصل', 'اتصال بالدعم')) return tickets;
-  if (has('ايداع', 'ايداعات', 'deposit', 'تحويل الى المنصة', 'لم يصل الايداع', 'الايداع معلق')) {
+  if (has('ايداع', 'ايداعات', 'اودع', 'ايدع', 'deposit', 'تحويل الى المنصة', 'لم يصل الايداع', 'الايداع معلق')) {
     const problem = has('مشكلة', 'لم يصل', 'ما وصل', 'متاخر', 'معلق', 'خطا', 'تعذر');
     if (platformFacts.nowPaymentsConfigured === false) return `بوابة NOWPayments غير متاحة حاليًا؛ لا ترسل أي تحويل مباشر ولا تستخدم عنوانًا قديمًا. راجع حالة الخدمة لاحقًا أو افتح تذكرة دعم من «حسابي».${problem ? ' إذا سبق أن دفعت، لا تكرر الدفع قبل مراجعة الدعم.' : ''}`;
     return `الإيداع المعتمد حصريًا هو USDT على TRC20 عبر طلب دفع NOWPayments الذي تنشئه من نافذة «إيداع». أرسل المبلغ المحدد إلى العنوان الخاص بذلك الطلب فقط؛ تُضاف القيمة بعد إشعار التأكيد الموقّع من البوابة، ولا نستخدم عنوانًا يدويًا أو إدخال TxHash. ${problem ? 'راجع حالة طلب الدفع وسجل المعاملات، ولا تكرر الدفع. إذا اكتمل الدفع ولم يظهر، افتح تذكرة دعم وأرفق رقم الطلب أو TxHash العام.' : 'لا تستخدم عنوانًا قديمًا أو طلب دفع آخر، وتأكد من الشبكة والمبلغ الظاهرين قبل الإرسال.'}`;
@@ -232,6 +248,10 @@ async function chat(req, res) {
 
 function getSuggestedAction(message) {
   const text = normalizeSupportText(message);
+  if (['تذكره', 'شكوي', 'موظف', 'دعم', 'الدعم', 'اتواصل بالدعم', 'اتصال بالدعم'].some(term => text.includes(term))) return { label: 'فتح تذكرة دعم', tab: 'profile', action: 'support-ticket' };
+  if (['معامله', 'معاملات', 'سجل المعاملات', 'العمليات الاخيره', 'حاله الطلب'].some(term => text.includes(term))) return { label: 'فتح السجل المالي', tab: 'home', action: 'history' };
+  if (['سحب', 'اسحب', 'withdraw'].some(term => text.includes(term))) return { label: 'فتح نافذة السحب', tab: 'home', action: 'withdraw' };
+  if (['ايداع', 'ايداعات', 'اودع', 'ايدع', 'deposit'].some(term => text.includes(term))) return { label: 'فتح نافذة الإيداع', tab: 'home', action: 'deposit' };
   if (['خزنه', 'تجميد', 'استحقاق', 'vault'].some(term => text.includes(term))) return { label: 'فتح الخزنة', tab: 'vault' };
   if (['لعبه', 'العاب', 'عجله', 'صندوق', 'دوره', 'spin', 'game'].some(term => text.includes(term))) return { label: 'فتح الألعاب', tab: 'spin' };
   if (['مجتمع', 'منشور', 'تعليق', 'رساله خاصه', 'feed'].some(term => text.includes(term))) return { label: 'فتح المجتمع', tab: 'feed' };

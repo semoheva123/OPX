@@ -358,6 +358,48 @@ body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) th { col
     #depositModal > div, #withdrawModal > div, #historyModal > div { padding: 20px !important; }
 }
 
+#view-ai .ai-quick-action {
+    display: flex;
+    min-width: 0;
+    min-height: 46px;
+    align-items: center;
+    gap: 9px;
+    border: 1px solid rgba(148,163,184,.16);
+    border-radius: 14px;
+    padding: 10px 11px;
+    background: linear-gradient(135deg, rgba(15,27,43,.88), rgba(5,12,22,.92));
+    color: #dbe5f2;
+    font-size: 10px;
+    font-weight: 800;
+    text-align: right;
+    transition: border-color .18s ease, background .18s ease, transform .18s ease;
+}
+#view-ai .ai-quick-action:hover { transform: translateY(-1px); border-color: rgba(247,185,85,.38); background: linear-gradient(135deg, rgba(247,185,85,.09), rgba(5,12,22,.96)); }
+#view-ai .ai-quick-action > i:first-child { font-size: 13px; }
+#view-ai .ai-mode-button {
+    min-height: 38px;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    background: rgba(15,23,42,.68);
+    color: #9aabc0;
+    font-size: 10px;
+    font-weight: 800;
+    transition: color .18s ease, background .18s ease, border-color .18s ease;
+}
+#view-ai .ai-mode-button:hover { color: #fff; border-color: rgba(148,163,184,.2); }
+#view-ai .ai-mode-button.is-active { border-color: rgba(247,185,85,.28); background: linear-gradient(120deg, rgba(247,185,85,.19), rgba(247,185,85,.08)); color: #ffe1a1; }
+#view-ai #aiChatBox { scrollbar-color: rgba(148,163,184,.35) transparent; scrollbar-width: thin; }
+#view-ai .ai-assistant-message { display: flex; align-items: flex-start; gap: 10px; border: 1px solid rgba(148,163,184,.14); border-radius: 17px; padding: 12px; background: linear-gradient(135deg, rgba(15,27,43,.88), rgba(8,15,26,.92)); }
+#view-ai .ai-assistant-avatar { display: flex; width: 30px; height: 30px; flex: 0 0 30px; align-items: center; justify-content: center; border: 1px solid rgba(247,185,85,.22); border-radius: 10px; background: rgba(247,185,85,.09); color: #f8d58d; font-size: 11px; }
+#view-ai .ai-user-message { max-width: 88%; margin-inline-start: auto; border: 1px solid rgba(34,211,238,.2); border-radius: 17px 17px 5px 17px; padding: 11px 13px; background: linear-gradient(135deg, rgba(8,47,73,.64), rgba(15,23,42,.88)); color: #f1f5f9; }
+#view-ai .ai-response-text { white-space: pre-wrap; line-height: 1.85; }
+#view-ai .ai-response-tools button { transition: color .18s ease; }
+#view-ai .ai-response-tools button:hover { color: #f8d58d; }
+@media (max-width: 420px) {
+    #view-ai .ai-quick-action { gap: 7px; padding-inline: 8px; font-size: 9px; }
+    #view-ai .ai-user-message { max-width: 94%; }
+}
+
 /* OPERIX Signature Reserve: final luxury polish. */
 :root {
     --opx-champagne: #ffe7b0;

@@ -70,9 +70,21 @@ assert.match(supportReply, /«إرسال التذكرة»/);
 assert.match(supportReply, /تذاكرك السابقة/);
 assert.doesNotMatch(supportReply, /مركز الدعم.*القائمة الرئيسية/);
 assert.doesNotMatch(supportReply, /جميع المعاملات.*آمنة/);
+const readinessReply = localReply('ما حالة حسابي وما الخطوات التي ما زالت مطلوبة؟', 'member', 25, 'A2', {
+  ...knowledge,
+  currentLevelTaskLimit: 11,
+  account: { emailVerified: false, withdrawalWalletSet: false, tierActive: true, todayCompletedTasks: 3 }
+});
+assert.match(readinessReply, /وثّق بريد الحساب/);
+assert.match(readinessReply, /ثبّت عنوان TRC20/);
+assert.match(readinessReply, /3 من 11/);
+assert.match(readinessReply, /ليست توصية مالية/);
 assert.equal(getSuggestedAction('اشرح لي الخزنة').tab, 'vault');
 assert.equal(getSuggestedAction('كيف أستخدم الألعاب؟').tab, 'spin');
 assert.equal(getSuggestedAction('مشكلة في البريد').tab, 'profile');
 assert.equal(getSuggestedAction('أين مكافآت الفريق؟').tab, 'team');
+assert.deepEqual(getSuggestedAction('كيف أودع بأمان؟'), { label: 'فتح نافذة الإيداع', tab: 'home', action: 'deposit' });
+assert.deepEqual(getSuggestedAction('أريد مراجعة آخر معاملة'), { label: 'فتح السجل المالي', tab: 'home', action: 'history' });
+assert.deepEqual(getSuggestedAction('أريد تقديم شكوى'), { label: 'فتح تذكرة دعم', tab: 'profile', action: 'support-ticket' });
 
 console.log('Customer service live-knowledge tests passed');

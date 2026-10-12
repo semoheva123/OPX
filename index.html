@@ -1351,7 +1351,7 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
 @media (max-width: 640px){body{overflow-x:hidden}}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 </style>
-<link rel="stylesheet" href="/styles/operix-premium.css?v=20261005-4">
+<link rel="stylesheet" href="/styles/operix-premium.css?v=ai-assistant-20261013-1">
 </head>
 <body class="min-h-screen flex flex-col justify-between pb-28">
 <div class="tech-grid-bg"></div>
@@ -2017,20 +2017,56 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
 
         <!-- 4.4 خدمة العملاء -->
         <div id="view-ai" class="space-y-4 hide">
-            <div class="glass-card p-4 rounded-3xl space-y-3">
-            <div class="flex justify-between items-center"><h3 class="font-bold text-sm text-amber-400"><i class="fa-solid fa-headset mr-1"></i> خدمة عملاء OPERIX الذكية</h3><button onclick="clearAiChat()" title="مسح المحادثة" class="text-slate-500 hover:text-rose-300"><i class="fa-solid fa-trash-can"></i></button></div>
-            <p class="text-[10px] leading-5 text-slate-400">مساعد ذكي يجيب وفق بيانات المنصة وإعداداتها الحالية. للشكوى أو مراجعة معاملة، تواصل مع فريق الدعم من الملف الشخصي.</p>
-            <div class="grid grid-cols-3 gap-1.5"><button onclick="setAiMode('platform')" id="aiModePlatform" class="py-2 rounded-lg bg-amber-500 text-slate-950 text-[10px] font-bold">معلومات المنصة</button><button onclick="setAiMode('account')" id="aiModeAccount" class="py-2 rounded-lg bg-slate-900 text-slate-400 text-[10px] font-bold">مساعد الحساب</button><button onclick="setAiMode('support')" id="aiModeSupport" class="py-2 rounded-lg bg-slate-900 text-slate-400 text-[10px] font-bold">خدمة العملاء</button></div>
-                <div id="aiQuickQuestions" class="flex gap-1.5 overflow-x-auto pb-1"><button onclick="askAiQuick('كيف أبدأ؟')" class="whitespace-nowrap bg-slate-900 border border-slate-800 px-2.5 py-1.5 rounded-lg text-[10px] text-slate-300">كيف أبدأ؟</button><button onclick="askAiQuick('ما المستوى المناسب لي؟')" class="whitespace-nowrap bg-slate-900 border border-slate-800 px-2.5 py-1.5 rounded-lg text-[10px] text-slate-300">المستوى المناسب</button><button onclick="askAiQuick('كيف أزيد إحالاتي؟')" class="whitespace-nowrap bg-slate-900 border border-slate-800 px-2.5 py-1.5 rounded-lg text-[10px] text-slate-300">زيادة الإحالات</button><button onclick="askAiQuick('كيف أستخدم الألعاب؟')" class="whitespace-nowrap bg-slate-900 border border-slate-800 px-2.5 py-1.5 rounded-lg text-[10px] text-slate-300">استخدام الألعاب</button></div>
-                <div id="aiChatBox" class="h-64 bg-slate-950 p-3 rounded-2xl border border-slate-800 overflow-y-auto space-y-2 text-xs">
-                    <div class="bg-slate-900 p-3 rounded-xl border border-slate-800 text-slate-300">مرحباً بك في خدمة عملاء OPERIX. يمكنني مساعدتك بمعلومات المنصة والحساب، وسأوضح لك متى تحتاج إلى التواصل مع فريق الدعم.</div>
+            <section class="relative overflow-hidden rounded-3xl border border-amber-400/20 bg-gradient-to-br from-slate-900 via-slate-950 to-cyan-950/50 p-5 shadow-2xl shadow-slate-950/40" aria-labelledby="aiAssistantTitle">
+                <div class="pointer-events-none absolute -left-10 -top-16 h-48 w-48 rounded-full bg-amber-400/10 blur-3xl"></div>
+                <div class="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div class="flex items-start gap-3">
+                        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-amber-300/25 bg-amber-400/10 text-xl text-amber-300"><i class="fa-solid fa-headset"></i></span>
+                        <div>
+                            <div class="flex flex-wrap items-center gap-2"><span class="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-1 text-[9px] font-bold text-emerald-200"><i class="fa-solid fa-sparkles ml-1"></i>مساعدك داخل OPERIX</span><span class="text-[9px] text-slate-500">إرشاد المنصة والحساب</span></div>
+                            <h2 id="aiAssistantTitle" class="mt-2 text-lg font-black text-white">كيف أقدر أساعدك اليوم؟</h2>
+                            <p class="mt-1 max-w-xl text-[11px] leading-6 text-slate-300">اسأل عن أي قسم، افهم حالة حسابك، أو احصل على خطوات واضحة للمشكلة. أوجّهك للمكان الصحيح وأحيل الحالات التي تحتاج مراجعة بشرية إلى فريق الدعم.</p>
+                        </div>
+                    </div>
+                    <button type="button" onclick="openSupportModal()" class="shrink-0 rounded-xl border border-cyan-300/20 bg-cyan-400/10 px-3 py-2 text-[10px] font-bold text-cyan-100 hover:bg-cyan-400/15"><i class="fa-solid fa-ticket ml-1.5"></i>فتح تذكرة دعم</button>
                 </div>
-                <div id="aiSourceStatus" class="text-[10px] text-slate-600">المصدر: بيانات المنصة وتعليمات المستشار</div>
-                <div class="flex gap-2">
-                    <input type="text" id="aiInput" placeholder="اكتب سؤالك هنا..." class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none">
-                    <button id="aiSendButton" onclick="sendAiMessage()" class="px-4 py-2 gold-gradient text-slate-950 font-bold rounded-xl text-xs"><i class="fa-solid fa-paper-plane"></i></button>
+                <div class="relative mt-4 flex flex-wrap gap-2 text-[9px] text-slate-400"><span class="rounded-full border border-white/5 bg-slate-950/50 px-2.5 py-1.5"><i class="fa-solid fa-compass ml-1.5 text-cyan-300"></i>إرشاد لكل أقسام المنصة</span><span class="rounded-full border border-white/5 bg-slate-950/50 px-2.5 py-1.5"><i class="fa-solid fa-user-shield ml-1.5 text-emerald-300"></i>لا تطلب كلمة مرور أو رمز تحقق</span><span class="rounded-full border border-white/5 bg-slate-950/50 px-2.5 py-1.5"><i class="fa-solid fa-hand-pointer ml-1.5 text-amber-300"></i>لن ينفذ عمليات مالية نيابةً عنك</span></div>
+            </section>
+
+            <section class="glass-card rounded-3xl border border-slate-800/80 p-4" aria-label="أسئلة ومهام سريعة">
+                <div class="mb-3 flex items-center justify-between gap-3"><div><h3 class="text-xs font-black text-white">ابدأ من هنا</h3><p class="mt-1 text-[9px] text-slate-500">اختر موضوعًا ليعطيك خطوات مناسبة</p></div><i class="fa-solid fa-wand-magic-sparkles text-amber-300"></i></div>
+                <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    <button type="button" onclick="askAiQuick('كيف أبدأ وأتنقل بين أقسام OPERIX؟')" class="ai-quick-action"><i class="fa-solid fa-compass text-cyan-300"></i><span>دليل المنصة</span><i class="fa-solid fa-arrow-left mr-auto text-[9px] text-slate-600"></i></button>
+                    <button type="button" onclick="askAiQuick('ما حالة حسابي وما الخطوات التي ما زالت مطلوبة؟')" class="ai-quick-action"><i class="fa-solid fa-list-check text-emerald-300"></i><span>حالة حسابي</span><i class="fa-solid fa-arrow-left mr-auto text-[9px] text-slate-600"></i></button>
+                    <button type="button" onclick="askAiQuick('كيف أودع بأمان وأتحقق من حالة طلب الإيداع؟')" class="ai-quick-action"><i class="fa-solid fa-arrow-down-to-bracket text-amber-300"></i><span>الإيداع</span><i class="fa-solid fa-arrow-left mr-auto text-[9px] text-slate-600"></i></button>
+                    <button type="button" onclick="askAiQuick('كيف أراجع السحب أو حالة آخر معاملة؟')" class="ai-quick-action"><i class="fa-solid fa-clock-rotate-left text-violet-300"></i><span>السحب والسجل</span><i class="fa-solid fa-arrow-left mr-auto text-[9px] text-slate-600"></i></button>
+                    <button type="button" onclick="askAiQuick('كيف أستخدم المهام وأعرف إذا كانت متاحة؟')" class="ai-quick-action"><i class="fa-solid fa-bolt text-yellow-300"></i><span>المهام اليومية</span><i class="fa-solid fa-arrow-left mr-auto text-[9px] text-slate-600"></i></button>
+                    <button type="button" onclick="askAiQuick('كيف تعمل الإحالات ومكافآت الفريق؟')" class="ai-quick-action"><i class="fa-solid fa-people-group text-pink-300"></i><span>الفريق والمكافآت</span><i class="fa-solid fa-arrow-left mr-auto text-[9px] text-slate-600"></i></button>
                 </div>
-            </div>
+            </section>
+
+            <section class="glass-card overflow-hidden rounded-3xl border border-slate-800/80" aria-label="محادثة مساعد OPERIX">
+                <div class="flex flex-col gap-3 border-b border-slate-800 bg-slate-950/35 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div><h3 class="text-xs font-black text-white"><i class="fa-solid fa-comments ml-1.5 text-amber-300"></i>محادثتك مع المساعد</h3><p class="mt-1 text-[9px] text-slate-500">إجابات عملية وفق بيانات المنصة المتاحة حاليًا</p></div>
+                    <div class="flex gap-2"><button type="button" onclick="clearAiChat()" class="rounded-lg border border-slate-700 px-2.5 py-1.5 text-[9px] text-slate-400 hover:text-white"><i class="fa-solid fa-trash-can ml-1"></i>مسح المحادثة</button><button type="button" onclick="openSupportModal()" class="rounded-lg border border-cyan-400/20 px-2.5 py-1.5 text-[9px] text-cyan-200 hover:bg-cyan-400/5"><i class="fa-solid fa-headset ml-1"></i>فريق الدعم</button></div>
+                </div>
+                <div class="grid grid-cols-3 gap-1.5 p-3 sm:p-4" role="group" aria-label="نوع المساعدة">
+                    <button type="button" onclick="setAiMode('platform')" id="aiModePlatform" aria-pressed="true" class="ai-mode-button is-active"><i class="fa-solid fa-compass ml-1"></i>المنصة</button>
+                    <button type="button" onclick="setAiMode('account')" id="aiModeAccount" aria-pressed="false" class="ai-mode-button"><i class="fa-solid fa-user-gear ml-1"></i>حسابي</button>
+                    <button type="button" onclick="setAiMode('support')" id="aiModeSupport" aria-pressed="false" class="ai-mode-button"><i class="fa-solid fa-life-ring ml-1"></i>مشكلة ودعم</button>
+                </div>
+                <div id="aiChatBox" role="log" aria-live="polite" aria-relevant="additions" tabindex="0" class="mx-3 mb-3 h-80 space-y-3 overflow-y-auto rounded-2xl border border-slate-800 bg-slate-950/80 p-3 text-xs sm:mx-4 sm:mb-4 sm:h-96 sm:p-4">
+                    <div class="ai-assistant-message"><span class="ai-assistant-avatar"><i class="fa-solid fa-sparkles"></i></span><div class="min-w-0 flex-1"><span class="mb-1 block text-[9px] font-bold text-amber-300">مساعد OPERIX</span><p class="leading-6 text-slate-200">أهلًا بك. أستطيع إرشادك في الرئيسية، الإيداع والسحب، المهام، المستويات، الخزنة، الألعاب، الفريق والمجتمع، ومساعدتك على فهم بيانات حسابك. اكتب سؤالك أو اختر أحد الاختصارات أعلاه.</p><span class="mt-2 block text-[9px] text-slate-600">لن أؤكد معاملة مالية إلا وفق الحالة المسجلة في حسابك.</span></div></div>
+                </div>
+                <div class="border-t border-slate-800 bg-slate-950/35 p-3 sm:p-4">
+                    <form id="aiComposerForm" onsubmit="event.preventDefault(); sendAiMessage()" class="flex items-end gap-2 rounded-2xl border border-slate-700 bg-slate-950 p-2 transition-colors focus-within:border-amber-400/50">
+                        <label for="aiInput" class="sr-only">اكتب سؤالك لمساعد OPERIX</label>
+                        <textarea id="aiInput" rows="2" maxlength="1200" placeholder="اكتب سؤالك أو صف المشكلة بالتفصيل..." class="max-h-32 min-h-11 flex-1 resize-y bg-transparent px-2 py-2 text-xs leading-5 text-white outline-none placeholder:text-slate-600"></textarea>
+                        <button type="submit" id="aiSendButton" aria-label="إرسال السؤال" title="إرسال السؤال" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl gold-gradient text-slate-950 transition hover:brightness-110 disabled:cursor-wait disabled:opacity-50"><i class="fa-solid fa-paper-plane"></i></button>
+                    </form>
+                    <div class="mt-2 flex flex-wrap items-center justify-between gap-2"><p id="aiSourceStatus" role="status" aria-live="polite" class="text-[9px] text-slate-500"><i class="fa-solid fa-circle-check ml-1 text-emerald-400"></i>يعتمد على معلومات المنصة وبيانات حسابك المسموح بها</p><span class="text-[9px] text-slate-600">Enter للإرسال · Shift+Enter لسطر جديد</span></div>
+                </div>
+            </section>
         </div>
 
         <!-- 4.5 تبويب عجلة الحظ (Spin View) -->
@@ -2665,6 +2701,6 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
     </script>
 
     <!-- استدعاء ملف الجافاسكربت المفصول الأساسي -->
-    <script src="app.js?v=startup-boot-unlock-20261013-1"></script>
+    <script src="app.js?v=ai-assistant-20261013-1"></script>
 </body>
 </html>

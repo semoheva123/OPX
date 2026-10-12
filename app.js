@@ -2485,6 +2485,7 @@ async function openMysteryBox() {
 async function sendAiMessage() {
     const input = document.getElementById('aiInput');
     const chatBox = document.getElementById('aiChatBox');
+    if (!input || !chatBox) return;
     const query = input.value.trim();
     const token = localStorage.getItem('token');
     const sendButton = document.getElementById('aiSendButton');
@@ -2494,12 +2495,12 @@ async function sendAiMessage() {
 
     aiLastQuestion = query;
     aiConversation.push({ role: 'user', content: query });
-    chatBox.innerHTML += `<div class="bg-blue-950/40 p-3 rounded-xl border border-blue-900 text-white text-right">أنت: ${escapeAiHtml(query)}</div>`;
+    chatBox.insertAdjacentHTML('beforeend', `<div class="ai-user-message"><span class="mb-1 block text-[9px] font-bold text-cyan-200">أنت</span><p class="whitespace-pre-wrap leading-6">${escapeAiHtml(query)}</p></div>`);
     input.value = '';
     chatBox.scrollTop = chatBox.scrollHeight;
 
     const loadingId = 'ai-loading-' + Date.now();
-    chatBox.innerHTML += `<div id="${loadingId}" class="bg-slate-900 p-3 rounded-xl border border-slate-800 text-slate-400 animate-pulse">خدمة العملاء: جارٍ إعداد الإجابة...</div>`;
+    chatBox.insertAdjacentHTML('beforeend', `<div id="${loadingId}" class="ai-assistant-message"><span class="ai-assistant-avatar"><i class="fa-solid fa-sparkles"></i></span><div class="flex-1"><span class="mb-1 block text-[9px] font-bold text-amber-300">مساعد OPERIX</span><p class="animate-pulse text-slate-400">أراجع سؤالك وأجهز لك الخطوات...</p></div></div>`);
     chatBox.scrollTop = chatBox.scrollHeight;
 
     try {
@@ -2518,18 +2519,24 @@ async function sendAiMessage() {
 
         if (res.ok && data.reply) {
             aiConversation.push({ role: 'assistant', content: data.reply });
-            const action = data.suggestedAction ? `<button onclick="switchTab('${data.suggestedAction.tab}')" class="mt-2 text-[10px] text-amber-400 hover:underline">${escapeAiHtml(data.suggestedAction.label)} <i class="fa-solid fa-arrow-left mr-1"></i></button>` : '';
-            const tools = `<div class="mt-2 flex gap-3 text-[10px] text-slate-500"><button onclick="copyAiText(this)" title="نسخ الرد"><i class="fa-regular fa-copy"></i> نسخ</button><button onclick="retryAiMessage()" title="إعادة المحاولة"><i class="fa-solid fa-rotate-right"></i> إعادة</button></div>`;
-            if (loadingEl) loadingEl.outerHTML = `<div class="ai-response bg-slate-900 p-3 rounded-xl border border-slate-800 text-slate-300">خدمة العملاء: <span>${escapeAiHtml(data.reply)}</span>${action}${tools}<small class="block text-[9px] text-slate-600 mt-1">${data.source === 'local' ? 'رد إرشادي محلي' : 'تمت الإجابة باستخدام المساعد الذكي'}</small></div>`;
-            document.getElementById('aiSourceStatus').innerText = `خدمة العملاء الذكية • تحديث: ${new Date().toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' })}`;
+            const allowedTabs = ['home', 'feed', 'tiers', 'vault', 'travel', 'spin', 'team', 'profile'];
+            const allowedActions = ['support-ticket', 'history', 'withdraw', 'deposit'];
+            const suggested = data.suggestedAction && allowedTabs.includes(data.suggestedAction.tab) ? data.suggestedAction : null;
+            const actionType = suggested && allowedActions.includes(suggested.action) ? suggested.action : '';
+            const action = suggested ? `<button type="button" onclick="runAiSuggestedAction('${suggested.tab}','${actionType}')" class="mt-3 inline-flex items-center gap-2 rounded-xl border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-[10px] font-bold text-amber-200 hover:bg-amber-400/15">${escapeAiHtml(suggested.label)} <i class="fa-solid fa-arrow-left"></i></button>` : '';
+            const tools = `<div class="ai-response-tools mt-3 flex gap-4 border-t border-slate-700/70 pt-2 text-[10px] text-slate-500"><button type="button" onclick="copyAiText(this)" title="نسخ الرد"><i class="fa-regular fa-copy ml-1"></i>نسخ</button><button type="button" onclick="retryAiMessage()" title="إعادة المحاولة"><i class="fa-solid fa-rotate-right ml-1"></i>إعادة السؤال</button></div>`;
+            const sourceLabel = data.source === 'local' ? 'إجابة إرشادية من قاعدة OPERIX' : 'مساعد OPERIX';
+            if (loadingEl) loadingEl.outerHTML = `<div class="ai-assistant-message ai-response"><span class="ai-assistant-avatar"><i class="fa-solid fa-sparkles"></i></span><div class="min-w-0 flex-1"><span class="mb-1 block text-[9px] font-bold text-amber-300">مساعد OPERIX</span><p class="ai-response-text text-slate-200">${escapeAiHtml(data.reply)}</p>${action}${tools}<small class="mt-2 block text-[9px] text-slate-600">${sourceLabel}</small></div></div>`;
+            const sourceStatus = document.getElementById('aiSourceStatus');
+            if (sourceStatus) sourceStatus.innerHTML = `<i class="fa-solid fa-circle-check ml-1 text-emerald-400"></i>${sourceLabel} • ${new Date().toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' })}`;
             playBeep('win');
         } else {
-            if (loadingEl) loadingEl.outerHTML = `<div class="bg-rose-950/40 p-3 rounded-xl border border-rose-900 text-rose-300">خدمة العملاء: ${escapeAiHtml(data.reply || data.error || 'عذراً، حدث خطأ في معالجة الطلب.')}</div>`;
+            if (loadingEl) loadingEl.outerHTML = `<div class="ai-assistant-message border-rose-500/20 bg-rose-950/25"><span class="ai-assistant-avatar border-rose-400/20 bg-rose-400/10 text-rose-300"><i class="fa-solid fa-triangle-exclamation"></i></span><p class="text-xs leading-6 text-rose-200">${escapeAiHtml(data.reply || data.error || 'تعذر إعداد الإجابة. حاول مرة أخرى أو افتح تذكرة دعم.')}</p></div>`;
         }
     } catch (err) {
         const loadingEl = document.getElementById(loadingId);
         if (loadingEl) {
-            loadingEl.outerHTML = `<div class="bg-rose-950/40 p-3 rounded-xl border border-rose-900 text-rose-300">خدمة العملاء: انتهت مهلة الرد. تحقق من اتصالك ثم حاول مجددًا.</div>`;
+            loadingEl.outerHTML = `<div class="ai-assistant-message border-rose-500/20 bg-rose-950/25"><span class="ai-assistant-avatar border-rose-400/20 bg-rose-400/10 text-rose-300"><i class="fa-solid fa-triangle-exclamation"></i></span><p class="text-xs leading-6 text-rose-200">تعذر الوصول إلى المساعد الآن. تحقق من الاتصال وحاول مرة أخرى، أو افتح تذكرة لفريق الدعم.</p></div>`;
         }
     }
     if (sendButton) { sendButton.disabled = false; sendButton.classList.remove('opacity-50'); }
@@ -2541,17 +2548,33 @@ let aiLastQuestion = '';
 let aiMode = 'platform';
 
 function escapeAiHtml(value) { return String(value).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[character])); }
-function askAiQuick(question) { document.getElementById('aiInput').value = question; sendAiMessage(); }
+function askAiQuick(question) { const input = document.getElementById('aiInput'); if (!input) return; input.value = question; sendAiMessage(); }
 function setAiMode(mode) {
-    aiMode = mode;
+    aiMode = ['platform', 'account', 'support'].includes(mode) ? mode : 'platform';
     ['platform', 'account', 'support'].forEach(name => {
         const button = document.getElementById(`aiMode${name[0].toUpperCase()}${name.slice(1)}`);
-        if (button) button.className = `py-2 rounded-lg ${name === mode ? 'bg-amber-500 text-slate-950' : 'bg-slate-900 text-slate-400'} text-[10px] font-bold`;
+        if (button) {
+            const active = name === aiMode;
+            button.classList.toggle('is-active', active);
+            button.setAttribute('aria-pressed', String(active));
+        }
     });
+    const input = document.getElementById('aiInput');
+    if (input) input.placeholder = aiMode === 'account' ? 'اسأل عن حالة حسابك أو بياناتك...' : aiMode === 'support' ? 'صف المشكلة أو المعاملة التي تحتاج مراجعتها...' : 'اسأل عن أي قسم أو خدمة في OPERIX...';
+}
+function runAiSuggestedAction(tabName, action = '') {
+    const allowedTabs = ['home', 'feed', 'tiers', 'vault', 'travel', 'spin', 'team', 'profile'];
+    if (!allowedTabs.includes(tabName)) return;
+    switchTab(tabName);
+    if (action === 'support-ticket') return openSupportModal();
+    if (tabName !== 'home') return;
+    if (action === 'deposit') return openDepositModal();
+    if (action === 'withdraw') return openWithdrawModal();
+    if (action === 'history') return openHistoryModal();
 }
 function retryAiMessage() { if (aiLastQuestion) { document.getElementById('aiInput').value = aiLastQuestion; sendAiMessage(); } }
-function copyAiText(button) { const response = button.closest('.ai-response')?.querySelector('span')?.innerText; if (response) executeCopyProcess(response); }
-function clearAiChat() { aiConversation = []; aiLastQuestion = ''; const chatBox = document.getElementById('aiChatBox'); if (chatBox) chatBox.innerHTML = '<div class="bg-slate-900 p-3 rounded-xl border border-slate-800 text-slate-300">تم مسح المحادثة. كيف يمكنني مساعدتك؟</div>'; }
+function copyAiText(button) { const response = button.closest('.ai-response')?.querySelector('.ai-response-text')?.innerText; if (response) executeCopyProcess(response); }
+function clearAiChat() { aiConversation = []; aiLastQuestion = ''; const chatBox = document.getElementById('aiChatBox'); if (chatBox) chatBox.innerHTML = '<div class="ai-assistant-message"><span class="ai-assistant-avatar"><i class="fa-solid fa-sparkles"></i></span><div><span class="mb-1 block text-[9px] font-bold text-amber-300">مساعد OPERIX</span><p class="text-xs leading-6 text-slate-200">تم مسح المحادثة. كيف أقدر أساعدك الآن؟</p></div></div>'; }
 
 /* --- 7. النسخ، الأمان والجلسات --- */
 function copyProfileReferral() {
