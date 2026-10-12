@@ -16,5 +16,7 @@ assert.match(client, /showRewardsCampaignModal\(true\);\s*loadUserProfile\(\);/,
 assert.match(client, /showRewardsCampaignModal\(\);\s*maybeShowOnboarding\(\);/, 'restored authenticated visits must show the campaign');
 assert.match(client, /sessionStorage\.getItem\('operix_rewards_campaign_seen'\)/, 'campaign should not reopen repeatedly during the same browsing session');
 assert.match(client, /function closeRewardsCampaignModal\(\)/, 'campaign modal must be dismissible');
+assert.match(index, /@media \(max-width:480px\)[\s\S]*?\.campaign-popup-prizes \{ grid-template-columns:minmax\(0,1fr\);/, 'phone layout must give each prize a full-width readable row');
+assert.match(index, /\.campaign-popup-prizes \.reward-prize-detail \{ font-size:11px; line-height:1\.6; \}/, 'phone prize details must remain readable');
 
 console.log('Rewards campaign popup tests passed');
