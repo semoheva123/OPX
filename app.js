@@ -3387,7 +3387,7 @@ async function loadDepositAddress() {
             paymentDetails?.classList.add('hidden');
             document.getElementById('sharedDepositClaimPanel')?.classList.add('hidden');
             const instructions = document.getElementById('depositNetworkInstructions');
-            if (instructions) instructions.textContent = 'أرسل مبلغ USDT TRC20 الظاهر تمامًا إلى عنوان الدفع المخصص؛ لا حاجة لإدخال TxHash، وستُضاف القيمة المعروضة إلى رصيدك بعد تأكيد NOWPayments.';
+            if (instructions) instructions.textContent = 'أنشئ طلب الدفع من NOWPayments وأرسل المبلغ الظاهر تمامًا؛ تضاف مكافأة 1% إلى رصيد الأرباح بعد تأكيد الدفع من البوابة.';
             document.getElementById('userDepositAddress').value = '';
             const status = document.getElementById('depositModalStatus');
             if (status) status.textContent = 'جارٍ إنشاء طلب دفع USDT TRC20 جديد...';
@@ -3435,10 +3435,12 @@ async function createNowPaymentsDeposit() {
         document.getElementById('userDepositAddress').value = data.address || '';
         document.getElementById('nowPaymentsQrCode').src = data.qrCode || '';
         document.getElementById('nowPaymentsPayAmount').textContent = String(data.payAmount || '—');
+        document.getElementById('nowPaymentsDepositAmountCredit').textContent = String(data.depositAmount || amount);
+        document.getElementById('nowPaymentsBonusAmount').textContent = String(data.bonusAmount || '0.0000');
         document.getElementById('nowPaymentsCreditAmount').textContent = String(data.creditAmount || amount);
         document.getElementById('nowPaymentsPaymentId').textContent = String(data.paymentId || '');
         document.getElementById('nowPaymentsPaymentDetails')?.classList.remove('hidden');
-        if (status) status.textContent = 'تم إنشاء الطلب. أرسل المبلغ الظاهر فقط إلى العنوان؛ سيُضاف الرصيد تلقائيًا بعد اكتمال التأكيد.';
+        if (status) status.textContent = 'تم إنشاء الطلب. أرسل المبلغ الظاهر فقط؛ سيضاف مبلغ الإيداع ومكافأة 1% إلى رصيد الأرباح تلقائيًا بعد تأكيد NOWPayments.';
     } catch (error) {
         document.getElementById('userDepositAddress').value = '';
         document.getElementById('nowPaymentsPaymentDetails')?.classList.add('hidden');

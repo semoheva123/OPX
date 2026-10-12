@@ -24,7 +24,7 @@ async function main() {
     { table: 'users', columns: 'id,email_verification_reminder_sent_at' },
     { table: 'email_verification_reminder_campaigns', columns: 'id,status,recipient_count,sent_count,failed_count' },
     { table: 'email_verification_reminder_recipients', columns: 'id,campaign_id,user_id,email,status,attempts' },
-    { table: 'nowpayments_deposit_orders', columns: 'payment_id,order_id,user_id,price_amount,pay_amount,pay_currency,pay_address,payment_status,transaction_id,tx_hash,actual_paid,credited_at' },
+      { table: 'nowpayments_deposit_orders', columns: 'payment_id,order_id,user_id,price_amount,pay_amount,pay_currency,pay_address,payment_status,transaction_id,tx_hash,actual_paid,credited_at,bonus_amount,bonus_transaction_id' },
     { table: 'withdrawal_payouts', columns: 'id,transaction_id,network,status,tx_hash,signed_payload,next_attempt_at' },
     { table: 'withdrawal_email_codes', columns: 'user_id,code_hash,intent_hash,expires_at,attempts,sent_at' }
   ];

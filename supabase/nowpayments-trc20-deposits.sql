@@ -11,6 +11,8 @@ create table if not exists public.nowpayments_deposit_orders (
   pay_address text not null check (pay_address ~ '^T[1-9A-HJ-NP-Za-km-z]{33}$'),
   payment_status text not null default 'waiting',
   transaction_id uuid unique references public.transactions(id) on delete restrict,
+  bonus_amount numeric(18,4) not null default 0 check (bonus_amount >= 0),
+  bonus_transaction_id uuid unique references public.transactions(id) on delete restrict,
   tx_hash text not null default '',
   actual_paid numeric(30,12) not null default 0,
   credited_at timestamptz,
@@ -73,7 +75,10 @@ declare
   order_row nowpayments_deposit_orders%rowtype;
   wallet_row wallet_balances%rowtype;
   transaction_row transactions%rowtype;
+  bonus_transaction_row transactions%rowtype;
   before_balance numeric;
+  deposit_bonus numeric(18,4);
+  credited_amount numeric(18,4);
   normalized_payment_id text := trim(coalesce(p_payment_id, ''));
   normalized_hash text := trim(coalesce(p_tx_hash, ''));
 begin
@@ -93,13 +98,22 @@ begin
 
   if order_row.transaction_id is not null then
     select * into transaction_row from transactions where id = order_row.transaction_id;
+    if order_row.bonus_transaction_id is not null then
+      select * into bonus_transaction_row from transactions where id = order_row.bonus_transaction_id;
+    end if;
     select * into wallet_row from wallet_balances where user_id = p_user_id;
-    return jsonb_build_object('credited', false, 'duplicate', true, 'transaction', row_to_json(transaction_row), 'wallet', row_to_json(wallet_row));
+    deposit_bonus := coalesce(order_row.bonus_amount, 0);
+    return jsonb_build_object('credited', false, 'duplicate', true, 'bonusAmount', deposit_bonus,
+      'creditAmount', order_row.price_amount + deposit_bonus, 'transaction', row_to_json(transaction_row),
+      'bonusTransaction', case when bonus_transaction_row.id is null then null else row_to_json(bonus_transaction_row) end,
+      'wallet', row_to_json(wallet_row));
   end if;
 
   select * into wallet_row from wallet_balances where user_id = p_user_id for update;
   if wallet_row.id is null then raise exception using errcode = 'P0002', message = 'USER_WALLET_NOT_FOUND'; end if;
   before_balance := wallet_row.balance;
+  deposit_bonus := round(order_row.price_amount * 0.01, 4);
+  credited_amount := order_row.price_amount + deposit_bonus;
   if normalized_hash = '' then normalized_hash := 'NOWPAYMENTS:' || normalized_payment_id; end if;
 
   insert into transactions(user_id, type, status, amount, gross_amount, usdt_amount, wallet_address, tx_hash, network, created_at)
@@ -107,25 +121,41 @@ begin
     order_row.pay_address, normalized_hash, 'TRC20', now())
   returning * into transaction_row;
 
+  insert into transactions(user_id, type, status, amount, gross_amount, usdt_amount, wallet_address, network, created_at)
+  values(p_user_id, 'reward', 'approved', deposit_bonus, deposit_bonus, deposit_bonus,
+    'NOWPayments 1% deposit bonus', 'TRC20', now())
+  returning * into bonus_transaction_row;
+
   update wallet_balances set deposit_balance = deposit_balance + order_row.price_amount,
     total_deposits = total_deposits + order_row.price_amount,
-    balance = deposit_balance + profit_balance + order_row.price_amount,
-    usdt_balance = deposit_balance + profit_balance + order_row.price_amount,
+    profit_balance = profit_balance + deposit_bonus,
+    balance = deposit_balance + profit_balance + order_row.price_amount + deposit_bonus,
+    usdt_balance = deposit_balance + profit_balance + order_row.price_amount + deposit_bonus,
     updated_at = now()
   where user_id = p_user_id returning * into wallet_row;
 
   insert into financial_ledger(user_id, type, currency, amount, net_amount, balance_before, balance_after, status, source, reference_id, metadata)
-  values(p_user_id, 'deposit', 'USDT', order_row.price_amount, order_row.price_amount, before_balance, wallet_row.balance,
+  values(p_user_id, 'deposit', 'USDT', order_row.price_amount, order_row.price_amount, before_balance, before_balance + order_row.price_amount,
     'approved', 'nowpayments_trc20_deposit', transaction_row.id::text,
     jsonb_build_object('provider', 'NOWPayments', 'paymentId', normalized_payment_id, 'orderId', order_row.order_id,
       'payCurrency', order_row.pay_currency, 'payAddress', order_row.pay_address,
       'priceAmount', order_row.price_amount, 'actuallyPaid', p_actually_paid, 'txHash', normalized_hash));
 
+  insert into financial_ledger(user_id, type, currency, amount, net_amount, balance_before, balance_after, status, source, reference_id, notes, metadata)
+  values(p_user_id, 'reward', 'USDT', deposit_bonus, deposit_bonus, before_balance + order_row.price_amount, wallet_row.balance,
+    'approved', 'nowpayments_deposit_bonus', bonus_transaction_row.id::text, 'NOWPayments 1% deposit bonus to profit balance',
+    jsonb_build_object('provider', 'NOWPayments', 'bonusRatePercent', 1, 'bonusAmount', deposit_bonus,
+      'depositAmount', order_row.price_amount, 'paymentId', normalized_payment_id,
+      'orderId', order_row.order_id, 'depositTransactionId', transaction_row.id::text, 'creditBalance', 'profit_balance'));
+
   update nowpayments_deposit_orders set payment_status = 'finished', transaction_id = transaction_row.id,
+    bonus_amount = deposit_bonus, bonus_transaction_id = bonus_transaction_row.id,
     tx_hash = normalized_hash, actual_paid = p_actually_paid, credited_at = now(), updated_at = now()
   where payment_id = normalized_payment_id;
 
-  return jsonb_build_object('credited', true, 'duplicate', false, 'transaction', row_to_json(transaction_row), 'wallet', row_to_json(wallet_row));
+  return jsonb_build_object('credited', true, 'duplicate', false, 'bonusAmount', deposit_bonus,
+    'creditAmount', credited_amount, 'transaction', row_to_json(transaction_row),
+    'bonusTransaction', row_to_json(bonus_transaction_row), 'wallet', row_to_json(wallet_row));
 end;
 $$;
 

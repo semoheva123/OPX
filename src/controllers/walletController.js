@@ -278,6 +278,8 @@ async function createNowPaymentsDeposit(req, res) {
     if (!paymentGatewayService.isNowPaymentsReady()) return res.status(503).json({ success: false, error: 'يلزم إعداد رابط HTTPS ومفتاح توقيع الطلب قبل إنشاء طلب الإيداع.' });
 
     const priceAmount = paymentGatewayService.formatUsdtAmount(req.body?.amount);
+    const bonusAmount = paymentGatewayService.calculateDepositBonus(priceAmount);
+    const creditAmount = paymentGatewayService.calculateDepositCredit(priceAmount);
     const payment = await paymentGatewayService.createPayment({ userId: req.user.id, amount: priceAmount });
     if (!TronWeb.isAddress(payment.payAddress)) throw new Error('NOWPAYMENTS_INVALID_TRON_ADDRESS');
 
@@ -300,7 +302,9 @@ async function createNowPaymentsDeposit(req, res) {
       address: payment.payAddress,
       payAmount: payment.payAmount,
       payCurrency: payment.payCurrency,
-      creditAmount: payment.priceAmount,
+      depositAmount: payment.priceAmount,
+      bonusAmount,
+      creditAmount,
       priceCurrency: payment.priceCurrency,
       qrCode,
       status: payment.paymentStatus
@@ -378,10 +382,10 @@ async function handleNowPaymentsIpn(req, res) {
 
     const resend = req.app?.locals?.resend;
     if (paymentGatewayService.getPaymentTxHash(payment)) {
-      await tronDepositService.sendDepositConfirmationEmail(resend, order.userId, credit.transaction);
+      await tronDepositService.sendDepositConfirmationEmail(resend, order.userId, credit.transaction, credit.bonusAmount);
     }
 
-    return res.status(200).json({ success: true, message: 'NOWPayments deposit credited.', paymentId, transaction: credit.transaction });
+    return res.status(200).json({ success: true, message: `NOWPayments deposit credited with a ${credit.bonusAmount || '0.0000'} USDT bonus.`, paymentId, bonusAmount: credit.bonusAmount || '0.0000', creditAmount: credit.creditAmount, transaction: credit.transaction, bonusTransaction: credit.bonusTransaction });
   } catch (error) {
     console.error('NOWPayments IPN processing failed:', error.message);
     return res.status(500).json({ success: false, error: 'NOWPAYMENTS_IPN_PROCESSING_FAILED' });

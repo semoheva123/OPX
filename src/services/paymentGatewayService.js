@@ -29,6 +29,31 @@ function formatUsdtAmount(value) {
   return amount.toFixed(4);
 }
 
+function usdtToUnits(value) {
+  const text = String(value ?? '').trim();
+  if (!/^(?:0|[1-9]\d*)(?:\.\d{1,4})?$/.test(text)) throw new Error('INVALID_DEPOSIT_AMOUNT');
+  const [whole, fraction = ''] = text.split('.');
+  const units = BigInt(whole) * 10000n + BigInt(fraction.padEnd(4, '0'));
+  if (units > 10000000000n) throw new Error('INVALID_DEPOSIT_AMOUNT');
+  return units;
+}
+
+function formatUsdtUnits(units) {
+  return `${units / 10000n}.${String(units % 10000n).padStart(4, '0')}`;
+}
+
+function calculateDepositBonus(value) {
+  // Round the 1% bonus to the wallet's four-decimal USDT precision.
+  const principalUnits = usdtToUnits(formatUsdtAmount(value));
+  return formatUsdtUnits((principalUnits + 50n) / 100n);
+}
+
+function calculateDepositCredit(value) {
+  const principalUnits = usdtToUnits(formatUsdtAmount(value));
+  const bonusUnits = (principalUnits + 50n) / 100n;
+  return formatUsdtUnits(principalUnits + bonusUnits);
+}
+
 function createSignedOrderId(userId, amount) {
   const secret = String(process.env.JWT_SECRET || '').trim();
   if (secret.length < 32) throw new Error('DEPOSIT_ORDER_SECRET_NOT_CONFIGURED');
@@ -163,6 +188,8 @@ module.exports = {
   getNowPaymentsConfig,
   isNowPaymentsReady,
   formatUsdtAmount,
+  calculateDepositBonus,
+  calculateDepositCredit,
   createSignedOrderId,
   verifySignedOrderId,
   verifyIpnSignature,

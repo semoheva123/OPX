@@ -12,6 +12,11 @@ const nowPayments = require('../src/services/paymentGatewayService');
 
 async function main() {
   assert.equal(nowPayments.formatUsdtAmount('12.34'), '12.3400');
+  assert.equal(nowPayments.calculateDepositBonus('10'), '0.1000');
+  assert.equal(nowPayments.calculateDepositCredit('10'), '10.1000');
+  assert.equal(nowPayments.calculateDepositBonus('10.5555'), '0.1056', 'the 1% bonus must round to four USDT decimal places');
+  assert.equal(nowPayments.calculateDepositCredit('10.5555'), '10.6611');
+  assert.equal(nowPayments.calculateDepositBonus('1000000'), '10000.0000');
   assert.throws(() => nowPayments.formatUsdtAmount('0.5'), /INVALID_DEPOSIT_AMOUNT/);
   assert.throws(() => nowPayments.formatUsdtAmount('1.12345'), /INVALID_DEPOSIT_AMOUNT/);
 
@@ -47,6 +52,7 @@ async function main() {
   const walletControllerSource = fs.readFileSync(path.join(__dirname, '../src/controllers/walletController.js'), 'utf8');
   const tronDepositServiceSource = fs.readFileSync(path.join(__dirname, '../src/services/tronDepositService.js'), 'utf8');
   const migration = fs.readFileSync(path.join(__dirname, '../supabase/nowpayments-trc20-deposits.sql'), 'utf8');
+  const bonusMigration = fs.readFileSync(path.join(__dirname, '../supabase/nowpayments-deposit-bonus.sql'), 'utf8');
   const appSource = fs.readFileSync(path.join(__dirname, '../app.js'), 'utf8');
   const indexSource = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
   const premiumStyles = fs.readFileSync(path.join(__dirname, '../styles/operix-premium.css'), 'utf8');
@@ -58,8 +64,15 @@ async function main() {
   assert.match(tronDepositServiceSource, /reason: 'NOWPAYMENTS_ONLY'/);
   assert.match(migration, /operix_nowpayments_deposit_credit_atomic/);
   assert.match(migration, /transaction_id uuid unique/);
+  assert.match(migration, /bonus_amount numeric\(18,4\)/);
+  assert.match(bonusMigration, /round\(order_row\.price_amount \* 0\.01, 4\)/);
+  assert.match(bonusMigration, /source, reference_id, notes, metadata/);
+  assert.match(bonusMigration, /bonus_transaction_id/);
+  assert.match(bonusMigration, /if order_row\.transaction_id is not null[\s\S]*?'duplicate', true/);
+  assert.match(walletControllerSource, /bonusAmount,[\s\S]*?creditAmount,/);
   assert.match(indexSource, /id="depositNetworkInstructions"/);
-  assert.match(appSource, /لا حاجة لإدخال TxHash/);
+  assert.match(appSource, /مكافأة 1% إلى رصيد الأرباح/);
+  assert.match(indexSource, /id="nowPaymentsBonusAmount"/);
   assert.match(premiumStyles, /#depositModal > \.deposit-modal-shell[\s\S]*?overflow-y:\s*auto\s*!important/);
 
   const originalFetch = global.fetch;

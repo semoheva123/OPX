@@ -14,12 +14,14 @@ const deposits = require('../src/services/tronDepositService');
       amount: '5.000000',
       txHash: 'a'.repeat(64),
       createdAt: '2026-10-08T12:00:00.000Z'
-    });
+    }, '0.0500');
     assert.deepEqual(result, { sent: true });
     assert.equal(sent.length, 1);
     assert.equal(sent[0].to, 'member@gmail.com');
     assert.match(sent[0].subject, /تأكيد إيداع USDT/);
     assert.match(sent[0].html, /5 USDT/);
+    assert.match(sent[0].html, /0\.05 USDT/);
+    assert.match(sent[0].html, /5\.05 USDT/);
     assert.match(sent[0].html, /transaction-1/);
     assert.match(sent[0].html, new RegExp('a'.repeat(64)));
 
