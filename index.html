@@ -1388,6 +1388,16 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
             }).catch(function () {});
         }
 
+        function hideLoadingView(delayMs = 900) {
+            const loading = document.getElementById('loadingView');
+            if (!loading) return;
+            if (delayMs > 0) {
+                window.setTimeout(() => loading.classList.add('hide'), delayMs);
+                return;
+            }
+            loading.classList.add('hide');
+        }
+
         function showGuestLanding() {
             const loading = document.getElementById('loadingView');
             const intro = document.getElementById('companyIntroView');
@@ -1397,7 +1407,7 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
             const ticker = document.getElementById('liveTickerBar');
             const hasReferral = new URLSearchParams(window.location.search).has('ref') || localStorage.getItem('operix_ref_code') || localStorage.getItem('ag_ref_code');
 
-            loading?.classList.add('hide');
+            hideLoadingView();
             if (hasReferral) {
                 intro?.classList.add('hide');
                 auth?.classList.remove('hide');
@@ -1419,7 +1429,7 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
             const nav = document.getElementById('appNavBar');
             const ticker = document.getElementById('liveTickerBar');
 
-            loading?.classList.add('hide');
+            hideLoadingView();
             intro?.classList.add('hide');
             auth?.classList.add('hide');
             app?.classList.remove('hide');

@@ -30,6 +30,16 @@ let vaultCountdownTimer = null;
 let profileRequestInFlight = null;
 const STARTUP_REQUEST_TIMEOUT = 8000;
 
+function hideLoadingView(delayMs = 900) {
+    const loading = document.getElementById('loadingView');
+    if (!loading) return;
+    if (delayMs > 0) {
+        window.setTimeout(() => loading.classList.add('hide'), delayMs);
+        return;
+    }
+    loading.classList.add('hide');
+}
+
 async function fetchWithTimeout(resource, options = {}, timeoutMs = STARTUP_REQUEST_TIMEOUT) {
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
@@ -1697,7 +1707,7 @@ async function loadUserProfile() {
 async function loadUserProfileInternal() {
     const token = localStorage.getItem('token');
     if(!token) {
-        document.getElementById('loadingView')?.classList.add('hide');
+        hideLoadingView();
         const hasReferral = new URLSearchParams(window.location.search).has('ref') || localStorage.getItem('operix_ref_code') || localStorage.getItem('ag_ref_code');
         const intro = document.getElementById('companyIntroView');
         const auth = document.getElementById('authView');
@@ -1721,7 +1731,7 @@ async function loadUserProfileInternal() {
             loadGameHistory();
             updateProfileAvatar(data.user.profileImage);
             applySocialProfile(data.user);
-            document.getElementById('loadingView').classList.add('hide');
+            hideLoadingView();
             document.getElementById('companyIntroView')?.classList.add('hide');
             document.getElementById('authView').classList.add('hide');
             document.getElementById('appView').classList.remove('hide');
@@ -1782,11 +1792,11 @@ async function loadUserProfileInternal() {
             showToast(data.error || 'انتهت جلسة الدخول، يرجى تسجيل الدخول مجددًا');
             await logout({ notifyServer: false });
         } else {
-            document.getElementById('loadingView').classList.add('hide');
+            hideLoadingView();
             if (!currentUserData) showToast(data.error || 'تعذر تحميل بيانات الحساب. ستبقى جلسة الدخول محفوظة.');
         }
     } catch(err) {
-        document.getElementById('loadingView')?.classList.add('hide');
+        hideLoadingView();
         if (!currentUserData) {
             showToast('تعذر الاتصال بالخادم. سيتم عرض شاشة الزوار مؤقتًا.');
             const intro = document.getElementById('companyIntroView');
@@ -3679,7 +3689,7 @@ async function logout({ notifyServer = true } = {}) {
     if (typeof showGuestLanding === 'function') {
         showGuestLanding();
     } else {
-        document.getElementById('loadingView')?.classList.add('hide');
+        hideLoadingView();
         document.getElementById('appView')?.classList.add('hide');
         document.getElementById('authView')?.classList.add('hide');
         document.getElementById('companyIntroView')?.classList.remove('hide');
