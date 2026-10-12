@@ -242,17 +242,13 @@ function closeGameResult() {
 }
 
 function buildDemoTickerMessages() {
-    const levels = tiersData.slice(0, 5);
     const deposits = Array.from({ length: 20 }, (_, index) => {
-        const level = levels[index % levels.length];
-        const amount = Number(level.price || 0) + (index % 4) * 25;
-        return `بيانات العرض: إيداع توضيحي بقيمة $${amount.toLocaleString('en-US')} USDT للمستوى ${level.code}.`;
+        const amount = 65 + (index % 9) * 18 + (index % 3) * 7;
+        return `بيانات العرض: إيداع توضيحي بقيمة $${amount.toLocaleString('en-US')} USDT.`;
     });
     const withdrawals = Array.from({ length: 20 }, (_, index) => {
-        const level = levels[index % levels.length];
-        const weeklyProfit = Number(level.weeklyProfit || (Number(level.dailyProfit || 0) * 7));
-        const amount = Math.max(20, Number((weeklyProfit * (index % 3 + 1)).toFixed(2)));
-        return `بيانات العرض: سحب توضيحي بقيمة $${amount.toLocaleString('en-US')} USDT من الربح الأسبوعي للمستوى ${level.code}.`;
+        const amount = 42 + (index % 8) * 17 + (index % 4) * 9;
+        return `بيانات العرض: سحب توضيحي بقيمة $${amount.toLocaleString('en-US')} USDT.`;
     });
     return [...deposits, ...withdrawals];
 }
