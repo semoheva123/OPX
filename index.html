@@ -680,6 +680,140 @@
             border: 1px solid rgba(247,185,85,.18);
             box-shadow: 0 28px 70px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.04);
         }
+        .panel-modal-shell {
+            background: linear-gradient(180deg, rgba(8,13,22,.96), rgba(11,17,29,.94));
+            border: 1px solid rgba(148,163,184,.18);
+            box-shadow: 0 26px 60px rgba(2,6,23,.42), inset 0 1px 0 rgba(255,255,255,.04);
+        }
+        .panel-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(148,163,184,.12);
+        }
+        .panel-modal-title-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .panel-modal-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 39px;
+            height: 39px;
+            border-radius: 12px;
+            background: rgba(247,185,85,.12);
+            border: 1px solid rgba(247,185,85,.18);
+            color: #f7c45e;
+        }
+        .panel-modal-kicker {
+            display: block;
+            font-size: 9px;
+            letter-spacing: .18em;
+            text-transform: uppercase;
+            color: rgba(148,163,184,.8);
+            margin-bottom: 2px;
+        }
+        .panel-modal-title {
+            margin: 0;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 900;
+        }
+        .panel-modal-close {
+            width: 32px;
+            height: 32px;
+            border: 1px solid rgba(148,163,184,.15);
+            border-radius: 10px;
+            background: rgba(15,23,42,.76);
+            color: rgba(203,213,225,.9);
+            transition: all .2s ease;
+        }
+        .panel-modal-close:hover {
+            border-color: rgba(247,185,85,.3);
+            color: #fff;
+        }
+        .panel-modal-alert {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            border-radius: 14px;
+            background: rgba(245,158,11,.08);
+            border: 1px solid rgba(245,158,11,.2);
+            color: #f4c460;
+            font-size: 11px;
+            line-height: 1.6;
+            font-weight: 700;
+        }
+        .panel-modal-status {
+            border-radius: 14px;
+            border: 1px solid rgba(34,211,238,.18);
+            background: rgba(34,211,238,.05);
+            color: #b8f3ff;
+            padding: 10px 12px;
+            font-size: 10px;
+            line-height: 1.6;
+        }
+        .panel-modal-form {
+            display: grid;
+            gap: 12px;
+        }
+        .panel-modal-row {
+            display: grid;
+            gap: 8px;
+        }
+        .panel-modal-label {
+            display: block;
+            font-size: 10px;
+            font-weight: 700;
+            color: rgba(148,163,184,.9);
+            margin-bottom: 6px;
+        }
+        .panel-modal-input,
+        .panel-modal-select,
+        .panel-modal-textarea {
+            width: 100%;
+            border-radius: 12px;
+            border: 1px solid rgba(148,163,184,.18);
+            background: rgba(2,6,23,.66);
+            color: #fff;
+            padding: 11px 12px;
+            font-size: 12px;
+            outline: none;
+            transition: border-color .2s ease, box-shadow .2s ease;
+        }
+        .panel-modal-input:focus,
+        .panel-modal-select:focus,
+        .panel-modal-textarea:focus {
+            border-color: rgba(247,185,85,.45);
+            box-shadow: 0 0 0 3px rgba(247,185,85,.08);
+        }
+        .panel-modal-list {
+            max-height: 300px;
+            overflow-y: auto;
+            display: grid;
+            gap: 8px;
+            padding-right: 2px;
+        }
+        .panel-modal-item {
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(148,163,184,.12);
+            background: rgba(15,23,42,.62);
+            color: rgba(226,232,240,.9);
+        }
+        .panel-modal-empty {
+            padding: 18px 12px;
+            text-align: center;
+            border: 1px dashed rgba(148,163,184,.18);
+            border-radius: 12px;
+            color: rgba(148,163,184,.7);
+            font-size: 11px;
+        }
         .deposit-step-badges {
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2133,8 +2267,8 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
                         <i class="fa-solid fa-wallet text-lg"></i>
                     </div>
                     <div>
-                        <span class="block text-[10px] font-bold uppercase tracking-[0.18em] text-amber-300">Deposit</span>
-                        <h3 class="font-black text-white text-sm">إيداع رصيد USDT</h3>
+                        <span class="block text-[10px] font-bold uppercase tracking-[0.18em] text-amber-300">TRC20</span>
+                        <h3 class="font-black text-white text-sm">إيداع USDT</h3>
                     </div>
                 </div>
                 <button onclick="closeDepositModal()" class="deposit-close-btn text-slate-400 hover:text-white transition-all"><i class="fa-solid fa-xmark text-base"></i></button>
@@ -2143,40 +2277,40 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
             <div class="deposit-step-badges text-[9px] text-slate-300">
                 <div class="deposit-step-badge rounded-2xl p-2 text-center">
                     <strong>1</strong>
-                    نسخ العنوان
+                    المبلغ
                 </div>
                 <div class="deposit-step-badge rounded-2xl p-2 text-center">
                     <strong>2</strong>
-                    إرسال USDT
+                    الدفع
                 </div>
                 <div class="deposit-step-badge rounded-2xl p-2 text-center">
                     <strong>3</strong>
-                    تفعيل تلقائي
+                    التأكيد
                 </div>
             </div>
 
             <div id="nowPaymentsAmountPanel" class="hidden space-y-2 rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
                 <label for="nowPaymentsDepositAmount" class="block text-[10px] text-slate-400 font-bold">مبلغ الإيداع المطلوب (USDT)</label>
-                <p class="rounded-xl border border-amber-400/20 bg-amber-400/5 px-3 py-2 text-[10px] leading-5 text-amber-200">يُضاف رسم إيداع 1% إلى المبلغ المدخل. مثال: إيداع 100 USDT يتطلب دفع 101 USDT تقريبًا عبر NOWPayments.</p>
+                <p class="rounded-xl border border-amber-400/20 bg-amber-400/5 px-3 py-2 text-[10px] leading-5 text-amber-200">حدد المبلغ المطلوب. إذا استخدمت NOWPayments، سيُنشأ طلب دفع جديد مع العنوان ورمز QR، مع عرض الرسم قبل الإرسال.</p>
                 <div class="flex items-center gap-2">
                     <input id="nowPaymentsDepositAmount" type="number" min="1" max="1000000" step="0.0001" value="10" inputmode="decimal" class="w-full rounded-xl border border-slate-800 bg-slate-950/70 p-3 text-left text-xs font-mono text-white outline-none focus:border-amber-400" dir="ltr">
-                    <button id="nowPaymentsCreateButton" type="button" onclick="createNowPaymentsDeposit()" class="rounded-xl bg-amber-500 px-3 py-3 text-[10px] font-black text-slate-950 whitespace-nowrap">إنشاء طلب جديد</button>
+                    <button id="nowPaymentsCreateButton" type="button" onclick="createNowPaymentsDeposit()" class="rounded-xl bg-amber-500 px-3 py-3 text-[10px] font-black text-slate-950 whitespace-nowrap">إنشاء الطلب</button>
                 </div>
                 <div id="nowPaymentsPaymentDetails" class="hidden space-y-2 pt-2">
                     <div class="mx-auto w-fit rounded-2xl bg-white p-2"><img id="nowPaymentsQrCode" class="h-40 w-40" alt="رمز QR لإيداع USDT على TRC20"></div>
-                    <p class="text-center text-[10px] text-slate-400">أرسل مبلغ الدفع الذي أنشأته NOWPayments تمامًا إلى العنوان أدناه</p>
+                    <p class="text-center text-[10px] text-slate-400">أرسل المبلغ المحدد إلى العنوان أدناه.</p>
                     <p class="text-center text-sm font-black text-emerald-300"><span id="nowPaymentsPayAmount">—</span> USDT (TRC20)</p>
                     <div class="space-y-1 rounded-xl border border-slate-800 bg-slate-900/70 p-3 text-[10px]">
-                        <p class="flex justify-between gap-3 text-slate-400"><span>المبلغ المضاف إلى رصيد الإيداع</span><strong class="text-slate-200"><span id="nowPaymentsDepositAmountCredit">—</span> USDT</strong></p>
-                        <p class="flex justify-between gap-3 text-amber-300"><span>رسم الإيداع (1%)</span><strong>+<span id="nowPaymentsSurchargeAmount">—</span> USDT</strong></p>
-                        <p class="flex justify-between gap-3 border-t border-slate-700 pt-2 font-black text-white"><span>إجمالي المطلوب بالدولار</span><strong><span id="nowPaymentsChargeAmount">—</span> USD</strong></p>
+                        <p class="flex justify-between gap-3 text-slate-400"><span>المبلغ المضاف</span><strong class="text-slate-200"><span id="nowPaymentsDepositAmountCredit">—</span> USDT</strong></p>
+                        <p class="flex justify-between gap-3 text-amber-300"><span>رسم الشبكة</span><strong>+<span id="nowPaymentsSurchargeAmount">—</span> USDT</strong></p>
+                        <p class="flex justify-between gap-3 border-t border-slate-700 pt-2 font-black text-white"><span>الإجمالي</span><strong><span id="nowPaymentsChargeAmount">—</span> USD</strong></p>
                     </div>
-                    <p class="text-center text-[9px] text-slate-600">رقم الدفع: <span id="nowPaymentsPaymentId" class="font-mono"></span></p>
+                    <p class="text-center text-[9px] text-slate-600">رقم الطلب: <span id="nowPaymentsPaymentId" class="font-mono"></span></p>
                 </div>
             </div>
 
             <div class="deposit-address-box p-3 rounded-2xl space-y-2">
-                <span class="text-[10px] text-slate-400 font-bold block">عنوان محفظة الإيداع</span>
+                <span class="text-[10px] text-slate-400 font-bold block">عنوان المحفظة</span>
                 <div class="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-950/50 p-2">
                     <input type="text" id="userDepositAddress" readonly value="" class="w-full bg-transparent text-[10px] outline-none dir-ltr font-mono">
                     <button type="button" onclick="copyUserDepositAddress()" class="bg-amber-500 text-slate-950 font-black px-3 py-2 rounded-lg text-[10px] whitespace-nowrap active:scale-95 transition-all">
@@ -2187,51 +2321,59 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
 
             <div class="space-y-3">
                 <div id="depositNetworkInstructions" class="deposit-info-panel rounded-2xl p-3 text-[11px] leading-5">
-                    أرسل USDT على شبكة TRON (TRC20) إلى العنوان الظاهر. بعد تأكيد التحويل، أدخل TxHash لإثبات الإيداع. لا تستخدم الشبكة نفسها لإرسال عملات أخرى.
+                    استخدم شبكة TRC20 فقط. تأكد من إرسال المبلغ نفسه المذكور في الطلب، ولا تستخدم عنوانًا أو شبكة أخرى.
                 </div>
                 <div id="sharedDepositClaimPanel" class="hidden space-y-2">
-                    <label for="sharedDepositTxHash" class="block text-[10px] text-slate-400">هاش التحويل (TxHash)</label>
+                    <label for="sharedDepositTxHash" class="block text-[10px] text-slate-400">رمز المعاملة (TxHash)</label>
                     <input id="sharedDepositTxHash" type="text" maxlength="64" autocomplete="off" spellcheck="false" placeholder="64 خانة سداسية عشرية" class="w-full rounded-xl border border-slate-800 bg-slate-950/70 p-3 text-left text-[10px] font-mono text-slate-100 outline-none focus:border-amber-400" dir="ltr">
-                    <button id="sharedDepositClaimButton" type="button" onclick="claimSharedDeposit()" class="w-full rounded-xl bg-emerald-400 py-3 text-xs font-black text-slate-950">تحقق وأضف الإيداع</button>
+                    <button id="sharedDepositClaimButton" type="button" onclick="claimSharedDeposit()" class="w-full rounded-xl bg-emerald-400 py-3 text-xs font-black text-slate-950">تأكيد الإيداع</button>
                 </div>
                 <div id="depositModalStatus" class="text-[10px] text-center font-bold text-slate-300"></div>
-                <button type="button" onclick="closeDepositModal()" class="deposit-action-btn w-full py-3.5 text-slate-950 font-black rounded-xl text-xs shadow-lg active:scale-95 transition-all">تم، سأنتظر التأكيد</button>
+                <button type="button" onclick="closeDepositModal()" class="deposit-action-btn w-full py-3.5 text-slate-950 font-black rounded-xl text-xs shadow-lg active:scale-95 transition-all">إغلاق</button>
             </div>
         </div>
     </div>
 
     <!-- Withdrawal confirmation uses a single-use code delivered to the verified account email. -->
     <div id="withdrawModal" class="hide fixed inset-0 glass-modal z-50 flex items-center justify-center p-4">
-        <div class="glass-card w-full max-w-sm p-5 rounded-3xl space-y-4 border border-amber-500/20 shadow-2xl">
-            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-                <h3 class="font-bold text-white text-sm flex items-center">
-                    <i class="fa-solid fa-hand-holding-dollar text-amber-400 mr-2"></i> طلب سحب الأرباح
-                </h3>
-                <button onclick="closeWithdrawModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            
-            <div class="bg-amber-500/10 border border-amber-500/20 text-amber-400 p-2.5 rounded-xl text-[11px] font-bold">
-                <i class="fa-solid fa-circle-info mr-1"></i> السحب متاح حصراً من رصيد الأرباح المتاح.
-            </div>
-            <div id="withdrawalScheduleStatus" class="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-2.5 text-[10px] leading-5 text-cyan-100" aria-live="polite">مواعيد طلب السحب: A1 وA2 يوم الجمعة، وبقية المستويات يوم السبت (UTC).</div>
-
-            <div class="space-y-3">
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1 font-bold">المبلغ ($)</label>
-                    <input type="number" id="withdrawAmount" oninput="updateHybridWithdrawFee()" placeholder="20.00" min="20" step="any" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-amber-500">
-                    <div id="withdrawFeeSummary" class="mt-2 text-[10px] text-slate-400">الرسوم: 10% • الحد الأدنى: 20$</div>
+        <div class="panel-modal-shell glass-card w-full max-w-sm p-5 rounded-3xl space-y-4">
+            <div class="panel-modal-header">
+                <div class="panel-modal-title-group">
+                    <div class="panel-modal-icon"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+                    <div>
+                        <span class="panel-modal-kicker">Withdrawal</span>
+                        <h3 class="panel-modal-title">طلب سحب الأرباح</h3>
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1 font-bold">عنوان محفظة الاستلام</label>
-                    <select id="withdrawWalletNetwork" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-amber-500"><option value="TRC20" selected>TRON (TRC20)</option></select>
-                    <input type="text" id="withdrawWallet" placeholder="ثبت عنوانك من الملف الشخصي" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-amber-500 dir-ltr">
+                <button onclick="closeWithdrawModal()" class="panel-modal-close" aria-label="إغلاق نافذة السحب"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="panel-modal-alert"><i class="fa-solid fa-circle-info"></i><span>السحب متاح حصراً من رصيد الأرباح المتاح.</span></div>
+            <div id="withdrawalScheduleStatus" class="panel-modal-status" aria-live="polite">مواعيد طلب السحب: A1 وA2 يوم الجمعة، وبقية المستويات يوم السبت (UTC).</div>
+
+            <div class="panel-modal-form">
+                <div class="panel-modal-row">
+                    <div>
+                        <label class="panel-modal-label">المبلغ ($)</label>
+                        <input type="number" id="withdrawAmount" oninput="updateHybridWithdrawFee()" placeholder="20.00" min="20" step="any" class="panel-modal-input">
+                    </div>
+                    <div id="withdrawFeeSummary" class="text-[10px] text-slate-400">الرسوم: 10% • الحد الأدنى: 20$</div>
+                </div>
+                <div class="panel-modal-row">
+                    <div>
+                        <label class="panel-modal-label">عنوان محفظة الاستلام</label>
+                        <select id="withdrawWalletNetwork" class="panel-modal-select"><option value="TRC20" selected>TRON (TRC20)</option></select>
+                    </div>
+                    <input type="text" id="withdrawWallet" placeholder="ثبت عنوانك من الملف الشخصي" class="panel-modal-input dir-ltr">
                     <div id="walletStatusContainerWithdraw"></div>
                 </div>
-                <div id="withdrawEmailCodePanel" class="hidden">
-                    <label class="block text-xs text-slate-400 mb-1 font-bold" for="withdrawEmailCode">رمز التأكيد المرسل إلى بريدك (6 أرقام)</label>
-                    <input type="text" id="withdrawEmailCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="أدخل الرمز من بريدك" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-amber-500 dir-ltr font-mono">
-                    <p class="mt-1 text-[10px] text-slate-500">الرمز صالح 10 دقائق ولمحاولة واحدة فقط لطلب السحب.</p>
-                    <button type="button" onclick="requestWithdrawalEmailCodeAgain()" class="mt-1 text-[10px] font-bold text-cyan-300 hover:text-cyan-200">إعادة إرسال الرمز</button>
+                <div id="withdrawEmailCodePanel" class="hidden panel-modal-row">
+                    <div>
+                        <label class="panel-modal-label" for="withdrawEmailCode">رمز التأكيد (6 أرقام)</label>
+                        <input type="text" id="withdrawEmailCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="أدخل الرمز من بريدك" class="panel-modal-input dir-ltr font-mono">
+                    </div>
+                    <p class="text-[10px] text-slate-500">الرمز صالح 10 دقائق، ويُستخدم مرة واحدة فقط.</p>
+                    <button type="button" onclick="requestWithdrawalEmailCodeAgain()" class="text-[10px] font-bold text-cyan-300 hover:text-cyan-200 text-right">إعادة إرسال الرمز</button>
                 </div>
             </div>
 
@@ -2243,60 +2385,100 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
 
     <!-- نافذة السجل -->
     <div id="historyModal" class="hide fixed inset-0 glass-modal z-50 flex items-center justify-center p-4">
-        <div class="glass-card w-full max-w-sm p-5 rounded-3xl space-y-4 max-h-[80vh] flex flex-col">
-            <div class="flex justify-between items-center">
-                <h3 class="font-bold text-white text-sm">السجل المالي</h3>
-                <button onclick="closeHistoryModal()" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button>
+        <div class="panel-modal-shell glass-card w-full max-w-sm p-5 rounded-3xl space-y-4 max-h-[80vh] flex flex-col">
+            <div class="panel-modal-header">
+                <div class="panel-modal-title-group">
+                    <div class="panel-modal-icon"><i class="fa-solid fa-clock-rotate-left"></i></div>
+                    <div>
+                        <span class="panel-modal-kicker">History</span>
+                        <h3 class="panel-modal-title">السجل المالي</h3>
+                    </div>
+                </div>
+                <button onclick="closeHistoryModal()" class="panel-modal-close" aria-label="إغلاق سجل العمليات"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            <div id="historyList" class="flex-1 overflow-y-auto space-y-2 pr-1"></div>
+            <div id="historyList" class="panel-modal-list flex-1"></div>
         </div>
     </div>
 
     <!-- نافذة الإشعارات -->
     <div id="privateMessagesModal" class="hide fixed inset-0 glass-modal z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="privateModalTitle"><div class="w-full max-w-2xl overflow-hidden rounded-3xl border border-cyan-400/20 bg-slate-900 shadow-2xl shadow-cyan-950/40"><div class="flex items-center justify-between border-b border-slate-800 bg-slate-950/70 p-4"><div><span class="text-[10px] font-black uppercase tracking-[.2em] text-cyan-300">OPERIX MESSENGER</span><h2 id="privateModalTitle" class="mt-1 text-base font-black text-white">الرسائل الخاصة</h2></div><button type="button" onclick="closePrivateMessagesModal()" title="إغلاق الرسائل" class="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white"><i class="fa-solid fa-xmark"></i></button></div><div class="grid max-h-[75vh] min-h-[420px] md:grid-cols-[.75fr_1.25fr]"><aside class="border-b border-slate-800 p-3 md:border-b-0 md:border-l"><div class="mb-3 flex items-center justify-between"><span class="text-[10px] font-bold text-slate-400">المحادثات</span><button type="button" onclick="loadPrivateConversations()" title="تحديث المحادثات" class="text-slate-500 hover:text-cyan-300"><i class="fa-solid fa-arrows-rotate"></i></button></div><div id="privateConversationList" class="max-h-56 space-y-2 overflow-y-auto md:max-h-[calc(75vh-80px)]"><p class="py-5 text-center text-[10px] text-slate-500">جارٍ تحميل المحادثات...</p></div></aside><section id="privateMessagesPanel" class="hidden min-w-0 flex-col bg-slate-950/35 p-4 md:flex"><div class="mb-3 flex items-center gap-3"><span class="flex h-9 w-9 items-center justify-center rounded-full bg-cyan-400/10 text-cyan-300"><i class="fa-regular fa-user"></i></span><div><span class="text-[9px] text-slate-500">محادثة آمنة داخل المجتمع</span><h3 id="privateThreadTitle" class="text-sm font-black text-white">اختر محادثة</h3></div></div><div id="privateMessages" class="min-h-0 flex-1 space-y-2 overflow-y-auto rounded-2xl border border-slate-800 bg-slate-950/65 p-3"></div><form onsubmit="sendPrivateMessage(event)" class="mt-3 flex gap-2"><input id="privateMessageInput" maxlength="500" required placeholder="اكتب رسالة محترمة..." class="min-w-0 flex-1 rounded-xl border border-slate-800 bg-slate-900 px-3 py-2.5 text-[11px] text-white outline-none focus:border-cyan-400"><button type="submit" class="rounded-xl bg-cyan-400 px-4 py-2 text-[10px] font-black text-slate-950"><i class="fa-solid fa-paper-plane"></i></button></form><p id="privateMessageStatus" class="mt-2 text-[10px] text-slate-500"></p></section></div></div></div>
     <div id="notificationsModal" class="hide fixed inset-0 glass-modal z-50 flex items-center justify-center p-4">
-        <div class="glass-card w-full max-w-sm p-5 rounded-3xl space-y-4">
-            <div class="flex justify-between items-center">
-                <h3 class="font-bold text-white text-sm">التنبيهات الإدارية</h3>
-                <button onclick="closeNotificationsModal()" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button>
+        <div class="panel-modal-shell glass-card w-full max-w-sm p-5 rounded-3xl space-y-4">
+            <div class="panel-modal-header">
+                <div class="panel-modal-title-group">
+                    <div class="panel-modal-icon"><i class="fa-solid fa-bell"></i></div>
+                    <div>
+                        <span class="panel-modal-kicker">Alerts</span>
+                        <h3 class="panel-modal-title">التنبيهات</h3>
+                    </div>
+                </div>
+                <button onclick="closeNotificationsModal()" class="panel-modal-close" aria-label="إغلاق التنبيهات"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="flex justify-end"><button onclick="markAllNotificationsRead()" class="text-[10px] text-amber-400 hover:underline">تحديد الكل كمقروء</button></div>
-            <div id="notificationsList" class="max-h-80 overflow-y-auto space-y-2"><p class="text-xs text-slate-400 text-center py-4">جاري تحميل الإشعارات...</p></div>
+            <div id="notificationsList" class="panel-modal-list"><p class="panel-modal-empty">جاري تحميل الإشعارات...</p></div>
         </div>
     </div>
 
     <div id="supportModal" class="hide fixed inset-0 glass-modal z-50 flex items-center justify-center p-4">
-        <div class="glass-card w-full max-w-sm p-5 rounded-3xl space-y-4 max-h-[85vh] overflow-y-auto">
-            <div class="flex justify-between items-center"><h3 class="font-bold text-white text-sm">مركز الدعم</h3><button onclick="closeSupportModal()" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button></div>
-            <form onsubmit="createSupportTicket(event)" class="space-y-3"><input id="supportSubject" required maxlength="120" placeholder="عنوان المشكلة" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none"><textarea id="supportMessage" required minlength="10" maxlength="2000" rows="4" placeholder="اشرح طلبك بالتفصيل" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none"></textarea><button class="w-full py-2.5 bg-cyan-500 text-slate-950 font-bold rounded-xl text-xs">إرسال التذكرة</button></form>
-            <div class="border-t border-slate-800 pt-3"><h4 class="text-xs text-slate-300 font-bold mb-2">تذاكري السابقة</h4><div id="supportTicketsList" class="space-y-2 text-[10px] text-slate-400">جاري التحميل...</div></div>
+        <div class="panel-modal-shell glass-card w-full max-w-sm p-5 rounded-3xl space-y-4 max-h-[85vh] overflow-y-auto">
+            <div class="panel-modal-header">
+                <div class="panel-modal-title-group">
+                    <div class="panel-modal-icon"><i class="fa-solid fa-headset"></i></div>
+                    <div>
+                        <span class="panel-modal-kicker">Support</span>
+                        <h3 class="panel-modal-title">مركز الدعم</h3>
+                    </div>
+                </div>
+                <button onclick="closeSupportModal()" class="panel-modal-close" aria-label="إغلاق الدعم"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onsubmit="createSupportTicket(event)" class="panel-modal-form">
+                <div class="panel-modal-row">
+                    <label class="panel-modal-label">عنوان المشكلة</label>
+                    <input id="supportSubject" required maxlength="120" placeholder="عنوان المشكلة" class="panel-modal-input">
+                </div>
+                <div class="panel-modal-row">
+                    <label class="panel-modal-label">التفاصيل</label>
+                    <textarea id="supportMessage" required minlength="10" maxlength="2000" rows="4" placeholder="اشرح طلبك بالتفصيل" class="panel-modal-textarea"></textarea>
+                </div>
+                <button class="w-full py-2.5 bg-cyan-500 text-slate-950 font-bold rounded-xl text-xs">إرسال التذكرة</button>
+            </form>
+            <div class="border-t border-slate-800 pt-3">
+                <h4 class="text-xs text-slate-300 font-bold mb-2">تذاكري السابقة</h4>
+                <div id="supportTicketsList" class="panel-modal-list text-[10px] text-slate-400"><p class="panel-modal-empty">جاري التحميل...</p></div>
+            </div>
         </div>
     </div>
 
     <!-- نافذة استعادة كلمة المرور -->
     <div id="forgotPasswordModal" class="hide fixed inset-0 glass-modal z-50 flex items-center justify-center p-4">
-        <div class="glass-card w-full max-w-sm p-5 rounded-3xl space-y-4">
-            <div class="flex justify-between items-center">
-                <h3 class="font-bold text-white text-sm">استعادة كلمة المرور</h3>
-                <button onclick="closeForgotPasswordModal()" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button>
+        <div class="panel-modal-shell glass-card w-full max-w-sm p-5 rounded-3xl space-y-4">
+            <div class="panel-modal-header">
+                <div class="panel-modal-title-group">
+                    <div class="panel-modal-icon"><i class="fa-solid fa-key"></i></div>
+                    <div>
+                        <span class="panel-modal-kicker">Password</span>
+                        <h3 class="panel-modal-title">استعادة كلمة المرور</h3>
+                    </div>
+                </div>
+                <button onclick="closeForgotPasswordModal()" class="panel-modal-close" aria-label="إغلاق استعادة كلمة المرور"><i class="fa-solid fa-xmark"></i></button>
             </div>
 
-            <form id="resetRequestForm" onsubmit="handleResetRequest(event)" class="space-y-3">
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">البريد الإلكتروني المسجل</label>
-                    <input type="email" id="resetEmail" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none">
+            <form id="resetRequestForm" onsubmit="handleResetRequest(event)" class="panel-modal-form">
+                <div class="panel-modal-row">
+                    <label class="panel-modal-label">البريد الإلكتروني المسجل</label>
+                    <input type="email" id="resetEmail" required class="panel-modal-input">
                 </div>
                 <button type="submit" id="btnSendOtp" class="w-full py-2.5 gold-gradient text-slate-950 font-bold rounded-xl text-xs">إرسال رمز التحقق</button>
             </form>
 
-            <form id="resetConfirmForm" onsubmit="handleResetConfirm(event)" class="space-y-3 hide">
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">رمز التحقق (OTP)</label>
-                    <input type="text" id="resetOtp" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none">
+            <form id="resetConfirmForm" onsubmit="handleResetConfirm(event)" class="panel-modal-form hide">
+                <div class="panel-modal-row">
+                    <label class="panel-modal-label">رمز التحقق (OTP)</label>
+                    <input type="text" id="resetOtp" required class="panel-modal-input">
                 </div>
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">كلمة المرور الجديدة</label>
-                    <input type="password" id="resetNewPassword" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none">
+                <div class="panel-modal-row">
+                    <label class="panel-modal-label">كلمة المرور الجديدة</label>
+                    <input type="password" id="resetNewPassword" required class="panel-modal-input">
                 </div>
                 <button type="submit" id="btnResetSubmit" class="w-full py-2.5 gold-gradient text-slate-950 font-bold rounded-xl text-xs">تحديث كلمة المرور والدخول</button>
             </form>
@@ -2305,19 +2487,25 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
 
     <!-- نافذة تغيير كلمة المرور المباشرة من الحساب -->
     <div id="changePasswordModal" class="hide fixed inset-0 glass-modal z-50 flex items-center justify-center p-4">
-        <div class="glass-card w-full max-w-sm p-5 rounded-3xl space-y-4">
-            <div class="flex justify-between items-center">
-                <h3 class="font-bold text-white text-sm">تغيير كلمة المرور</h3>
-                <button onclick="closeChangePasswordModal()" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <form onsubmit="handleChangePasswordSubmit(event)" class="space-y-3">
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">كلمة المرور الحالية</label>
-                    <input type="password" id="currentPasswordInput" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none">
+        <div class="panel-modal-shell glass-card w-full max-w-sm p-5 rounded-3xl space-y-4">
+            <div class="panel-modal-header">
+                <div class="panel-modal-title-group">
+                    <div class="panel-modal-icon"><i class="fa-solid fa-user-lock"></i></div>
+                    <div>
+                        <span class="panel-modal-kicker">Security</span>
+                        <h3 class="panel-modal-title">تغيير كلمة المرور</h3>
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">كلمة المرور الجديدة</label>
-                    <input type="password" id="newPasswordInput" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none">
+                <button onclick="closeChangePasswordModal()" class="panel-modal-close" aria-label="إغلاق تغيير كلمة المرور"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onsubmit="handleChangePasswordSubmit(event)" class="panel-modal-form">
+                <div class="panel-modal-row">
+                    <label class="panel-modal-label">كلمة المرور الحالية</label>
+                    <input type="password" id="currentPasswordInput" required class="panel-modal-input">
+                </div>
+                <div class="panel-modal-row">
+                    <label class="panel-modal-label">كلمة المرور الجديدة</label>
+                    <input type="password" id="newPasswordInput" required class="panel-modal-input">
                 </div>
                 <button type="submit" class="w-full py-2.5 gold-gradient text-slate-950 font-bold rounded-xl text-xs">حفظ كلمة المرور الجديدة</button>
             </form>
@@ -2326,12 +2514,18 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
 
     <!-- نافذة الأجهزة والجلسات النشطة -->
     <div id="activeSessionsModal" class="hide fixed inset-0 glass-modal z-50 flex items-center justify-center p-4">
-        <div class="glass-card w-full max-w-sm p-5 rounded-3xl space-y-4">
-            <div class="flex justify-between items-center">
-                <h3 class="font-bold text-white text-sm">الجلسات والأجهزة النشطة</h3>
-                <button onclick="closeActiveSessionsModal()" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button>
+        <div class="panel-modal-shell glass-card w-full max-w-sm p-5 rounded-3xl space-y-4">
+            <div class="panel-modal-header">
+                <div class="panel-modal-title-group">
+                    <div class="panel-modal-icon"><i class="fa-solid fa-desktop"></i></div>
+                    <div>
+                        <span class="panel-modal-kicker">Sessions</span>
+                        <h3 class="panel-modal-title">الجلسات والأجهزة</h3>
+                    </div>
+                </div>
+                <button onclick="closeActiveSessionsModal()" class="panel-modal-close" aria-label="إغلاق الجلسات"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            <div id="activeSessionsList" class="space-y-2 text-xs"><div class="p-3 bg-slate-950 border border-slate-800 rounded-xl text-slate-400">جاري تحميل الجلسات...</div></div>
+            <div id="activeSessionsList" class="panel-modal-list"><div class="panel-modal-empty">جاري تحميل الجلسات...</div></div>
             <div class="grid grid-cols-2 gap-2">
                 <button type="button" onclick="terminateOtherSessions()" class="py-2 bg-rose-500/10 text-rose-300 border border-rose-500/20 font-bold rounded-xl text-xs">إنهاء الجلسات الأخرى</button>
                 <button type="button" onclick="closeActiveSessionsModal()" class="py-2 bg-slate-800 text-slate-300 border border-slate-700 font-bold rounded-xl text-xs">إغلاق</button>
