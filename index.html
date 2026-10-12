@@ -206,6 +206,30 @@
         .reward-prize-card--cash .reward-points { --reward-border:rgba(110,231,183,.25); --reward-pill:rgba(52,211,153,.08); --reward-color:#a7f3d0; }
         .reward-campaign-note { display:flex; align-items:flex-start; gap:8px; margin:14px 0 0; padding-top:12px; border-top:1px solid rgba(148,163,184,.12); color:#8391a6; font-size:9px; line-height:1.8; }
         .reward-campaign-note i { margin-top:3px; color:#f7b955; }
+        .campaign-popup-backdrop { position:fixed; inset:0; z-index:110; display:flex; align-items:center; justify-content:center; padding:20px; background:rgba(2,6,15,.84); backdrop-filter:blur(14px); animation:campaignBackdropIn .25s ease both; }
+        .campaign-popup-backdrop.hide { display:none; }
+        .campaign-popup { position:relative; width:min(100%,1040px); max-height:min(92vh,900px); overflow:auto; overscroll-behavior:contain; border:1px solid rgba(247,185,85,.36); border-radius:30px; background:radial-gradient(ellipse at 50% -5%,rgba(247,185,85,.13),transparent 40%),linear-gradient(145deg,#0b1423 0%,#101a2b 55%,#08131f 100%); box-shadow:0 40px 120px rgba(0,0,0,.62),0 0 70px rgba(247,185,85,.09),inset 0 1px 0 rgba(255,255,255,.08); animation:campaignPopupIn .35s cubic-bezier(.2,.8,.2,1) both; }
+        .campaign-popup-header { position:relative; overflow:hidden; padding:clamp(22px,4vw,38px) clamp(20px,4vw,40px) 22px; text-align:center; }
+        .campaign-popup-header::before { content:''; position:absolute; width:280px; height:180px; top:-125px; left:50%; transform:translateX(-50%); border-radius:50%; background:rgba(247,185,85,.2); filter:blur(55px); pointer-events:none; }
+        .campaign-popup-close { position:absolute; z-index:2; top:17px; left:17px; display:grid; width:40px; height:40px; place-items:center; border:1px solid rgba(148,163,184,.2); border-radius:14px; background:rgba(2,6,15,.5); color:#cbd5e1; cursor:pointer; }
+        .campaign-popup-close:hover { border-color:rgba(247,185,85,.5); color:#ffe1a1; background:rgba(247,185,85,.08); }
+        .campaign-popup-status { position:relative; display:inline-flex; align-items:center; gap:8px; padding:8px 13px; border:1px solid rgba(52,211,153,.3); border-radius:999px; background:rgba(16,185,129,.09); color:#a7f3d0; font-size:11px; font-weight:900; }
+        .campaign-popup-status::before { content:''; width:8px; height:8px; border-radius:50%; background:#34d399; box-shadow:0 0 0 4px rgba(52,211,153,.12),0 0 14px rgba(52,211,153,.7); animation:campaignLivePulse 1.8s ease-in-out infinite; }
+        .campaign-popup-title { position:relative; margin:14px 0 5px; color:#fff; font-size:clamp(24px,4vw,36px); font-weight:900; line-height:1.35; text-wrap:balance; }
+        .campaign-popup-subtitle { position:relative; max-width:620px; margin:0 auto; color:#aab6c9; font-size:12px; line-height:1.9; }
+        .campaign-popup-prizes { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:13px; padding:0 clamp(16px,3vw,32px); }
+        .campaign-popup-prizes .reward-prize-art { height:130px; }
+        .campaign-popup-prizes .reward-prize-copy { padding:13px; }
+        .campaign-popup-prizes .reward-prize-name { margin-top:10px; }
+        .campaign-popup-foot { display:flex; align-items:center; justify-content:space-between; gap:18px; margin:20px clamp(16px,3vw,32px) 0; padding:16px 0 22px; border-top:1px solid rgba(148,163,184,.13); }
+        .campaign-popup-foot p { max-width:650px; margin:0; color:#8391a6; font-size:9px; line-height:1.8; }
+        .campaign-popup-action { flex:0 0 auto; min-height:44px; padding:0 22px; border:1px solid rgba(255,225,161,.5); border-radius:14px; background:linear-gradient(135deg,#ffe1a1,#f7b955 58%,#d88d31); color:#111827; font-size:11px; font-weight:900; box-shadow:0 10px 28px rgba(247,185,85,.16); cursor:pointer; }
+        @keyframes campaignBackdropIn { from { opacity:0; } to { opacity:1; } }
+        @keyframes campaignPopupIn { from { opacity:0; transform:translateY(16px) scale(.985); } to { opacity:1; transform:translateY(0) scale(1); } }
+        @keyframes campaignLivePulse { 50% { opacity:.55; box-shadow:0 0 0 6px rgba(52,211,153,.06),0 0 7px rgba(52,211,153,.4); } }
+        @media (max-width:760px) { .campaign-popup-backdrop { padding:12px; } .campaign-popup { max-height:94vh; border-radius:23px; } .campaign-popup-prizes { grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; } .campaign-popup-prizes .reward-prize-art { height:98px; } .campaign-popup-prizes .reward-prize-art img { height:92px; } .campaign-popup-prizes .reward-prize-copy { padding:10px; } .campaign-popup-prizes .reward-prize-name { margin:8px 0 3px; font-size:12px; } .campaign-popup-prizes .reward-prize-detail { font-size:9px; } .campaign-popup-prizes .reward-points { padding:5px 7px; font-size:8px; } .campaign-popup-prizes .reward-prize-place { font-size:8px; } .campaign-popup-foot { align-items:stretch; flex-direction:column; gap:12px; } .campaign-popup-action { width:100%; } }
+        @media (max-width:380px) { .campaign-popup-backdrop { padding:7px; } .campaign-popup-prizes { gap:7px; padding-inline:10px; } .campaign-popup-prizes .reward-prize-meta { align-items:flex-start; flex-direction:column; gap:5px; } .campaign-popup-prizes .reward-prize-art { height:82px; } .campaign-popup-prizes .reward-prize-art img { height:78px; } }
+        @media (prefers-reduced-motion: reduce) { .campaign-popup-backdrop,.campaign-popup,.campaign-popup-status::before { animation:none !important; } }
         .home-referral-campaign {
             position: relative;
             overflow: hidden;
@@ -2259,6 +2283,39 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
                 <button type="button" onclick="closeActiveSessionsModal()" class="py-2 bg-slate-800 text-slate-300 border border-slate-700 font-bold rounded-xl text-xs">إغلاق</button>
             </div>
         </div>
+    </div>
+
+    <div id="rewardsCampaignModal" class="campaign-popup-backdrop hide" role="dialog" aria-modal="true" aria-labelledby="rewardsCampaignModalTitle" aria-hidden="true" onclick="if(event.target === this) closeRewardsCampaignModal()">
+        <section class="campaign-popup" dir="rtl">
+            <button type="button" class="campaign-popup-close" onclick="closeRewardsCampaignModal()" aria-label="إغلاق نافذة حملة النقاط والمكافآت" title="إغلاق"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+            <header class="campaign-popup-header">
+                <span class="campaign-popup-status">الحملة جارية الآن</span>
+                <h2 id="rewardsCampaignModalTitle" class="campaign-popup-title">نقاطك تقرّبك من جائزتك</h2>
+                <p class="campaign-popup-subtitle">تابع حملة النقاط والمكافآت واكتشف الجوائز الأربع المتاحة للمراكز المتقدمة.</p>
+            </header>
+            <div class="campaign-popup-prizes" aria-label="جوائز الحملة الأربع">
+                <article class="reward-prize-card reward-prize-card--grand">
+                    <div class="reward-prize-art reward-prize-art--gold"><img src="https://aitnews.com/wp-content/uploads/2026/09/Apple-Foldable-iPhone-Plan-780x470.jpg" alt="جائزة iPhone Duo" width="780" height="470" loading="lazy" referrerpolicy="no-referrer"></div>
+                    <div class="reward-prize-copy"><div class="reward-prize-meta"><span class="reward-prize-place">الجائزة الرئيسية</span><span class="reward-points"><i class="fa-solid fa-star" aria-hidden="true"></i> 500 نقطة</span></div><h3 class="reward-prize-name">iPhone Duo</h3><p class="reward-prize-detail">هاتف iPhone Duo القابل للطي.</p></div>
+                </article>
+                <article class="reward-prize-card reward-prize-card--galaxy">
+                    <div class="reward-prize-art reward-prize-art--cyan"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRdUBwnWFymDuYAsjmLsyxk3if6bUYsP3Ixdfbvu5lHXaoW3ALUetRwOZg&amp;s=10" alt="جائزة Samsung Galaxy" width="678" height="452" loading="lazy" referrerpolicy="no-referrer"></div>
+                    <div class="reward-prize-copy"><div class="reward-prize-meta"><span class="reward-prize-place">الجائزة الثانية</span><span class="reward-points"><i class="fa-solid fa-star" aria-hidden="true"></i> 350 نقطة</span></div><h3 class="reward-prize-name">Samsung Galaxy</h3><p class="reward-prize-detail">S26 أو S25 Ultra، بحسب التوفر.</p></div>
+                </article>
+                <article class="reward-prize-card reward-prize-card--xiaomi">
+                    <div class="reward-prize-art reward-prize-art--violet"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTppIx-NvZGPMVl_Aj2GRPP0G6Ocaby2xFvHPCQRxM3NsnN6inQyxIWLj8&amp;s=10" alt="جائزة هاتف Xiaomi" width="414" height="483" loading="lazy" referrerpolicy="no-referrer"></div>
+                    <div class="reward-prize-copy"><div class="reward-prize-meta"><span class="reward-prize-place">الجائزة الثالثة</span><span class="reward-points"><i class="fa-solid fa-star" aria-hidden="true"></i> 200 نقطة</span></div><h3 class="reward-prize-name">هاتف Xiaomi</h3><p class="reward-prize-detail">بقيمة معلنة قدرها 350 دولارًا.</p></div>
+                </article>
+                <article class="reward-prize-card reward-prize-card--cash">
+                    <div class="reward-prize-art reward-prize-art--cash"><span class="reward-cash-visual" aria-hidden="true"><i class="fa-solid fa-coins"></i></span></div>
+                    <div class="reward-prize-copy"><div class="reward-prize-meta"><span class="reward-prize-place">المراكز 4–10</span><span class="reward-points">حسب النقاط</span></div><h3 class="reward-prize-name">مكافآت مالية</h3><p class="reward-prize-detail">قابلة للسحب وفق شروط الحملة.</p></div>
+                </article>
+            </div>
+            <footer class="campaign-popup-foot">
+                <p><i class="fa-solid fa-circle-info ml-1 text-amber-300" aria-hidden="true"></i> تُحتسب نقاط الإحالات المباشرة عند نجاح التفعيل المدفوع. تخضع أهلية الفوز وتسليم الجوائز لشروط الحملة ومراجعة الإدارة.</p>
+                <button type="button" class="campaign-popup-action" onclick="closeRewardsCampaignModal()">متابعة إلى حسابي <i class="fa-solid fa-arrow-left mr-1" aria-hidden="true"></i></button>
+            </footer>
+        </section>
     </div>
 
     <!-- 7. التوست التنبيهي (Toast Notification) -->

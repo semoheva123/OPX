@@ -887,6 +887,7 @@ async function handleLogin(e) {
         if(res.ok && data.token) {
             localStorage.setItem('token', data.token);
             showToast('تم تسجيل الدخول بنجاح. مرحبًا بك في المنصة.');
+            showRewardsCampaignModal(true);
             loadUserProfile();
         } else {
             showToast(data.error || 'تعذّر تسجيل الدخول. التحقق من البيانات ثم حاول مرة أخرى.');
@@ -897,6 +898,25 @@ async function handleLogin(e) {
         btn.disabled = false;
         btn.innerText = 'دخول المنصة';
     }
+}
+
+function showRewardsCampaignModal(force = false) {
+    const modal = document.getElementById('rewardsCampaignModal');
+    if (!modal || !localStorage.getItem('token')) return;
+    try {
+        if (!force && sessionStorage.getItem('operix_rewards_campaign_seen') === '1') return;
+        sessionStorage.setItem('operix_rewards_campaign_seen', '1');
+    } catch (error) { }
+    modal.classList.remove('hide');
+    modal.setAttribute('aria-hidden', 'false');
+    modal.querySelector('.campaign-popup-close')?.focus({ preventScroll: true });
+}
+
+function closeRewardsCampaignModal() {
+    const modal = document.getElementById('rewardsCampaignModal');
+    if (!modal) return;
+    modal.classList.add('hide');
+    modal.setAttribute('aria-hidden', 'true');
 }
 
 async function handleRegister(e) {
@@ -1711,6 +1731,7 @@ async function loadUserProfileInternal() {
             document.getElementById('appView').classList.remove('hide');
             document.getElementById('liveTickerBar').classList.remove('hide');
             document.getElementById('appNavBar').classList.remove('hide');
+            showRewardsCampaignModal();
             maybeShowOnboarding();
             try {
                 startNotificationPolling();
