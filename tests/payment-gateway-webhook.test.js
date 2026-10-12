@@ -12,11 +12,11 @@ const nowPayments = require('../src/services/paymentGatewayService');
 
 async function main() {
   assert.equal(nowPayments.formatUsdtAmount('12.34'), '12.3400');
-  assert.equal(nowPayments.calculateDepositBonus('10'), '0.1000');
-  assert.equal(nowPayments.calculateDepositCredit('10'), '10.1000');
-  assert.equal(nowPayments.calculateDepositBonus('10.5555'), '0.1056', 'the 1% bonus must round to four USDT decimal places');
-  assert.equal(nowPayments.calculateDepositCredit('10.5555'), '10.6611');
-  assert.equal(nowPayments.calculateDepositBonus('1000000'), '10000.0000');
+  assert.equal(nowPayments.calculateDepositSurcharge('100'), '1.0000');
+  assert.equal(nowPayments.calculateDepositCharge('100'), '101.0000');
+  assert.equal(nowPayments.calculateDepositSurcharge('10.5555'), '0.1056', 'the 1% surcharge must round to four USDT decimal places');
+  assert.equal(nowPayments.calculateDepositCharge('10.5555'), '10.6611');
+  assert.equal(nowPayments.calculateDepositSurcharge('1000000'), '10000.0000');
   assert.throws(() => nowPayments.formatUsdtAmount('0.5'), /INVALID_DEPOSIT_AMOUNT/);
   assert.throws(() => nowPayments.formatUsdtAmount('1.12345'), /INVALID_DEPOSIT_AMOUNT/);
 
@@ -52,7 +52,7 @@ async function main() {
   const walletControllerSource = fs.readFileSync(path.join(__dirname, '../src/controllers/walletController.js'), 'utf8');
   const tronDepositServiceSource = fs.readFileSync(path.join(__dirname, '../src/services/tronDepositService.js'), 'utf8');
   const migration = fs.readFileSync(path.join(__dirname, '../supabase/nowpayments-trc20-deposits.sql'), 'utf8');
-  const bonusMigration = fs.readFileSync(path.join(__dirname, '../supabase/nowpayments-deposit-bonus.sql'), 'utf8');
+  const surchargeMigration = fs.readFileSync(path.join(__dirname, '../supabase/nowpayments-deposit-surcharge.sql'), 'utf8');
   const appSource = fs.readFileSync(path.join(__dirname, '../app.js'), 'utf8');
   const indexSource = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
   const premiumStyles = fs.readFileSync(path.join(__dirname, '../styles/operix-premium.css'), 'utf8');
@@ -63,16 +63,16 @@ async function main() {
   assert.doesNotMatch(walletControllerSource, /ensureUserDepositAddress\(req\.user\.id\)/);
   assert.match(tronDepositServiceSource, /reason: 'NOWPAYMENTS_ONLY'/);
   assert.match(migration, /operix_nowpayments_deposit_credit_atomic/);
-  assert.match(migration, /transaction_id uuid unique/);
-  assert.match(migration, /bonus_amount numeric\(18,4\)/);
-  assert.match(bonusMigration, /round\(order_row\.price_amount \* 0\.01, 4\)/);
-  assert.match(bonusMigration, /source, reference_id, notes, metadata/);
-  assert.match(bonusMigration, /bonus_transaction_id/);
-  assert.match(bonusMigration, /if order_row\.transaction_id is not null[\s\S]*?'duplicate', true/);
-  assert.match(walletControllerSource, /bonusAmount,[\s\S]*?creditAmount,/);
+  assert.match(migration, /surcharge_amount numeric\(18,4\)/);
+  assert.match(surchargeMigration, /round\(p_price_amount\*0\.01,4\)/);
+  assert.match(surchargeMigration, /charges 101 USD, wallet credits 100 USDT/i);
+  assert.match(surchargeMigration, /creditAmount',order_row\.price_amount/);
+  assert.match(surchargeMigration, /deposit_fee_income/);
+  assert.match(surchargeMigration, /if order_row\.transaction_id is not null[\s\S]*?'duplicate',true/);
+  assert.match(walletControllerSource, /surchargeAmount,[\s\S]*?chargeAmount,/);
   assert.match(indexSource, /id="depositNetworkInstructions"/);
-  assert.match(appSource, /مكافأة 1% إلى رصيد الأرباح/);
-  assert.match(indexSource, /id="nowPaymentsBonusAmount"/);
+  assert.match(appSource, /رسم 1%/);
+  assert.match(indexSource, /nowPaymentsSurchargeAmount/);
   assert.match(premiumStyles, /#depositModal > \.deposit-modal-shell[\s\S]*?overflow-y:\s*auto\s*!important/);
 
   const originalFetch = global.fetch;
@@ -86,18 +86,22 @@ async function main() {
     sentRequest = { url, options };
     return {
       ok: true,
-      json: async () => ({ payment_id: 123456, pay_address: 'TQ3eH3h2fD1bA7fE8uQnHh1JkL9a9Fj4zr', pay_amount: '25.61000000', pay_currency: 'usdttrc20', price_currency: 'usd', payment_status: 'waiting' })
+      json: async () => ({ payment_id: 123456, pay_address: 'TQ3eH3h2fD1bA7fE8uQnHh1JkL9a9Fj4zr', pay_amount: '25.75500000', price_amount: 25.755, pay_currency: 'usdttrc20', price_currency: 'usd', payment_status: 'waiting' })
     };
   };
   try {
     const payment = await nowPayments.createPayment({ userId, amount: '25.5' });
     assert.equal(payment.paymentId, '123456');
-    assert.equal(payment.payAmount, '25.61000000');
+    assert.equal(payment.depositAmount, '25.5000');
+    assert.equal(payment.surchargeAmount, '0.2550');
+    assert.equal(payment.chargeAmount, '25.7550');
+    assert.equal(payment.payAmount, '25.75500000');
     assert.equal(sentRequest.url, 'https://api.nowpayments.io/v1/payment');
     assert.equal(sentRequest.options.headers['x-api-key'], 'test-api-key');
     const body = JSON.parse(sentRequest.options.body);
     assert.equal(body.pay_currency, 'usdttrc20');
     assert.equal(body.price_currency, 'usd');
+    assert.equal(body.price_amount, 25.755, 'NOWPayments must charge deposit principal plus the 1% surcharge');
     assert.equal(body.ipn_callback_url, 'https://operix.example/api/wallet/deposit/nowpayments/ipn');
     assert.ok(body.order_id.length <= 64);
     assert.equal(nowPayments.verifySignedOrderId(body.order_id).userId, userId);

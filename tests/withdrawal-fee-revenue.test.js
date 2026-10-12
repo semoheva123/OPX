@@ -31,6 +31,13 @@ const fullyLedgeredSummary = calculateFinancialAccounting({
 });
 assert.equal(fullyLedgeredSummary.period.withdrawalFeeIncome, 15, 'explicit revenue rows are the accounting source when present');
 
+const depositSurchargeSummary = calculateFinancialAccounting({
+  transactions: [{ id: 'deposit-1', type: 'deposit', status: 'approved', amount: 100, createdAt: '2026-10-08T12:00:00.000Z' }],
+  ledger: [{ id: 'deposit-fee-1', type: 'deposit_fee_income', status: 'approved', amount: 1, source: 'nowpayments_deposit_surcharge', referenceId: 'deposit-1' }],
+  periodDays: 30
+});
+assert.equal(depositSurchargeSummary.period.depositSurchargeIncome, 1, 'deposit surcharge must be reported as income, separately from the credited principal');
+
 const migration = fs.readFileSync(path.join(__dirname, '..', 'supabase', 'withdrawal-fee-revenue.sql'), 'utf8');
 assert.match(migration, /financial_ledger_withdrawal_fee_revenue_ref_idx/i, 'fee revenue ledger entries are unique per withdrawal');
 assert.match(migration, /tx\.type='withdraw' and tx\.status='approved' and tx\.fee_amount>0/i, 'previously approved withdrawal fees are backfilled');

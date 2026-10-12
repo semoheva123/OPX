@@ -42,16 +42,16 @@ function formatUsdtUnits(units) {
   return `${units / 10000n}.${String(units % 10000n).padStart(4, '0')}`;
 }
 
-function calculateDepositBonus(value) {
-  // Round the 1% bonus to the wallet's four-decimal USDT precision.
+function calculateDepositSurcharge(value) {
+  // Round the additional 1% payment charge to four decimal places.
   const principalUnits = usdtToUnits(formatUsdtAmount(value));
   return formatUsdtUnits((principalUnits + 50n) / 100n);
 }
 
-function calculateDepositCredit(value) {
+function calculateDepositCharge(value) {
   const principalUnits = usdtToUnits(formatUsdtAmount(value));
-  const bonusUnits = (principalUnits + 50n) / 100n;
-  return formatUsdtUnits(principalUnits + bonusUnits);
+  const surchargeUnits = (principalUnits + 50n) / 100n;
+  return formatUsdtUnits(principalUnits + surchargeUnits);
 }
 
 function createSignedOrderId(userId, amount) {
@@ -123,8 +123,10 @@ async function createPayment({ userId, amount }) {
   if (!config.apiKey) throw new Error('NOWPAYMENTS_API_KEY_NOT_CONFIGURED');
   if (!config.ipnSecret) throw new Error('NOWPAYMENTS_IPN_SECRET_NOT_CONFIGURED');
   if (!isNowPaymentsReady(config)) throw new Error('NOWPAYMENTS_CONFIGURATION_INCOMPLETE');
-  const priceAmount = formatUsdtAmount(amount);
-  const orderId = createSignedOrderId(userId, priceAmount);
+  const depositAmount = formatUsdtAmount(amount);
+  const surchargeAmount = calculateDepositSurcharge(depositAmount);
+  const chargeAmount = calculateDepositCharge(depositAmount);
+  const orderId = createSignedOrderId(userId, depositAmount);
   const response = await fetch(`${API_BASE_URL}/payment`, {
     method: 'POST',
     headers: {
@@ -132,7 +134,7 @@ async function createPayment({ userId, amount }) {
       'x-api-key': config.apiKey
     },
     body: JSON.stringify({
-      price_amount: Number(priceAmount),
+      price_amount: Number(chargeAmount),
       price_currency: 'usd',
       pay_currency: PAYMENT_CURRENCY,
       ipn_callback_url: config.callbackUrl,
@@ -145,14 +147,17 @@ async function createPayment({ userId, amount }) {
     const detail = String(data.message || data.msg || data.error || '').slice(0, 240);
     throw new Error(detail ? `NOWPAYMENTS_CREATE_PAYMENT_FAILED:${detail}` : 'NOWPAYMENTS_CREATE_PAYMENT_FAILED');
   }
-  if (!data.payment_id || !data.pay_address || !data.pay_amount || String(data.pay_currency || '').toLowerCase() !== PAYMENT_CURRENCY) {
+  if (!data.payment_id || !data.pay_address || !data.pay_amount || String(data.pay_currency || '').toLowerCase() !== PAYMENT_CURRENCY ||
+      (data.price_amount !== undefined && formatUsdtAmount(data.price_amount) !== chargeAmount)) {
     throw new Error('NOWPAYMENTS_INVALID_PAYMENT_RESPONSE');
   }
   return {
     paymentId: String(data.payment_id),
     orderId,
     userId: String(userId),
-    priceAmount,
+    depositAmount,
+    surchargeAmount,
+    chargeAmount,
     priceCurrency: String(data.price_currency || 'usd').toLowerCase(),
     payAmount: String(data.pay_amount),
     payCurrency: PAYMENT_CURRENCY,
@@ -188,8 +193,8 @@ module.exports = {
   getNowPaymentsConfig,
   isNowPaymentsReady,
   formatUsdtAmount,
-  calculateDepositBonus,
-  calculateDepositCredit,
+  calculateDepositSurcharge,
+  calculateDepositCharge,
   createSignedOrderId,
   verifySignedOrderId,
   verifyIpnSignature,

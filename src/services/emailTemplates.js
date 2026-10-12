@@ -206,19 +206,17 @@ function withdrawalRequestTemplate({ amount, transactionId, walletAddress, reque
   });
 }
 
-function depositConfirmedTemplate({ amount, bonusAmount = '0', totalAmount = amount, transactionId, txHash, creditedAt }) {
+function depositConfirmedTemplate({ amount, transactionId, txHash, creditedAt }) {
   return renderEmailTemplate({
     title: 'تم تأكيد إيداع USDT',
-    preheader: `تمت إضافة ${totalAmount} USDT إلى رصيد حسابك، منها مكافأة ${bonusAmount} USDT`,
+    preheader: `تمت إضافة ${amount} USDT إلى رصيد حسابك`,
     heading: 'تم تأكيد الإيداع بنجاح',
-    description: `تم تأكيد تحويلك على شبكة TRC20. أضيف مبلغ الإيداع ${amount} USDT إلى رصيد الإيداع، ومكافأة 1% بقيمة ${bonusAmount} USDT إلى رصيد الأرباح.`,
+    description: `تم تأكيد تحويلك على شبكة TRC20 وإضافة ${amount} USDT إلى رصيد الإيداع في حسابك على OPERIX.`,
     actionText: 'فتح حسابي',
     actionUrl: `${process.env.APP_URL || 'https://operix.website'}/`,
-    highlightTitle: 'إجمالي الرصيد المضاف',
-    highlightValue: `${totalAmount} USDT`,
+    highlightTitle: 'المبلغ المضاف إلى الحساب',
+    highlightValue: `${amount} USDT`,
     details: [
-      { label: 'مبلغ الإيداع', value: `${amount} USDT` },
-      { label: 'مكافأة الإيداع 1%', value: `${bonusAmount} USDT` },
       { label: 'رقم العملية', value: transactionId },
       { label: 'الشبكة', value: 'TRC20' },
       { label: 'هاش التحويل', value: txHash },

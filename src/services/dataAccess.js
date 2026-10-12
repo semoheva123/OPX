@@ -8,6 +8,7 @@ const modelMap = {
   SecurityEvent: { table: 'security_events' },
   Transaction: { table: 'transactions' },
   WithdrawalPayout: { table: 'withdrawal_payouts' },
+  NowPaymentsDepositOrder: { table: 'nowpayments_deposit_orders' },
   TronDepositAddress: { table: 'tron_deposit_addresses' },
   FinancialLedger: { table: 'financial_ledger' },
   VipLevel: { table: 'vip_levels' },
@@ -40,6 +41,17 @@ const modelMap = {
 function isSupabaseRuntime() {
   const mode = (getDatabaseMode() || '').toLowerCase();
   return mode === 'supabase' || mode === 'hybrid';
+}
+
+async function isNowPaymentsSurchargeSchemaReady() {
+  if (!supabaseAdmin || !isSupabaseRuntime()) return false;
+  try {
+    const { error } = await supabaseAdmin.from('nowpayments_deposit_orders')
+      .select('surcharge_amount,charge_amount').limit(0);
+    return !error;
+  } catch {
+    return false;
+  }
 }
 
 function toSnakeCaseKey(key) {
@@ -415,12 +427,14 @@ const createRepository = (name) => {
 
 const dataAccess = {
   isSupabaseRuntime,
+  isNowPaymentsSurchargeSchemaReady,
   callSupabaseRpc,
   emailBroadcast: createRepository('EmailBroadcast'),
   emailBroadcastRecipient: createRepository('EmailBroadcastRecipient'),
   emailVerificationReminderCampaign: createRepository('EmailVerificationReminderCampaign'),
   emailVerificationReminderRecipient: createRepository('EmailVerificationReminderRecipient'),
   withdrawalPayout: createRepository('WithdrawalPayout'),
+  nowPaymentsDepositOrder: createRepository('NowPaymentsDepositOrder'),
   tronDepositAddress: createRepository('TronDepositAddress'),
   user: {
     async findByEmail(email) {

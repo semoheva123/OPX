@@ -136,23 +136,19 @@ function formatDepositReceiptAmount(value) {
   return amount.toFixed(6).replace(/\.?0+$/, '');
 }
 
-async function sendDepositConfirmationEmail(resend, userId, transaction, bonusAmount = '0') {
+async function sendDepositConfirmationEmail(resend, userId, transaction) {
   if (!resend?.emails?.send || !emailFrom || !transaction?.id || !transaction?.txHash) return { sent: false, reason: 'EMAIL_PROVIDER_NOT_CONFIGURED' };
   try {
     const user = await dataAccess.user.findById(userId);
     if (!user?.email || !user.emailVerified) return { sent: false, reason: 'VERIFIED_EMAIL_REQUIRED' };
     const amount = formatDepositReceiptAmount(transaction.amount);
     if (!amount) return { sent: false, reason: 'INVALID_DEPOSIT_RECEIPT_AMOUNT' };
-    const bonus = formatDepositReceiptAmount(bonusAmount) || '0';
-    const totalAmount = formatDepositReceiptAmount(Number(amount) + Number(bonus));
     const result = await resend.emails.send({
       from: emailFrom,
       to: user.email,
       subject: 'تم تأكيد إيداع USDT في حسابك - OPERIX',
       html: depositConfirmedTemplate({
         amount,
-        bonusAmount: bonus,
-        totalAmount,
         transactionId: transaction.id,
         txHash: transaction.txHash,
         creditedAt: transaction.createdAt ? new Date(transaction.createdAt).toLocaleString('ar') : new Date().toLocaleString('ar')

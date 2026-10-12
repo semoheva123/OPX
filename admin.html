@@ -1004,6 +1004,7 @@ body.modal-open{overflow:hidden}
                     <div class="grid grid-cols-2 xl:grid-cols-4 gap-2 mb-4">
                         ${moneyTile('إيداعات مؤكدة', period.verifiedDepositInflow, 'text-emerald-300', 'fa-solid fa-circle-arrow-down', `${formatCount(period.depositCount)} عملية`)}
                         ${moneyTile('مسحوبات منفذة', period.confirmedWithdrawalCash, 'text-amber-300', 'fa-solid fa-circle-arrow-up', `${formatCount(period.paidWithdrawalCount)} عملية`)}
+                        ${moneyTile('رسوم الإيداع', period.depositSurchargeIncome, 'text-emerald-300', 'fa-solid fa-percent', 'رسم إضافي 1%')}
                         ${moneyTile('رسوم السحب', period.withdrawalFeeIncome, 'text-cyan-300', 'fa-solid fa-percent', 'إيراد رسوم مسجل')}
                         ${moneyTile('عمليات الترقية', period.tierRevenueUsdt, 'text-violet-300', 'fa-solid fa-layer-group', `${formatCount(period.tierActivationCount)} عملية`)}
                     </div>

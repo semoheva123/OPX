@@ -42,7 +42,7 @@ async function checkSupabaseConnection() {
   if (error) return { configured: true, reachable: false, error: error.message, financialSchema };
 
   const depositTables = [
-    { table: 'nowpayments_deposit_orders', requiredColumns: 'payment_id,order_id,user_id,price_amount,pay_amount,pay_currency,pay_address,payment_status,transaction_id,bonus_amount,bonus_transaction_id,tx_hash,actual_paid,credited_at' }
+    { table: 'nowpayments_deposit_orders', requiredColumns: 'payment_id,order_id,user_id,price_amount,surcharge_amount,charge_amount,pay_amount,pay_currency,pay_address,payment_status,transaction_id,tx_hash,actual_paid,credited_at' }
   ];
   const depositChecks = await Promise.all(depositTables.map(async ({ table, requiredColumns }) => ({
     table,

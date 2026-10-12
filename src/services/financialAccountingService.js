@@ -45,6 +45,11 @@ function calculateFinancialAccounting({ transactions = [], users = [], vaults = 
   const withdrawalFeeIncome = withdrawalFeeEntries.reduce((sum, entry) => sum + amount(entry.amount), 0) +
     withdrawals.filter(transaction => !recordedWithdrawalFeeReferences.has(String(transaction.id || transaction._id || '')))
       .reduce((sum, transaction) => sum + amount(transaction.feeAmount), 0);
+  const depositSurchargeEntries = ledger.filter(entry => entry.source === 'nowpayments_deposit_surcharge' && entry.status === 'approved');
+  const recordedDepositSurchargeReferences = new Set(depositSurchargeEntries.map(entry => String(entry.referenceId || '')).filter(Boolean));
+  const depositSurchargeIncome = depositSurchargeEntries.reduce((sum, entry) => sum + amount(entry.amount), 0) +
+    deposits.filter(transaction => transaction.depositSurchargeAmount !== undefined && !recordedDepositSurchargeReferences.has(String(transaction.id || transaction._id || '')))
+      .reduce((sum, transaction) => sum + amount(transaction.depositSurchargeAmount), 0);
   const tierRevenueUsdt = tierActivations.reduce((sum, transaction) => sum + amount(transaction.usdtAmount), 0);
   const tierOpxUnits = tierActivations.reduce((sum, transaction) => sum + amount(transaction.opxAmount), 0);
   const rewardCreditsUsdt = rewards.reduce((sum, transaction) => sum + amount(transaction.usdtAmount), 0);
@@ -52,7 +57,7 @@ function calculateFinancialAccounting({ transactions = [], users = [], vaults = 
   const vaultIncentivesRealized = ledger
     .filter(entry => entry.type === 'vault_release' && entry.status === 'approved')
     .reduce((sum, entry) => sum + amount(entry.metadata?.incentiveAmount), 0);
-  const estimatedContribution = tierRevenueUsdt + withdrawalFeeIncome - rewardCreditsUsdt - vaultIncentivesRealized;
+  const estimatedContribution = tierRevenueUsdt + withdrawalFeeIncome + depositSurchargeIncome - rewardCreditsUsdt - vaultIncentivesRealized;
 
   const days = new Map();
   transactions.forEach(transaction => {
@@ -74,6 +79,7 @@ function calculateFinancialAccounting({ transactions = [], users = [], vaults = 
       confirmedWithdrawalGross,
       confirmedWithdrawalCash,
       withdrawalFeeIncome,
+      depositSurchargeIncome,
       tierRevenueUsdt,
       tierOpxUnits,
       rewardCreditsUsdt,

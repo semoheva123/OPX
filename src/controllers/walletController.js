@@ -262,6 +262,7 @@ async function getDepositConfig(req, res) {
   try {
     const nowPaymentsConfig = paymentGatewayService.getNowPaymentsConfig();
     if (!paymentGatewayService.isNowPaymentsReady(nowPaymentsConfig)) return res.status(503).json({ success: false, provider: 'NOWPayments', error: 'بوابة NOWPayments غير جاهزة حاليًا؛ لا ترسل أي تحويل مباشر.' });
+    if (!await dataAccess.isNowPaymentsSurchargeSchemaReady()) return res.status(503).json({ success: false, provider: 'NOWPayments', error: 'تحديث رسم الإيداع قيد التجهيز؛ حاول بعد قليل.' });
     return res.json({ success: true, network: 'TRC20', provider: 'NOWPayments', paymentRequired: true, verification: 'ipn' });
   } catch (error) {
     console.error('NOWPayments deposit configuration failed:', error.message);
@@ -272,14 +273,15 @@ async function getDepositConfig(req, res) {
 async function createNowPaymentsDeposit(req, res) {
   try {
     if (!dataAccess.isSupabaseRuntime()) return res.status(503).json({ success: false, error: 'خدمة الإيداع تتطلب قاعدة بيانات Supabase.' });
+    if (!await dataAccess.isNowPaymentsSurchargeSchemaReady()) return res.status(503).json({ success: false, error: 'تحديث رسم الإيداع قيد التجهيز؛ لم يتم إنشاء طلب دفع.' });
     const { apiKey, ipnSecret } = paymentGatewayService.getNowPaymentsConfig();
     if (!apiKey) return res.status(503).json({ success: false, error: 'لم يتم إعداد بوابة NOWPayments بعد.' });
     if (!ipnSecret) return res.status(503).json({ success: false, error: 'يلزم إعداد NOWPAYMENTS_IPN_SECRET قبل إنشاء طلب إيداع.' });
     if (!paymentGatewayService.isNowPaymentsReady()) return res.status(503).json({ success: false, error: 'يلزم إعداد رابط HTTPS ومفتاح توقيع الطلب قبل إنشاء طلب الإيداع.' });
 
     const priceAmount = paymentGatewayService.formatUsdtAmount(req.body?.amount);
-    const bonusAmount = paymentGatewayService.calculateDepositBonus(priceAmount);
-    const creditAmount = paymentGatewayService.calculateDepositCredit(priceAmount);
+    const surchargeAmount = paymentGatewayService.calculateDepositSurcharge(priceAmount);
+    const chargeAmount = paymentGatewayService.calculateDepositCharge(priceAmount);
     const payment = await paymentGatewayService.createPayment({ userId: req.user.id, amount: priceAmount });
     if (!TronWeb.isAddress(payment.payAddress)) throw new Error('NOWPAYMENTS_INVALID_TRON_ADDRESS');
 
@@ -287,7 +289,9 @@ async function createNowPaymentsDeposit(req, res) {
       p_payment_id: payment.paymentId,
       p_order_id: payment.orderId,
       p_user_id: payment.userId,
-      p_price_amount: payment.priceAmount,
+      p_price_amount: payment.depositAmount,
+      p_surcharge_amount: payment.surchargeAmount,
+      p_charge_amount: payment.chargeAmount,
       p_pay_amount: payment.payAmount,
       p_pay_currency: payment.payCurrency,
       p_pay_address: payment.payAddress
@@ -302,9 +306,9 @@ async function createNowPaymentsDeposit(req, res) {
       address: payment.payAddress,
       payAmount: payment.payAmount,
       payCurrency: payment.payCurrency,
-      depositAmount: payment.priceAmount,
-      bonusAmount,
-      creditAmount,
+      depositAmount: payment.depositAmount,
+      surchargeAmount,
+      chargeAmount,
       priceCurrency: payment.priceCurrency,
       qrCode,
       status: payment.paymentStatus
@@ -345,9 +349,16 @@ async function handleNowPaymentsIpn(req, res) {
     if (String(payment.price_currency || '').toLowerCase() !== 'usd') throw new Error('NOWPAYMENTS_PRICE_CURRENCY_MISMATCH');
     if (!TronWeb.isAddress(String(payment.pay_address || ''))) throw new Error('NOWPAYMENTS_INVALID_TRON_ADDRESS');
 
-    const expectedPrice = paymentGatewayService.formatUsdtAmount(order.amount);
+    const expectedDepositAmount = paymentGatewayService.formatUsdtAmount(order.amount);
     const receivedPrice = paymentGatewayService.formatUsdtAmount(payment.price_amount);
-    if (expectedPrice !== receivedPrice) throw new Error('NOWPAYMENTS_PRICE_AMOUNT_MISMATCH');
+    const storedOrder = await dataAccess.nowPaymentsDepositOrder.findOne({ paymentId });
+    const isLegacyOrder = Number(storedOrder?.surchargeAmount || 0) === 0;
+    const expectedChargeAmount = isLegacyOrder ? expectedDepositAmount : paymentGatewayService.calculateDepositCharge(expectedDepositAmount);
+    if (!storedOrder || expectedDepositAmount !== paymentGatewayService.formatUsdtAmount(storedOrder.priceAmount) ||
+      receivedPrice !== paymentGatewayService.formatUsdtAmount(storedOrder.chargeAmount) ||
+      expectedChargeAmount !== paymentGatewayService.formatUsdtAmount(storedOrder.chargeAmount)) {
+      throw new Error('NOWPAYMENTS_PRICE_AMOUNT_MISMATCH');
+    }
     if (String(payment.order_id) !== String(payload.order_id)) throw new Error('NOWPAYMENTS_IPN_ORDER_MISMATCH');
     if (String(payload.pay_currency || '').toLowerCase() !== paymentGatewayService.PAYMENT_CURRENCY) throw new Error('NOWPAYMENTS_IPN_CURRENCY_MISMATCH');
     if (String(payload.pay_address || '') !== String(payment.pay_address || '')) throw new Error('NOWPAYMENTS_IPN_ADDRESS_MISMATCH');
@@ -365,7 +376,8 @@ async function handleNowPaymentsIpn(req, res) {
       p_payment_status: String(payment.payment_status),
       p_pay_currency: String(payment.pay_currency),
       p_pay_address: String(payment.pay_address),
-      p_price_amount: expectedPrice,
+      p_price_amount: expectedDepositAmount,
+      p_charge_amount: receivedPrice,
       p_actually_paid: actualPaid,
       p_tx_hash: paymentGatewayService.getPaymentTxHash(payment) || paymentGatewayService.buildPaymentReference(paymentId)
     });
@@ -382,10 +394,10 @@ async function handleNowPaymentsIpn(req, res) {
 
     const resend = req.app?.locals?.resend;
     if (paymentGatewayService.getPaymentTxHash(payment)) {
-      await tronDepositService.sendDepositConfirmationEmail(resend, order.userId, credit.transaction, credit.bonusAmount);
+      await tronDepositService.sendDepositConfirmationEmail(resend, order.userId, credit.transaction);
     }
 
-    return res.status(200).json({ success: true, message: `NOWPayments deposit credited with a ${credit.bonusAmount || '0.0000'} USDT bonus.`, paymentId, bonusAmount: credit.bonusAmount || '0.0000', creditAmount: credit.creditAmount, transaction: credit.transaction, bonusTransaction: credit.bonusTransaction });
+    return res.status(200).json({ success: true, message: `NOWPayments deposit credited ${credit.creditAmount} USDT after a ${credit.surchargeAmount} USDT surcharge.`, paymentId, surchargeAmount: credit.surchargeAmount, chargeAmount: credit.chargeAmount, creditAmount: credit.creditAmount, transaction: credit.transaction });
   } catch (error) {
     console.error('NOWPayments IPN processing failed:', error.message);
     return res.status(500).json({ success: false, error: 'NOWPAYMENTS_IPN_PROCESSING_FAILED' });

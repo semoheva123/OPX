@@ -174,7 +174,7 @@ async function mapTransactionToSupabaseRow(doc) {
   return {
     id: stableUuid(doc._id || doc.txHash || `tx:${Date.now()}`),
     user_id: userId,
-    type: ['deposit', 'withdraw', 'reward', 'staking_reward', 'referral_commission', 'upgrade_deduction', 'token_burn', 'vault_lock', 'vault_release', 'vault_early_release', 'vault_penalty', 'admin_adjustment'].includes(doc.type) ? doc.type : 'deposit',
+    type: ['deposit', 'withdraw', 'reward', 'staking_reward', 'referral_commission', 'upgrade_deduction', 'token_burn', 'vault_lock', 'vault_release', 'vault_early_release', 'vault_penalty', 'admin_adjustment', 'withdrawal_fee_income', 'deposit_fee_income'].includes(doc.type) ? doc.type : 'deposit',
     status: ['pending', 'approved', 'rejected'].includes(doc.status) ? doc.status : 'pending',
     amount: safeNumber(doc.amount, 0),
     gross_amount: safeNumber(doc.grossAmount, 0),

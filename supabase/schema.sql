@@ -88,7 +88,7 @@ create table if not exists public.wallet_balances (
 create table if not exists public.financial_ledger (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid not null references public.users(id) on delete cascade,
-  type text not null check (type in ('deposit','withdraw','reward','staking_reward','referral_commission','upgrade_deduction','token_burn','vault_lock','vault_release','vault_early_release','vault_penalty','admin_adjustment','withdrawal_fee_income')),
+  type text not null check (type in ('deposit','withdraw','reward','staking_reward','referral_commission','upgrade_deduction','token_burn','vault_lock','vault_release','vault_early_release','vault_penalty','admin_adjustment','withdrawal_fee_income','deposit_fee_income')),
   currency text not null default 'USDT' check (currency in ('USDT','OPX')),
   amount numeric(18,4) not null default 0,
   fee_amount numeric(18,4) not null default 0,
