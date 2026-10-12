@@ -173,6 +173,42 @@
         @keyframes operixNewsReveal { 0%, 4% { opacity: .35; transform: translateY(3px); } 12%, 88% { opacity: 1; transform: translateY(0); } 96%, 100% { opacity: .35; transform: translateY(-3px); } }
         @media (max-width: 480px) { .operix-news-ticker { gap: 14px; padding-inline: 12px; } .operix-news-label { font-size: 9px; } .operix-news-live { display: none; } .operix-news-message { font-size: 10px; } }
         .operix-mark { position: relative; overflow: hidden; background: linear-gradient(145deg, #ffe1a1 0%, #f7b955 38%, #bb7620 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 12px 28px rgba(247,185,85,.2); }
+        .operix-loader-shell { position: relative; width: 240px; height: 240px; display: grid; place-items: center; filter: drop-shadow(0 38px 80px rgba(247,185,85,.2)); }
+        .operix-loader-stage { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle, rgba(247,185,85,.14), rgba(34,211,238,.08) 34%, rgba(2,6,15,.2) 58%, transparent 72%); filter: blur(26px); }
+        .operix-loader-backdrop { position: absolute; inset: 8% 10%; border-radius: 50%; background: radial-gradient(circle, rgba(247,185,85,.14), rgba(34,211,238,.08) 30%, rgba(15,23,42,.2) 58%, transparent 72%); filter: blur(20px); }
+        .operix-loader-orbit { position: absolute; inset: 0; border: 1px solid rgba(247,185,85,.36); border-radius: 50%; box-shadow: inset 0 0 30px rgba(247,185,85,.08), 0 0 34px rgba(247,185,85,.06); }
+        .operix-loader-orbit.orbit-one { transform: scale(1.12); animation: operixOrbitOne 3.5s ease-in-out infinite; }
+        .operix-loader-orbit.orbit-two { inset: 18px; border-color: rgba(34,211,238,.38); animation: operixOrbitTwo 2.8s ease-in-out infinite reverse; }
+        .operix-loader-orbit.orbit-three { inset: 42px; border-color: rgba(148,163,184,.64); animation: operixOrbitThree 4s linear infinite; }
+        .operix-loader-orbit.orbit-four { inset: 76px; border-color: rgba(255,255,255,.35); animation: operixOrbitFour 3s ease-in-out infinite; }
+        .operix-loader-core {
+            position: relative; z-index: 2; width: 136px; height: 136px; border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.74), rgba(247,185,85,.2) 18%, rgba(12,16,28,.92) 58%, rgba(2,6,15,1) 100%);
+            border: 1px solid rgba(255,255,255,.08); box-shadow: 0 0 0 16px rgba(247,185,85,.05), 0 28px 90px rgba(0,0,0,.58), inset 0 1px 0 rgba(255,255,255,.18);
+            display: grid; place-items: center; overflow: hidden;
+        }
+        .operix-loader-core::before { content: ''; position: absolute; inset: 20px; border-radius: 50%; border: 1px solid rgba(247,185,85,.38); box-shadow: inset 0 0 20px rgba(247,185,85,.2); }
+        .operix-loader-core::after { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,.2), transparent 38%, transparent 60%, rgba(34,211,238,.16)); }
+        .operix-loader-logo {
+            position: relative; z-index: 1; width: 68px; height: 68px; border-radius: 50%;
+            background: linear-gradient(135deg, #fff2c1 0%, #f7b955 35%, #d88d31 100%);
+            color: #0a111b; font-size: 30px; font-weight: 900; display: grid; place-items: center; box-shadow: 0 16px 42px rgba(247,185,85,.34);
+        }
+        .operix-loader-text { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        .operix-loader-label { font-size: 12px; letter-spacing: .26em; font-weight: 900; color: rgba(255,255,255,.96); text-transform: uppercase; }
+        .operix-loader-subtitle { font-size: 13px; color: rgba(203,213,225,.93); font-weight: 600; }
+        .operix-loader-bar { width: min(350px, 78vw); height: 11px; background: rgba(15,23,42,.82); border: 1px solid rgba(148,163,184,.2); border-radius: 999px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(255,255,255,.03); }
+        .operix-loader-progress { display: block; width: 42%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, rgba(255,225,161,.74) 0%, rgba(247,185,85,1) 28%, rgba(34,211,238,.96) 100%); box-shadow: 0 0 22px rgba(247,185,85,.4); animation: operixLoadingProgress 1.9s ease-in-out infinite; }
+        .operix-loader-meta { display: flex; gap: 16px; font-size: 9px; letter-spacing: .18em; font-weight: 800; color: rgba(148,163,184,.88); text-transform: uppercase; }
+        .operix-loader-meta span { opacity: .74; }
+        .operix-loader-meta span:nth-child(1) { color: rgba(110,231,183,.94); }
+        .operix-loader-meta span:nth-child(2) { color: rgba(147,197,253,.94); }
+        .operix-loader-meta span:nth-child(3) { color: rgba(253,224,71,.94); }
+        @keyframes operixOrbitOne { 0%,100% { transform: scale(1.06) rotate(0deg); opacity: .8; } 50% { transform: scale(1.22) rotate(180deg); opacity: 1; } }
+        @keyframes operixOrbitTwo { 0%,100% { transform: scale(.94) rotate(0deg); opacity: .82; } 50% { transform: scale(1.14) rotate(-180deg); opacity: 1; } }
+        @keyframes operixOrbitThree { 0% { transform: rotate(0deg); opacity: .82; } 50% { transform: rotate(180deg); opacity: 1; } 100% { transform: rotate(360deg); opacity: .82; } }
+        @keyframes operixOrbitFour { 0%,100% { transform: scale(0.92) rotate(0deg); opacity: .7; } 50% { transform: scale(1.12) rotate(180deg); opacity: 1; } }
+        @keyframes operixLoadingProgress { 0% { transform: translateX(-105%); } 40% { transform: translateX(35%); } 100% { transform: translateX(110%); } }
         .rewards-campaign { position: relative; isolation: isolate; overflow: hidden; border: 1px solid rgba(247,185,85,.27); border-radius: 30px; padding: clamp(18px,3vw,34px); background: radial-gradient(ellipse at 4% 0%, rgba(139,92,246,.2), transparent 36%), radial-gradient(ellipse at 100% 100%, rgba(6,182,212,.13), transparent 38%), linear-gradient(125deg, #081321 0%, #111629 52%, #091a24 100%); box-shadow: 0 26px 70px rgba(0,0,0,.27), inset 0 1px 0 rgba(255,255,255,.06); }
         .rewards-campaign::before { content: ''; position: absolute; z-index: -1; inset: -65% -25%; background: linear-gradient(105deg, transparent 42%, rgba(255,255,255,.055) 49%, transparent 56%); transform: translateX(-55%) rotate(8deg); animation: rewardsSheen 8s ease-in-out infinite; pointer-events: none; }
         .reward-campaign-heading { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; margin-bottom:22px; }
@@ -1314,9 +1350,30 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
 <div class="tech-grid-bg"></div>
 
     <!-- 1. شاشة التحميل (Loading View) -->
-    <div id="loadingView" class="fixed inset-0 bg-slate-950 z-50 flex flex-col items-center justify-center space-y-4">
-        <div class="w-16 h-16 border-4 border-amber-500/20 border-t-amber-500 rounded-full animate-spin"></div>
-        <span class="text-amber-400 font-bold text-sm tracking-wider">جاري تحميل OPERIX...</span>
+    <div id="loadingView" class="fixed inset-0 bg-slate-950/95 z-50 flex flex-col items-center justify-center gap-5 backdrop-blur-sm">
+        <div class="operix-loader-shell" aria-label="شاشة تحميل OPERIX">
+            <div class="operix-loader-stage"></div>
+            <div class="operix-loader-backdrop"></div>
+            <div class="operix-loader-orbit orbit-one"></div>
+            <div class="operix-loader-orbit orbit-two"></div>
+            <div class="operix-loader-orbit orbit-three"></div>
+            <div class="operix-loader-orbit orbit-four"></div>
+            <div class="operix-loader-core">
+                <div class="operix-loader-logo">O</div>
+            </div>
+        </div>
+        <div class="operix-loader-text">
+            <span class="operix-loader-label">OPERIX</span>
+            <span class="operix-loader-subtitle">جاري تجهيز منصة الحساب...</span>
+        </div>
+        <div class="operix-loader-bar" aria-hidden="true">
+            <span class="operix-loader-progress"></span>
+        </div>
+        <div class="operix-loader-meta" aria-hidden="true">
+            <span>Secure</span>
+            <span>Fast</span>
+            <span>Live</span>
+        </div>
     </div>
 
     <script>
