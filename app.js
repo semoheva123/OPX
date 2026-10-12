@@ -31,6 +31,7 @@ let profileRequestInFlight = null;
 const STARTUP_REQUEST_TIMEOUT = 8000;
 
 function hideLoadingView(delayMs = 900) {
+    document.body.classList.remove('is-booting');
     const loading = document.getElementById('loadingView');
     if (!loading) return;
     if (delayMs > 0) {
