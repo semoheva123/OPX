@@ -1399,7 +1399,6 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
         }
 
         function showGuestLanding() {
-            const loading = document.getElementById('loadingView');
             const intro = document.getElementById('companyIntroView');
             const auth = document.getElementById('authView');
             const app = document.getElementById('appView');
@@ -1407,7 +1406,6 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
             const ticker = document.getElementById('liveTickerBar');
             const hasReferral = new URLSearchParams(window.location.search).has('ref') || localStorage.getItem('operix_ref_code') || localStorage.getItem('ag_ref_code');
 
-            hideLoadingView();
             if (hasReferral) {
                 intro?.classList.add('hide');
                 auth?.classList.remove('hide');
@@ -1422,14 +1420,12 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
         }
 
         function showAuthenticatedShell() {
-            const loading = document.getElementById('loadingView');
             const intro = document.getElementById('companyIntroView');
             const auth = document.getElementById('authView');
             const app = document.getElementById('appView');
             const nav = document.getElementById('appNavBar');
             const ticker = document.getElementById('liveTickerBar');
 
-            hideLoadingView();
             intro?.classList.add('hide');
             auth?.classList.add('hide');
             app?.classList.remove('hide');

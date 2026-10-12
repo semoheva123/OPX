@@ -1707,17 +1707,19 @@ async function loadUserProfile() {
 async function loadUserProfileInternal() {
     const token = localStorage.getItem('token');
     if(!token) {
-        hideLoadingView();
-        const hasReferral = new URLSearchParams(window.location.search).has('ref') || localStorage.getItem('operix_ref_code') || localStorage.getItem('ag_ref_code');
-        const intro = document.getElementById('companyIntroView');
-        const auth = document.getElementById('authView');
-        const appNav = document.getElementById('appNavBar');
-        intro?.classList.toggle('hide', Boolean(hasReferral));
-        auth?.classList.toggle('hide', !hasReferral);
-        if (hasReferral) switchAuthTab('register');
-        document.getElementById('appView')?.classList.add('hide');
-        appNav?.classList.add('hide');
-        document.getElementById('liveTickerBar')?.classList.add('hide');
+        window.setTimeout(() => {
+            hideLoadingView(0);
+            const hasReferral = new URLSearchParams(window.location.search).has('ref') || localStorage.getItem('operix_ref_code') || localStorage.getItem('ag_ref_code');
+            const intro = document.getElementById('companyIntroView');
+            const auth = document.getElementById('authView');
+            const appNav = document.getElementById('appNavBar');
+            intro?.classList.toggle('hide', Boolean(hasReferral));
+            auth?.classList.toggle('hide', !hasReferral);
+            if (hasReferral) switchAuthTab('register');
+            document.getElementById('appView')?.classList.add('hide');
+            appNav?.classList.add('hide');
+            document.getElementById('liveTickerBar')?.classList.add('hide');
+        }, 1800);
         return;
     }
     try {
