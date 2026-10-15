@@ -12,11 +12,18 @@ const nowPayments = require('../src/services/paymentGatewayService');
 
 async function main() {
   assert.equal(nowPayments.formatUsdtAmount('12.34'), '12.3400');
+  assert.equal(nowPayments.calculateDepositSurcharge('50'), '1.0000');
+  assert.equal(nowPayments.calculateDepositCharge('50'), '51.0000', 'a 50 USDT deposit must require exactly 51 USDT');
   assert.equal(nowPayments.calculateDepositSurcharge('100'), '1.0000');
   assert.equal(nowPayments.calculateDepositCharge('100'), '101.0000');
-  assert.equal(nowPayments.calculateDepositSurcharge('10.5555'), '0.1056', 'the 1% surcharge must round to four USDT decimal places');
-  assert.equal(nowPayments.calculateDepositCharge('10.5555'), '10.6611');
-  assert.equal(nowPayments.calculateDepositSurcharge('1000000'), '10000.0000');
+  assert.equal(nowPayments.calculateDepositSurcharge('10.5555'), '1.0000', 'the new fee must stay fixed regardless of the requested principal');
+  assert.equal(nowPayments.calculateDepositCharge('10.5555'), '11.5555');
+  assert.equal(nowPayments.calculateDepositSurcharge('1000000'), '1.0000');
+  assert.equal(nowPayments.calculateLegacyPercentageDepositSurcharge('10.5555'), '0.1056', 'existing percentage-priced orders remain verifiable');
+  assert.equal(nowPayments.calculateDepositChargeWithSurcharge('25.5', '0.2550'), '25.7550', 'existing percentage-priced invoices retain their original total');
+  assert.equal(nowPayments.isSupportedDepositSurcharge('25.5', '0.2550'), true);
+  assert.equal(nowPayments.isSupportedDepositSurcharge('25.5', '1.0000'), true);
+  assert.equal(nowPayments.isSupportedDepositSurcharge('25.5', '0.5000'), false);
   assert.throws(() => nowPayments.formatUsdtAmount('0.5'), /INVALID_DEPOSIT_AMOUNT/);
   assert.throws(() => nowPayments.formatUsdtAmount('1.12345'), /INVALID_DEPOSIT_AMOUNT/);
 
@@ -54,6 +61,7 @@ async function main() {
   const migration = fs.readFileSync(path.join(__dirname, '../supabase/nowpayments-trc20-deposits.sql'), 'utf8');
   const surchargeMigration = fs.readFileSync(path.join(__dirname, '../supabase/nowpayments-deposit-surcharge.sql'), 'utf8');
   const partialPaymentMigration = fs.readFileSync(path.join(__dirname, '../supabase/nowpayments-partial-payment-credit.sql'), 'utf8');
+  const fixedFeeMigration = fs.readFileSync(path.join(__dirname, '../supabase/nowpayments-fixed-deposit-fee.sql'), 'utf8');
   const appSource = fs.readFileSync(path.join(__dirname, '../app.js'), 'utf8');
   const indexSource = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
   const premiumStyles = fs.readFileSync(path.join(__dirname, '../styles/operix-premium.css'), 'utf8');
@@ -74,6 +82,13 @@ async function main() {
     'finished positive partial payments must not be rejected for being below the original quote');
   assert.match(partialPaymentMigration, /intentionally does not\s+-- modify existing orders, wallet balances, or ledger entries/i,
     'the incremental production migration must preserve existing payment orders and balances');
+  assert.match(fixedFeeMigration, /p_surcharge_amount\s*<>\s*1\.0000/i,
+    'the live database must enforce a flat 1 USDT fee for new deposit orders');
+  assert.match(fixedFeeMigration, /p_charge_amount\s*<>\s*p_price_amount\s*\+\s*1\.0000/i,
+    'the database must enforce principal plus exactly 1 USDT');
+  assert.match(fixedFeeMigration, /Existing payment orders and balances are intentionally left unchanged/i);
+  assert.doesNotMatch(fixedFeeMigration, /update\s+public\.nowpayments_deposit_orders/i,
+    'the fixed-fee migration must not rewrite historical or pending orders');
   assert.match(migration, /surcharge_amount numeric\(18,4\)/);
   assert.match(surchargeMigration, /round\(p_price_amount\*0\.01,4\)/);
   assert.match(surchargeMigration, /charges 101 USD, wallet credits 100 USDT/i);
@@ -82,10 +97,12 @@ async function main() {
   assert.match(surchargeMigration, /if order_row\.transaction_id is not null[\s\S]*?'duplicate',true/);
   assert.match(walletControllerSource, /surchargeAmount,[\s\S]*?chargeAmount,/);
   assert.match(indexSource, /id="depositNetworkInstructions"/);
-  assert.match(appSource, /رسم 1%/);
+  assert.match(appSource, /رسمًا ثابتًا قدره \$\{preview\.surchargeAmount\} USDT/);
+  assert.doesNotMatch(appSource, /رسم 1%/);
   assert.match(indexSource, /nowPaymentsSurchargeAmount/);
   assert.match(indexSource, /id="nowPaymentsDepositPreview"/);
-  assert.match(indexSource, /رسم منصة 1%/);
+  assert.match(indexSource, /رسم ثابت قدره 1 USDT/);
+  assert.doesNotMatch(indexSource, /رسم منصة 1%/);
   assert.match(appSource, /function calculateNowPaymentsDepositPreview\(amount\)/);
   const depositLoadFlow = appSource.slice(appSource.indexOf('async function loadDepositAddress()'), appSource.indexOf('async function createNowPaymentsDeposit()'));
   assert.doesNotMatch(depositLoadFlow, /await createNowPaymentsDeposit\(\)/, 'opening the deposit modal must not create a payment before the user reviews the fee and total');
@@ -102,22 +119,22 @@ async function main() {
     sentRequest = { url, options };
     return {
       ok: true,
-      json: async () => ({ payment_id: 123456, pay_address: 'TQ3eH3h2fD1bA7fE8uQnHh1JkL9a9Fj4zr', pay_amount: '25.75500000', price_amount: 25.755, pay_currency: 'usdttrc20', price_currency: 'usd', payment_status: 'waiting' })
+      json: async () => ({ payment_id: 123456, pay_address: 'TQ3eH3h2fD1bA7fE8uQnHh1JkL9a9Fj4zr', pay_amount: '26.50000000', price_amount: 26.5, pay_currency: 'usdttrc20', price_currency: 'usd', payment_status: 'waiting' })
     };
   };
   try {
     const payment = await nowPayments.createPayment({ userId, amount: '25.5' });
     assert.equal(payment.paymentId, '123456');
     assert.equal(payment.depositAmount, '25.5000');
-    assert.equal(payment.surchargeAmount, '0.2550');
-    assert.equal(payment.chargeAmount, '25.7550');
-    assert.equal(payment.payAmount, '25.75500000');
+    assert.equal(payment.surchargeAmount, '1.0000');
+    assert.equal(payment.chargeAmount, '26.5000');
+    assert.equal(payment.payAmount, '26.50000000');
     assert.equal(sentRequest.url, 'https://api.nowpayments.io/v1/payment');
     assert.equal(sentRequest.options.headers['x-api-key'], 'test-api-key');
     const body = JSON.parse(sentRequest.options.body);
     assert.equal(body.pay_currency, 'usdttrc20');
     assert.equal(body.price_currency, 'usd');
-    assert.equal(body.price_amount, 25.755, 'NOWPayments must charge deposit principal plus the 1% surcharge');
+    assert.equal(body.price_amount, 26.5, 'NOWPayments must charge deposit principal plus the fixed 1 USDT fee');
     assert.equal(body.ipn_callback_url, 'https://operix.example/api/wallet/deposit/nowpayments/ipn');
     assert.ok(body.order_id.length <= 64);
     assert.equal(nowPayments.verifySignedOrderId(body.order_id).userId, userId);

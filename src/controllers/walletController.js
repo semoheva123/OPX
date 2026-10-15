@@ -352,9 +352,11 @@ async function handleNowPaymentsIpn(req, res) {
     const expectedDepositAmount = paymentGatewayService.formatUsdtAmount(order.amount);
     const receivedPrice = paymentGatewayService.formatUsdtAmount(payment.price_amount);
     const storedOrder = await dataAccess.nowPaymentsDepositOrder.findOne({ paymentId });
-    const isLegacyOrder = Number(storedOrder?.surchargeAmount || 0) === 0;
-    const expectedChargeAmount = isLegacyOrder ? expectedDepositAmount : paymentGatewayService.calculateDepositCharge(expectedDepositAmount);
-    if (!storedOrder || expectedDepositAmount !== paymentGatewayService.formatUsdtAmount(storedOrder.priceAmount) ||
+    if (!storedOrder) throw new Error('NOWPAYMENTS_ORDER_NOT_FOUND');
+    const storedSurchargeAmount = String(storedOrder.surchargeAmount ?? '0');
+    const expectedChargeAmount = paymentGatewayService.calculateDepositChargeWithSurcharge(expectedDepositAmount, storedSurchargeAmount);
+    if (!paymentGatewayService.isSupportedDepositSurcharge(expectedDepositAmount, storedSurchargeAmount) ||
+      expectedDepositAmount !== paymentGatewayService.formatUsdtAmount(storedOrder.priceAmount) ||
       receivedPrice !== paymentGatewayService.formatUsdtAmount(storedOrder.chargeAmount) ||
       expectedChargeAmount !== paymentGatewayService.formatUsdtAmount(storedOrder.chargeAmount)) {
       throw new Error('NOWPAYMENTS_PRICE_AMOUNT_MISMATCH');

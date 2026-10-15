@@ -43,14 +43,33 @@ function formatUsdtUnits(units) {
 }
 
 function calculateDepositSurcharge(value) {
-  // Round the additional 1% payment charge to four decimal places.
-  const principalUnits = usdtToUnits(formatUsdtAmount(value));
-  return formatUsdtUnits((principalUnits + 50n) / 100n);
+  formatUsdtAmount(value);
+  return '1.0000';
 }
 
 function calculateDepositCharge(value) {
   const principalUnits = usdtToUnits(formatUsdtAmount(value));
-  const surchargeUnits = (principalUnits + 50n) / 100n;
+  return formatUsdtUnits(principalUnits + 10000n);
+}
+
+function calculateLegacyPercentageDepositSurcharge(value) {
+  const principalUnits = usdtToUnits(formatUsdtAmount(value));
+  return formatUsdtUnits((principalUnits + 50n) / 100n);
+}
+
+function isSupportedDepositSurcharge(value, surcharge) {
+  try {
+    const surchargeUnits = usdtToUnits(String(surcharge ?? ''));
+    return surchargeUnits === 0n || surchargeUnits === 10000n ||
+      surchargeUnits === usdtToUnits(calculateLegacyPercentageDepositSurcharge(value));
+  } catch {
+    return false;
+  }
+}
+
+function calculateDepositChargeWithSurcharge(value, surcharge) {
+  const principalUnits = usdtToUnits(formatUsdtAmount(value));
+  const surchargeUnits = usdtToUnits(String(surcharge ?? ''));
   return formatUsdtUnits(principalUnits + surchargeUnits);
 }
 
@@ -195,6 +214,9 @@ module.exports = {
   formatUsdtAmount,
   calculateDepositSurcharge,
   calculateDepositCharge,
+  calculateLegacyPercentageDepositSurcharge,
+  isSupportedDepositSurcharge,
+  calculateDepositChargeWithSurcharge,
   createSignedOrderId,
   verifySignedOrderId,
   verifyIpnSignature,

@@ -3438,7 +3438,7 @@ function calculateNowPaymentsDepositPreview(amount) {
     const [whole, fraction = ''] = text.split('.');
     const principalUnits = BigInt(whole) * 10000n + BigInt(fraction.padEnd(4, '0'));
     if (principalUnits < 10000n || principalUnits > 10000000000n) return null;
-    const surchargeUnits = (principalUnits + 50n) / 100n;
+    const surchargeUnits = 10000n;
     const formatUnits = units => `${units / 10000n}.${String(units % 10000n).padStart(4, '0')}`;
     return {
         depositAmount: formatUnits(principalUnits),
@@ -3458,7 +3458,7 @@ function updateNowPaymentsDepositPreview() {
     if (surchargeAmount) surchargeAmount.textContent = preview?.surchargeAmount || '—';
     if (chargeAmount) chargeAmount.textContent = preview?.chargeAmount || '—';
     if (status) status.textContent = preview
-        ? `إجمالي الفاتورة يشمل رسم 1% (${preview.surchargeAmount} USDT). لن يتم إرسال الأموال عند إنشاء الطلب؛ راجع عنوان الدفع والمبلغ قبل التحويل.`
+        ? `إجمالي الفاتورة يشمل رسمًا ثابتًا قدره ${preview.surchargeAmount} USDT. لن يتم إرسال الأموال عند إنشاء الطلب؛ راجع عنوان الدفع والمبلغ قبل التحويل.`
         : 'أدخل مبلغًا صحيحًا بين 1 و1,000,000 USDT وبحد أقصى 4 منازل عشرية لمعاينة الرسم والإجمالي.';
     return preview;
 }
@@ -3535,7 +3535,7 @@ async function createNowPaymentsDeposit() {
         document.getElementById('nowPaymentsChargeAmount').textContent = String(data.chargeAmount || data.depositAmount || amount);
         document.getElementById('nowPaymentsPaymentId').textContent = String(data.paymentId || '');
         document.getElementById('nowPaymentsPaymentDetails')?.classList.remove('hidden');
-        if (status) status.textContent = `تم إنشاء الطلب بعد احتساب رسم 1% (${data.surchargeAmount} USDT). أرسل ${data.payAmount} USDT إلى العنوان أعلاه فقط؛ سيُضاف ${data.depositAmount} USDT بعد التأكيد.`;
+        if (status) status.textContent = `تم إنشاء الطلب بعد احتساب رسم ثابت قدره ${data.surchargeAmount} USDT. أرسل ${data.payAmount} USDT إلى العنوان أعلاه فقط؛ سيُضاف ${data.depositAmount} USDT بعد التأكيد.`;
     } catch (error) {
         updateDepositAddressCopyState('');
         document.getElementById('nowPaymentsPaymentDetails')?.classList.add('hidden');

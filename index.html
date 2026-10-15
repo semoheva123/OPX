@@ -2399,7 +2399,7 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
 
             <div id="nowPaymentsAmountPanel" class="hidden space-y-2 rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
                 <label for="nowPaymentsDepositAmount" class="block text-[10px] text-slate-400 font-bold">مبلغ الإيداع المطلوب (USDT)</label>
-                <p class="rounded-xl border border-amber-400/20 bg-amber-400/5 px-3 py-2 text-[10px] leading-5 text-amber-200">أدخل المبلغ الذي تريد إضافته إلى رصيدك. يُضاف رسم منصة بنسبة 1% إلى الفاتورة. إنشاء الطلب يعرض تفاصيل الدفع فقط ولا يرسل أموالًا.</p>
+                <p class="rounded-xl border border-amber-400/20 bg-amber-400/5 px-3 py-2 text-[10px] leading-5 text-amber-200">أدخل المبلغ الذي تريد إضافته إلى رصيدك. يُضاف رسم ثابت قدره 1 USDT إلى الفاتورة مهما كان مبلغ الإيداع. إنشاء الطلب يعرض تفاصيل الدفع فقط ولا يرسل أموالًا.</p>
                 <div class="flex items-center gap-2">
                     <input id="nowPaymentsDepositAmount" type="number" min="1" max="1000000" step="0.0001" value="10" inputmode="decimal" oninput="updateNowPaymentsDepositPreview()" class="w-full rounded-xl border border-slate-800 bg-slate-950/70 p-3 text-left text-xs font-mono text-white outline-none focus:border-amber-400" dir="ltr">
                     <button id="nowPaymentsCreateButton" type="button" onclick="createNowPaymentsDeposit()" class="rounded-xl bg-amber-500 px-3 py-3 text-[10px] font-black text-slate-950 whitespace-nowrap">إنشاء طلب الدفع</button>
@@ -2407,10 +2407,10 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
                 <div id="nowPaymentsDepositPreview" class="space-y-1 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3 text-[10px]" aria-label="ملخص المبلغ قبل إنشاء طلب الدفع">
                     <p class="mb-2 font-bold text-cyan-200">ملخص واضح قبل طلب الدفع</p>
                     <p class="flex justify-between gap-3 text-slate-400"><span>المبلغ الذي سيضاف</span><strong><span id="nowPaymentsPreviewDepositAmount">10.0000</span> USDT</strong></p>
-                    <p class="flex justify-between gap-3 text-amber-300"><span>رسم منصة 1%</span><strong>+<span id="nowPaymentsPreviewSurchargeAmount">0.1000</span> USDT</strong></p>
-                    <p class="flex justify-between gap-3 border-t border-slate-700 pt-2 font-black text-white"><span>إجمالي الفاتورة</span><strong><span id="nowPaymentsPreviewChargeAmount">10.1000</span> USD</strong></p>
+                    <p class="flex justify-between gap-3 text-amber-300"><span>رسم ثابت</span><strong>+<span id="nowPaymentsPreviewSurchargeAmount">1.0000</span> USDT</strong></p>
+                    <p class="flex justify-between gap-3 border-t border-slate-700 pt-2 font-black text-white"><span>إجمالي الفاتورة</span><strong><span id="nowPaymentsPreviewChargeAmount">11.0000</span> USD</strong></p>
                 </div>
-                <p id="nowPaymentsFeePreviewStatus" role="status" aria-live="polite" class="text-[9px] leading-5 text-slate-500">المبلغ الإجمالي يشمل رسم منصة 1%. لن يتم إرسال الأموال إلا من محفظتك بعد مراجعة تفاصيل الفاتورة.</p>
+                <p id="nowPaymentsFeePreviewStatus" role="status" aria-live="polite" class="text-[9px] leading-5 text-slate-500">المبلغ الإجمالي يشمل رسمًا ثابتًا قدره 1 USDT. لن يتم إرسال الأموال إلا من محفظتك بعد مراجعة تفاصيل الفاتورة.</p>
                 <p class="text-[9px] leading-5 text-amber-200">معلومة مهمة: لا تكتب أو تنسخ عنوان المحفظة إلا بعد إنشاء طلب الدفع الرسمي من داخل التطبيق. لا تستخدم أي عنوان آخر أو عنوان يظهر خارج هذا الطلب.</p>
                 <div id="nowPaymentsPaymentDetails" class="hidden space-y-2 pt-2">
                     <div class="mx-auto w-fit rounded-2xl bg-white p-2"><img id="nowPaymentsQrCode" class="h-40 w-40" alt="رمز QR لإيداع USDT على TRC20"></div>
@@ -2418,7 +2418,7 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
                     <p class="text-center text-sm font-black text-emerald-300"><span id="nowPaymentsPayAmount">—</span> USDT (TRC20)</p>
                     <div class="space-y-1 rounded-xl border border-slate-800 bg-slate-900/70 p-3 text-[10px]">
                         <p class="flex justify-between gap-3 text-slate-400"><span>المبلغ المضاف</span><strong class="text-slate-200"><span id="nowPaymentsDepositAmountCredit">—</span> USDT</strong></p>
-                        <p class="flex justify-between gap-3 text-amber-300"><span>رسم المنصة (1%)</span><strong>+<span id="nowPaymentsSurchargeAmount">—</span> USDT</strong></p>
+                        <p class="flex justify-between gap-3 text-amber-300"><span>الرسم الثابت</span><strong>+<span id="nowPaymentsSurchargeAmount">—</span> USDT</strong></p>
                         <p class="flex justify-between gap-3 border-t border-slate-700 pt-2 font-black text-white"><span>الإجمالي</span><strong><span id="nowPaymentsChargeAmount">—</span> USD</strong></p>
                     </div>
                     <p class="text-center text-[9px] text-slate-600">رقم الطلب: <span id="nowPaymentsPaymentId" class="font-mono"></span></p>
