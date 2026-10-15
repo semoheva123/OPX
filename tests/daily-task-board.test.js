@@ -125,7 +125,18 @@ assert.match(client, /slice\(0,\s*5\)/, 'the visible daily list must never excee
 assert.doesNotMatch(client, /مشاركة مجتمعية اختيارية — خارج المهام المدفوعة/, 'community engagement must no longer be exposed as a separate task');
 assert.doesNotMatch(client, /isCommunityTask \? "switchTab\('feed'\)" : isEvaluationTask/, 'the client must no longer treat the community task as a distinct card');
 
-(async () => {
+async function runControllerAssertions() {
+  const RealDate = Date;
+  const fixedNow = RealDate.parse('2026-10-14T12:00:00.000Z');
+  global.Date = class FixedDate extends RealDate {
+    constructor(...args) {
+      super(...(args.length ? args : [fixedNow]));
+    }
+
+    static now() {
+      return fixedNow;
+    }
+  };
   const userBackup = dataAccess.user.findById;
   const vipBackup = dataAccess.vipLevel.findOne;
   const socialBackup = dataAccess.socialPost.find;
@@ -221,6 +232,7 @@ assert.doesNotMatch(client, /isCommunityTask \? "switchTab\('feed'\)" : isEvalua
     assert.equal(tierFiveRes.statusCode, null, 'the final paid task should still be executable when the tier contains five paid tasks');
     assert.equal(tierFiveRes.payload.success, true, 'the valid task five submission should succeed');
   } finally {
+    global.Date = RealDate;
     dataAccess.user.findById = userBackup;
     dataAccess.vipLevel.findOne = vipBackup;
     dataAccess.socialPost.find = socialBackup;
@@ -234,6 +246,11 @@ assert.doesNotMatch(client, /isCommunityTask \? "switchTab\('feed'\)" : isEvalua
     dataAccess.dailyTaskCompletion.findOne = completionFindOneBackup;
     dataAccess.callSupabaseRpc = callSupabaseRpcBackup;
   }
-})();
+}
 
-console.log('daily-task-board test: OK');
+runControllerAssertions()
+  .then(() => console.log('daily-task-board test: OK'))
+  .catch(error => {
+    console.error(error);
+    process.exitCode = 1;
+  });

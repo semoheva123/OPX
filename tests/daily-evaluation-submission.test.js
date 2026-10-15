@@ -26,6 +26,17 @@ function responseRecorder() {
 }
 
 (async () => {
+  const RealDate = Date;
+  const fixedNow = RealDate.parse('2026-10-14T12:00:00.000Z');
+  global.Date = class FixedDate extends RealDate {
+    constructor(...args) {
+      super(...(args.length ? args : [fixedNow]));
+    }
+
+    static now() {
+      return fixedNow;
+    }
+  };
   const rewardSplit = splitReward(100);
   assert.equal(rewardSplit.usdtAmount, 90, 'task and game rewards should reserve 90% for withdrawable balance');
   assert.equal(rewardSplit.opxAmount, 10, 'task and game rewards should assign 10% to internal balance');
@@ -33,9 +44,10 @@ function responseRecorder() {
   const saved = [];
   let rpcCalls = 0;
   let completionRows = [];
-  let assignmentCreatedAt = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
+  let assignmentCreatedAt;
   const assignmentRows = () => [1, 2, 3].map(taskNumber => ({ taskNumber, createdAt: assignmentCreatedAt }));
   try {
+    assignmentCreatedAt = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
     dataAccess.user.findById = async () => ({ id: 'user-1', tierCode: 'A2', wallet: { totalDeposits: 100 } });
     dataAccess.vipLevel.findOne = async () => ({ code: 'A2', tasks: 3, dailyTasks: [{ targetCategory: 'ai', targetName: 'Example AI' }] });
     dataAccess.dailyTaskCompletion.findOne = async () => null;
@@ -164,6 +176,7 @@ function responseRecorder() {
     console.error(error);
     process.exitCode = 1;
   } finally {
+    global.Date = RealDate;
     dataAccess.user.findById = originals.findUser;
     dataAccess.vipLevel.findOne = originals.findLevel;
     dataAccess.dailyTaskCompletion.findOne = originals.findCompletion;
