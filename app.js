@@ -2595,9 +2595,11 @@ function isTrustedTronAddress(value) {
 function updateDepositAddressCopyState(addressValue) {
     const walletInput = document.getElementById('userDepositAddress');
     const copyButton = document.getElementById('copyDepositAddressButton');
+    const addressBox = document.getElementById('depositAddressBox');
     const normalized = String(addressValue || '').trim();
     const trusted = isTrustedTronAddress(normalized);
     if (walletInput) walletInput.value = normalized;
+    if (addressBox) addressBox.classList.toggle('hidden', !trusted);
     if (copyButton) {
         copyButton.disabled = !trusted;
         copyButton.classList.toggle('opacity-60', !trusted);
@@ -3465,30 +3467,40 @@ function updateNowPaymentsDepositPreview() {
 
 async function loadDepositAddress() {
     try {
+        const gatewayPanel = document.getElementById('nowPaymentsAmountPanel');
+        const paymentDetails = document.getElementById('nowPaymentsPaymentDetails');
+        gatewayPanel?.classList.add('hidden');
+        paymentDetails?.classList.add('hidden');
+        document.getElementById('nowPaymentsAmountEntry')?.classList.remove('hidden');
+        document.getElementById('depositNetworkInstructions')?.classList.add('hidden');
+        updateDepositAddressCopyState('');
         const token = localStorage.getItem('token');
         const res = await fetch('/api/wallet/deposit-config', { headers: { Authorization: `Bearer ${token}` } });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'تعذر تجهيز عنوان الإيداع الآلي');
-        const gatewayPanel = document.getElementById('nowPaymentsAmountPanel');
-        const paymentDetails = document.getElementById('nowPaymentsPaymentDetails');
         if (data.provider === 'NOWPayments' && data.paymentRequired) {
             gatewayPanel?.classList.remove('hidden');
+            document.getElementById('nowPaymentsAmountEntry')?.classList.remove('hidden');
+            document.getElementById('nowPaymentsDepositPreview')?.classList.remove('hidden');
             paymentDetails?.classList.add('hidden');
             document.getElementById('sharedDepositClaimPanel')?.classList.add('hidden');
             updateDepositAddressCopyState('');
             const createButton = document.getElementById('nowPaymentsCreateButton');
-            if (createButton) { createButton.disabled = false; createButton.textContent = 'إنشاء طلب الدفع'; }
+            if (createButton) { createButton.disabled = false; createButton.innerHTML = '<i class="fa-solid fa-lock text-xs"></i><span>متابعة إلى الدفع</span>'; }
             const instructions = document.getElementById('depositNetworkInstructions');
-            if (instructions) instructions.textContent = 'راجع ملخص المبلغ والرسم، ثم أنشئ طلب الدفع لعرض العنوان ورمز QR. إنشاء الطلب لا يرسل الأموال.';
+            instructions?.classList.add('hidden');
             updateNowPaymentsDepositPreview();
             const status = document.getElementById('depositModalStatus');
-            if (status) status.textContent = 'غيّر المبلغ لمعاينة رسم المنصة والإجمالي، ثم اختر «إنشاء طلب الدفع» للمتابعة.';
+            if (status) status.textContent = '';
             return;
         }
         gatewayPanel?.classList.add('hidden');
         paymentDetails?.classList.add('hidden');
         const instructions = document.getElementById('depositNetworkInstructions');
-        if (instructions) instructions.textContent = 'استخدم شبكة TRC20 فقط. بعد تأكيد التحويل، أرسل TxHash إذا لزم الأمر.';
+        if (instructions) {
+            instructions.textContent = 'استخدم شبكة TRC20 فقط، وأرسل المبلغ المحدد إلى هذا العنوان.';
+            instructions.classList.remove('hidden');
+        }
         updateDepositAddressCopyState(data.addresses?.TRC20 || '');
         const sharedClaimPanel = document.getElementById('sharedDepositClaimPanel');
         if (sharedClaimPanel) sharedClaimPanel.classList.toggle('hidden', data.verification !== 'transaction_hash');
@@ -3514,7 +3526,7 @@ async function createNowPaymentsDeposit() {
         amountInput?.focus();
         return;
     }
-    if (button) { button.disabled = true; button.textContent = 'جارٍ إنشاء الطلب...'; }
+    if (button) { button.disabled = true; button.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs"></i><span>جارٍ إنشاء الطلب...</span>'; }
     if (status) status.textContent = 'جارٍ إعداد طلب الدفع...';
     try {
         const response = await fetch('/api/wallet/deposit/nowpayments/create', {
@@ -3534,14 +3546,22 @@ async function createNowPaymentsDeposit() {
         document.getElementById('nowPaymentsSurchargeAmount').textContent = String(data.surchargeAmount || '0.0000');
         document.getElementById('nowPaymentsChargeAmount').textContent = String(data.chargeAmount || data.depositAmount || amount);
         document.getElementById('nowPaymentsPaymentId').textContent = String(data.paymentId || '');
+        document.getElementById('nowPaymentsAmountEntry')?.classList.add('hidden');
         document.getElementById('nowPaymentsPaymentDetails')?.classList.remove('hidden');
-        if (status) status.textContent = `تم إنشاء الطلب بعد احتساب رسم ثابت قدره ${data.surchargeAmount} USDT. أرسل ${data.payAmount} USDT إلى العنوان أعلاه فقط؛ سيُضاف ${data.depositAmount} USDT بعد التأكيد.`;
+        const instructions = document.getElementById('depositNetworkInstructions');
+        if (instructions) {
+            instructions.textContent = 'بعد تأكيد الدفع، سيُضاف مبلغ الإيداع إلى رصيدك تلقائيًا.';
+            instructions.classList.remove('hidden');
+        }
+        if (status) status.textContent = 'طلب الدفع جاهز. حوّل المبلغ المعروض إلى العنوان الرسمي أدناه.';
     } catch (error) {
         updateDepositAddressCopyState('');
         document.getElementById('nowPaymentsPaymentDetails')?.classList.add('hidden');
+        document.getElementById('nowPaymentsAmountEntry')?.classList.remove('hidden');
+        document.getElementById('depositNetworkInstructions')?.classList.add('hidden');
         if (status) status.textContent = error.message || 'تعذر إنشاء طلب الدفع لدى NOWPayments.';
     } finally {
-        if (button) { button.disabled = false; button.textContent = 'إنشاء طلب الدفع'; }
+        if (button) { button.disabled = false; button.innerHTML = '<i class="fa-solid fa-lock text-xs"></i><span>متابعة إلى الدفع</span>'; }
     }
 }
 

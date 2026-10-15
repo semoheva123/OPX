@@ -103,6 +103,18 @@ async function main() {
   assert.match(indexSource, /id="nowPaymentsDepositPreview"/);
   assert.match(indexSource, /رسم ثابت قدره 1 USDT/);
   assert.doesNotMatch(indexSource, /رسم منصة 1%/);
+  assert.doesNotMatch(indexSource, /deposit-step-badges|deposit-step-badge/,
+    'the deposit modal should not show a redundant static stepper');
+  assert.match(indexSource, /id="nowPaymentsAmountEntry"/);
+  assert.match(indexSource, /id="nowPaymentsPaymentDetails" class="hidden/,
+    'payment details should appear only after the user requests an official invoice');
+  assert.match(indexSource, /id="depositAddressBox" class="hidden/,
+    'the wallet address should remain hidden until a valid official address is available');
+  assert.match(indexSource, /متابعة إلى الدفع/);
+  assert.match(appSource, /addressBox\.classList\.toggle\('hidden', !trusted\)/,
+    'only a validated TRON address may reveal the copyable address panel');
+  assert.match(appSource, /nowPaymentsAmountEntry'\)\?\.classList\.add\('hidden'\)/,
+    'successful invoice creation transitions from amount entry to payment details');
   assert.match(appSource, /function calculateNowPaymentsDepositPreview\(amount\)/);
   const depositLoadFlow = appSource.slice(appSource.indexOf('async function loadDepositAddress()'), appSource.indexOf('async function createNowPaymentsDeposit()'));
   assert.doesNotMatch(depositLoadFlow, /await createNowPaymentsDeposit\(\)/, 'opening the deposit modal must not create a payment before the user reviews the fee and total');
