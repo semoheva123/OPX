@@ -365,7 +365,7 @@ async function handleNowPaymentsIpn(req, res) {
 
     const actualPaid = Number(payment.actually_paid);
     const requiredPayAmount = Number(payment.pay_amount);
-    if (!Number.isFinite(actualPaid) || !Number.isFinite(requiredPayAmount) || actualPaid <= 0 || actualPaid + 0.0000001 < requiredPayAmount) {
+    if (!Number.isFinite(actualPaid) || !Number.isFinite(requiredPayAmount) || actualPaid <= 0) {
       throw new Error('NOWPAYMENTS_PAYMENT_AMOUNT_INCOMPLETE');
     }
 

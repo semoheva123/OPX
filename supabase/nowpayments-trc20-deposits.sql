@@ -90,6 +90,7 @@ declare
   before_balance numeric;
   normalized_payment_id text := trim(coalesce(p_payment_id, ''));
   normalized_hash text := trim(coalesce(p_tx_hash, ''));
+  credit_amount numeric := least(p_actually_paid, p_price_amount);
 begin
   if normalized_payment_id = '' or lower(trim(coalesce(p_payment_status, ''))) <> 'finished'
      or lower(trim(coalesce(p_pay_currency, ''))) <> 'usdttrc20'
@@ -101,8 +102,7 @@ begin
   if order_row.payment_id is null or order_row.order_id <> trim(coalesce(p_order_id, ''))
      or order_row.user_id <> p_user_id or order_row.price_amount <> p_price_amount
      or order_row.charge_amount <> p_charge_amount
-     or order_row.pay_currency <> lower(trim(p_pay_currency)) or order_row.pay_address <> trim(coalesce(p_pay_address, ''))
-     or p_actually_paid + 0.0000001 < order_row.pay_amount then
+     or order_row.pay_currency <> lower(trim(p_pay_currency)) or order_row.pay_address <> trim(coalesce(p_pay_address, '')) then
     raise exception using errcode = 'P0001', message = 'NOWPAYMENTS_PAYMENT_DETAILS_MISMATCH';
   end if;
 
@@ -121,25 +121,25 @@ begin
   if normalized_hash = '' then normalized_hash := 'NOWPAYMENTS:' || normalized_payment_id; end if;
 
   insert into transactions(user_id, type, status, amount, gross_amount, usdt_amount, wallet_address, tx_hash, network, created_at)
-  values(p_user_id, 'deposit', 'approved', order_row.price_amount, order_row.price_amount, order_row.price_amount,
+  values(p_user_id, 'deposit', 'approved', credit_amount, credit_amount, credit_amount,
     order_row.pay_address, normalized_hash, 'TRC20', now())
   returning * into transaction_row;
 
-  update wallet_balances set deposit_balance = deposit_balance + order_row.price_amount,
-    total_deposits = total_deposits + order_row.price_amount,
-    balance = deposit_balance + profit_balance + order_row.price_amount,
-    usdt_balance = deposit_balance + profit_balance + order_row.price_amount,
+  update wallet_balances set deposit_balance = deposit_balance + credit_amount,
+    total_deposits = total_deposits + credit_amount,
+    balance = deposit_balance + profit_balance + credit_amount,
+    usdt_balance = deposit_balance + profit_balance + credit_amount,
     updated_at = now()
   where user_id = p_user_id returning * into wallet_row;
 
   insert into financial_ledger(user_id, type, currency, amount, net_amount, balance_before, balance_after, status, source, reference_id, metadata)
-  values(p_user_id, 'deposit', 'USDT', order_row.price_amount, order_row.price_amount, before_balance,
+  values(p_user_id, 'deposit', 'USDT', credit_amount, credit_amount, before_balance,
     wallet_row.balance, 'approved', 'nowpayments_trc20_deposit', transaction_row.id::text,
     jsonb_build_object('provider', 'NOWPayments', 'paymentId', normalized_payment_id, 'orderId', order_row.order_id,
       'payCurrency', order_row.pay_currency, 'payAddress', order_row.pay_address,
-      'depositAmount', order_row.price_amount, 'surchargeRatePercent', 1,
+      'depositAmount', credit_amount, 'surchargeRatePercent', 1,
       'surchargeAmount', order_row.surcharge_amount, 'chargeAmount', order_row.charge_amount,
-      'actuallyPaid', p_actually_paid, 'txHash', normalized_hash));
+      'actuallyPaid', p_actually_paid, 'creditAmount', credit_amount, 'txHash', normalized_hash));
 
   update nowpayments_deposit_orders set payment_status = 'finished', transaction_id = transaction_row.id,
     tx_hash = normalized_hash, actual_paid = p_actually_paid, credited_at = now(), updated_at = now()
@@ -147,7 +147,7 @@ begin
 
   return jsonb_build_object('credited', true, 'duplicate', false,
     'depositAmount', order_row.price_amount, 'surchargeAmount', order_row.surcharge_amount,
-    'chargeAmount', order_row.charge_amount, 'creditAmount', order_row.price_amount,
+    'chargeAmount', order_row.charge_amount, 'creditAmount', credit_amount,
     'transaction', row_to_json(transaction_row), 'wallet', row_to_json(wallet_row));
 end;
 $$;

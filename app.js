@@ -2588,10 +2588,32 @@ function copyProfileReferral() {
     executeCopyProcess(copyInput.value);
 }
 
+function isTrustedTronAddress(value) {
+    return typeof value === 'string' && /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(String(value).trim());
+}
+
+function updateDepositAddressCopyState(addressValue) {
+    const walletInput = document.getElementById('userDepositAddress');
+    const copyButton = document.getElementById('copyDepositAddressButton');
+    const normalized = String(addressValue || '').trim();
+    const trusted = isTrustedTronAddress(normalized);
+    if (walletInput) walletInput.value = normalized;
+    if (copyButton) {
+        copyButton.disabled = !trusted;
+        copyButton.classList.toggle('opacity-60', !trusted);
+        copyButton.classList.toggle('cursor-not-allowed', !trusted);
+    }
+    return trusted;
+}
+
 function copyUserDepositAddress() {
     const walletInput = document.getElementById('userDepositAddress');
-    if (!walletInput || !walletInput.value) return;
-    executeCopyProcess(walletInput.value);
+    const value = String(walletInput?.value || '').trim();
+    if (!isTrustedTronAddress(value)) {
+        showToast('معلومة مهمة: لا يمكنك نسخ عنوان المحفظة قبل إنشاء طلب الدفع الرسمي من داخل التطبيق. أنشئ الطلب أولاً ثم انسخ العنوان الرسمي فقط.', 'warn');
+        return;
+    }
+    executeCopyProcess(value);
 }
 
 function executeCopyProcess(textToCopy) {
@@ -3453,7 +3475,7 @@ async function loadDepositAddress() {
             gatewayPanel?.classList.remove('hidden');
             paymentDetails?.classList.add('hidden');
             document.getElementById('sharedDepositClaimPanel')?.classList.add('hidden');
-            document.getElementById('userDepositAddress').value = '';
+            updateDepositAddressCopyState('');
             const createButton = document.getElementById('nowPaymentsCreateButton');
             if (createButton) { createButton.disabled = false; createButton.textContent = 'إنشاء طلب الدفع'; }
             const instructions = document.getElementById('depositNetworkInstructions');
@@ -3467,7 +3489,7 @@ async function loadDepositAddress() {
         paymentDetails?.classList.add('hidden');
         const instructions = document.getElementById('depositNetworkInstructions');
         if (instructions) instructions.textContent = 'استخدم شبكة TRC20 فقط. بعد تأكيد التحويل، أرسل TxHash إذا لزم الأمر.';
-        document.getElementById('userDepositAddress').value = data.addresses?.TRC20 || 'العنوان غير مضبوط حالياً';
+        updateDepositAddressCopyState(data.addresses?.TRC20 || '');
         const sharedClaimPanel = document.getElementById('sharedDepositClaimPanel');
         if (sharedClaimPanel) sharedClaimPanel.classList.toggle('hidden', data.verification !== 'transaction_hash');
         const status = document.getElementById('depositModalStatus');
@@ -3475,7 +3497,7 @@ async function loadDepositAddress() {
             ? 'تأكد من تطابق TxHash مع التحويل قبل إتمام التحقق.'
             : 'سيتم تحديث الرصيد تلقائيًا بعد تأكيد الشبكة.';
     } catch (error) {
-        document.getElementById('userDepositAddress').value = 'عنوان الإيداع غير متاح حالياً';
+        updateDepositAddressCopyState('');
         const status = document.getElementById('depositModalStatus');
         if (status) status.textContent = error.message || 'تعذر تحميل العنوان';
     }
@@ -3505,7 +3527,7 @@ async function createNowPaymentsDeposit() {
         if (String(data.depositAmount) !== preview.depositAmount || String(data.surchargeAmount) !== preview.surchargeAmount || String(data.chargeAmount) !== preview.chargeAmount) {
             throw new Error('لم تتطابق الرسوم مع المعاينة. لا ترسل أي أموال؛ أغلق النافذة وتواصل مع الدعم.');
         }
-        document.getElementById('userDepositAddress').value = data.address || '';
+        updateDepositAddressCopyState(data.address || '');
         document.getElementById('nowPaymentsQrCode').src = data.qrCode || '';
         document.getElementById('nowPaymentsPayAmount').textContent = String(data.payAmount || '—');
         document.getElementById('nowPaymentsDepositAmountCredit').textContent = String(data.depositAmount || amount);
@@ -3515,7 +3537,7 @@ async function createNowPaymentsDeposit() {
         document.getElementById('nowPaymentsPaymentDetails')?.classList.remove('hidden');
         if (status) status.textContent = `تم إنشاء الطلب بعد احتساب رسم 1% (${data.surchargeAmount} USDT). أرسل ${data.payAmount} USDT إلى العنوان أعلاه فقط؛ سيُضاف ${data.depositAmount} USDT بعد التأكيد.`;
     } catch (error) {
-        document.getElementById('userDepositAddress').value = '';
+        updateDepositAddressCopyState('');
         document.getElementById('nowPaymentsPaymentDetails')?.classList.add('hidden');
         if (status) status.textContent = error.message || 'تعذر إنشاء طلب الدفع لدى NOWPayments.';
     } finally {

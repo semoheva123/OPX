@@ -2411,6 +2411,7 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
                     <p class="flex justify-between gap-3 border-t border-slate-700 pt-2 font-black text-white"><span>إجمالي الفاتورة</span><strong><span id="nowPaymentsPreviewChargeAmount">10.1000</span> USD</strong></p>
                 </div>
                 <p id="nowPaymentsFeePreviewStatus" role="status" aria-live="polite" class="text-[9px] leading-5 text-slate-500">المبلغ الإجمالي يشمل رسم منصة 1%. لن يتم إرسال الأموال إلا من محفظتك بعد مراجعة تفاصيل الفاتورة.</p>
+                <p class="text-[9px] leading-5 text-amber-200">معلومة مهمة: لا تكتب أو تنسخ عنوان المحفظة إلا بعد إنشاء طلب الدفع الرسمي من داخل التطبيق. لا تستخدم أي عنوان آخر أو عنوان يظهر خارج هذا الطلب.</p>
                 <div id="nowPaymentsPaymentDetails" class="hidden space-y-2 pt-2">
                     <div class="mx-auto w-fit rounded-2xl bg-white p-2"><img id="nowPaymentsQrCode" class="h-40 w-40" alt="رمز QR لإيداع USDT على TRC20"></div>
                     <p class="text-center text-[10px] text-slate-400">أرسل المبلغ المحدد إلى العنوان أدناه.</p>
@@ -2428,7 +2429,7 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
                 <span class="text-[10px] text-slate-400 font-bold block">عنوان المحفظة</span>
                 <div class="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-950/50 p-2">
                     <input type="text" id="userDepositAddress" readonly value="" class="w-full bg-transparent text-[10px] outline-none dir-ltr font-mono">
-                    <button type="button" onclick="copyUserDepositAddress()" class="bg-amber-500 text-slate-950 font-black px-3 py-2 rounded-lg text-[10px] whitespace-nowrap active:scale-95 transition-all">
+                    <button id="copyDepositAddressButton" type="button" onclick="copyUserDepositAddress()" disabled class="bg-amber-500 text-slate-950 font-black px-3 py-2 rounded-lg text-[10px] whitespace-nowrap active:scale-95 transition-all opacity-60 cursor-not-allowed">
                         <i class="fa-regular fa-copy"></i> نسخ
                     </button>
                 </div>

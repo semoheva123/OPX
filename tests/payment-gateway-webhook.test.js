@@ -53,6 +53,7 @@ async function main() {
   const tronDepositServiceSource = fs.readFileSync(path.join(__dirname, '../src/services/tronDepositService.js'), 'utf8');
   const migration = fs.readFileSync(path.join(__dirname, '../supabase/nowpayments-trc20-deposits.sql'), 'utf8');
   const surchargeMigration = fs.readFileSync(path.join(__dirname, '../supabase/nowpayments-deposit-surcharge.sql'), 'utf8');
+  const partialPaymentMigration = fs.readFileSync(path.join(__dirname, '../supabase/nowpayments-partial-payment-credit.sql'), 'utf8');
   const appSource = fs.readFileSync(path.join(__dirname, '../app.js'), 'utf8');
   const indexSource = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
   const premiumStyles = fs.readFileSync(path.join(__dirname, '../styles/operix-premium.css'), 'utf8');
@@ -60,9 +61,19 @@ async function main() {
   assert.match(routeSource, /wallet\/deposit\/nowpayments\/create',\s*verifyToken/);
   assert.match(walletControllerSource, /بوابة NOWPayments غير جاهزة حاليًا؛ لا ترسل أي تحويل مباشر/);
   assert.match(walletControllerSource, /إيداع TxHash|الإيداع عبر TxHash/);
+  assert.doesNotMatch(walletControllerSource, /actualPaid \+ 0\.0000001 < requiredPayAmount/,
+    'NOWPayments should credit any positive payment once it is finished, rather than rejecting partial underpayment');
   assert.doesNotMatch(walletControllerSource, /ensureUserDepositAddress\(req\.user\.id\)/);
   assert.match(tronDepositServiceSource, /reason: 'NOWPAYMENTS_ONLY'/);
   assert.match(migration, /operix_nowpayments_deposit_credit_atomic/);
+  assert.match(migration, /least\(.*p_actually_paid.*p_price_amount.*\)/,
+    'crediting must use the actual received amount, capped by the order value');
+  assert.match(partialPaymentMigration, /least\(p_actually_paid, p_price_amount\)/,
+    'the production patch must cap credit at both actual payment and requested principal');
+  assert.doesNotMatch(partialPaymentMigration, /p_actually_paid\s*\+\s*0\.0000001\s*<\s*order_row\.pay_amount/,
+    'finished positive partial payments must not be rejected for being below the original quote');
+  assert.match(partialPaymentMigration, /intentionally does not\s+-- modify existing orders, wallet balances, or ledger entries/i,
+    'the incremental production migration must preserve existing payment orders and balances');
   assert.match(migration, /surcharge_amount numeric\(18,4\)/);
   assert.match(surchargeMigration, /round\(p_price_amount\*0\.01,4\)/);
   assert.match(surchargeMigration, /charges 101 USD, wallet credits 100 USDT/i);
