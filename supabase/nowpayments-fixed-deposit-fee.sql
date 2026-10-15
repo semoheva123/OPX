@@ -17,11 +17,11 @@ declare
   order_row nowpayments_deposit_orders%rowtype;
 begin
   if trim(coalesce(p_payment_id, '')) = '' or trim(coalesce(p_order_id, '')) = ''
-     or p_user_id is null or p_price_amount is null or p_price_amount <= 0
-     or p_price_amount <> round(p_price_amount, 4)
+      or p_user_id is null or p_price_amount is null or p_price_amount <= 0 or p_price_amount > 999999
+      or p_price_amount <> trunc(p_price_amount)
      or p_surcharge_amount is null or p_surcharge_amount <> 1.0000
      or p_charge_amount is null or p_charge_amount <> p_price_amount + 1.0000
-     or p_pay_amount is null or p_pay_amount <= 0
+      or p_pay_amount is null or p_pay_amount <> p_charge_amount
      or lower(trim(coalesce(p_pay_currency, ''))) <> 'usdttrc20'
      or trim(coalesce(p_pay_address, '')) !~ '^T[1-9A-HJ-NP-Za-km-z]{33}$' then
     raise exception using errcode = 'P0001', message = 'INVALID_NOWPAYMENTS_FIXED_FEE_ORDER';

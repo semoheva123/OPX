@@ -3436,10 +3436,9 @@ function closeWithdrawModal() {
 
 function calculateNowPaymentsDepositPreview(amount) {
     const text = String(amount ?? '').trim();
-    if (!/^(?:0|[1-9]\d*)(?:\.\d{1,4})?$/.test(text)) return null;
-    const [whole, fraction = ''] = text.split('.');
-    const principalUnits = BigInt(whole) * 10000n + BigInt(fraction.padEnd(4, '0'));
-    if (principalUnits < 10000n || principalUnits > 10000000000n) return null;
+    if (!/^[1-9]\d*$/.test(text)) return null;
+    const principalUnits = BigInt(text) * 10000n;
+    if (principalUnits < 10000n || principalUnits > 9999900000n) return null;
     const surchargeUnits = 10000n;
     const formatUnits = units => `${units / 10000n}.${String(units % 10000n).padStart(4, '0')}`;
     return {
@@ -3460,8 +3459,8 @@ function updateNowPaymentsDepositPreview() {
     if (surchargeAmount) surchargeAmount.textContent = preview?.surchargeAmount || '—';
     if (chargeAmount) chargeAmount.textContent = preview?.chargeAmount || '—';
     if (status) status.textContent = preview
-        ? `إجمالي الفاتورة يشمل رسمًا ثابتًا قدره ${preview.surchargeAmount} USDT. لن يتم إرسال الأموال عند إنشاء الطلب؛ راجع عنوان الدفع والمبلغ قبل التحويل.`
-        : 'أدخل مبلغًا صحيحًا بين 1 و1,000,000 USDT وبحد أقصى 4 منازل عشرية لمعاينة الرسم والإجمالي.';
+        ? `ستدفع ${preview.chargeAmount} USDT بالضبط، دون كسور.`
+        : 'أدخل مبلغًا صحيحًا كاملًا بين 1 و999,999 USDT دون كسور.';
     return preview;
 }
 
@@ -3522,7 +3521,7 @@ async function createNowPaymentsDeposit() {
     const amount = String(amountInput?.value || '').trim();
     const preview = updateNowPaymentsDepositPreview();
     if (!preview) {
-        if (status) status.textContent = 'أدخل مبلغًا صحيحًا بين 1 و1,000,000 USDT وبحد أقصى 4 منازل عشرية.';
+        if (status) status.textContent = 'أدخل مبلغًا صحيحًا كاملًا بين 1 و999,999 USDT دون كسور.';
         amountInput?.focus();
         return;
     }

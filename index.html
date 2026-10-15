@@ -2369,10 +2369,10 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
                 <div id="nowPaymentsAmountEntry" class="space-y-4">
                     <div>
                         <label for="nowPaymentsDepositAmount" class="block text-xs font-bold text-slate-200">كم تريد إضافته إلى رصيدك؟</label>
-                        <p class="mt-1 text-[10px] leading-5 text-slate-400">أدخل المبلغ بـ USDT. يضاف رسم ثابت قدره 1 USDT.</p>
+                        <p class="mt-1 text-[10px] leading-5 text-slate-400">أدخل مبلغًا كاملًا من USDT دون كسور. يضاف رسم ثابت قدره 1 USDT.</p>
                     </div>
                     <div class="relative">
-                        <input id="nowPaymentsDepositAmount" type="number" min="1" max="1000000" step="0.0001" value="10" inputmode="decimal" autocomplete="off" aria-label="مبلغ الإيداع بعملة USDT" aria-describedby="nowPaymentsDepositHelp" oninput="updateNowPaymentsDepositPreview()" class="w-full rounded-2xl border border-slate-700 bg-slate-950/75 py-3.5 pe-20 ps-4 text-left text-base font-bold font-mono text-white outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-400/10" dir="ltr">
+                        <input id="nowPaymentsDepositAmount" type="number" min="1" max="999999" step="1" value="10" inputmode="numeric" autocomplete="off" aria-label="مبلغ الإيداع الكامل بعملة USDT" aria-describedby="nowPaymentsDepositHelp" oninput="updateNowPaymentsDepositPreview()" class="w-full rounded-2xl border border-slate-700 bg-slate-950/75 py-3.5 pe-20 ps-4 text-left text-base font-bold font-mono text-white outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-400/10" dir="ltr">
                         <span class="pointer-events-none absolute inset-y-0 end-4 flex items-center text-xs font-black text-amber-300">USDT</span>
                     </div>
                     <div id="nowPaymentsDepositPreview" class="rounded-2xl border border-slate-700/80 bg-slate-950/45 p-4" aria-label="ملخص مبلغ الإيداع">
@@ -2384,8 +2384,8 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
                             <p class="flex items-center justify-between gap-3"><span class="font-bold text-slate-200">الإجمالي المطلوب</span><strong class="text-base font-black text-emerald-300"><bdi dir="ltr"><span id="nowPaymentsPreviewChargeAmount">11.0000</span> USD</bdi></strong></p>
                         </div>
                     </div>
-                    <p id="nowPaymentsDepositHelp" class="flex items-start gap-2 text-[10px] leading-5 text-slate-500"><i class="fa-solid fa-circle-info mt-0.5 text-slate-400"></i><span>إنشاء الطلب لا يخصم أموالًا. ستراجع مبلغ الدفع وعنوان المحفظة قبل التحويل.</span></p>
-                    <p id="nowPaymentsFeePreviewStatus" role="status" aria-live="polite" class="sr-only">المبلغ الإجمالي يشمل رسمًا ثابتًا قدره 1 USDT.</p>
+                    <p id="nowPaymentsDepositHelp" class="flex items-start gap-2 text-[10px] leading-5 text-slate-500"><i class="fa-solid fa-circle-info mt-0.5 text-slate-400"></i><span>إنشاء الطلب لا يخصم أموالًا. ستراجع المبلغ الكامل وعنوان المحفظة قبل التحويل.</span></p>
+                    <p id="nowPaymentsFeePreviewStatus" role="status" aria-live="polite" class="min-h-4 text-[10px] font-semibold text-emerald-300">ستدفع 11 USDT بالضبط، دون كسور.</p>
                     <button id="nowPaymentsCreateButton" type="button" onclick="createNowPaymentsDeposit()" class="deposit-primary-action flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-400 px-4 py-3.5 text-sm font-black text-slate-950 transition hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-200 focus:ring-offset-2 focus:ring-offset-slate-950 disabled:cursor-wait disabled:opacity-70">
                         <i class="fa-solid fa-lock text-xs"></i><span>متابعة إلى الدفع</span>
                     </button>

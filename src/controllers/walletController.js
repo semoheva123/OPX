@@ -279,7 +279,7 @@ async function createNowPaymentsDeposit(req, res) {
     if (!ipnSecret) return res.status(503).json({ success: false, error: 'يلزم إعداد NOWPAYMENTS_IPN_SECRET قبل إنشاء طلب إيداع.' });
     if (!paymentGatewayService.isNowPaymentsReady()) return res.status(503).json({ success: false, error: 'يلزم إعداد رابط HTTPS ومفتاح توقيع الطلب قبل إنشاء طلب الإيداع.' });
 
-    const priceAmount = paymentGatewayService.formatUsdtAmount(req.body?.amount);
+    const priceAmount = paymentGatewayService.formatWholeDepositAmount(req.body?.amount);
     const surchargeAmount = paymentGatewayService.calculateDepositSurcharge(priceAmount);
     const chargeAmount = paymentGatewayService.calculateDepositCharge(priceAmount);
     const payment = await paymentGatewayService.createPayment({ userId: req.user.id, amount: priceAmount });
@@ -319,7 +319,7 @@ async function createNowPaymentsDeposit(req, res) {
     console.error('NOWPayments payment creation failed:', error.message);
     return res.status(status).json({
       success: false,
-      error: badRequest ? 'أدخل مبلغًا بين 1 و1,000,000 USDT وبحد أقصى 4 منازل عشرية.'
+      error: badRequest ? 'أدخل مبلغًا صحيحًا كاملًا بين 1 و999,999 USDT دون كسور.'
         : status === 503 ? 'إعدادات NOWPayments أو رابط الموقع غير مكتملة.'
           : 'تعذر إنشاء طلب الدفع لدى NOWPayments؛ لم يتم إنشاء عنوان إيداع.'
     });
@@ -367,7 +367,9 @@ async function handleNowPaymentsIpn(req, res) {
 
     const actualPaid = Number(payment.actually_paid);
     const requiredPayAmount = Number(payment.pay_amount);
-    if (!Number.isFinite(actualPaid) || !Number.isFinite(requiredPayAmount) || actualPaid <= 0) {
+    const recordedPayAmount = Number(storedOrder.payAmount);
+    if (!Number.isFinite(actualPaid) || !Number.isFinite(requiredPayAmount) || actualPaid <= 0 ||
+      !Number.isFinite(recordedPayAmount) || Math.abs(requiredPayAmount - recordedPayAmount) > 0.00000001) {
       throw new Error('NOWPAYMENTS_PAYMENT_AMOUNT_INCOMPLETE');
     }
 
