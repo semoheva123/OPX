@@ -825,7 +825,7 @@ async function exportReferrals(req, res) {
       referralCode: user.referralCode || '',
       referredBy: user.referredBy || '',
       tierCode: user.tierCode || 'A1',
-      isActive: Number(user.wallet?.totalDeposits || 0) > 0,
+      isActive: Boolean(user.tierActivated || Number(user.wallet?.totalDeposits || 0) > 0),
       totalDeposits: Number(user.wallet?.totalDeposits || 0),
       createdAt: user.createdAt || null
     })) });

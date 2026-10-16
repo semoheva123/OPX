@@ -103,7 +103,7 @@ async function upgradeSupabase(req, res) {
     const targetIndex = codes.indexOf(targetLevel.code);
     const currentLevel = levels.find(level => level.code === user.tierCode);
     const currentActivated = Boolean(currentLevel && (
-      String(user.tierCode || 'A1').toUpperCase() !== 'A1' || Number(user.wallet?.totalDeposits || 0) > 0
+      user.tierActivated || String(user.tierCode || 'A1').toUpperCase() !== 'A1' || Number(user.wallet?.totalDeposits || 0) > 0
     ));
     const initialActivation = !currentActivated;
     const referralMilestoneCount = await getActiveReferralMilestones(user.referralCode?.trim().toUpperCase());
@@ -146,7 +146,7 @@ async function upgradeSupabase(req, res) {
     }
     const updatedUser = result.user;
     const tierFourNotice = freeTierFourActivation ? ' تم تفعيل المستوى الرابع مجانًا وإضافة مكافأة فورية بقيمة $100 إلى رصيد الأرباح.' : '';
-    res.json({ success: true, message: `تمت الترقية بنجاح إلى ${targetLevel.name}.${tierFourNotice}`.trim(), tierCode: updatedUser.tierCode, wallet: finalWallet, OPX_balance: finalWallet?.OPX_balance, upgradeCost: payment.upgradeCost, opxAmount: payment.opxAmount, usdtAmount: payment.usdtAmount, initialActivation: payment.opxAmount === 0 && payment.usdtAmount === payment.upgradeCost, referralRewardAwarded: Number(result.referralRewardAwarded) || 0, freeTierFourActivation, instantProfitReward: rewardBonusApplied });
+    res.json({ success: true, message: `تمت الترقية بنجاح إلى ${targetLevel.name}.${tierFourNotice}`.trim(), tierCode: updatedUser.tierCode, tierActivated: true, isTierActivated: true, wallet: finalWallet, OPX_balance: finalWallet?.OPX_balance, upgradeCost: payment.upgradeCost, opxAmount: payment.opxAmount, usdtAmount: payment.usdtAmount, initialActivation: payment.opxAmount === 0 && payment.usdtAmount === payment.upgradeCost, referralRewardAwarded: Number(result.referralRewardAwarded) || 0, freeTierFourActivation, instantProfitReward: rewardBonusApplied });
   } catch (error) {
     console.error('Supabase upgrade error:', error.message);
     if (error.message === 'A4_MILESTONE_NOT_ELIGIBLE') return res.status(400).json({ error: 'تفعيل A4 المجاني يتطلب 300 إحالة فعّالة مباشرة.' });
