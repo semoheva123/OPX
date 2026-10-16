@@ -110,9 +110,7 @@ async function upgradeSupabase(req, res) {
       : null;
     const levelFourFreeActivationEligible = !fullFeatureAccess && targetLevel.code === 'A4' && user.tierCode !== 'A4' && referralMilestoneCount >= 300 && !milestoneAward;
     if (!fullFeatureAccess && (targetIndex < currentIndex || (targetIndex === currentIndex && currentActivated))) return res.status(400).json({ error: 'يمكنك الترقية فقط إلى مستوى أعلى من مستواك الحالي' });
-    const upgradeCost = initialActivation
-      ? Number(targetLevel.price)
-      : Math.max(0, Number(targetLevel.price) - Number(currentLevel?.price || 0));
+    const upgradeCost = Number(targetLevel.price);
     let payment;
     try {
       payment = fullFeatureAccess || levelFourFreeActivationEligible
@@ -146,7 +144,7 @@ async function upgradeSupabase(req, res) {
     }
     const updatedUser = result.user;
     const tierFourNotice = freeTierFourActivation ? ' تم تفعيل المستوى الرابع مجانًا وإضافة مكافأة فورية بقيمة $100 إلى رصيد الأرباح.' : '';
-    res.json({ success: true, message: `تمت الترقية بنجاح إلى ${targetLevel.name}.${tierFourNotice}`.trim(), tierCode: updatedUser.tierCode, wallet: finalWallet, OPX_balance: finalWallet?.OPX_balance, upgradeCost, opxAmount: payment.opxAmount, usdtAmount: payment.usdtAmount, initialActivation: payment.opxAmount === 0 && payment.usdtAmount === upgradeCost, referralRewardAwarded: Number(result.referralRewardAwarded) || 0, freeTierFourActivation, instantProfitReward: rewardBonusApplied });
+    res.json({ success: true, message: `تمت الترقية بنجاح إلى ${targetLevel.name}.${tierFourNotice}`.trim(), tierCode: updatedUser.tierCode, wallet: finalWallet, OPX_balance: finalWallet?.OPX_balance, upgradeCost: payment.upgradeCost, opxAmount: payment.opxAmount, usdtAmount: payment.usdtAmount, initialActivation: payment.opxAmount === 0 && payment.usdtAmount === payment.upgradeCost, referralRewardAwarded: Number(result.referralRewardAwarded) || 0, freeTierFourActivation, instantProfitReward: rewardBonusApplied });
   } catch (error) {
     console.error('Supabase upgrade error:', error.message);
     if (error.message === 'A4_MILESTONE_NOT_ELIGIBLE') return res.status(400).json({ error: 'تفعيل A4 المجاني يتطلب 300 إحالة فعّالة مباشرة.' });
