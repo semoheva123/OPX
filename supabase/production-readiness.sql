@@ -1,5 +1,7 @@
 begin;
 
+alter table public.users add column if not exists tier_activated boolean not null default false;
+
 -- Add the per-level task configuration field missing from the live project.
 alter table public.vip_levels
   add column if not exists daily_tasks jsonb not null default '[]'::jsonb;
@@ -123,6 +125,16 @@ create table if not exists public.milestone_reward_awards (
 );
 create index if not exists milestone_reward_awards_user_created_idx
   on public.milestone_reward_awards(user_id, created_at desc);
+
+update public.users u
+set tier_activated = true
+where not u.tier_activated and (
+  upper(coalesce(u.tier_code, 'A1')) <> 'A1'
+  or
+  exists (select 1 from public.wallet_balances w where w.user_id = u.id and w.total_deposits > 0)
+  or exists (select 1 from public.transactions t where t.user_id = u.id and t.type = 'upgrade_deduction' and t.status in ('approved', 'completed'))
+  or exists (select 1 from public.milestone_reward_awards m where m.user_id = u.id and m.milestone_key = 'active_referrals_300_a4')
+);
 
 -- The six-referral rule supersedes the previous 25-referral cycle.
 insert into public.game_settings(key, referrals_per_cycle)
@@ -347,7 +359,7 @@ begin
 
   if lower(coalesce(user_row.email, '')) <> 'official@operix.website'
     and (target_level_number < current_level_number
-      or (target_level_number = current_level_number and wallet_row.total_deposits > 0)) then
+      or (target_level_number = current_level_number and (user_row.tier_activated or wallet_row.total_deposits > 0))) then
     raise exception using errcode = 'P0001', message = 'INVALID_TIER_PROGRESSION';
   end if;
 
@@ -408,7 +420,7 @@ begin
   before_balance := wallet_row.balance;
   before_opx_balance := wallet_row.opx_balance;
 
-  update users set tier_code = p_target_tier, updated_at = now() where id = p_user_id;
+  update users set tier_code = p_target_tier, tier_activated = true, updated_at = now() where id = p_user_id;
   update wallet_balances
   set deposit_balance = deposit_balance - p_usdt_amount,
       opx_balance = opx_balance - p_opx_amount,

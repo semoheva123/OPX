@@ -13,6 +13,7 @@ create table if not exists public.users (
   email_updates_opt_out boolean not null default false,
   is_banned boolean not null default false,
   tier_code text not null default 'A1',
+  tier_activated boolean not null default false,
   referral_code text,
   referred_by text,
     wallet_address text default '',
@@ -28,6 +29,7 @@ create table if not exists public.users (
 );
 
 alter table public.users add column if not exists email_verification_token text;
+alter table public.users add column if not exists tier_activated boolean not null default false;
 alter table public.users add column if not exists email_updates_opt_out boolean not null default false;
 alter table public.users add column if not exists email_verification_expire timestamptz;
 alter table public.users add column if not exists is_official_platform boolean not null default false;
@@ -123,6 +125,15 @@ create table if not exists public.transactions (
   idempotency_key text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
+);
+
+update public.users u
+set tier_activated = true
+where not u.tier_activated and (
+  upper(coalesce(u.tier_code, 'A1')) <> 'A1'
+  or
+  exists (select 1 from public.wallet_balances w where w.user_id = u.id and w.total_deposits > 0)
+  or exists (select 1 from public.transactions t where t.user_id = u.id and t.type = 'upgrade_deduction' and t.status in ('approved', 'completed'))
 );
 
 create table if not exists public.sessions (
@@ -732,7 +743,7 @@ begin
   if wallet_row.deposit_balance < p_usdt_amount then raise exception using errcode = 'P0001', message = 'INSUFFICIENT_DEPOSIT'; end if;
   if wallet_row.opx_balance < p_opx_amount then raise exception using errcode = 'P0001', message = 'INSUFFICIENT_OPX'; end if;
   before_balance := wallet_row.balance;
-  update users set tier_code = p_target_tier, updated_at = now() where id = p_user_id;
+  update users set tier_code = p_target_tier, tier_activated = true, updated_at = now() where id = p_user_id;
   update wallet_balances set deposit_balance = deposit_balance - p_usdt_amount, opx_balance = opx_balance - p_opx_amount, balance = deposit_balance - p_usdt_amount + profit_balance, updated_at = now() where user_id = p_user_id;
   insert into transactions(user_id,type,status,amount,gross_amount,usdt_amount,opx_amount,wallet_address) values(p_user_id,'upgrade_deduction','approved',p_upgrade_cost,p_upgrade_cost,p_usdt_amount,p_opx_amount,'Upgrade to ' || p_target_name) returning * into upgrade_row;
   if p_opx_amount > 0 then

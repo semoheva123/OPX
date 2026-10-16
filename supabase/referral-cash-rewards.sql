@@ -1,5 +1,16 @@
 begin;
 
+alter table public.users add column if not exists tier_activated boolean not null default false;
+
+update public.users u
+set tier_activated = true
+where not u.tier_activated and (
+  upper(coalesce(u.tier_code, 'A1')) <> 'A1'
+  or
+  exists (select 1 from public.wallet_balances w where w.user_id = u.id and w.total_deposits > 0)
+  or exists (select 1 from public.transactions t where t.user_id = u.id and t.type = 'upgrade_deduction' and t.status in ('approved', 'completed'))
+);
+
 create table if not exists public.referral_reward_awards (
   id uuid primary key default uuid_generate_v4(),
   referrer_id uuid not null references public.users(id) on delete cascade,
@@ -82,7 +93,7 @@ begin
   if wallet_row.opx_balance < p_opx_amount then raise exception using errcode = 'P0001', message = 'INSUFFICIENT_OPX'; end if;
   before_balance := wallet_row.balance;
 
-  update users set tier_code = p_target_tier, updated_at = now() where id = p_user_id;
+  update users set tier_code = p_target_tier, tier_activated = true, updated_at = now() where id = p_user_id;
   update wallet_balances
   set deposit_balance = deposit_balance - p_usdt_amount,
       opx_balance = opx_balance - p_opx_amount,
