@@ -6,13 +6,12 @@
 -- workflow, so installing its tables/RPCs would create an orphaned financial
 -- path and could conflict with the existing transaction approval workflow.
 --
--- The sole supported user deposit path is NOWPayments TRC20: apply
--- nowpayments-trc20-deposits.sql and use its signed IPN flow to register and
--- credit confirmed payment orders.
+-- The current direct-wallet TxID implementation is installed by
+-- shared-tron-deposit-txid.sql. This file remains a historical placeholder;
+-- do not apply it.
 --
--- Direct shared-address TxHash deposits and per-user TRON scanning are disabled
--- by the application. automatic-trc20-deposits.sql is a historical migration;
--- do not apply it to a new NOWPayments-only environment.
+-- Per-user TRON scanning remains disabled; automatic-trc20-deposits.sql is a
+-- historical migration and is not part of the shared-wallet TxID flow.
 --
 -- No statements are intentionally executed by this file. If an admin-reviewed
 -- shared-address claim workflow is required, implement and test its wallet

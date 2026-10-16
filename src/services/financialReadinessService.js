@@ -1,6 +1,5 @@
 const blockchainService = require('./blockchainService');
 const tronProvider = require('./tronProvider');
-const paymentGatewayService = require('./paymentGatewayService');
 const { checkSupabaseConnection, supabaseAdmin } = require('../config/supabase');
 
 async function checkFinancialReadiness() {
@@ -8,7 +7,7 @@ async function checkFinancialReadiness() {
     supabaseReachable: false,
     financialSchemaReady: false,
     noUnresolvedPayouts: false,
-    nowPaymentsConfigured: false,
+    sharedDepositAddressConfigured: false,
     tronUsdtContractValid: false,
     payoutKeyConfigured: false,
     payoutKeyValid: false,
@@ -18,10 +17,15 @@ async function checkFinancialReadiness() {
     payoutUsdtFunded: false,
     payoutTrxSufficient: false
   };
-  const nowPaymentsConfig = paymentGatewayService.getNowPaymentsConfig();
-  checks.nowPaymentsConfigured = paymentGatewayService.isNowPaymentsReady(nowPaymentsConfig);
+  try {
+    const tronWeb = tronProvider.createTronWebForEndpoint('http://127.0.0.1');
+    const depositAddress = String(process.env.TRON_SHARED_DEPOSIT_ADDRESS || '').trim();
+    checks.sharedDepositAddressConfigured = Boolean(depositAddress && tronWeb.isAddress(depositAddress));
+  } catch {
+    checks.sharedDepositAddressConfigured = false;
+  }
   const switches = {
-    depositsEnabled: checks.nowPaymentsConfigured,
+    depositsEnabled: checks.sharedDepositAddressConfigured,
     payoutsEnabled: String(process.env.WITHDRAWAL_PAYOUTS_ENABLED || '').toLowerCase() === 'true',
     autoApprovalEnabled: String(process.env.WITHDRAWAL_AUTO_APPROVAL_ENABLED || '').toLowerCase() === 'true'
   };
@@ -102,7 +106,7 @@ async function checkFinancialReadiness() {
   }
 
   const readyForControlledTest = checks.supabaseReachable && checks.financialSchemaReady && checks.noUnresolvedPayouts &&
-    checks.nowPaymentsConfigured && checks.tronUsdtContractValid && checks.payoutKeyConfigured &&
+    checks.sharedDepositAddressConfigured && checks.tronUsdtContractValid && checks.payoutKeyConfigured &&
     checks.payoutKeyValid && checks.tronProviderReachable && checks.payoutBalancesReadable &&
     checks.payoutUsdtFunded && checks.payoutTrxSufficient;
 

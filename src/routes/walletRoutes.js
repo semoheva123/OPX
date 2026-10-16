@@ -5,8 +5,6 @@ const { verifyToken } = require('../middlewares/auth');
 const router = express.Router();
 
 router.get('/wallet/deposit-config', verifyToken, walletController.getDepositConfig);
-router.post('/wallet/deposit/nowpayments/create', verifyToken, walletController.createNowPaymentsDeposit);
-router.post('/wallet/deposit/nowpayments/ipn', walletController.handleNowPaymentsIpn);
 router.post('/wallet/deposit', verifyToken, walletController.deposit);
 router.post('/wallet/withdraw', verifyToken, walletController.withdraw);
 router.get('/transactions/my-history', verifyToken, walletController.getMyHistory);

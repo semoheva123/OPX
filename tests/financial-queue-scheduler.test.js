@@ -6,7 +6,6 @@ const read = relative => fs.readFileSync(path.join(__dirname, '..', relative), '
 const vercel = JSON.parse(read('vercel.json'));
 const workflow = read('.github/workflows/financial-queue-workers.yml');
 const app = read('src/app.js');
-const depositWorker = workflow.slice(workflow.indexOf('      - name: Confirm direct TRON deposit worker remains disabled'), workflow.indexOf('      - name: Process authorized withdrawal payouts'));
 const payoutWorker = workflow.slice(workflow.indexOf('      - name: Process authorized withdrawal payouts'));
 
 assert.ok(vercel.crons.every(job => !['* * * * *', '*/5 * * * *'].includes(job.schedule)),
@@ -30,18 +29,16 @@ assert.match(workflow, /warning title=Financial preflight not ready/);
 assert.match(workflow, /STRICT_READINESS/);
 assert.match(workflow, /secrets\.CRON_SECRET/);
 assert.match(workflow, /Authorization: Bearer \$\{CRON_SECRET\}/);
-assert.match(workflow, /\/api\/internal\/cron\/process-tron-deposits/);
 assert.match(workflow, /\/api\/internal\/cron\/process-withdrawal-payouts/);
 assert.match(workflow, /--output "\$response_file"/);
 assert.match(workflow, /concurrency:/);
 assert.match(workflow, /--max-time 70/);
 assert.match(workflow, /--retry 3 --retry-delay 8 --retry-all-errors/);
-assert.doesNotMatch(depositWorker, /--retry-all-errors|--retry\s+\d/);
 assert.doesNotMatch(payoutWorker, /--retry-all-errors|--retry\s+\d/);
 assert.match(workflow, /steps\.validate\.outputs\.configured == 'true'/);
 assert.match(workflow, /steps\.schema\.outcome == 'success'/);
-assert.match(workflow, /NOWPAYMENTS_ONLY/);
-assert.match(workflow, /NOWPayments IPN is the only supported deposit path/);
+assert.doesNotMatch(workflow, /process-tron-deposits/);
+assert.match(workflow, /shared-tron-deposit-txid\.sql/);
 assert.match(workflow, /WITHDRAWAL_PAYOUTS_DISABLED/);
 assert.match(workflow, /select\(has\("error"\)\)/);
 assert.match(app, /process\.env\.VERCEL_GIT_COMMIT_SHA/);

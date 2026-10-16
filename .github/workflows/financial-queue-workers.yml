@@ -16,7 +16,7 @@ on:
       - 'src/services/withdrawalPayoutService.js'
       - 'src/controllers/walletController.js'
       - 'src/controllers/adminController.js'
-      - 'src/services/paymentGatewayService.js'
+      - 'src/services/tronDepositService.js'
       - 'src/services/emailTemplates.js'
       - 'src/services/dataAccess.js'
       - 'src/services/financialAccountingService.js'
@@ -25,12 +25,11 @@ on:
       - 'index.html'
       - 'admin.html'
       - 'scripts/validate-supabase-readiness.js'
-      - 'supabase/nowpayments-trc20-deposits.sql'
-      - 'supabase/nowpayments-deposit-surcharge.sql'
+      - 'supabase/shared-tron-deposit-txid.sql'
       - 'supabase/schema.sql'
       - 'supabase/automatic-withdrawals.sql'
       - 'supabase/withdrawal-validation-hardening.sql'
-      - 'tests/payment-gateway-webhook.test.js'
+      - 'tests/shared-tron-deposit-txid.test.js'
       - 'tests/deposit-confirmation-email.test.js'
       - 'tests/supabase-production-readiness.test.js'
       - 'tests/withdrawal-fee-revenue.test.js'
@@ -125,31 +124,10 @@ jobs:
           curl --fail --silent --show-error --output "$health_file" --max-time 20 \
             'https://operix.website/api/health'
           jq -e '.success == true and .financialSchema.ready == true' "$health_file" > /dev/null || {
-            echo '::error::Production database or required NOWPayments/payout migration tables are not ready; financial processors were not called.'
+            echo '::error::Production database or required deposit/payout migration tables are not ready; financial processors were not called.'
             exit 1
           }
           echo 'Production database and financial migration tables are ready.'
-
-      - name: Confirm direct TRON deposit worker remains disabled
-        if: ${{ steps.schema.outcome == 'success' }}
-        shell: bash
-        env:
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-        run: |
-          response_file=$(mktemp)
-          trap 'rm -f "$response_file"' EXIT
-          curl --fail --silent --show-error --output "$response_file" \
-            --write-out 'TRON deposit worker HTTP %{http_code}\n' \
-            --max-time 70 \
-            --request POST \
-            --header "Authorization: Bearer ${CRON_SECRET}" \
-            'https://operix.website/api/internal/cron/process-tron-deposits'
-          jq -c '{success, job, skipped: (.result.skipped // false), reason: (.result.reason // null)}' "$response_file"
-          jq -e '.success == true and .result.skipped == true and .result.reason == "NOWPAYMENTS_ONLY"' "$response_file" > /dev/null || {
-            echo '::error::Legacy direct-deposit worker did not remain safely disabled.'
-            exit 1
-          }
-          echo 'Direct TRON deposit scanning is disabled; NOWPayments IPN is the only supported deposit path.'
 
       - name: Process authorized withdrawal payouts
         if: ${{ always() && steps.validate.outputs.configured == 'true' && steps.schema.outcome == 'success' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && !inputs.auth_only && !inputs.deposits_only)) }}

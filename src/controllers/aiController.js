@@ -4,7 +4,7 @@ const User = dataAccess.user;
 const { getWithdrawalSchedule } = require('../services/weeklySchedule');
 const { OPX_INTERNAL_USD_PRICE, OPX_MAX_UPGRADE_DISCOUNT_SHARE, OPX_MAX_UPGRADE_VALUE_USD, getTierDailyOpxConversion } = require('../services/opxPricing');
 const withdrawalPayoutService = require('../services/withdrawalPayoutService');
-const paymentGatewayService = require('../services/paymentGatewayService');
+const tronDepositService = require('../services/tronDepositService');
 
 function localReply(message, userName, userBalance, userTier, platformFacts = {}) {
   const text = normalizeSupportText(message);
@@ -33,8 +33,8 @@ function localReply(message, userName, userBalance, userTier, platformFacts = {}
   if (has('شكوى', 'موظف', 'تذكرة', 'الدعم', 'دعم فني', 'اتواصل', 'اتصال بالدعم')) return tickets;
   if (has('ايداع', 'ايداعات', 'اودع', 'ايدع', 'deposit', 'تحويل الى المنصة', 'لم يصل الايداع', 'الايداع معلق')) {
     const problem = has('مشكلة', 'لم يصل', 'ما وصل', 'متاخر', 'معلق', 'خطا', 'تعذر');
-    if (platformFacts.nowPaymentsConfigured === false) return `بوابة NOWPayments غير متاحة حاليًا؛ لا ترسل أي تحويل مباشر ولا تستخدم عنوانًا قديمًا. راجع حالة الخدمة لاحقًا أو افتح تذكرة دعم من «حسابي».${problem ? ' إذا سبق أن دفعت، لا تكرر الدفع قبل مراجعة الدعم.' : ''}`;
-    return `الإيداع المعتمد حصريًا هو USDT على TRC20 عبر طلب دفع NOWPayments الذي تنشئه من نافذة «إيداع». أرسل المبلغ المحدد إلى العنوان الخاص بذلك الطلب فقط؛ تُضاف القيمة بعد إشعار التأكيد الموقّع من البوابة، ولا نستخدم عنوانًا يدويًا أو إدخال TxHash. ${problem ? 'راجع حالة طلب الدفع وسجل المعاملات، ولا تكرر الدفع. إذا اكتمل الدفع ولم يظهر، افتح تذكرة دعم وأرفق رقم الطلب أو TxHash العام.' : 'لا تستخدم عنوانًا قديمًا أو طلب دفع آخر، وتأكد من الشبكة والمبلغ الظاهرين قبل الإرسال.'}`;
+    if (platformFacts.sharedDepositAddressConfigured === false) return `عنوان محفظة الإيداع غير مهيأ حاليًا؛ لا ترسل أي أموال إلى عنوان محفوظ أو قديم. راجع حالة الخدمة أو افتح تذكرة دعم من «حسابي».${problem ? ' إذا سبق أن أرسلت تحويلًا، لا تكرره وأرسل TxID للدعم.' : ''}`;
+    return `الإيداع المباشر المعتمد هو USDT على شبكة TRC20 إلى عنوان محفظة المنصة ورمز QR الظاهرين داخل نافذة «إيداع». بعد التحويل، أرسل TxID من 64 خانة؛ يتحقق النظام من التحويل المؤكد والعقد والمستلم والمبلغ على الشبكة قبل إضافة الرصيد، ويُرفض TxID المكرر. لا توجد بوابة دفع أو رسوم وسيط. ${problem ? 'راجع سجل المعاملات، ولا تكرر التحويل؛ إذا اكتمل ولم يظهر الرصيد، افتح تذكرة دعم وأرفق TxID.' : 'تحقق من الشبكة والعنوان الرسمي قبل الإرسال، ثم احتفظ بـ TxID.'}`;
   }
   if (has('سحب', 'اسحب', 'withdraw', 'رسوم السحب', 'لم يصل السحب', 'السحب معلق')) {
     const problem = has('مشكلة', 'لم يصل', 'ما وصل', 'متاخر', 'معلق', 'مرفوض', 'خطا', 'تعذر');
@@ -123,16 +123,14 @@ function buildPlatformKnowledge(levels = [], settings = {}, userTier = '', vault
     withdrawalMaximum: withdrawalMax,
     withdrawalFee: '10% من المبلغ؛ الحد الأدنى 20 USDT',
     withdrawalAutomationEnabled: String(process.env.WITHDRAWAL_PAYOUTS_ENABLED || '').toLowerCase() === 'true',
-    nowPaymentsConfigured: paymentGatewayService.isNowPaymentsReady(),
+    sharedDepositAddressConfigured: (() => { try { return Boolean(tronDepositService.getSharedDepositAddress()); } catch { return false; } })(),
     referralCashRewards: '$1 لتفعيل إحالة مباشرة في A1، $2 في A2، و$5 في A3؛ مكافأة واحدة لكل مستوى مؤهل',
     referralCampaignPoints: 'نقطة واحدة لتفعيل مباشر في A1، نقطتان في A2، و4 نقاط في A3؛ النقاط لا تساوي مبلغ المكافأة النقدية',
     a4ReferralMilestone: '300 إحالة مباشرة نشطة مؤهلة لفتح تفعيل A4 المجاني مع مكافأة $100 في رصيد الأرباح، مرة واحدة وفق أهلية الحساب',
     taskRule: 'حد المهام المدفوعة اليومي يساوي قيمة tasks في إعداد المستوى فعليًا ناقص واحد لتطابق قائمة المهمة الحالية؛ المهام التقييمية تتطلب تقييم 1–5 واختيار جانب مسموح؛ التقييم يُسجل ثم يجري إنهاء ذري للمهمة والمكافأة، ولا تعرض المنصة مراجعة بشرية لكل تقييم؛ يشترط تسلسل إنهاء المهام المدفوعة وفاصل ساعتين بين ظهورها؛ التفاعل المجتمعي اختياري وبلا مكافأة؛ اليوم يبدأ وفق Europe/Istanbul؛ الجمعة والسبت عطلة مهام؛ لا توجد مهمة مجتمعية مدفوعة في المسار الحالي',
     gameCycleRule: `تتطلب دورة اللعبة ${Math.max(1, Number(settings.referralsPerCycle) || 6)} إحالات مباشرة نشطة مع تفعيل الحساب، ويخصم الاستخدام دورة؛ الأرصدة المتاحة تظهر بجوار اللعبة؛ الحد اليومي ${Number(settings.dailyGameRewardCap || 100)} USDT؛ مكافأة اللعب توزع حاليًا 90% USDT و10% OPX`,
-    upgradeRule: `السعر وشروط التفعيل والترقية تظهر في تبويب المستويات والتأكيد؛ كل تفعيل أو ترقية مدفوعة يكلف سعر المستوى المستهدف كاملًا؛ لا يشترط تسلسل مستويات أو إحالات للترقية العادية؛ تفعيل A4 المجاني يتطلب الإنجاز المؤهل؛ OPX الداخلي بسعر حساب الترقية ${OPX_INTERNAL_USD_PRICE} USDT لكل OPX ويغطي بحد أقصى ${Math.round(OPX_MAX_UPGRADE_DISCOUNT_SHARE * 100)}% أو ${OPX_MAX_UPGRADE_VALUE_USD} USDT أيهما أقل، والباقي USDT؛ OPX غير قابل للسحب`,
-    depositRule: paymentGatewayService.isNowPaymentsReady()
-      ? 'الإيداع حصريًا عبر طلب دفع NOWPayments بعملة USDT على TRC20؛ يُضاف الرصيد بعد IPN موثّق من البوابة. لا تستخدم عنوانًا مباشرًا أو إدخال TxHash.'
-      : 'بوابة NOWPayments غير جاهزة حاليًا؛ لا ترسل أي أموال ولا تستخدم عنوانًا مباشرًا أو قديمًا، ووجّه المستخدم للدعم.',
+  upgradeRule: `السعر وشروط التفعيل والترقية تظهر في تبويب المستويات والتأكيد؛ كل تفعيل أو ترقية مدفوعة يتطلب سعر المستوى المستهدف كاملًا؛ لا يشترط تسلسل مستويات أو إحالات للترقية العادية؛ تفعيل A4 المجاني يتطلب الإنجاز المؤهل؛ OPX الداخلي بسعر حساب الترقية ${OPX_INTERNAL_USD_PRICE} USDT لكل OPX ويغطي بحد أقصى ${Math.round(OPX_MAX_UPGRADE_DISCOUNT_SHARE * 100)}% أو ${OPX_MAX_UPGRADE_VALUE_USD} USDT أيهما أقل، والباقي USDT؛ OPX غير قابل للسحب`,
+    depositRule: (() => { try { return tronDepositService.getSharedDepositAddress() ? 'إيداع USDT مباشر إلى عنوان محفظة المنصة على TRC20؛ يرسل المستخدم TxID ويتحقق النظام من التحويل المؤكد على الشبكة قبل قيد الرصيد.' : 'عنوان محفظة الإيداع غير مهيأ؛ لا ترسل أموالًا ووجّه المستخدم للدعم.'; } catch { return 'عنوان محفظة الإيداع غير صالح؛ لا ترسل أموالًا ووجّه المستخدم للدعم.'; } })(),
     withdrawalRule: `USDT فقط على TRC20؛ المصدر رصيد الأرباح المتاح؛ الحد الأدنى 20 USDT؛ الرسوم 10% من المبلغ؛ موعد ${userTier}: ${withdrawalSchedule.message}; يتطلب بريدًا موثقًا ورمز تأكيد لمرة واحدة يصل إلى البريد وعنوانًا مثبتًا مطابقًا، ويظهر الطلب في السجل وقد يبقى قيد المراجعة.`,
     tabGuides: {
       home: 'الرئيسية: الرصيد الإجمالي وتفصيل USDT (إيداع/أرباح) وOPX، التقدم اليومي، نشاط الحساب، سجل زمني، تحديث السوق الخارجي OPXUSD من Bitfinex. سعر السوق ليس سعرًا داخليًا ولا عائدًا أو توصية.',

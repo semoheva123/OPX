@@ -1,95 +1,26 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { HDNodeWallet } = require('ethers');
-const deposits = require('../src/services/tronDepositService');
 
 const read = relative => fs.readFileSync(path.join(__dirname, '..', relative), 'utf8');
-const migration = read('supabase/automatic-trc20-deposits.sql');
-const trc20Only = read('supabase/trc20-only-financials.sql');
 const server = read('server.js');
 const depositService = read('src/services/tronDepositService.js');
-const emailTemplates = read('src/services/emailTemplates.js');
 const financialReadiness = read('src/services/financialReadinessService.js');
 const queueWorkflow = read('.github/workflows/financial-queue-workers.yml');
-const blockchainService = read('src/services/blockchainService.js');
 const walletController = read('src/controllers/walletController.js');
 const depositUi = read('index.html');
 
-assert.match(migration, /create table if not exists public\.tron_deposit_addresses/i);
-assert.match(migration, /create table if not exists public\.tron_deposit_events/i);
-assert.match(migration, /operix_tron_deposit_credit_atomic/i);
-assert.match(migration, /unique/i, 'deposit events must be idempotent');
-assert.match(migration, /revoke all privileges.*anon.*authenticated/is);
-assert.match(trc20Only, /TRC20_ONLY_SUPPORTED/);
-assert.match(server, /process-tron-deposits/);
-assert.match(server, /processTronDepositQueue\(resend\)/, 'deposit cron should pass the configured mail client to the scanner');
-assert.match(depositService, /if \(result\?\.credited\)[\s\S]*?sendDepositConfirmationEmail/, 'send receipt only on a newly credited deposit');
-assert.match(depositService, /TRON deposit confirmation email failed/);
-assert.match(emailTemplates, /function depositConfirmedTemplate/);
-assert.match(server, /check-financial-readiness/);
+assert.doesNotMatch(server, /process-tron-deposits/);
+assert.doesNotMatch(depositService, /processTronDepositQueue|processAddress|ensureUserDepositAddress/);
+assert.match(depositService, /verifySharedDepositTransfer/);
+assert.match(financialReadiness, /sharedDepositAddressConfigured/);
 assert.match(financialReadiness, /payoutUsdtFunded/);
 assert.match(financialReadiness, /payoutTrxSufficient/);
-assert.match(financialReadiness, /payoutBalancesReadable/);
-assert.match(financialReadiness, /noUnresolvedPayouts/);
-assert.match(financialReadiness, /payoutKeyFailure/);
-assert.match(financialReadiness, /nowPaymentsConfigured/);
-assert.doesNotMatch(financialReadiness, /depositXpubDerivesAddress|tronIndexerReachable/);
-assert.match(depositService, /getScanStartTimestamp/);
-assert.doesNotMatch(financialReadiness, /sendRawTransaction|preparePayout|broadcastPreparedPayout/);
-assert.match(queueWorkflow, /\/api\/internal\/cron\/process-tron-deposits/);
-assert.match(queueWorkflow, /deposits_only:/, 'manual deposit recovery must have a deposits-only option');
-assert.match(queueWorkflow, /!inputs\.deposits_only/, 'a deposits-only run must not invoke withdrawal payouts');
-assert.match(queueWorkflow, /NOWPAYMENTS_ONLY/);
-assert.doesNotMatch(blockchainService, /PLATFORM_(?:TRON|BSC)_DEPOSIT_ADDRESS|verifyDeposit|getDepositAddresses/);
-assert.match(walletController, /return res\.status\(410\)/, 'manual TxHash deposits must remain disabled');
-assert.doesNotMatch(depositUi, /handleDepositSubmit|depositTxHash|platformWalletAddress|copyPlatformWalletAddress/);
-assert.match(depositUi, /userDepositAddress/);
-assert.match(walletController, /NOWPayments.*paymentRequired/s, 'deposit configuration must expose NOWPayments only');
-assert.doesNotMatch(walletController, /ensureUserDepositAddress\(req\.user\.id\)/, 'deposit configuration must not fall back to direct TRON addresses');
+assert.doesNotMatch(financialReadiness, /nowPaymentsConfigured|depositXpubDerivesAddress|tronIndexerReachable/);
+assert.doesNotMatch(queueWorkflow, /process-tron-deposits|NOWPAYMENTS_ONLY/);
+assert.match(walletController, /verifySharedDepositTransfer\(txHash, expectedAddress, senderAddress\)/);
+assert.match(walletController, /operix_shared_tron_deposit_credit_atomic/);
+assert.match(depositUi, /id="sharedDepositTxHash"/);
+assert.match(depositUi, /id="depositWalletQrCode"/);
 
-const originalXpub = process.env.TRON_DEPOSIT_XPUB;
-const originalEnabled = process.env.TRON_DEPOSIT_AUTOMATION_ENABLED;
-const originalSharedMode = process.env.TRON_SHARED_DEPOSIT_MODE;
-const originalSharedAddress = process.env.TRON_SHARED_DEPOSIT_ADDRESS;
-
-(async () => {
-  try {
-    // Public ethers test mnemonic only; never use a test phrase for real deposits.
-    const testMnemonic = 'test test test test test test test test test test test junk';
-    const xpub = HDNodeWallet.fromPhrase(testMnemonic, undefined, "m/44'/195'/0'/0").neuter().extendedKey;
-    process.env.TRON_DEPOSIT_XPUB = xpub;
-    const address0 = deposits.deriveDepositAddress(0);
-    const address1 = deposits.deriveDepositAddress(1);
-    assert.match(address0, /^T[1-9A-HJ-NP-Za-km-z]{33}$/);
-    assert.match(address1, /^T[1-9A-HJ-NP-Za-km-z]{33}$/);
-    assert.notEqual(address0, address1, 'each child index must produce a different TRON deposit address');
-    assert.throws(() => deposits.deriveDepositAddress(-1), /INVALID_TRON_DEPOSIT_DERIVATION_INDEX/);
-    const cursor = Date.parse('2026-10-11T18:00:00.000Z');
-    assert.equal(deposits.getScanStartTimestamp(cursor), Date.parse('2026-10-10T18:00:00.000Z'),
-      'each scan must recheck a 24-hour overlap so delayed indexer records can be recovered');
-    delete process.env.TRON_DEPOSIT_XPUB;
-    process.env.TRON_DEPOSIT_AUTOMATION_ENABLED = 'true';
-    process.env.TRON_SHARED_DEPOSIT_MODE = 'false';
-    const directWorker = await deposits.processTronDepositQueue();
-    assert.equal(directWorker.skipped, true, 'direct TRON deposit scanning must remain disabled for all configurations');
-    assert.equal(directWorker.reason, 'NOWPAYMENTS_ONLY');
-    process.env.TRON_DEPOSIT_AUTOMATION_ENABLED = 'true';
-    const enabledLegacyFlag = await deposits.processTronDepositQueue();
-    assert.equal(enabledLegacyFlag.skipped, true, 'legacy environment flags must never re-enable direct deposit scanning');
-    assert.equal(enabledLegacyFlag.reason, 'NOWPAYMENTS_ONLY');
-    console.log('TRON deposit automation tests: ok');
-  } catch (error) {
-    console.error(error);
-    process.exitCode = 1;
-  } finally {
-    if (originalXpub === undefined) delete process.env.TRON_DEPOSIT_XPUB;
-    else process.env.TRON_DEPOSIT_XPUB = originalXpub;
-    if (originalEnabled === undefined) delete process.env.TRON_DEPOSIT_AUTOMATION_ENABLED;
-    else process.env.TRON_DEPOSIT_AUTOMATION_ENABLED = originalEnabled;
-    if (originalSharedMode === undefined) delete process.env.TRON_SHARED_DEPOSIT_MODE;
-    else process.env.TRON_SHARED_DEPOSIT_MODE = originalSharedMode;
-    if (originalSharedAddress === undefined) delete process.env.TRON_SHARED_DEPOSIT_ADDRESS;
-    else process.env.TRON_SHARED_DEPOSIT_ADDRESS = originalSharedAddress;
-  }
-})();
+console.log('TRON deposit automation retirement tests: ok');

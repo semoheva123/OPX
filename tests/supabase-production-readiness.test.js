@@ -45,10 +45,10 @@ assert.doesNotMatch(upgradeBody, /dataAccess\.user\.updateOne/, 'the app must no
 assert.match(dataAccess, /MilestoneRewardAward: \{ table: 'milestone_reward_awards' \}/);
 assert.match(validator, /daily_task_entities/);
 assert.match(validator, /milestone_reward_awards/);
-assert.match(validator, /table: 'nowpayments_deposit_orders', columns: 'payment_id,order_id,user_id,price_amount,surcharge_amount,charge_amount,pay_amount,pay_currency,pay_address,payment_status,transaction_id,tx_hash,actual_paid,credited_at'/);
+assert.match(validator, /table: 'shared_tron_deposit_events', columns: 'tx_hash,user_id,transaction_id,amount,from_address,to_address,event_index,block_timestamp'/);
 assert.match(validator, /table: 'withdrawal_payouts', columns: 'id,transaction_id,network,status,tx_hash,signed_payload,next_attempt_at'/);
 assert.match(validator, /table: 'withdrawal_email_codes', columns: 'user_id,code_hash,intent_hash,expires_at,attempts,sent_at'/);
-for (const table of ['nowpayments_deposit_orders', 'withdrawal_payouts', 'withdrawal_email_codes']) {
+for (const table of ['shared_tron_deposit_events', 'withdrawal_payouts', 'withdrawal_email_codes']) {
   assert.ok(validator.includes(`'${table}'`), `${table} must be checked by the production readiness validator`);
   assert.match(supabaseConfig, new RegExp(`'${table}'`), `${table} must be probed by production health`);
 }
@@ -60,7 +60,7 @@ assert.match(supabaseConfig, /depositTablesReady/);
 assert.match(supabaseConfig, /payoutTableReady/);
 assert.match(supabaseConfig, /withdrawalEmailCodesReady/);
 assert.match(supabaseConfig, /missingDepositTables/);
-assert.match(supabaseConfig, /requiredColumns: 'payment_id,order_id,user_id,price_amount,surcharge_amount,charge_amount,pay_amount,pay_currency,pay_address,payment_status,transaction_id,tx_hash,actual_paid,credited_at'/);
+assert.match(supabaseConfig, /requiredColumns: 'tx_hash,user_id,transaction_id,amount,to_address,block_timestamp'/);
 assert.match(app, /financialSchema: supabase\?\.financialSchema/);
 assert.match(sitemap, /<loc>https:\/\/operix\.website\//);
 assert.doesNotMatch(sitemap, /localhost|127\.0\.0\.1/);

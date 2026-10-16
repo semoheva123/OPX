@@ -588,7 +588,7 @@ body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) th { col
     #view-home .balance-summary-card .balance-card-note { margin-top: 2px; font-size: 8px; }
 }
 
-/* Keep the full payment instructions and NOWPayments QR reachable on short screens. */
+/* Keep the deposit wallet instructions and QR reachable on short screens. */
 #depositModal > .deposit-modal-shell {
     max-height: calc(100vh - 32px);
     max-height: calc(100dvh - 32px);

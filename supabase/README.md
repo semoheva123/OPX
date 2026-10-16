@@ -9,11 +9,10 @@ This folder contains the canonical Supabase schema and deployment checks for OPE
 - weekly-schedule-guards.sql — blocks Friday/Saturday task completions and restricts new withdrawal requests to Friday for A1/A2 or Saturday for higher tiers (Europe/Istanbul)
 - admin-email-broadcasts.sql — installs the durable admin email announcement queue, verified-recipient enforcement, and update opt-out preference
 - email-verification-reminders.sql — installs a separate, rate-limited transactional queue for active unverified accounts; links expire after 24 hours
-- nowpayments-trc20-deposits.sql — records NOWPayments TRC20 payment requests and provides idempotent IPN crediting
-- nowpayments-deposit-surcharge.sql — legacy 1% surcharge migration; new deposits use the flat-fee migration while crediting only the requested principal
-- nowpayments-fixed-deposit-fee.sql — validates whole-USDT deposit principals, an exact 1 USDT fee/payment amount, and preserves existing orders
-- automatic-trc20-deposits.sql — legacy direct-TRC20 scanner migration; not used by the NOWPayments-only deposit flow
-- shared-trc20-deposits.sql — deprecated, documentation-only placeholder; do not apply
+- shared-tron-deposit-txid.sql — installs the idempotent, service-role-only ledger credit for direct platform-wallet TxID deposits
+- nowpayments-trc20-deposits.sql, nowpayments-deposit-surcharge.sql, nowpayments-fixed-deposit-fee.sql — historical provider migrations only; do not use for current deposits or delete existing order history
+- automatic-trc20-deposits.sql — historical per-user TRON scanner migration; not used by the current shared-wallet TxID flow
+- shared-trc20-deposits.sql — historical documentation-only placeholder; do not apply
 - migration-plan.md — production rollout and reconciliation rules
 - remove-identity-verification.sql — removes legacy identity-verification data and columns from an existing database
 - referral-cash-rewards.sql — legacy standalone referral migration; superseded by production-readiness.sql
@@ -24,8 +23,8 @@ Add these values to the production environment before switching the app:
 - SUPABASE_URL
 - SUPABASE_ANON_KEY
 - SUPABASE_SERVICE_ROLE_KEY
-- NOWPAYMENTS_API_KEY and NOWPAYMENTS_IPN_SECRET (IPN secret must match the value in NOWPayments Store Settings)
-- APP_URL (public HTTPS origin used for the NOWPayments IPN callback)
+- TRON_SHARED_DEPOSIT_ADDRESS (the platform-owned USDT TRC20 receiving address)
+- TRON_INDEXER_URL / TRON_INDEXER_FALLBACK_URLS (confirmed TRC20 event lookup endpoints)
 
 ## Current operating mode
 
@@ -45,8 +44,7 @@ The project is configured for Supabase as the only application database layer.
 5. After production-readiness.sql and automatic-withdrawals.sql, run weekly-schedule-guards.sql before deploying the weekly task/withdrawal schedule. Friday and Saturday are task holidays; A1/A2 may request withdrawal Friday and all higher tiers Saturday (Europe/Istanbul). This restricts new requests only; already accepted payouts continue through the existing settlement queue.
 6. Run admin-email-broadcasts.sql before deploying admin email announcements. Configure EMAIL_UNSUBSCRIBE_SECRET (a private random value; otherwise JWT_SECRET signs unsubscribe tokens) and a verified EMAIL_FROM. The queue sends only verified regular-user accounts not opted out, in batches of 100.
 7. Run email-verification-reminders.sql before deploying the unverified-account reminder panel or worker. It excludes banned/opted-out accounts, deduplicates email addresses, rate-limits reminders to once every 7 days, stores only token hashes, and sends one bounded batch per worker run.
-7a. Apply nowpayments-trc20-deposits.sql, nowpayments-deposit-surcharge.sql, and then nowpayments-fixed-deposit-fee.sql. New payment requests accept whole-USDT principals from 1 through 999,999 and charge a fixed 1 USDT fee (for example, a 50 USDT deposit costs exactly 51 USDT); `pay_amount` is explicitly set to that whole-USDT total, and the user's wallet receives only the principal. Existing orders retain their stored charge and wallet credit. Configure NOWPAYMENTS_API_KEY, NOWPAYMENTS_IPN_SECRET to exactly match the NOWPayments Store IPN secret, and an HTTPS APP_URL. NOWPayments is the sole supported deposit path; its signed callback is `https://<APP_URL>/api/wallet/deposit/nowpayments/ipn`. Do not apply automatic-trc20-deposits.sql to new deployments or enable direct TRON deposit flags.
-For an existing production database where the first two NOWPayments migrations have already run, apply only nowpayments-fixed-deposit-fee.sql. Do not rerun nowpayments-deposit-surcharge.sql: its historical normalization step can alter uncredited legacy orders.
+7a. Apply shared-tron-deposit-txid.sql. Set TRON_SHARED_DEPOSIT_ADDRESS to the verified, platform-owned TRON address in encrypted hosting configuration. The app displays its QR and address; users submit a TxID after transferring USDT on TRC20. The server verifies the confirmed token transfer, destination, and amount using a TRON indexer, then credits the user exactly once. No payment intermediary or deposit fee is used. Do not put a wallet private key in hosting or the app; this flow only needs the public receiving address. Keep previous provider tables and transaction/ledger history for reconciliation, but do not use or drop them as part of this change. Existing pending third-party payment orders are not automatically converted; reconcile them with support before decommissioning that account.
 8. If verified admin accounts will request withdrawals from the user-facing account UI, run `withdrawal-email-verification-admin-role-fix.sql` after `withdrawal-email-verification.sql`; it permits that email-code request but does not change admin-login TOTP requirements.
 8. Validate required tables/functions and confirm the application uses only the backend service-role client.
 9. Configure the dedicated hot-wallet keys and provider RPCs in hosting secrets, deploy, and run small-value test withdrawals on each enabled network.
@@ -61,7 +59,7 @@ Each directly referred user awards their inviter $1 on the first successful paid
 Run production-readiness.sql before deploying the matching application. It adds task entities, assignments, private submissions, and an atomic reward function that validates a same-day community post plus comment or an assigned evaluation with an allowed tag and a 10–500 character note. Evaluation submissions are backend-only. Admins configure each level's task count in the VIP plan editor.
 
 ## Legacy SQL files
-Do not run daily-evaluation-tasks.sql; it is retained only as a migration-history marker. Do not run the standalone referral-cash-rewards.sql after production-readiness.sql; the current readiness migration already includes that functionality and the A4 milestone award. Do not run automatic-trc20-deposits.sql or shared-trc20-deposits.sql in new environments: direct TRON deposits are not supported, and NOWPayments is the sole deposit provider. The former may remain in existing databases for historical compatibility, but the application no longer scans or credits those addresses.
+Do not run daily-evaluation-tasks.sql; it is retained only as a migration-history marker. Do not run the standalone referral-cash-rewards.sql after production-readiness.sql; the current readiness migration already includes that functionality and the A4 milestone award. Do not apply the old NOWPayments or per-user scanner migrations for new deposits. The current supported deposit path is shared platform-wallet USDT TRC20 with user-submitted TxID and on-chain validation.
 
 ## Important note
 The runtime is intentionally kept Supabase-only to avoid database-layer conflicts and to keep the migration clean.

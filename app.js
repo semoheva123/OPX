@@ -2611,7 +2611,7 @@ function copyUserDepositAddress() {
     const walletInput = document.getElementById('userDepositAddress');
     const value = String(walletInput?.value || '').trim();
     if (!isTrustedTronAddress(value)) {
-        showToast('معلومة مهمة: لا يمكنك نسخ عنوان المحفظة قبل إنشاء طلب الدفع الرسمي من داخل التطبيق. أنشئ الطلب أولاً ثم انسخ العنوان الرسمي فقط.', 'warn');
+        showToast('تعذر تحميل عنوان محفظة الإيداع الرسمي. لا تستخدم أي عنوان محفوظ أو مرسل خارج المنصة.', 'warn');
         return;
     }
     executeCopyProcess(value);
@@ -3433,133 +3433,35 @@ function closeWithdrawModal() {
     if (button) button.innerText = 'إرسال رمز التأكيد إلى البريد';
 }
 
-function calculateNowPaymentsDepositPreview(amount) {
-    const text = String(amount ?? '').trim();
-    if (!/^[1-9]\d*$/.test(text)) return null;
-    const principalUnits = BigInt(text) * 10000n;
-    if (principalUnits < 10000n || principalUnits > 9999900000n) return null;
-    const surchargeUnits = 10000n;
-    const formatUnits = units => `${units / 10000n}.${String(units % 10000n).padStart(4, '0')}`;
-    return {
-        depositAmount: formatUnits(principalUnits),
-        surchargeAmount: formatUnits(surchargeUnits),
-        chargeAmount: formatUnits(principalUnits + surchargeUnits)
-    };
-}
-
-function updateNowPaymentsDepositPreview() {
-    const amountInput = document.getElementById('nowPaymentsDepositAmount');
-    const preview = calculateNowPaymentsDepositPreview(amountInput?.value);
-    const depositAmount = document.getElementById('nowPaymentsPreviewDepositAmount');
-    const surchargeAmount = document.getElementById('nowPaymentsPreviewSurchargeAmount');
-    const chargeAmount = document.getElementById('nowPaymentsPreviewChargeAmount');
-    const status = document.getElementById('nowPaymentsFeePreviewStatus');
-    if (depositAmount) depositAmount.textContent = preview?.depositAmount || '—';
-    if (surchargeAmount) surchargeAmount.textContent = preview?.surchargeAmount || '—';
-    if (chargeAmount) chargeAmount.textContent = preview?.chargeAmount || '—';
-    if (status) status.textContent = preview
-        ? `ستدفع ${preview.chargeAmount} USDT بالضبط، دون كسور.`
-        : 'أدخل مبلغًا صحيحًا كاملًا بين 1 و999,999 USDT دون كسور.';
-    return preview;
-}
-
 async function loadDepositAddress() {
     try {
-        const gatewayPanel = document.getElementById('nowPaymentsAmountPanel');
-        const paymentDetails = document.getElementById('nowPaymentsPaymentDetails');
-        gatewayPanel?.classList.add('hidden');
-        paymentDetails?.classList.add('hidden');
-        document.getElementById('nowPaymentsAmountEntry')?.classList.remove('hidden');
         document.getElementById('depositNetworkInstructions')?.classList.add('hidden');
+        document.getElementById('sharedDepositClaimPanel')?.classList.add('hidden');
         updateDepositAddressCopyState('');
+        const qrCode = document.getElementById('depositWalletQrCode');
+        if (qrCode) qrCode.removeAttribute('src');
         const token = localStorage.getItem('token');
         const res = await fetch('/api/wallet/deposit-config', { headers: { Authorization: `Bearer ${token}` } });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'تعذر تجهيز عنوان الإيداع الآلي');
-        if (data.provider === 'NOWPayments' && data.paymentRequired) {
-            gatewayPanel?.classList.remove('hidden');
-            document.getElementById('nowPaymentsAmountEntry')?.classList.remove('hidden');
-            document.getElementById('nowPaymentsDepositPreview')?.classList.remove('hidden');
-            paymentDetails?.classList.add('hidden');
-            document.getElementById('sharedDepositClaimPanel')?.classList.add('hidden');
-            updateDepositAddressCopyState('');
-            const createButton = document.getElementById('nowPaymentsCreateButton');
-            if (createButton) { createButton.disabled = false; createButton.innerHTML = '<i class="fa-solid fa-lock text-xs"></i><span>متابعة إلى الدفع</span>'; }
-            const instructions = document.getElementById('depositNetworkInstructions');
-            instructions?.classList.add('hidden');
-            updateNowPaymentsDepositPreview();
-            const status = document.getElementById('depositModalStatus');
-            if (status) status.textContent = '';
-            return;
+        if (!res.ok) throw new Error(data.error || 'تعذر تحميل عنوان الإيداع الرسمي');
+        if (data.network !== 'TRC20' || data.asset !== 'USDT' || !isTrustedTronAddress(data.address) || !String(data.qrCode || '').startsWith('data:image/')) {
+            throw new Error('تعذر التحقق من بيانات محفظة الإيداع الرسمية.');
         }
-        gatewayPanel?.classList.add('hidden');
-        paymentDetails?.classList.add('hidden');
         const instructions = document.getElementById('depositNetworkInstructions');
         if (instructions) {
-            instructions.textContent = 'استخدم شبكة TRC20 فقط، وأرسل المبلغ المحدد إلى هذا العنوان.';
+            instructions.textContent = 'أرسل USDT على شبكة TRC20 إلى عنوان المنصة الظاهر أعلاه، ومن عنوان TRON المثبّت في ملف حسابك. بعد اكتمال التحويل أرسل TxID؛ لن يُضاف الرصيد إلا بعد مطابقة المرسل والتحقق من تأكيد الشبكة. لا توجد رسوم وسيط.';
             instructions.classList.remove('hidden');
         }
-        updateDepositAddressCopyState(data.addresses?.TRC20 || '');
-        const sharedClaimPanel = document.getElementById('sharedDepositClaimPanel');
-        if (sharedClaimPanel) sharedClaimPanel.classList.toggle('hidden', data.verification !== 'transaction_hash');
+        updateDepositAddressCopyState(data.address);
+        if (qrCode) qrCode.src = data.qrCode;
+        document.getElementById('sharedDepositClaimPanel')?.classList.remove('hidden');
         const status = document.getElementById('depositModalStatus');
-        if (status) status.textContent = data.verification === 'transaction_hash'
-            ? 'تأكد من تطابق TxHash مع التحويل قبل إتمام التحقق.'
-            : 'سيتم تحديث الرصيد تلقائيًا بعد تأكيد الشبكة.';
+        if (status) status.textContent = '';
     } catch (error) {
         updateDepositAddressCopyState('');
+        document.getElementById('depositWalletQrCode')?.removeAttribute('src');
         const status = document.getElementById('depositModalStatus');
         if (status) status.textContent = error.message || 'تعذر تحميل العنوان';
-    }
-}
-
-async function createNowPaymentsDeposit() {
-    const amountInput = document.getElementById('nowPaymentsDepositAmount');
-    const button = document.getElementById('nowPaymentsCreateButton');
-    const status = document.getElementById('depositModalStatus');
-    const amount = String(amountInput?.value || '').trim();
-    const preview = updateNowPaymentsDepositPreview();
-    if (!preview) {
-        if (status) status.textContent = 'أدخل مبلغًا صحيحًا كاملًا بين 1 و999,999 USDT دون كسور.';
-        amountInput?.focus();
-        return;
-    }
-    if (button) { button.disabled = true; button.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs"></i><span>جارٍ إنشاء الطلب...</span>'; }
-    if (status) status.textContent = 'جارٍ إعداد طلب الدفع...';
-    try {
-        const response = await fetch('/api/wallet/deposit/nowpayments/create', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
-            body: JSON.stringify({ amount })
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'تعذر إنشاء طلب الدفع');
-        if (String(data.depositAmount) !== preview.depositAmount || String(data.surchargeAmount) !== preview.surchargeAmount || String(data.chargeAmount) !== preview.chargeAmount) {
-            throw new Error('لم تتطابق الرسوم مع المعاينة. لا ترسل أي أموال؛ أغلق النافذة وتواصل مع الدعم.');
-        }
-        updateDepositAddressCopyState(data.address || '');
-        document.getElementById('nowPaymentsQrCode').src = data.qrCode || '';
-        document.getElementById('nowPaymentsPayAmount').textContent = String(data.payAmount || '—');
-        document.getElementById('nowPaymentsDepositAmountCredit').textContent = String(data.depositAmount || amount);
-        document.getElementById('nowPaymentsSurchargeAmount').textContent = String(data.surchargeAmount || '0.0000');
-        document.getElementById('nowPaymentsChargeAmount').textContent = String(data.chargeAmount || data.depositAmount || amount);
-        document.getElementById('nowPaymentsPaymentId').textContent = String(data.paymentId || '');
-        document.getElementById('nowPaymentsAmountEntry')?.classList.add('hidden');
-        document.getElementById('nowPaymentsPaymentDetails')?.classList.remove('hidden');
-        const instructions = document.getElementById('depositNetworkInstructions');
-        if (instructions) {
-            instructions.textContent = 'بعد تأكيد الدفع، سيُضاف مبلغ الإيداع إلى رصيدك تلقائيًا.';
-            instructions.classList.remove('hidden');
-        }
-        if (status) status.textContent = 'طلب الدفع جاهز. حوّل المبلغ المعروض إلى العنوان الرسمي أدناه.';
-    } catch (error) {
-        updateDepositAddressCopyState('');
-        document.getElementById('nowPaymentsPaymentDetails')?.classList.add('hidden');
-        document.getElementById('nowPaymentsAmountEntry')?.classList.remove('hidden');
-        document.getElementById('depositNetworkInstructions')?.classList.add('hidden');
-        if (status) status.textContent = error.message || 'تعذر إنشاء طلب الدفع لدى NOWPayments.';
-    } finally {
-        if (button) { button.disabled = false; button.innerHTML = '<i class="fa-solid fa-lock text-xs"></i><span>متابعة إلى الدفع</span>'; }
     }
 }
 
@@ -3573,7 +3475,7 @@ async function claimSharedDeposit() {
         return;
     }
     if (button) { button.disabled = true; button.textContent = 'جارٍ التحقق...'; }
-    if (status) status.textContent = 'جارٍ التحقق من المعاملة على شبكة TRON.';
+    if (status) status.textContent = 'جارٍ التحقق من TxID ومطابقة التحويل المؤكد إلى محفظة المنصة.';
     try {
         const response = await fetch('/api/wallet/deposit', {
             method: 'POST',
