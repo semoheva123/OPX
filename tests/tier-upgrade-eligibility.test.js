@@ -22,9 +22,7 @@ assert.match(referralMilestoneQuery, /select:\s*['"]id['"]/, 'referral milestone
 assert.doesNotMatch(referralMilestoneQuery, /select:\s*['"]wallet\.totalDeposits['"]/, 'wallet fields must not be selected as users-table columns in Supabase');
 assert.doesNotMatch(upgradeHandler, /requiredReferrals|activeReferrals|targetIndex\s*>\s*currentIndex\s*\+\s*1/, 'backend tier upgrades must not require referrals or sequential activations');
 assert.match(upgradeHandler, /const initialActivation = !currentActivated/, 'direct selection of any tier must be treated as first activation until an account is activated');
-assert.match(upgradeHandler, /hasRecordedTierActivation/, 'backend activation logic must consult saved tier-upgrade transactions');
-assert.match(upgradeHandler, /type: 'upgrade_deduction'/, 'saved tier-upgrade transactions must be the persistent activation source');
-assert.match(upgradeHandler, /currentActivated = Boolean\(currentLevel && \(hasRecordedTierActivation/, 'saved activation status must block repeating the current tier even with zero deposit balance');
+assert.match(upgradeHandler, /currentActivated = Boolean\(currentLevel && \([\s\S]*?user\.tierCode \|\| 'A1'[\s\S]*?totalDeposits/, 'saved non-default tiers must block repeating activation when deposit totals are zero');
 assert.match(upgradeHandler, /const upgradeCost = Number\(targetLevel\.price\)/, 'every paid upgrade must charge the full target-tier price');
 assert.match(tierRenderer, /Boolean\(currentUserData\?\.isTierActivated\)/, 'tier status must use the activation flag loaded from the profile');
 assert.match(tierRenderer, /const cost = fullFeatureAccess \? 0 : isCurrent && currentActivated \? 0 : Number\(tier\.price \|\| 0\)/, 'tier cards must show the full target-tier price');

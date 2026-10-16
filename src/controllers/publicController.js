@@ -102,12 +102,9 @@ async function upgradeSupabase(req, res) {
     if (!targetLevel) return res.status(400).json({ error: 'المستوى المطلوب غير موجود' });
     const targetIndex = codes.indexOf(targetLevel.code);
     const currentLevel = levels.find(level => level.code === user.tierCode);
-    const hasRecordedTierActivation = await dataAccess.transaction.exists({
-      userId: user.id || user._id,
-      type: 'upgrade_deduction',
-      status: { $in: ['approved', 'completed'] }
-    });
-    const currentActivated = Boolean(currentLevel && (hasRecordedTierActivation || Number(user.wallet?.totalDeposits || 0) > 0));
+    const currentActivated = Boolean(currentLevel && (
+      String(user.tierCode || 'A1').toUpperCase() !== 'A1' || Number(user.wallet?.totalDeposits || 0) > 0
+    ));
     const initialActivation = !currentActivated;
     const referralMilestoneCount = await getActiveReferralMilestones(user.referralCode?.trim().toUpperCase());
     const milestoneAward = !fullFeatureAccess && targetLevel.code === 'A4'

@@ -52,12 +52,7 @@ const originalTransactionExists = dataAccess.transaction.exists;
       wallet: { totalDeposits: 0, depositBalance: 0, profitBalance: 100 }
     });
     dataAccess.user.find = async () => [];
-    dataAccess.transaction.exists = async query => {
-      assert.equal(query.userId, 'tier-user-1');
-      assert.equal(query.type, 'upgrade_deduction');
-      assert.deepEqual(query.status.$in, ['approved', 'completed']);
-      return true;
-    };
+    dataAccess.transaction.exists = async () => { throw new Error('Profile must not depend on a transaction-history query to load'); };
 
     const response = {
       statusCode: 200,
@@ -69,7 +64,7 @@ const originalTransactionExists = dataAccess.transaction.exists;
     assert.equal(response.statusCode, 200);
     assert.equal(response.body.user.tierCode, 'A4', 'persisted tier code must be returned after profile reload');
     assert.equal(response.body.user.isTierActivated, true,
-      'approved upgrade history must keep the activation label active even when total historical deposits are zero');
+      'a persisted non-default tier must remain active when total historical deposits are zero');
     console.log('profile response safety and tier activation tests: ok');
   } catch (error) {
     console.error(error);
