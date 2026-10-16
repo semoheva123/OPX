@@ -325,7 +325,7 @@ async function loadTiers() {
     if (currentUserData) updateTaskAvailability(Number(currentUserData.todayCompletedTasks || 0), getTaskLimitForTier());
 }
 
-function updateNextTierPanel() { const title = document.getElementById('nextTierTitle'); const requirements = document.getElementById('nextTierRequirements'); if (!title || !requirements) return; const index = tiersData.findIndex(tier => tier.code === currentUserTier); const next = tiersData[index + 1]; if (!next) { title.innerText = 'أنت في أعلى مستوى'; requirements.innerHTML = '<span class="col-span-2 text-emerald-300">لا توجد ترقية أعلى حاليًا.</span>'; return; } const cost = Math.max(0, Number(next.price || 0) - Number(tiersData[index]?.price || 0)); title.innerText = `الترقية التالية: ${next.code}`; requirements.innerHTML = `<span class="bg-slate-950 rounded-xl p-2 text-emerald-300">لا يشترط وجود إحالات</span><span class="bg-slate-950 rounded-xl p-2">فرق السعر: <b class="text-emerald-300">$${cost.toFixed(2)}</b></span><span class="bg-slate-950 rounded-xl p-2">المهام اليومية: <b class="text-white">${next.tasks}</b></span><span class="bg-slate-950 rounded-xl p-2">العائد التقديري: <b class="text-emerald-300">$${Number(next.dailyProfit || 0).toFixed(2)}</b></span>`; }
+function updateNextTierPanel() { const title = document.getElementById('nextTierTitle'); const requirements = document.getElementById('nextTierRequirements'); if (!title || !requirements) return; const index = tiersData.findIndex(tier => tier.code === currentUserTier); const next = tiersData[index + 1]; if (!next) { title.innerText = 'أنت في أعلى مستوى'; requirements.innerHTML = '<span class="col-span-2 text-emerald-300">لا توجد ترقية أعلى حاليًا.</span>'; return; } const cost = Number(next.price || 0); title.innerText = `الترقية التالية: ${next.code}`; requirements.innerHTML = `<span class="bg-slate-950 rounded-xl p-2 text-emerald-300">لا يشترط وجود إحالات</span><span class="bg-slate-950 rounded-xl p-2">السعر الكامل للمستوى: <b class="text-emerald-300">$${cost.toFixed(2)}</b></span><span class="bg-slate-950 rounded-xl p-2">المهام اليومية: <b class="text-white">${next.tasks}</b></span><span class="bg-slate-950 rounded-xl p-2">العائد التقديري: <b class="text-emerald-300">$${Number(next.dailyProfit || 0).toFixed(2)}</b></span>`; }
 async function loadUpgradeHistory() { const list = document.getElementById('upgradeHistoryList'); const token = localStorage.getItem('token'); if (!list || !token) return; try { const response = await fetch('/api/user/upgrade-history', { headers: { Authorization: `Bearer ${token}` } }); const data = await response.json(); if (!response.ok) throw new Error(data.error); list.innerHTML = data.history?.length ? data.history.map(item => `<div class="flex justify-between items-center border-b border-slate-800 pb-2"><span>${escapeAiHtml(item.walletAddress || 'ترقية')}<small class="block text-[9px] text-slate-600">${new Date(item.createdAt).toLocaleString('ar')}</small></span><b class="text-amber-300">-$${Number(item.amount || 0).toFixed(2)}</b></div>`).join('') : '<span>لا توجد ترقيات مسجلة بعد.</span>'; } catch (error) { list.innerText = 'تعذر تحميل سجل الترقيات'; } }
 
 /* --- 1. إدارة المستويات (Tiers) --- */
@@ -342,14 +342,13 @@ function renderTiersList() {
     };
 
     container.innerHTML = tiersData.map(tier => {
-        const currentTier = tiersData.find(item => item.code === currentUserTier);
         const tierIndex = tiersData.findIndex(item => item.code === tier.code);
         const currentIndex = tiersData.findIndex(item => item.code === currentUserTier);
         const isCurrent = currentUserTier === tier.code;
         const fullFeatureAccess = Boolean(currentUserData?.paidFeatureAccess);
         const currentActivated = fullFeatureAccess || Number(currentUserData?.wallet?.totalDeposits || 0) > 0;
         const isActivated = isCurrent && currentActivated;
-        const cost = fullFeatureAccess ? 0 : !currentActivated ? Number(tier.price || 0) : isCurrent ? 0 : Math.max(0, tier.price - Number(currentTier?.price || 0));
+        const cost = fullFeatureAccess ? 0 : isCurrent && currentActivated ? 0 : Number(tier.price || 0);
         const isNextTier = tierIndex === currentIndex + 1;
         const canAct = fullFeatureAccess ? tierIndex > currentIndex : !isActivated && (isCurrent || tierIndex > currentIndex);
         const status = isCurrent ? (isActivated ? 'مفعل حاليًا' : 'يحتاج إيداعًا للتفعيل') : tierIndex < currentIndex ? 'مكتمل سابقًا' : fullFeatureAccess ? 'متاح للتجربة' : 'متاح بدون شرط إحالات';
@@ -434,7 +433,7 @@ async function upgradeToSpecificTier(targetTier) {
     const fullFeatureAccess = Boolean(currentUserData?.paidFeatureAccess);
     const currentActivated = fullFeatureAccess || Boolean(current && Number(currentUserData?.wallet?.totalDeposits || 0) > 0);
     const initialActivation = !currentActivated;
-    const upgradeCost = fullFeatureAccess ? 0 : initialActivation ? Number(target.price || 0) : targetIndex === currentIndex ? Number(target.price || 0) : Math.max(0, Number(target.price || 0) - Number(current?.price || 0));
+    const upgradeCost = fullFeatureAccess ? 0 : Number(target.price || 0);
     const activationCost = upgradeCost;
     const maxOpxValue = Math.min(activationCost * opxMaxUpgradeDiscountShare, opxMaxUpgradeValueUsd);
     const opxRequired = (maxOpxValue / opxInternalUsdPrice).toFixed(4);
@@ -3878,4 +3877,3 @@ function changeLanguage(language) {
     if (languageSelect) languageSelect.value = language;
     renderTiersList();
 }
-
