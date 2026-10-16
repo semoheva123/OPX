@@ -28,7 +28,7 @@ assert.match(knowledge.withdrawalFee, /10%/);
 assert.match(knowledge.withdrawalSchedule, /الجمعة/);
 assert.match(knowledge.taskRule, /التفاعل المجتمعي اختياري وبلا مكافأة/);
 assert.match(knowledge.taskRule, /ساعتين/);
-assert.match(knowledge.upgradeRule, /فرق السعر/);
+assert.match(knowledge.upgradeRule, /سعر المستوى المستهدف كاملًا/);
 for (const tab of ['home', 'community', 'tiers', 'vault', 'tasks', 'games', 'team', 'profile', 'customerService']) {
   assert.ok(knowledge.tabGuides[tab], `knowledge must describe ${tab}`);
 }

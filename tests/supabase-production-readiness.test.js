@@ -30,6 +30,7 @@ for (const source of [migration, canonicalSchema]) {
   assert.match(source, /'technology',\s*'ai',\s*'crypto',\s*'trading',\s*'finance'/i, 'all generated task categories must pass database constraints');
 }
 assert.match(migration, /active_referrals_count\s*<\s*300/i, 'A4 eligibility must be verified in SQL');
+assert.match(migration, /expected_upgrade_cost\s*:=\s*target_level\.price/i, 'paid tier upgrades must require the full target-tier price');
 assert.match(migration, /unique\(user_id, milestone_key\)/i, 'the milestone reward must be one-time per user');
 assert.match(migration, /instantProfitReward/i, 'the atomic upgrade RPC must return the awarded bonus');
 assert.match(migration, /referral_milestone/i, 'the A4 bonus must be recorded in the financial ledger');
