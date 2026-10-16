@@ -1,0 +1,160 @@
+const dataAccess = require('../services/dataAccess');
+const { applyRewardToUser, rewardTransactionFields } = require('../services/hybridRewardLedger');
+const { OPX_INTERNAL_USD_PRICE, OPX_FUTURE_LISTING_USD_PRICE, OPX_MAX_UPGRADE_DISCOUNT_SHARE, OPX_MIN_USDT_UPGRADE_SHARE, OPX_MAX_UPGRADE_VALUE_USD, calculateOpxForUsd, applyOpxUpgradePayment } = require('../services/opxPricing');
+const { hasFullFeatureAccess } = require('../services/paidFeatureAccess');
+const realtimeService = require('../services/realtimeService');
+
+function getOpxPricing(req, res) {
+  res.json({ symbol: 'OPX', internalUsdPrice: OPX_INTERNAL_USD_PRICE, futureListingUsdPrice: OPX_FUTURE_LISTING_USD_PRICE, upgradeRate: calculateOpxForUsd(1), maxUpgradeDiscountShare: OPX_MAX_UPGRADE_DISCOUNT_SHARE, maxUpgradeValueUsd: OPX_MAX_UPGRADE_VALUE_USD, minUsdtUpgradeShare: OPX_MIN_USDT_UPGRADE_SHARE });
+}
+
+async function getOpxMarketData(req, res) {
+  try {
+    const timeframeMap = { '5m': '5m', '15m': '15m', '1h': '1h', '4h': '4h', '1D': '1D' };
+    const timeframe = timeframeMap[String(req.query.timeframe || '15m')] || '15m';
+    const [tickerResponse, candlesResponse] = await Promise.all([
+      fetch('https://api-pub.bitfinex.com/v2/ticker/tOPXUSD'),
+      fetch(`https://api-pub.bitfinex.com/v2/candles/trade:${timeframe}:tOPXUSD/hist?limit=96&sort=-1`)
+    ]);
+    if (!tickerResponse.ok || !candlesResponse.ok) throw new Error('BITFINEX_UNAVAILABLE');
+    const ticker = await tickerResponse.json();
+    const candles = await candlesResponse.json();
+    if (!Array.isArray(ticker) || !Array.isArray(candles)) throw new Error('INVALID_BITFINEX_RESPONSE');
+    res.set('Cache-Control', 'public, max-age=10, stale-while-revalidate=30');
+    const normalizedCandles = candles
+      .map(candle => ({ timestamp: candle[0], open: Number(candle[1]), close: Number(candle[2]), high: Number(candle[3]), low: Number(candle[4]), volume: Number(candle[5]) }))
+      .filter(candle => [candle.timestamp, candle.open, candle.close, candle.high, candle.low, candle.volume].every(Number.isFinite))
+      .reverse();
+    res.json({ source: 'Bitfinex', symbol: 'OPXUSD', network: 'Optimism', timeframe, price: Number(ticker[6]), dailyChange: Number(ticker[4]), dailyChangePercent: Number(ticker[5]) * 100, volume24h: Number(ticker[7]), candles: normalizedCandles });
+  } catch (error) {
+    res.status(502).json({ error: 'تعذر تحميل بيانات OPX الحقيقية من Bitfinex' });
+  }
+}
+
+async function getVipLevels(req, res) {
+  try {
+    const levels = await dataAccess.vipLevel.find({}, { sort: { price: 1 } });
+    res.json(levels.sort((first, second) => Number(first.price || 0) - Number(second.price || 0)));
+  }
+  catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
+}
+
+async function leaderboard(req, res) {
+  try {
+    const users = (await dataAccess.user.find({ isBanned: false }, { select: 'email tierCode', limit: 100 })).sort((first, second) => Number(second.wallet?.balance || 0) - Number(first.wallet?.balance || 0)).slice(0, 10);
+    const result = users.map((user, index) => {
+      const [name, domain] = user.email.split('@');
+      return { rank: index + 1, email: name.length > 3 ? `${name.substring(0, 3)}***@${domain}` : `***@${domain}`, balance: user.wallet?.balance || 0, tierCode: user.tierCode };
+    });
+    res.json({ success: true, leaderboard: result });
+  } catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
+}
+
+async function liveActivity(req, res) {
+  try {
+    const [transactions, referrals] = await Promise.all([
+        dataAccess.transaction.find({ status: { $in: ['approved', 'completed'] } }, { sort: { createdAt: -1 }, limit: 20, select: 'userId type amount createdAt' }),
+        dataAccess.user.find({ isBanned: false, referredBy: { $ne: null } }, { sort: { createdAt: -1 }, limit: 20, select: 'email createdAt' })
+      ]);
+    const transactionEvents = transactions.map(transaction => ({
+      id: `transaction-${transaction._id}`,
+      type: transaction.type,
+      amount: Number(transaction.amount) || 0,
+      createdAt: transaction.createdAt
+    }));
+    const referralEvents = referrals.map(user => ({
+      id: `referral-${user._id}`,
+      type: 'referral',
+      amount: 0,
+      createdAt: user.createdAt
+    }));
+    const events = [...transactionEvents, ...referralEvents]
+      .sort((first, second) => new Date(second.createdAt) - new Date(first.createdAt))
+      .slice(0, 20);
+    res.json({ success: true, events });
+  } catch (err) { res.status(500).json({ error: 'تعذر تحميل نشاط المنصة' }); }
+}
+
+async function upgrade(req, res) {
+  return upgradeSupabase(req, res);
+}
+
+async function getActiveReferralMilestones(referralCode) {
+  if (!referralCode) return 0;
+  const referrals = await dataAccess.user.find({ referredBy: referralCode, isBanned: false }, { select: 'id' });
+  return referrals.filter(referral => Number(referral.wallet?.totalDeposits || 0) > 0).length;
+}
+
+async function upgradeSupabase(req, res) {
+  try {
+    const user = await dataAccess.user.findById(req.user.id);
+    if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
+    const fullFeatureAccess = hasFullFeatureAccess(user);
+    const levels = await dataAccess.vipLevel.find({}, { sort: { price: 1, code: 1 } });
+    const codes = levels.map(level => level.code);
+    let nextCode = req.body.targetTier;
+    const currentIndex = codes.indexOf(user.tierCode);
+    if (!nextCode) {
+      if (currentIndex < 0 || currentIndex === codes.length - 1) return res.status(400).json({ error: 'أنت في المستوى الأقصى بالفعل' });
+      nextCode = codes[currentIndex + 1];
+    }
+    const targetLevel = levels.find(level => level.code === nextCode);
+    if (!targetLevel) return res.status(400).json({ error: 'المستوى المطلوب غير موجود' });
+    const targetIndex = codes.indexOf(targetLevel.code);
+    const currentLevel = levels.find(level => level.code === user.tierCode);
+    const currentActivated = Boolean(currentLevel && (
+      user.tierActivated || String(user.tierCode || 'A1').toUpperCase() !== 'A1' || Number(user.wallet?.totalDeposits || 0) > 0
+    ));
+    const initialActivation = !currentActivated;
+    const referralMilestoneCount = await getActiveReferralMilestones(user.referralCode?.trim().toUpperCase());
+    const milestoneAward = !fullFeatureAccess && targetLevel.code === 'A4'
+      ? await dataAccess.milestoneRewardAward.findOne({ userId: user.id || user._id, milestoneKey: 'active_referrals_300_a4' })
+      : null;
+    const levelFourFreeActivationEligible = !fullFeatureAccess && targetLevel.code === 'A4' && user.tierCode !== 'A4' && referralMilestoneCount >= 300 && !milestoneAward;
+    if (!fullFeatureAccess && (targetIndex < currentIndex || (targetIndex === currentIndex && currentActivated))) return res.status(400).json({ error: 'يمكنك الترقية فقط إلى مستوى أعلى من مستواك الحالي' });
+    const upgradeCost = Number(targetLevel.price);
+    let payment;
+    try {
+      payment = fullFeatureAccess || levelFourFreeActivationEligible
+        ? { upgradeCost: 0, opxAmount: 0, opxValue: 0, usdtAmount: 0 }
+        : applyOpxUpgradePayment(user, upgradeCost, { allowOpx: !initialActivation });
+    }
+    catch (error) { return res.status(400).json({ error: `رصيد الإيداع غير كافٍ للترقية إلى ${targetLevel.name}` }); }
+    const referrer = user.referredBy ? await dataAccess.user.findOne({ referralCode: user.referredBy }) : null;
+    const result = await dataAccess.callSupabaseRpc('operix_upgrade_atomic', {
+      p_user_id: user.id || user._id,
+      p_expected_tier: user.tierCode,
+      p_target_tier: targetLevel.code,
+      p_upgrade_cost: payment.upgradeCost,
+      p_usdt_amount: payment.usdtAmount,
+      p_opx_amount: payment.opxAmount,
+      p_opx_value: payment.opxValue || 0,
+      p_referrer_id: referrer?.id || referrer?._id || null,
+      p_referral_commission: 0,
+      p_target_name: targetLevel.name
+    });
+    const finalWallet = result.wallet || user.wallet || {};
+    const freeTierFourActivation = Boolean(result.freeTierFourActivation);
+    const rewardBonusApplied = Number(result.instantProfitReward || 0);
+    if (referrer && Number(result.referralRewardAwarded) > 0) {
+      realtimeService.emit('user_data_changed', {
+        reason: 'referral_reward_awarded',
+        referralRewardAwarded: Number(result.referralRewardAwarded) || 0,
+        walletBalance: Number(result.referrerBalance) || 0,
+        timestamp: new Date().toISOString()
+      }, { userId: referrer.id || referrer._id });
+    }
+    const updatedUser = result.user;
+    const tierFourNotice = freeTierFourActivation ? ' تم تفعيل المستوى الرابع مجانًا وإضافة مكافأة فورية بقيمة $100 إلى رصيد الأرباح.' : '';
+    res.json({ success: true, message: `تمت الترقية بنجاح إلى ${targetLevel.name}.${tierFourNotice}`.trim(), tierCode: updatedUser.tierCode, tierActivated: true, isTierActivated: true, wallet: finalWallet, OPX_balance: finalWallet?.OPX_balance, upgradeCost: payment.upgradeCost, opxAmount: payment.opxAmount, usdtAmount: payment.usdtAmount, initialActivation: payment.opxAmount === 0 && payment.usdtAmount === payment.upgradeCost, referralRewardAwarded: Number(result.referralRewardAwarded) || 0, freeTierFourActivation, instantProfitReward: rewardBonusApplied });
+  } catch (error) {
+    console.error('Supabase upgrade error:', error.message);
+    if (error.message === 'A4_MILESTONE_NOT_ELIGIBLE') return res.status(400).json({ error: 'تفعيل A4 المجاني يتطلب 300 إحالة فعّالة مباشرة.' });
+    if (error.message === 'A4_MILESTONE_ALREADY_AWARDED') return res.status(409).json({ error: 'سبق منح مكافأة هذا الإنجاز لهذا الحساب.' });
+    if (error.message === 'INVALID_UPGRADE_PAYMENT' || error.message === 'INVALID_UPGRADE_COST' || error.message === 'OPX_SHARE_EXCEEDS_LIMIT' || error.message === 'INSUFFICIENT_OPX') return res.status(400).json({ error: 'بيانات الدفع أو رصيد OPX غير صالحين للترقية.' });
+    res.status(500).json({ error: 'خطأ تقني أثناء معالجة الترقية' });
+  }
+}
+
+module.exports = { getVipLevels, getOpxPricing, getOpxMarketData, leaderboard, liveActivity, upgrade };
+module.exports = { getVipLevels, getOpxPricing, getOpxMarketData, leaderboard, liveActivity, upgrade };
