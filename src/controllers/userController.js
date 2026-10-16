@@ -35,7 +35,12 @@ async function getProfile(req, res) {
     const levelCounts = [getLevelCounts(referrals), getLevelCounts(secondLevel), getLevelCounts(thirdLevel)];
     const activeReferrals = paidFeatureAccess ? 1000 : levelCounts[0].active;
     await syncGameCredits(user, req.app.locals.gameSettings || {}, levelCounts[0].active);
-    const isTierActivated = paidFeatureAccess || Number(user.wallet?.totalDeposits || 0) > 0;
+    const hasRecordedTierActivation = await dataAccess.transaction.exists({
+      userId: user.id || user._id,
+      type: 'upgrade_deduction',
+      status: { $in: ['approved', 'completed'] }
+    });
+    const isTierActivated = paidFeatureAccess || hasRecordedTierActivation || Number(user.wallet?.totalDeposits || 0) > 0;
     res.status(200).json({ success: true, user: { ...sanitizeProfileUser(user), isTierActivated, paidFeatureAccess, wheelCredits: paidFeatureAccess ? Number.MAX_SAFE_INTEGER : user.wheelCredits, mysteryBoxCredits: paidFeatureAccess ? Number.MAX_SAFE_INTEGER : user.mysteryBoxCredits, teamStats: { l1: levelCounts[0].total, l1Active: levelCounts[0].active, l1Inactive: levelCounts[0].inactive, l2: levelCounts[1].total, l2Active: levelCounts[1].active, l2Inactive: levelCounts[1].inactive, l3: levelCounts[2].total, l3Active: levelCounts[2].active, l3Inactive: levelCounts[2].inactive, total: referrals.length + secondLevel.length + thirdLevel.length, activeReferrals } } });
   } catch (err) { res.status(500).json({ error: 'حدث خطأ في معالجة الطلب' }); }
 }

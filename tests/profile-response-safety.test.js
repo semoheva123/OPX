@@ -1,5 +1,7 @@
 const assert = require('node:assert/strict');
 const { sanitizeProfileUser } = require('../src/controllers/userController');
+const userController = require('../src/controllers/userController');
+const dataAccess = require('../src/services/dataAccess');
 
 const input = {
   id: 'user-1',
@@ -35,4 +37,46 @@ for (const key of [
   assert.equal(Object.hasOwn(safe, key), false, `${key} must not be included in profile responses`);
 }
 assert.equal(input.twoFactorSecret, 'user-totp-secret', 'sanitization must not mutate the source user');
-console.log('profile response safety tests: ok');
+
+const originalFindById = dataAccess.user.findById;
+const originalUserFind = dataAccess.user.find;
+const originalTransactionExists = dataAccess.transaction.exists;
+
+(async () => {
+  try {
+    dataAccess.user.findById = async () => ({
+      id: 'tier-user-1',
+      email: 'member@example.test',
+      tierCode: 'A4',
+      referralCode: 'MEMBER4',
+      wallet: { totalDeposits: 0, depositBalance: 0, profitBalance: 100 }
+    });
+    dataAccess.user.find = async () => [];
+    dataAccess.transaction.exists = async query => {
+      assert.equal(query.userId, 'tier-user-1');
+      assert.equal(query.type, 'upgrade_deduction');
+      assert.deepEqual(query.status.$in, ['approved', 'completed']);
+      return true;
+    };
+
+    const response = {
+      statusCode: 200,
+      body: null,
+      status(code) { this.statusCode = code; return this; },
+      json(body) { this.body = body; return this; }
+    };
+    await userController.getProfile({ user: { id: 'tier-user-1' }, app: { locals: { gameSettings: {} } } }, response);
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.body.user.tierCode, 'A4', 'persisted tier code must be returned after profile reload');
+    assert.equal(response.body.user.isTierActivated, true,
+      'approved upgrade history must keep the activation label active even when total historical deposits are zero');
+    console.log('profile response safety and tier activation tests: ok');
+  } catch (error) {
+    console.error(error);
+    process.exitCode = 1;
+  } finally {
+    dataAccess.user.findById = originalFindById;
+    dataAccess.user.find = originalUserFind;
+    dataAccess.transaction.exists = originalTransactionExists;
+  }
+})();
