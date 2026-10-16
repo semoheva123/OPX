@@ -382,10 +382,7 @@ begin
       raise exception using errcode = 'P0001', message = 'INVALID_OFFICIAL_UPGRADE_PAYMENT';
     end if;
   elsif not free_tier_four then
-    expected_upgrade_cost := case
-      when wallet_row.total_deposits > 0 then greatest(target_level.price - coalesce(current_level.price, 0), 0)
-      else target_level.price
-    end;
+    expected_upgrade_cost := target_level.price;
     if abs(p_upgrade_cost - expected_upgrade_cost) > 0.01 then
       raise exception using errcode = 'P0001', message = 'INVALID_UPGRADE_COST';
     end if;
