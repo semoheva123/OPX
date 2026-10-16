@@ -81,7 +81,7 @@ async function upgrade(req, res) {
 
 async function getActiveReferralMilestones(referralCode) {
   if (!referralCode) return 0;
-  const referrals = await dataAccess.user.find({ referredBy: referralCode, isBanned: false }, { select: 'wallet.totalDeposits' });
+  const referrals = await dataAccess.user.find({ referredBy: referralCode, isBanned: false }, { select: 'id' });
   return referrals.filter(referral => Number(referral.wallet?.totalDeposits || 0) > 0).length;
 }
 
