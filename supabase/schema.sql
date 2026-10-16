@@ -690,6 +690,7 @@ declare
   upgrade_row transactions%rowtype;
   before_balance numeric;
   target_level_number integer;
+  expected_upgrade_cost numeric(18,4);
   referral_reward_amount numeric(18,4) := 0;
   referral_reward_awarded numeric(18,4) := 0;
   referrer_balance numeric(18,4) := 0;
@@ -705,10 +706,31 @@ begin
   ) ranked
   where ranked.code = p_target_tier;
   if target_level_number is null then raise exception using errcode = 'P0002', message = 'VIP_LEVEL_NOT_FOUND'; end if;
+  select price into expected_upgrade_cost from vip_levels where code = p_target_tier;
+  if expected_upgrade_cost is null then raise exception using errcode = 'P0002', message = 'VIP_LEVEL_NOT_FOUND'; end if;
+  if p_upgrade_cost is null or p_usdt_amount is null or p_opx_amount is null or p_opx_value is null
+    or p_upgrade_cost < 0 or p_usdt_amount < 0 or p_opx_amount < 0 or p_opx_value < 0 then
+    raise exception using errcode = 'P0001', message = 'INVALID_UPGRADE_PAYMENT';
+  end if;
+  if abs(p_upgrade_cost - expected_upgrade_cost) > 0.01 then
+    raise exception using errcode = 'P0001', message = 'INVALID_UPGRADE_COST';
+  end if;
+  if abs(p_upgrade_cost - p_usdt_amount - p_opx_value) > 0.011 then
+    raise exception using errcode = 'P0001', message = 'INVALID_UPGRADE_PAYMENT';
+  end if;
+  if p_opx_amount > 0 then
+    if abs(p_opx_value - round(p_opx_amount * 0.10, 2)) > 0.011
+      or p_opx_value > least(p_upgrade_cost * 0.10, 60) + 0.011 then
+      raise exception using errcode = 'P0001', message = 'OPX_SHARE_EXCEEDS_LIMIT';
+    end if;
+  elsif p_opx_value <> 0 then
+    raise exception using errcode = 'P0001', message = 'INVALID_OPX_VALUE';
+  end if;
   referral_reward_amount := case target_level_number when 1 then 1 when 2 then 2 when 3 then 5 else 0 end;
   select * into wallet_row from wallet_balances where user_id = p_user_id for update;
   if wallet_row.id is null then raise exception using errcode = 'P0002', message = 'USER_WALLET_NOT_FOUND'; end if;
   if wallet_row.deposit_balance < p_usdt_amount then raise exception using errcode = 'P0001', message = 'INSUFFICIENT_DEPOSIT'; end if;
+  if wallet_row.opx_balance < p_opx_amount then raise exception using errcode = 'P0001', message = 'INSUFFICIENT_OPX'; end if;
   before_balance := wallet_row.balance;
   update users set tier_code = p_target_tier, updated_at = now() where id = p_user_id;
   update wallet_balances set deposit_balance = deposit_balance - p_usdt_amount, opx_balance = opx_balance - p_opx_amount, balance = deposit_balance - p_usdt_amount + profit_balance, updated_at = now() where user_id = p_user_id;
