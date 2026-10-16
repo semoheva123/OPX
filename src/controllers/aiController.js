@@ -187,7 +187,7 @@ async function chat(req, res) {
       depositBalance: Number(wallet.depositBalance || 0),
       profitBalance: Number(wallet.profitBalance || 0),
       opxBalance: Number(wallet.OPX_balance ?? user?.OPX_balance ?? 0),
-      tierActive: Boolean(user?.isTierActivated || Number(wallet.totalDeposits || 0) > 0 || String(user?.email || '').toLowerCase() === 'official@operix.website'),
+      tierActive: Boolean(user?.isTierActivated || user?.tierActivated || Number(wallet.totalDeposits || 0) > 0 || String(user?.email || '').toLowerCase() === 'official@operix.website'),
       paidFeatureAccess: String(user?.email || '').toLowerCase() === 'official@operix.website',
       emailVerified: Boolean(user?.emailVerified),
       withdrawalWalletSet: Boolean(String(user?.walletAddress || '').trim()),

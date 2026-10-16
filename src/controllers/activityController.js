@@ -332,7 +332,7 @@ async function getDailyTasks(req, res) {
       dataAccess.socialPost.find({ authorId: { $ne: user.id }, status: 'visible' }, { select: 'authorId comments likedBy status', sort: { createdAt: -1 }, limit: 1000 })
     ]);
     const taskLimit = Math.max(0, Math.min(50, Number(tier.tasks || 0)));
-    const active = hasPaidFeatureAccess(user) || Number(user.wallet?.totalDeposits || 0) > 0;
+    const active = hasPaidFeatureAccess(user) || Boolean(user.tierActivated) || Number(user.wallet?.totalDeposits || 0) > 0;
     if (schedule.holiday) {
       return res.json({
         success: true,
@@ -445,7 +445,7 @@ async function submitDailyEvaluation(req, res) {
     if (!user || !user.tierCode) return res.status(404).json({ error: 'المستخدم أو المستوى غير موجود' });
     const tier = await dataAccess.vipLevel.findOne({ code: user.tierCode });
     if (!tier) return res.status(503).json({ error: 'إعدادات المستوى غير متاحة حاليًا' });
-    if (!hasPaidFeatureAccess(user) && Number(user.wallet?.totalDeposits || 0) <= 0) return res.status(400).json({ error: 'يجب تفعيل المستوى أولًا' });
+    if (!hasPaidFeatureAccess(user) && !user.tierActivated && Number(user.wallet?.totalDeposits || 0) <= 0) return res.status(400).json({ error: 'يجب تفعيل المستوى أولًا' });
 
     const taskKey = String(req.body?.taskKey || '').trim();
     const match = taskKey.match(new RegExp(`^${String(tier.code).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-task-(\\d+)$`));
@@ -538,7 +538,7 @@ async function rewardSupabase(req, res, min, max, label) {
     const paidFeatureAccess = hasPaidFeatureAccess(user);
     const referralsPerCycle = Math.max(1, Number(req.app.locals.gameSettings?.referralsPerCycle) || 6);
     const cycleRequirementMessage = `تحتاج إلى ${referralsPerCycle} إحالات نشطة لفتح دورة العجلة والصندوق، مع إيداع وتفعيل مستوى الحساب`;
-    if (!user || !user.tierCode || !user.wallet || (!paidFeatureAccess && !(user.wallet.totalDeposits > 0))) return res.status(400).json({ error: cycleRequirementMessage });
+    if (!user || !user.tierCode || !user.wallet || (!paidFeatureAccess && !user.tierActivated && !(user.wallet.totalDeposits > 0))) return res.status(400).json({ error: cycleRequirementMessage });
     const creditField = label === 'Lucky Spin Wheel' ? 'wheelCredits' : 'mysteryBoxCredits';
     if (!paidFeatureAccess && Number(user[creditField] || 0) < 1) return res.status(400).json({ error: cycleRequirementMessage });
     const rewardAmount = Number((Math.random() * (max - min) + min).toFixed(2));

@@ -84,6 +84,7 @@ async function mapUserToSupabaseRow(doc) {
     email_verified: Boolean(doc.emailVerified),
     is_banned: Boolean(doc.isBanned),
     tier_code: String(doc.tierCode || 'A1').toUpperCase().slice(0, 20),
+    tier_activated: doc.tierActivated === undefined ? undefined : Boolean(doc.tierActivated),
     referral_code: doc.referralCode || null,
     referred_by: doc.referredBy || null,
     wallet_address: doc.walletAddress || '',

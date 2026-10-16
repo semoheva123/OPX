@@ -8,6 +8,7 @@
     "build:css": "tailwindcss -i ./styles/tailwind.input.css -o ./dist/tailwind.css --minify",
     "test:verification-reminders": "node tests/email-verification-reminders.test.js",
     "test:customer-service": "node tests/customer-service-knowledge.test.js",
+    "test:tier-activation-persistence": "node tests/tier-activation-persistence.test.js",
     "test:withdrawal-fee-revenue": "node tests/withdrawal-fee-revenue.test.js",
     "test:withdrawal-email-verification": "node tests/withdrawal-email-verification.test.js",
     "test:deposit-confirmation-email": "node tests/deposit-confirmation-email.test.js",

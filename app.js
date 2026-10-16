@@ -346,7 +346,7 @@ function renderTiersList() {
         const currentIndex = tiersData.findIndex(item => item.code === currentUserTier);
         const isCurrent = currentUserTier === tier.code;
         const fullFeatureAccess = Boolean(currentUserData?.paidFeatureAccess);
-        const currentActivated = fullFeatureAccess || Boolean(currentUserData?.isTierActivated) || Number(currentUserData?.wallet?.totalDeposits || 0) > 0;
+        const currentActivated = fullFeatureAccess || Boolean(currentUserData?.isTierActivated || currentUserData?.tierActivated || Number(currentUserData?.wallet?.totalDeposits || 0) > 0);
         const isActivated = isCurrent && currentActivated;
         const cost = fullFeatureAccess ? 0 : isCurrent && currentActivated ? 0 : Number(tier.price || 0);
         const isNextTier = tierIndex === currentIndex + 1;
@@ -431,7 +431,7 @@ async function upgradeToSpecificTier(targetTier) {
         return;
     }
     const fullFeatureAccess = Boolean(currentUserData?.paidFeatureAccess);
-    const currentActivated = fullFeatureAccess || Boolean(currentUserData?.isTierActivated) || Boolean(current && Number(currentUserData?.wallet?.totalDeposits || 0) > 0);
+    const currentActivated = fullFeatureAccess || Boolean(current && (currentUserData?.isTierActivated || currentUserData?.tierActivated || Number(currentUserData?.wallet?.totalDeposits || 0) > 0));
     const initialActivation = !currentActivated;
     const upgradeCost = fullFeatureAccess ? 0 : Number(target.price || 0);
     const activationCost = upgradeCost;
@@ -456,11 +456,8 @@ async function upgradeToSpecificTier(targetTier) {
 
         if (res.ok) {
             currentUserTier = data.tierCode || targetTier;
+            currentUserData = { ...(currentUserData || {}), tierCode: currentUserTier, tierActivated: true, isTierActivated: true };
             currentUserTierActive = true;
-            if (currentUserData) {
-                currentUserData.tierCode = currentUserTier;
-                currentUserData.isTierActivated = true;
-            }
             updateTierDisplay();
             renderTiersList();
             changeLanguage(localStorage.getItem('ag_language') || 'ar');
@@ -1771,7 +1768,7 @@ async function loadUserProfileInternal() {
             }
 
             currentUserTier = data.user.tierCode || 'A1';
-            currentUserTierActive = Boolean(data.user.isTierActivated || Number(data.user.wallet?.totalDeposits || 0) > 0);
+            currentUserTierActive = Boolean(data.user.isTierActivated || data.user.tierActivated || Number(data.user.wallet?.totalDeposits || 0) > 0);
             updateWalletData(data.user.wallet || data.user);
             updateProfileUI();
 
