@@ -1778,7 +1778,8 @@ async function loadUserProfileInternal() {
             loadReferralRewardHistory();
 
             let maxTasks = getTaskLimitForTier();
-            document.getElementById('lblMaxTasks').innerText = maxTasks;
+            const maxTasksLabel = document.getElementById('lblMaxTasks');
+            if (maxTasksLabel) maxTasksLabel.innerText = maxTasks;
             let percent = ((data.user.todayCompletedTasks || 0) / maxTasks) * 100;
             document.getElementById('taskProgressBar').style.width = `${percent > 100 ? 100 : percent}%`;
             document.getElementById('lblProgressPercent').innerText = `${Math.round(percent > 100 ? 100 : percent)}%`;
