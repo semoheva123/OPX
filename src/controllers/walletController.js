@@ -88,10 +88,7 @@ async function deposit(req, res) {
     if (!await dataAccess.isSharedTronDepositSchemaReady()) return res.status(503).json({ success: false, error: 'تحديث خدمة الإيداع قيد التجهيز؛ لم يتم تسجيل العملية.' });
     const txHash = String(req.body?.txHash || '').trim().toLowerCase();
     const expectedAddress = tronDepositService.getSharedDepositAddress();
-    const user = await dataAccess.user.findById(req.user.id);
-    const senderAddress = String(user?.walletAddress || '').trim();
-    if (!TronWeb.isAddress(senderAddress)) return res.status(400).json({ success: false, error: 'ثبّت عنوان محفظة TRON التي سترسل منها في ملف حسابك أولًا؛ يجب أن يطابق مرسل التحويل.' });
-    const transfer = await tronDepositService.verifySharedDepositTransfer(txHash, expectedAddress, senderAddress);
+    const transfer = await tronDepositService.verifySharedDepositTransfer(txHash, expectedAddress);
     const result = await dataAccess.callSupabaseRpc('operix_shared_tron_deposit_credit_atomic', {
       p_user_id: req.user.id,
       p_tx_hash: transfer.txHash,
@@ -116,7 +113,6 @@ async function deposit(req, res) {
       INVALID_TRON_DEPOSIT_TX_HASH: 'أدخل TxID صحيحًا مكوّنًا من 64 خانة سداسية عشرية.',
       TRON_SHARED_DEPOSIT_ADDRESS_NOT_CONFIGURED: 'عنوان محفظة الإيداع غير مهيأ؛ لم يتم تسجيل أي عملية.',
       TRON_DEPOSIT_TRANSFER_NOT_FOUND_FOR_SHARED_ADDRESS: 'لم نعثر على تحويل USDT TRC20 مؤكد إلى عنوان الإيداع الرسمي بهذا TxID.',
-      TRON_DEPOSIT_SENDER_MISMATCH: 'عنوان مرسل التحويل لا يطابق عنوان TRON المثبّت في ملف حسابك؛ لم يُضف أي رصيد.',
       INVALID_TRON_DEPOSIT_AMOUNT: 'تعذر التحقق من مبلغ التحويل على الشبكة.',
       TRON_DEPOSIT_PRECISION_UNSUPPORTED: 'مبلغ التحويل يتجاوز دقة الرصيد المدعومة؛ تواصل مع الدعم قبل إعادة المحاولة.'
     };
