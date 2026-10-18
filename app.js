@@ -3415,8 +3415,8 @@ function syncWithdrawalScheduleUI() {
     const todayName = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'][schedule.currentDay];
     if (status) {
         status.innerText = schedule.allowed
-            ? `اليوم ${todayName}: يمكنك تقديم طلب السحب لمستوى ${schedule.tierCode} اليوم. (توقيت إسطنبول)`
-            : `موعد السحب لمستوى ${schedule.tierCode}: يوم ${schedule.allowedDayName} فقط. اليوم ${todayName}؛ يمكنك طلب رمز البريد الآن، وإكمال السحب في الموعد المحدد. (توقيت إسطنبول)`;
+            ? `السحب لمستوى ${schedule.tierCode} متاح اليوم (${todayName}). جميع المواعيد وفق توقيت إسطنبول.`
+            : `السحب لمستوى ${schedule.tierCode} متاح يوم ${schedule.allowedDayName} فقط. اليوم ${todayName}؛ يمكنك طلب رمز التحقق عبر البريد الآن، ثم إتمام السحب يوم ${schedule.allowedDayName}. (توقيت إسطنبول)`;
         status.classList.toggle('border-emerald-500/20', schedule.allowed);
         status.classList.toggle('bg-emerald-500/5', schedule.allowed);
         status.classList.toggle('text-emerald-100', schedule.allowed);
@@ -3549,7 +3549,7 @@ async function submitWithdraw() {
 
     const emailCode = document.getElementById('withdrawEmailCode').value.trim();
     if (!schedule.allowed && emailCode) {
-        showToast(`طلبات السحب لمستوى ${schedule.tierCode} متاحة يوم ${schedule.allowedDayName} فقط (توقيت إسطنبول)`);
+        showToast(`السحب لمستوى ${schedule.tierCode} متاح يوم ${schedule.allowedDayName} فقط. يمكنك إتمامه في ذلك اليوم (توقيت إسطنبول).`);
         return;
     }
 
