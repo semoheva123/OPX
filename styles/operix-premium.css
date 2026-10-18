@@ -597,3 +597,91 @@ body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) th { col
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
 }
+
+/* OPERIX Atelier: restrained champagne accents and consistent surface depth. */
+:root {
+    --opx-line-soft: rgba(255,231,176,.12);
+    --opx-shadow-card: 0 18px 46px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.045);
+}
+
+#appView [id^="view-"] > .glass-card,
+#appView [id^="view-"] > section.glass-card,
+#appView [id^="view-"] > .task-hero {
+    border-color: var(--opx-line-soft);
+    box-shadow: var(--opx-shadow-card);
+}
+
+#appView .app-tab-view > .glass-card,
+#appView .app-tab-view > section,
+#appView .app-tab-view [data-panel] {
+    border-color: rgba(148,163,184,.15);
+    box-shadow: 0 14px 38px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.035);
+}
+
+#view-home .premium-status-strip .status-pill {
+    border-color: rgba(255,231,176,.14);
+    background: linear-gradient(150deg, rgba(17,25,37,.96), rgba(6,11,19,.98));
+    box-shadow: 0 12px 28px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.055);
+}
+#view-home .premium-status-strip .status-pill::before { height: 1px; opacity: .56; }
+#view-home .premium-status-strip .status-pill strong { font-variant-numeric: tabular-nums; }
+#view-home .balance-summary-card { border-color: rgba(255,231,176,.16); }
+
+#view-travel .task-hero,
+#view-profile > .glass-card:first-child {
+    background-image: radial-gradient(ellipse at 92% 0%, rgba(255,231,176,.1), transparent 48%), linear-gradient(150deg, rgba(16,24,36,.98), rgba(5,10,18,.99));
+}
+#view-travel #taskBoard .task-card,
+#view-travel #dailyTaskList [data-task-card] {
+    border-color: rgba(255,231,176,.13);
+    background: linear-gradient(150deg, rgba(15,23,35,.97), rgba(5,10,18,.99));
+    box-shadow: 0 12px 28px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.035);
+}
+#view-travel #taskBoard .task-card:hover,
+#view-travel #dailyTaskList [data-task-card]:hover {
+    border-color: rgba(255,231,176,.32);
+    box-shadow: 0 18px 38px rgba(0,0,0,.28), 0 0 24px rgba(247,185,85,.045);
+}
+
+#appNavBar .app-nav-item { border-color: rgba(255,231,176,.075); }
+#appNavBar .app-nav-item.is-active {
+    border-color: rgba(255,231,176,.24);
+    background: linear-gradient(180deg, rgba(247,185,85,.14), rgba(9,14,22,.96));
+}
+
+#sidebar nav button.bg-amber-500 {
+    background: linear-gradient(135deg, #fff1cf, #f1c879 58%, #c18a43);
+    box-shadow: 0 10px 24px rgba(185,121,45,.18), inset 0 1px 0 rgba(255,255,255,.65);
+}
+#admin-overview > .grid .glass-card,
+#admin-analytics .glass-card,
+#admin-users .glass-card,
+#admin-withdrawals .glass-card {
+    border-color: rgba(255,231,176,.12);
+    box-shadow: 0 16px 40px rgba(0,0,0,.23), inset 0 1px 0 rgba(255,255,255,.04);
+}
+
+body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) main > section,
+body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) .faq,
+body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) .contact,
+body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) .release,
+body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) .status,
+body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) .panel {
+    border-radius: 20px;
+    box-shadow: 0 18px 48px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.04);
+}
+
+#appView :is(button, a, input, select, textarea):focus-visible,
+#sidebar button:focus-visible {
+    outline: 2px solid rgba(255,231,176,.88);
+    outline-offset: 3px;
+}
+
+@media (max-width: 640px) {
+    #appView [id^="view-"] > .glass-card,
+    #appView [id^="view-"] > section.glass-card { border-radius: 20px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    #view-travel #taskBoard .task-card,
+    #view-travel #dailyTaskList [data-task-card] { transition: none; }
+}
