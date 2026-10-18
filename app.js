@@ -3452,7 +3452,7 @@ async function loadDepositAddress() {
         }
         const instructions = document.getElementById('depositNetworkInstructions');
         if (instructions) {
-            instructions.textContent = 'أرسل USDT على شبكة TRC20 إلى عنوان المنصة الظاهر أعلاه، ومن عنوان TRON المثبّت في ملف حسابك. بعد اكتمال التحويل أرسل TxID؛ لن يُضاف الرصيد إلا بعد مطابقة المرسل والتحقق من تأكيد الشبكة. لا توجد رسوم وسيط.';
+            instructions.textContent = 'أرسل USDT على شبكة TRC20 إلى عنوان المنصة الظاهر أعلاه. بعد تأكيد التحويل على الشبكة، أرسل TxID للتحقق وإضافة الرصيد. لا يلزم أن يطابق عنوان الإرسال عنوان السحب المثبّت في ملفك. استخدم TxID مرة واحدة فقط؛ لا توجد رسوم وسيط.';
             instructions.classList.remove('hidden');
         }
         updateDepositAddressCopyState(data.address);
