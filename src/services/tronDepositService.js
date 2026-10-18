@@ -32,7 +32,7 @@ function getSharedDepositAddress() {
   return tronWeb.address.fromHex(tronWeb.address.toHex(address));
 }
 
-async function verifySharedDepositTransfer(txHash, expectedAddress = getSharedDepositAddress(), expectedFromAddress = '') {
+async function verifySharedDepositTransfer(txHash, expectedAddress = getSharedDepositAddress()) {
   const normalizedHash = String(txHash || '').trim().toLowerCase();
   if (!/^[a-f0-9]{64}$/.test(normalizedHash)) throw new Error('INVALID_TRON_DEPOSIT_TX_HASH');
   if (!expectedAddress) throw new Error('TRON_SHARED_DEPOSIT_ADDRESS_NOT_CONFIGURED');
@@ -55,14 +55,6 @@ async function verifySharedDepositTransfer(txHash, expectedAddress = getSharedDe
     return name === 'transfer' && contract === expectedContract && recipient === expectedTo;
   });
   if (!matchingTransfers.length) throw new Error('TRON_DEPOSIT_TRANSFER_NOT_FOUND_FOR_SHARED_ADDRESS');
-  if (expectedFromAddress) {
-    const expectedFrom = normalizeTronAddress(expectedFromAddress, tronWeb);
-    matchingTransfers = matchingTransfers.filter(event => {
-      const from = String(event.result?.from ?? event.result?.['0'] ?? '').trim();
-      return from && normalizeTronAddress(from, tronWeb) === expectedFrom;
-    });
-    if (!matchingTransfers.length) throw new Error('TRON_DEPOSIT_SENDER_MISMATCH');
-  }
 
   const rawAmounts = matchingTransfers.map(event => String(event.result?.value ?? event.result?.['2'] ?? '').trim());
   if (rawAmounts.some(value => !/^\d+$/.test(value) || BigInt(value) <= 0n)) throw new Error('INVALID_TRON_DEPOSIT_AMOUNT');
