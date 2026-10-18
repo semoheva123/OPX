@@ -1,6 +1,7 @@
 const { moderateText } = require('../services/socialSafetyBot');
 const realtimeService = require('../services/realtimeService');
 const dataAccess = require('../services/dataAccess');
+const { safeSocialName, socialNameFor, socialHandleFor } = require('../services/socialIdentity');
 
 const MAX_IMAGE_DATA_LENGTH = 2 * 1024 * 1024;
 const allowedImageHosts = new Set(['ibb.co', 'www.ibb.co', 'i.ibb.co', 'imgbb.com', 'www.imgbb.com']);
@@ -70,12 +71,31 @@ async function listPosts(req, res) {
     pagePosts.forEach(post => {
       toClientPost(post);
       const author = authorMap.get(String(post.authorId));
+      if (author) {
+        post.authorLabel = socialNameFor(author);
+        post.authorDisplayName = socialNameFor(author);
+        post.authorUsername = socialHandleFor(author);
+      } else {
+        post.authorLabel = safeSocialName(post.authorLabel);
+        post.authorDisplayName = post.authorLabel;
+        post.authorUsername = '';
+      }
       post.authorProfileImage = author?.profileImage || '';
       post.authorCoverImage = author?.coverImage || '';
       post.authorBio = author?.socialBio || '';
-      post.authorUsername = author?.email || '';
-      post.authorEmail = author?.email || '';
+      delete post.authorEmail;
+      delete post.username_display;
+      if (post.author && typeof post.author === 'object') {
+        post.author.username = socialNameFor(author || post.author);
+        delete post.author.email;
+      }
       post.authorIsOfficial = isOfficialUser(author);
+      if (Array.isArray(post.comments)) {
+        post.comments = post.comments.map(comment => ({
+          ...comment,
+          authorLabel: safeSocialName(comment.authorLabel)
+        }));
+      }
       post.isSaved = Array.isArray(post.savedBy) && post.savedBy.some(id => String(id) === String(req.user.id));
       delete post.savedBy;
       delete post.reportedBy;
@@ -97,7 +117,7 @@ async function createPost(req, res) {
     if (await dataAccess.socialPost.exists({ authorId: req.user.id, createdAt: { $gte: new Date(Date.now() - 5 * 60 * 1000) } })) return res.status(429).json({ error: 'انتظر خمس دقائق قبل نشر منشور جديد' });
     const user = await dataAccess.user.findById(req.user.id);
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
-    const authorLabel = isOfficialUser(user) ? 'OPERIX Official' : String(user.email || 'عضو OPERIX');
+    const authorLabel = socialNameFor(user);
     const post = await dataAccess.socialPost.create({ authorId: getId(user), authorLabel, content, hashtags: extractHashtags(content), imageUrl, isOfficialAi: false, source: 'user', status: moderation.status, moderationReason: moderation.matchedWord ? 'banned_word' : '' });
     await realtimeService.publish('social_post_created', { postId: getId(post), status: post.status }, { scope: 'user' });
     res.status(201).json({ success: true, message: moderation.allowed ? 'تم نشر المنشور' : 'تم حجب المنشور تلقائياً لمخالفته قواعد الجدار', post: toClientPost(post) });
@@ -125,7 +145,7 @@ async function listLikes(req, res) {
     const post = await visiblePost(req.params.postId);
     if (!post) return res.status(404).json({ error: 'المنشور غير موجود' });
     const users = post.likedBy?.length ? await dataAccess.user.find({ id: { $in: post.likedBy }, isBanned: false }, { limit: 100 }) : [];
-    res.json({ success: true, users: users.map(user => ({ id: getId(user), label: isOfficialUser(user) ? 'OPERIX Official' : String(user.email || 'عضو OPERIX') })) });
+    res.json({ success: true, users: users.map(user => ({ id: getId(user), label: socialNameFor(user) })) });
   } catch (error) { res.status(500).json({ error: 'تعذر تحميل قائمة الإعجابات' }); }
 }
 
@@ -171,7 +191,7 @@ async function addComment(req, res) {
     const post = await visiblePost(req.params.postId);
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     if (!post) return res.status(404).json({ error: 'المنشور غير موجود' });
-    const comment = { authorId: getId(user), authorLabel: isOfficialUser(user) ? 'OPERIX Official' : String(user.email || 'عضو OPERIX'), content, status: moderation.status, moderationReason: moderation.matchedWord ? 'banned_word' : '', createdAt: new Date().toISOString() };
+    const comment = { authorId: getId(user), authorLabel: socialNameFor(user), content, status: moderation.status, moderationReason: moderation.matchedWord ? 'banned_word' : '', createdAt: new Date().toISOString() };
     const comments = Array.isArray(post.comments) ? post.comments : [];
     comments.push(comment);
     await dataAccess.socialPost.updateOne({ id: getId(post), status: 'visible' }, { comments });

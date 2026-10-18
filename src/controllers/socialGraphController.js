@@ -1,11 +1,8 @@
 const dataAccess = require('../services/dataAccess');
+const { socialNameFor, socialHandleFor } = require('../services/socialIdentity');
 
 function idOf(value) {
   return String(value?.id || value?._id || '');
-}
-
-function labelFor(user) {
-  return (user.isOfficialPlatform || user.metadata?.officialPlatform || String(user.email || '').toLowerCase() === 'official@operix.website') ? 'OPERIX Official' : String(user.email || 'عضو OPERIX');
 }
 
 function toClientPost(post) {
@@ -45,7 +42,7 @@ async function listCommunity(req, res) {
         dataAccess.socialPost.countDocuments({ authorId: id, status: 'visible' }),
         dataAccess.socialFollow.countDocuments({ followingId: id })
       ]);
-      return { id, username: user.username || '', label: labelFor(user), isOfficialPlatform: Boolean(user.isOfficialPlatform || user.metadata?.officialPlatform || user.email?.toLowerCase() === 'official@operix.website'), profileImage: user.profileImage || '', coverImage: user.coverImage || '', socialBio: user.socialBio || '', following: followingIds.has(id), posts, followers };
+      return { id, username: socialHandleFor(user), label: socialNameFor(user), isOfficialPlatform: Boolean(user.isOfficialPlatform || user.metadata?.officialPlatform || user.email?.toLowerCase() === 'official@operix.website'), profileImage: user.profileImage || '', coverImage: user.coverImage || '', socialBio: user.socialBio || '', following: followingIds.has(id), posts, followers };
     }));
     res.json({ success: true, users: result });
   } catch (error) { res.status(500).json({ error: 'تعذر تحميل أعضاء المجتمع' }); }
@@ -61,7 +58,7 @@ async function getSocialProfile(req, res) {
       dataAccess.socialFollow.countDocuments({ followerId: idOf(user) }),
       dataAccess.socialFollow.findOne({ followerId: req.user.id, followingId: idOf(user) })
     ]);
-    res.json({ success: true, profile: { id: idOf(user), username: user.username || '', label: labelFor(user), isOfficialPlatform: Boolean(user.isOfficialPlatform || user.metadata?.officialPlatform || user.email?.toLowerCase() === 'official@operix.website'), profileImage: user.profileImage || '', coverImage: user.coverImage || '', socialBio: user.socialBio || '', posts, followers, following, isFollowing: Boolean(relation) } });
+    res.json({ success: true, profile: { id: idOf(user), username: socialHandleFor(user), label: socialNameFor(user), isOfficialPlatform: Boolean(user.isOfficialPlatform || user.metadata?.officialPlatform || user.email?.toLowerCase() === 'official@operix.website'), profileImage: user.profileImage || '', coverImage: user.coverImage || '', socialBio: user.socialBio || '', posts, followers, following, isFollowing: Boolean(relation) } });
   } catch (error) { res.status(500).json({ error: 'تعذر تحميل بطاقة المستخدم' }); }
 }
 

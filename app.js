@@ -2899,6 +2899,12 @@ function escapeSocialHtml(value) {
     return String(value || '').replace(/[&<>'"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character]));
 }
 
+function formatSocialDisplayName(value) {
+    const label = String(value || '').trim();
+    if (!label) return 'عضو OPERIX';
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(label) ? label.slice(0, label.lastIndexOf('@')) : label;
+}
+
 async function loadSocialFeed(reset = true) {
     const list = document.getElementById('socialFeedList');
     const token = localStorage.getItem('token');
@@ -2966,7 +2972,7 @@ async function loadSocialCommunity() {
     const response = await fetch('/api/social/community', { headers: { Authorization: `Bearer ${token}` } });
     const data = await response.json();
     if (!response.ok) { list.innerHTML = '<p class="text-xs text-rose-300">تعذر تحميل أعضاء المجتمع.</p>'; return; }
-    list.innerHTML = data.users.length ? data.users.map(user => `<div class="social-community-card" role="button" tabindex="0" onclick="openSocialUserCard('${escapeSocialHtml(user.id)}')" onkeydown="if(event.key==='Enter'||event.key===' ') openSocialUserCard('${escapeSocialHtml(user.id)}')"><div class="social-community-cover" style="${user.coverImage ? `background-image:url('${escapeSocialHtml(user.coverImage)}')` : ''}"></div><div class="social-community-user"><div class="social-community-avatar">${user.profileImage ? `<img src="${escapeSocialHtml(user.profileImage)}" alt="" class="twitter-avatar-image">` : escapeSocialHtml(String(user.label).slice(-1))}</div><div class="min-w-0 flex-1"><b class="block truncate text-xs text-white">${escapeSocialHtml(user.label)} ${user.isOfficialPlatform ? '<i class="fa-solid fa-circle-check text-cyan-300" title="الحساب الرسمي"></i>' : ''}</b><span class="text-[10px] text-slate-500">${user.posts} منشور · ${user.followers} متابع</span>${user.socialBio ? `<span class="social-community-bio">${escapeSocialHtml(user.socialBio)}</span>` : ''}</div><button type="button" class="social-follow-button ${user.following ? 'is-following' : ''}" onclick="event.stopPropagation(); toggleSocialFollow('${escapeSocialHtml(user.id)}', this)">${user.following ? 'تتابعه' : 'متابعة'}</button></div></div>`).join('') : '<p class="text-xs text-slate-500">لا يوجد أعضاء آخرون بعد.</p>';
+    list.innerHTML = data.users.length ? data.users.map(user => { const displayName = formatSocialDisplayName(user.displayName || user.label || user.username); return `<div class="social-community-card" role="button" tabindex="0" onclick="openSocialUserCard('${escapeSocialHtml(user.id)}')" onkeydown="if(event.key==='Enter'||event.key===' ') openSocialUserCard('${escapeSocialHtml(user.id)}')"><div class="social-community-cover" style="${user.coverImage ? `background-image:url('${escapeSocialHtml(user.coverImage)}')` : ''}"></div><div class="social-community-user"><div class="social-community-avatar">${user.profileImage ? `<img src="${escapeSocialHtml(user.profileImage)}" alt="" class="twitter-avatar-image">` : escapeSocialHtml(displayName.slice(-1))}</div><div class="min-w-0 flex-1"><b class="block truncate text-xs text-white">${escapeSocialHtml(displayName)} ${user.isOfficialPlatform ? '<i class="fa-solid fa-circle-check text-cyan-300" title="الحساب الرسمي"></i>' : ''}</b>${user.username ? `<span class="social-community-handle">${escapeSocialHtml(user.username.startsWith('@') ? user.username : `@${user.username}`)}</span>` : ''}<span class="text-[10px] text-slate-500">${user.posts} منشور · ${user.followers} متابع</span>${user.socialBio ? `<span class="social-community-bio">${escapeSocialHtml(user.socialBio)}</span>` : ''}</div><button type="button" class="social-follow-button ${user.following ? 'is-following' : ''}" onclick="event.stopPropagation(); toggleSocialFollow('${escapeSocialHtml(user.id)}', this)">${user.following ? 'تتابعه' : 'متابعة'}</button></div></div>`; }).join('') : '<p class="text-xs text-slate-500">لا يوجد أعضاء آخرون بعد.</p>';
 
     const memberCount = document.getElementById('socialStatMembers');
     if (memberCount && Array.isArray(data.users)) {
@@ -3000,8 +3006,9 @@ async function openSocialUserCard(userId) {
     const data = await response.json();
     if (!response.ok) { content.innerHTML = `<p class="py-10 text-center text-xs text-rose-300">${escapeSocialHtml(data.error || 'تعذر تحميل البطاقة')}</p>`; return; }
     const profile = data.profile;
-    const avatar = profile.profileImage ? `<img src="${escapeSocialHtml(profile.profileImage)}" alt="" class="social-user-card-avatar">` : escapeSocialHtml(profile.label.slice(-1));
-    content.innerHTML = `<div class="social-user-card-cover" style="${profile.coverImage ? `background-image:url('${escapeSocialHtml(profile.coverImage)}')` : ''}"></div><div class="social-user-card-main"><div class="social-user-card-avatar-wrap">${avatar}</div><button type="button" class="social-follow-button ${profile.isFollowing ? 'is-following' : ''}" onclick="toggleSocialFollow('${escapeSocialHtml(profile.id)}', this)">${profile.isFollowing ? 'تتابعه' : 'متابعة'}</button><h3 class="mt-3 text-base font-black text-white">${escapeSocialHtml(profile.label)}</h3><p class="mt-2 text-xs leading-6 text-slate-400">${escapeSocialHtml(profile.socialBio || 'لا توجد نبذة بعد.')}</p><div class="social-user-card-stats"><span><b>${profile.posts.length}</b> منشور</span><span><b>${profile.followers}</b> متابع</span><span><b>${profile.following}</b> يتابع</span></div><div class="mt-4 space-y-2">${profile.posts.map(post => `<div class="rounded-xl border border-slate-800 bg-slate-950/50 p-3 text-xs text-slate-300">${escapeSocialHtml(post.content)}</div>`).join('') || '<p class="text-xs text-slate-500">لا توجد منشورات بعد.</p>'}</div></div>`;
+    const profileName = formatSocialDisplayName(profile.displayName || profile.label || profile.username);
+    const avatar = profile.profileImage ? `<img src="${escapeSocialHtml(profile.profileImage)}" alt="" class="social-user-card-avatar">` : escapeSocialHtml(profileName.slice(-1));
+    content.innerHTML = `<div class="social-user-card-cover" style="${profile.coverImage ? `background-image:url('${escapeSocialHtml(profile.coverImage)}')` : ''}"></div><div class="social-user-card-main"><div class="social-user-card-avatar-wrap">${avatar}</div><button type="button" class="social-follow-button ${profile.isFollowing ? 'is-following' : ''}" onclick="toggleSocialFollow('${escapeSocialHtml(profile.id)}', this)">${profile.isFollowing ? 'تتابعه' : 'متابعة'}</button><h3 class="mt-3 text-base font-black text-white">${escapeSocialHtml(profileName)}</h3>${profile.username ? `<p class="mt-1 text-[11px] text-slate-500">${escapeSocialHtml(profile.username.startsWith('@') ? profile.username : `@${profile.username}`)}</p>` : ''}<p class="mt-2 text-xs leading-6 text-slate-400">${escapeSocialHtml(profile.socialBio || 'لا توجد نبذة بعد.')}</p><div class="social-user-card-stats"><span><b>${profile.posts.length}</b> منشور</span><span><b>${profile.followers}</b> متابع</span><span><b>${profile.following}</b> يتابع</span></div><div class="mt-4 space-y-2">${profile.posts.map(post => `<div class="rounded-xl border border-slate-800 bg-slate-950/50 p-3 text-xs text-slate-300">${escapeSocialHtml(post.content)}</div>`).join('') || '<p class="text-xs text-slate-500">لا توجد منشورات بعد.</p>'}</div></div>`;
 }
 
 function closeSocialUserCard() {
@@ -3028,7 +3035,7 @@ document.addEventListener('keydown', (event) => {
 function renderSocialPostCard(post) {
     const isOfficialAi = Boolean(post.isOfficialAi || post.is_official_ai);
     const isOfficialPlatform = Boolean(post.authorIsOfficial);
-    const authorLabel = String(post.authorEmail || post.authorUsername || post.author?.email || post.authorLabel || post.username_display || post.author?.username || 'OPERIX').trim() || 'OPERIX';
+    const authorLabel = formatSocialDisplayName(post.authorDisplayName || post.authorLabel || post.authorUsername || post.username_display || post.author?.username || post.authorEmail || post.author?.email || 'OPERIX');
     const content = String(post.content || post.post_text || '').trim() || 'محتوى منشور';
     const formattedContent = escapeSocialHtml(content).replace(/(^|\s)#([\p{L}\p{N}_-]{2,40})/gu, '$1<button type="button" class="social-hashtag" onclick="searchSocialHashtag(\'$2\')">#$2</button>');
     const postId = String(post._id || post.id || '');
@@ -3044,7 +3051,7 @@ function renderSocialPostCard(post) {
                 <div class="twitter-post-header">
                     <div class="twitter-user-meta">
                         ${post.authorId && !isOfficialAi ? `<button type="button" class="twitter-author-button" onclick="openSocialUserCard('${escapeSocialHtml(post.authorId)}')">${escapeSocialHtml(authorLabel)}${isOfficialPlatform ? ' <i class="fa-solid fa-circle-check text-cyan-300" title="الحساب الرسمي"></i>' : ''}</button>` : `<strong>${isOfficialAi ? 'خدمة عملاء OPERIX' : escapeSocialHtml(authorLabel)}</strong>`}
-                        ${handle ? `<span>${handle}</span>` : ''}
+                        ${handle ? `<span>${handle}</span>` : post.authorUsername ? `<span class="twitter-post-handle">${escapeSocialHtml(post.authorUsername.startsWith('@') ? post.authorUsername : `@${post.authorUsername}`)}</span>` : ''}
                         <span class="twitter-post-time">• ${createdAt}</span>
                     </div>
                     ${isOfficialAi ? '<i class="fa-solid fa-shield-halved text-amber-300" title="محتوى رسمي من خدمة عملاء OPERIX"></i>' : '<button type="button" onclick="reportSocialPost(\'${escapeSocialHtml(postId)}\')" class="twitter-more" title="إبلاغ"><i class="fa-solid fa-ellipsis"></i></button>'}
@@ -3098,7 +3105,7 @@ function enhanceSocialPostCards(posts) {
         }
 
         const comments = actions.querySelector('.social-comments-list');
-        comments.innerHTML = (post.comments || []).filter(comment => comment.status === 'visible').map(comment => `<p><b>${escapeSocialHtml(comment.authorLabel)}</b> ${escapeSocialHtml(comment.content)}</p>`).join('');
+        comments.innerHTML = (post.comments || []).filter(comment => comment.status === 'visible').map(comment => `<p><b>${escapeSocialHtml(formatSocialDisplayName(comment.authorLabel))}</b> ${escapeSocialHtml(comment.content)}</p>`).join('');
 
         actions.querySelector('.social-like-button').onclick = async () => {
             const response = await fetch(`/api/social-feed/${encodeURIComponent(card.dataset.socialPostId)}/like`, { method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
