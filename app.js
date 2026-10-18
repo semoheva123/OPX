@@ -11,6 +11,7 @@ let taskCountdownTimer = null;
 let taskBoardFilter = 'all';
 let expandedDailyTaskKey = null;
 let growthChartPoints = [];
+let growthChartSummary = { startBalance: 0, currentBalance: 0, netGrowth: 0, growthRate: 0 };
 let unreadNotificationCount = null;
 let notificationPollTimer = null;
 let profileSyncTimer = null;
@@ -1869,16 +1870,23 @@ async function loadAccountGrowth() {
         const response = await fetch('/api/user/growth', { headers: { Authorization: `Bearer ${token}` } });
         const data = await response.json();
         growthChartPoints = Array.isArray(data.points) ? data.points : [];
-        drawAccountGrowthChart(growthChartPoints);
+        growthChartSummary = data.summary || {
+            startBalance: 0,
+            currentBalance: 0,
+            netGrowth: 0,
+            growthRate: 0
+        };
+        drawAccountGrowthChart(growthChartPoints, growthChartSummary);
         if (emptyState) emptyState.classList.toggle('hide', growthChartPoints.length > 1);
     } catch (error) {
         growthChartPoints = [];
-        drawAccountGrowthChart([]);
+        growthChartSummary = { startBalance: 0, currentBalance: 0, netGrowth: 0, growthRate: 0 };
+        drawAccountGrowthChart([], growthChartSummary);
         if (emptyState) emptyState.classList.remove('hide');
     }
 }
 
-function drawAccountGrowthChart(points) {
+function drawAccountGrowthChart(points, summary = growthChartSummary) {
     const canvas = document.getElementById('accountGrowthChart');
     if (!canvas) return;
     const context = canvas.getContext('2d');
@@ -1889,6 +1897,18 @@ function drawAccountGrowthChart(points) {
     canvas.height = height * scale;
     context.setTransform(scale, 0, 0, scale, 0, 0);
     context.clearRect(0, 0, width, height);
+
+    const start = document.getElementById('growthChartStart');
+    const net = document.getElementById('growthChartNet');
+    const current = document.getElementById('growthChartCurrent');
+    const startValue = Number(summary?.startBalance ?? 0);
+    const currentValue = Number(summary?.currentBalance ?? 0);
+    const netValue = Number(summary?.netGrowth ?? (currentValue - startValue));
+    const netLabel = netValue >= 0 ? `صافي النمو: +$${netValue.toFixed(2)}` : `صافي النمو: -$${Math.abs(netValue).toFixed(2)}`;
+    if (start) start.innerText = `البداية: $${startValue.toFixed(2)}`;
+    if (net) net.innerText = netLabel;
+    if (current) current.innerText = `الرصيد الحالي: $${currentValue.toFixed(2)}`;
+
     if (points.length < 2) return;
 
     const values = points.map(point => Math.max(0, Number(point.balance) || 0));
@@ -1932,11 +1952,6 @@ function drawAccountGrowthChart(points) {
     context.arc(last.x, last.y, 4, 0, Math.PI * 2);
     context.fillStyle = '#34d399';
     context.fill();
-
-    const start = document.getElementById('growthChartStart');
-    const current = document.getElementById('growthChartCurrent');
-    if (start) start.innerText = `البداية: $${values[0].toFixed(2)}`;
-    if (current) current.innerText = `الرصيد الحالي: $${values[values.length - 1].toFixed(2)}`;
 }
 
 window.addEventListener('resize', () => drawAccountGrowthChart(growthChartPoints));

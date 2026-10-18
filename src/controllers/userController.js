@@ -168,20 +168,37 @@ async function getTeamNetwork(req, res) {
 
 async function getGrowth(req, res) {
   try {
+    let points = [];
     if (dataAccess.isSupabaseRuntime()) {
       const transactions = await dataAccess.transaction.find({ userId: req.user.id, status: { $in: ['approved', 'completed'] } }, { sort: { createdAt: 1 }, limit: 100, select: 'type amount createdAt' });
       let balance = 0;
-      return res.json({ success: true, points: transactions.map(transaction => { const amount = Number(transaction.amount) || 0; balance += ['withdraw', 'upgrade_deduction'].includes(transaction.type) ? -amount : amount; return { date: transaction.createdAt, balance: Math.max(0, balance) }; }).slice(-7) });
+      points = transactions.map(transaction => { const amount = Number(transaction.amount) || 0; balance += ['withdraw', 'upgrade_deduction'].includes(transaction.type) ? -amount : amount; return { date: transaction.createdAt, balance: Math.max(0, balance) }; }).slice(-7);
+    } else {
+      const transactions = await Transaction.find({ userId: req.user.id, status: { $in: ['approved', 'completed'] } }).sort({ createdAt: 1 }).select('type amount createdAt').limit(100);
+      let balance = 0;
+      points = transactions.map(transaction => {
+        const amount = Number(transaction.amount) || 0;
+        if (transaction.type === 'withdraw' || transaction.type === 'upgrade_deduction') balance -= amount;
+        else balance += amount;
+        return { date: transaction.createdAt, balance: Math.max(0, balance) };
+      }).slice(-7);
     }
-    const transactions = await Transaction.find({ userId: req.user.id, status: { $in: ['approved', 'completed'] } }).sort({ createdAt: 1 }).select('type amount createdAt').limit(100);
-    let balance = 0;
-    const points = transactions.map(transaction => {
-      const amount = Number(transaction.amount) || 0;
-      if (transaction.type === 'withdraw' || transaction.type === 'upgrade_deduction') balance -= amount;
-      else balance += amount;
-      return { date: transaction.createdAt, balance: Math.max(0, balance) };
-    }).slice(-7);
-    res.json({ success: true, points });
+
+    const startBalance = points.length ? Number(points[0].balance || 0) : 0;
+    const currentBalance = points.length ? Number(points[points.length - 1].balance || 0) : 0;
+    const netGrowth = currentBalance - startBalance;
+    const growthRate = startBalance > 0 ? (netGrowth / startBalance) * 100 : 0;
+
+    res.json({
+      success: true,
+      points,
+      summary: {
+        startBalance,
+        currentBalance,
+        netGrowth,
+        growthRate
+      }
+    });
   } catch (err) { res.status(500).json({ error: 'تعذر تحميل مخطط نمو الحساب' }); }
 }
 

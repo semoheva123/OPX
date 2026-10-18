@@ -2012,9 +2012,10 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
                     <canvas id="accountGrowthChart" class="w-full h-full" aria-label="مخطط نمو الحساب"></canvas>
                     <div id="growthChartEmpty" class="absolute inset-0 flex items-center justify-center text-center text-[11px] text-slate-500 px-6">لا توجد معاملات معتمدة كافية لعرض النمو بعد</div>
                 </div>
-                <div class="flex justify-between text-[10px] text-slate-400">
-                    <span id="growthChartStart">البداية: --</span>
-                    <strong id="growthChartCurrent" class="text-emerald-400">الرصيد الحالي: --</strong>
+                <div class="grid grid-cols-3 gap-2 text-[10px] text-slate-400">
+                    <span id="growthChartStart" class="rounded-xl border border-slate-800 bg-slate-950/60 px-2 py-2 text-center">البداية: --</span>
+                    <span id="growthChartNet" class="rounded-xl border border-slate-800 bg-slate-950/60 px-2 py-2 text-center">صافي النمو: --</span>
+                    <strong id="growthChartCurrent" class="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-2 py-2 text-center text-emerald-300">الرصيد الحالي: --</strong>
                 </div>
             </div>
         </div>
