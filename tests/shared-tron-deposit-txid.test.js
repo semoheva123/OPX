@@ -14,7 +14,8 @@ const app = read('app.js');
 assert.match(routes, /wallet\/deposit-config/);
 assert.match(routes, /router\.post\('\/wallet\/deposit',\s*verifyToken/);
 assert.doesNotMatch(routes, /nowpayments/i);
-assert.match(controller, /verifySharedDepositTransfer\(txHash, expectedAddress, senderAddress\)/);
+assert.match(controller, /verifySharedDepositTransfer\(txHash, expectedAddress\)/);
+assert.doesNotMatch(controller, /TRON_DEPOSIT_SENDER_MISMATCH/);
 assert.match(controller, /operix_shared_tron_deposit_credit_atomic/);
 assert.match(controller, /p_tx_hash: transfer\.txHash/);
 assert.match(migration, /shared_tron_deposit_events/);
@@ -48,20 +49,20 @@ const originalDepositAddress = process.env.TRON_SHARED_DEPOSIT_ADDRESS;
           transaction_id: txHash,
           event_name: 'Transfer',
           contract_address: tokenContract,
-          result: { from: walletAddress, to: walletAddress, value: '10000000' },
+          result: { from: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8', to: walletAddress, value: '10000000' },
           event_index: 2,
           block_timestamp: 1792100000000
         }]
       })
     });
-    const verified = await deposits.verifySharedDepositTransfer(txHash, walletAddress, walletAddress);
+    const verified = await deposits.verifySharedDepositTransfer(txHash, walletAddress);
     assert.equal(verified.txHash, txHash);
     assert.equal(verified.amount, '10');
     assert.equal(verified.toAddress, walletAddress);
+    assert.equal(verified.fromAddress, 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8', 'a deposit from a wallet different from the withdrawal wallet remains valid');
     assert.equal(verified.eventIndex, 2);
 
     await assert.rejects(() => deposits.verifySharedDepositTransfer('invalid', walletAddress), /INVALID_TRON_DEPOSIT_TX_HASH/);
-    await assert.rejects(() => deposits.verifySharedDepositTransfer(txHash, walletAddress, 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8'), /TRON_DEPOSIT_SENDER_MISMATCH/);
 
     global.fetch = async () => ({
       ok: true,
