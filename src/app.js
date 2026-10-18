@@ -178,12 +178,12 @@ function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
   app.use('/api/integrations/cpalead', cpaLeadRoutes);
 
   app.use((req, res, next) => {
-    if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'المسار غير موجود' });
+    if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'المسار المطلوب غير موجود.' });
     res.status(404).sendFile(path.join(__dirname, '..', '404.html'));
   });
   app.use((error, req, res, next) => {
     console.error('Unhandled application error:', error.message);
-    if (req.path.startsWith('/api/')) return res.status(500).json({ error: 'حدث خطأ داخلي في الخادم' });
+    if (req.path.startsWith('/api/')) return res.status(500).json({ error: 'تعذر معالجة الطلب الآن. يرجى المحاولة مرة أخرى.' });
     res.status(500).sendFile(path.join(__dirname, '..', '500.html'));
   });
 

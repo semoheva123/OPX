@@ -426,7 +426,7 @@ async function upgradeToSpecificTier(targetTier) {
     const currentIndex = tiersData.findIndex(tier => tier.code === currentUserTier);
     const targetIndex = tiersData.findIndex(tier => tier.code === targetTier);
     if (!target || !token) {
-        showToast('يرجى تسجيل الدخول وانتظار تحميل المستويات');
+        showToast('يرجى تسجيل الدخول، وسيتم تحميل المستويات فور تجهيز الحساب.');
         return;
     }
     const fullFeatureAccess = Boolean(currentUserData?.paidFeatureAccess);
@@ -464,10 +464,10 @@ async function upgradeToSpecificTier(targetTier) {
             if (data.wallet) updateWalletData(data.wallet);
             await loadUserProfile();
         } else {
-            showToast('❌ ' + (data.error || 'فشلت عملية الترقية'));
+            showToast('❌ ' + (data.error || 'فشلت عملية الترقية.'));
         }
     } catch (err) {
-        showToast('❌ خطأ في الاتصال بالخادم');
+        showToast('❌ تعذر الاتصال بالخادم. يرجى المحاولة مرة أخرى.');
     }
 }
 
@@ -667,7 +667,7 @@ function startRealtimeStream() {
         if (document.getElementById('view-vault') && !document.getElementById('view-vault').classList.contains('hide')) loadInvestmentVaults();
         if (reason === 'vip_level_updated' || reason === 'vip_level_deleted') loadTiers();
         if (reason === 'game_settings_updated') loadGameConfig();
-        showToast('تم تحديث بيانات حسابك تلقائيًا');
+        showToast('تم تحديث بيانات حسابك بنجاح.');
     });
     realtimeChannel.subscribe('account_status_changed', event => {
         const data = event.data || {};
@@ -683,7 +683,7 @@ function startRealtimeSse(token = localStorage.getItem('token')) {
     if (!token || !window.EventSource || realtimeEventSource) return;
     realtimeEventSource = new EventSource(`/api/realtime/stream?token=${encodeURIComponent(token)}`);
     const refresh = () => loadUserProfile();
-    realtimeEventSource.addEventListener('user_data_changed', event => { refresh(); try { if (JSON.parse(event.data || '{}').reason === 'referral_reward_awarded') loadReferralRewardHistory(); } catch (error) {} if (event.data) showToast('تم تحديث بيانات حسابك تلقائيًا'); });
+    realtimeEventSource.addEventListener('user_data_changed', event => { refresh(); try { if (JSON.parse(event.data || '{}').reason === 'referral_reward_awarded') loadReferralRewardHistory(); } catch (error) {} if (event.data) showToast('تم تحديث بيانات حسابك بنجاح.'); });
     realtimeEventSource.addEventListener('account_status_changed', event => { try { showToast(JSON.parse(event.data).message || 'تم تحديث حالة الحساب'); } catch (error) {} refresh(); });
     realtimeEventSource.addEventListener('notification_created', () => fetchUnreadNotifications(true));
     realtimeEventSource.addEventListener('private_message_created', event => {
@@ -808,7 +808,7 @@ async function handleResetRequest(e) {
     const btn = document.getElementById('btnSendOtp');
 
     if(!email) {
-        showToast('يرجى إدخال البريد الإلكتروني أولًا.');
+        showToast('يرجى إدخال البريد الإلكتروني أولاً.');
         return;
     }
 
@@ -827,10 +827,10 @@ async function handleResetRequest(e) {
             document.getElementById('resetRequestForm').classList.add('hide');
             document.getElementById('resetConfirmForm').classList.remove('hide');
         } else {
-            showToast('❌ ' + (data.error || 'تعذّر إرسال الرمز الآن. حاول مرة أخرى.'));
+            showToast('❌ ' + (data.error || 'تعذر إرسال الرمز الآن. يرجى المحاولة مرة أخرى.'));
         }
     } catch(err) {
-        showToast('❌ تعذّر الاتصال بالخادم الآن. حاول مرة أخرى.');
+        showToast('❌ تعذر الاتصال بالخادم الآن. يرجى المحاولة مرة أخرى.');
     } finally {
         btn.disabled = false;
         btn.innerText = 'إرسال رمز التحقق';
@@ -868,7 +868,7 @@ async function handleResetConfirm(e) {
             showToast('❌ ' + (data.error || 'رمز التحقق غير صحيح أو منتهي الصلاحية.'));
         }
     } catch(err) {
-        showToast('❌ تعذّر الاتصال بالخادم الآن. حاول مرة أخرى.');
+        showToast('❌ تعذر الاتصال بالخادم الآن. يرجى المحاولة مرة أخرى.');
     } finally {
         btn.disabled = false;
         btn.innerText = 'تحديث كلمة المرور والدخول';
@@ -897,10 +897,10 @@ async function handleLogin(e) {
             showRewardsCampaignModal(true);
             loadUserProfile();
         } else {
-            showToast(data.error || 'تعذّر تسجيل الدخول. التحقق من البيانات ثم حاول مرة أخرى.');
+            showToast(data.error || 'تعذر تسجيل الدخول. يرجى التحقق من البيانات ثم المحاولة مرة أخرى.');
         }
     } catch(err) {
-        showToast('تعذّر الاتصال بالخادم الآن. حاول مرة أخرى.');
+        showToast('تعذر الاتصال بالخادم الآن. يرجى المحاولة مرة أخرى.');
     } finally {
         btn.disabled = false;
         btn.innerText = 'دخول المنصة';
@@ -952,10 +952,10 @@ async function handleRegister(e) {
             switchAuthTab('login');
             document.getElementById('loginEmail').value = email;
         } else {
-            showToast(data.error || 'تعذّر إنشاء الحساب. حاول مرة أخرى.');
+            showToast(data.error || 'تعذر إنشاء الحساب. يرجى المحاولة مرة أخرى.');
         }
     } catch(err) {
-        showToast('تعذّر الاتصال بالخادم الآن. حاول مرة أخرى.');
+        showToast('تعذر الاتصال بالخادم الآن. يرجى المحاولة مرة أخرى.');
     } finally {
         btn.disabled = false;
         btn.innerText = 'إنشاء حساب ومحفظة خاصة';
@@ -997,12 +997,12 @@ async function saveUsername(event) {
 
 async function resendEmailVerification() {
     const email = document.getElementById('loginEmail')?.value.trim();
-    if (!email) return showToast('أدخل بريدك الإلكتروني أولًا');
+    if (!email) return showToast('يرجى إدخال البريد الإلكتروني أولاً.');
     try {
         const response = await fetch('/api/auth/resend-verification', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
         const data = await response.json();
-        showToast(data.message || data.error || 'تمت معالجة الطلب');
-    } catch (error) { showToast('تعذر الاتصال بالخادم'); }
+        showToast(data.message || data.error || 'تمت معالجة الطلب بنجاح.');
+    } catch (error) { showToast('تعذر الاتصال بالخادم. يرجى المحاولة مرة أخرى.'); }
 }
 
 async function resendEmailVerificationFromProfile() {
@@ -1013,8 +1013,8 @@ async function resendEmailVerificationFromProfile() {
     try {
         const response = await fetch('/api/auth/resend-verification', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
         const data = await response.json();
-        showToast(data.message || data.error || 'تمت معالجة الطلب');
-    } catch (error) { showToast('تعذر الاتصال بالخادم'); }
+        showToast(data.message || data.error || 'تمت معالجة الطلب بنجاح.');
+    } catch (error) { showToast('تعذر الاتصال بالخادم. يرجى المحاولة مرة أخرى.'); }
     finally { if (button) { button.disabled = false; button.innerText = 'إرسال رابط توثيق البريد الإلكتروني'; } }
 }
 
@@ -1598,12 +1598,12 @@ function openSocialProfileEditor() {
 function previewProfileImage(event) {
     const file = event.target.files?.[0];
     if (!file || !isSupportedImageFile(file)) {
-        showToast('يرجى اختيار صورة صالحة من الصور المدعومة');
+        showToast('يرجى اختيار صورة صالحة من الملفات المدعومة.');
         event.target.value = '';
         return;
     }
     if (file.size > MAX_ALLOWED_IMAGE_BYTES) {
-        showToast('حجم الصورة يجب ألا يتجاوز 2 ميجابايت');
+        showToast('حجم الصورة يجب ألا يتجاوز 2 ميغابايت.');
         event.target.value = '';
         return;
     }
@@ -1623,7 +1623,7 @@ async function saveProfileImage(profileImage) {
         if (!response.ok) throw new Error(data.error || 'فشل حفظ الصورة');
         currentUserData.profileImage = data.profileImage;
         updateProfileAvatar(data.profileImage);
-        showToast('✅ تم حفظ الصورة الشخصية ويمكنك تغييرها لاحقًا', 'win');
+        showToast('✅ تم حفظ الصورة الشخصية بنجاح ويمكنك تغييرها لاحقًا.', 'win');
     } catch (error) {
         showToast(`❌ ${error.message}`);
     } finally {
@@ -2099,7 +2099,7 @@ async function openDailyTasks() {
     const panel = document.getElementById('dailyTaskDetailPanel');
     const list = document.getElementById('dailyTaskList');
     const token = localStorage.getItem('token');
-    if (!board || !panel || !list || !token) return showToast('يرجى تسجيل الدخول أولًا');
+    if (!board || !panel || !list || !token) return showToast('يرجى تسجيل الدخول أولاً.');
     board.classList.add('hidden');
     panel.classList.remove('hidden');
     list.innerHTML = '<p class="rounded-xl border border-slate-800 p-4 text-center text-[10px] text-slate-500">جارٍ تحميل مهام المستوى...</p>';
@@ -2242,10 +2242,10 @@ async function saveProfileWallet() {
     const walletNetwork = document.getElementById('profileWalletNetwork').value;
 
     if (!walletAddress) {
-        showToast('يرجى إدخال عنوان محفظة صحيح');
+        showToast('يرجى إدخال عنوان محفظة صحيح.');
         return;
     }
-    if (!walletNetwork) { showToast('يرجى اختيار شبكة السحب'); return; }
+    if (!walletNetwork) { showToast('يرجى اختيار شبكة السحب.'); return; }
 
     try {
         const res = await fetch('/api/user/wallet-address', {
@@ -2261,12 +2261,12 @@ async function saveProfileWallet() {
         if (res.ok && (data.success || data.message)) {
             lockWalletUI(walletAddress, data.walletNetwork || walletNetwork);
             document.getElementById('profileWalletAddress')?.closest('details')?.removeAttribute('open');
-            showToast('✅ تم تثبيت المحفظة وتفعيل قفل الحماية (24 ساعة)', 'win');
+            showToast('✅ تم تثبيت المحفظة بنجاح وتفعيل قفل الحماية لمدة 24 ساعة.', 'win');
         } else {
-            showToast('❌ ' + (data.error || 'فشل حفظ العنوان'));
+            showToast('❌ ' + (data.error || 'فشل حفظ العنوان.'));
         }
     } catch (err) {
-        showToast('❌ خطأ في الاتصال بالخادم');
+        showToast('❌ تعذر الاتصال بالخادم. يرجى المحاولة مرة أخرى.');
     }
 }
 
@@ -2325,10 +2325,10 @@ async function completeTask(taskKey) {
             if (data.wallet) updateWalletData(data.wallet);
             await Promise.all([loadUserProfile(), openDailyTasks()]);
         } else {
-            showToast(data.error || 'لا يمكن إنجاز المهمة');
+            showToast(data.error || 'لا يمكن إنجاز المهمة الآن.');
         }
     } catch(err) {
-        showToast('خطأ في الاتصال');
+        showToast('تعذر الاتصال بالخادم. يرجى المحاولة مرة أخرى.');
     } finally {
         if (btn) btn.disabled = false;
         updateTaskAvailability(Number(currentUserData?.todayCompletedTasks || 0), getTaskLimitForTier());
@@ -2361,7 +2361,7 @@ function setDailyEvaluationRating(taskKey, rating) {
 async function submitDailyEvaluation(taskKey) {
     const form = document.querySelector(`[data-evaluation-form="${CSS.escape(taskKey)}"]`);
     const token = localStorage.getItem('token');
-    if (!form || !token) return showToast('تعذر فتح نموذج التقييم. أعد تحميل المهمة وحاول مجددًا.');
+    if (!form || !token) return showToast('تعذر فتح نموذج التقييم. يرجى إعادة تحميل المهمة والمحاولة مرة أخرى.');
     updateDailyEvaluationSubmit(taskKey);
     const payload = {
         taskKey,
@@ -2383,7 +2383,7 @@ async function submitDailyEvaluation(taskKey) {
         showToast(`تم حفظ التقييم وإنهاء المهمة، أضيف $${Number(data.grossAmount || 0).toFixed(4)} إلى المكافآت.`, 'win');
         await Promise.all([loadUserProfile(), openDailyTasks()]);
     } catch (error) {
-        showToast(error.message || 'تعذر الاتصال بالخادم');
+        showToast(error.message || 'تعذر الاتصال بالخادم. يرجى المحاولة مرة أخرى.');
         if (submitButton) { submitButton.disabled = false; submitButton.innerText = 'إرسال التقييم وإنهاء المهمة'; }
     }
 }
@@ -2416,10 +2416,10 @@ async function triggerLuckySpin() {
                 await loadGameHistory();
             }, 1000);
         } else {
-            showToast('❌ ' + (data.error || 'حدث خطأ عند تدوير العجلة'));
+            showToast('❌ ' + (data.error || 'حدث خطأ أثناء تدوير العجلة.'));
         }
     } catch (err) {
-        showToast('❌ خطأ في الاتصال بالخادم');
+        showToast('❌ تعذر الاتصال بالخادم. يرجى المحاولة مرة أخرى.');
     } finally {
         if (button) button.disabled = !(Number(currentUserData?.wheelCredits || 0) > 0);
     }
@@ -2448,10 +2448,10 @@ async function openMysteryBox() {
             await loadUserProfile();
             await loadGameHistory();
         } else {
-            showToast('❌ ' + (data.error || 'حدث خطأ عند فتح الصندوق'));
+            showToast('❌ ' + (data.error || 'حدث خطأ أثناء فتح الصندوق.'));
         }
     } catch (err) {
-        showToast('❌ خطأ في الاتصال بالخادم');
+        showToast('❌ تعذر الاتصال بالخادم. يرجى المحاولة مرة أخرى.');
     } finally {
         if (button) button.disabled = !(Number(currentUserData?.mysteryBoxCredits || 0) > 0);
         if (box) setTimeout(() => box.classList.remove('box-reveal'), 900);
@@ -3118,15 +3118,15 @@ async function shareSocialPost(postId, target, menu) {
     const text = 'شاهد هذا المنشور في مجتمع OPERIX';
     menu?.classList.add('hidden');
     const response = await fetch(`/api/social-feed/${encodeURIComponent(postId)}/share`, { method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
-    if (!response.ok) return showToast('تعذر تسجيل المشاركة');
+    if (!response.ok) return showToast('تعذر تسجيل المشاركة. يرجى المحاولة مرة أخرى.');
     if (target === 'native' && navigator.share) { try { await navigator.share({ title: 'OPERIX Community', text, url }); return; } catch (error) {} }
     const targets = { whatsapp: `https://wa.me/?text=${encodeURIComponent(`${text} ${url}`)}`, facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, x: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}` };
     if (target === 'instagram') {
         if (navigator.clipboard) await navigator.clipboard.writeText(url);
-        return showToast('تم نسخ الرابط؛ افتح Instagram والصقه في المنشور أو الرسالة');
+        return showToast('تم نسخ الرابط بنجاح. افتح Instagram والصقه في المنشور أو الرسالة.');
     }
     if (targets[target]) window.open(targets[target], '_blank', 'noopener,noreferrer,width=720,height=620');
-    else if (navigator.clipboard) { await navigator.clipboard.writeText(url); showToast('تم نسخ رابط المنشور'); }
+    else if (navigator.clipboard) { await navigator.clipboard.writeText(url); showToast('تم نسخ رابط المنشور بنجاح.'); }
 }
 
 window.activePrivateThreadId = null;
@@ -3334,7 +3334,7 @@ async function openDepositModal() {
             const latestId = latest?.id || latest?._id || null;
             if (latestId && window.lastSeenAutomaticDepositId && latestId !== window.lastSeenAutomaticDepositId) {
                 window.lastSeenAutomaticDepositId = latestId;
-                showToast('تم تأكيد إيداع TRC20 وإضافة الرصيد تلقائيًا', 'win');
+                showToast('تم تأكيد إيداع TRC20 بنجاح وإضافته إلى الرصيد تلقائيًا.', 'win');
                 await loadUserProfile();
             } else if (latestId && !window.lastSeenAutomaticDepositId) {
                 window.lastSeenAutomaticDepositId = latestId;
@@ -3365,7 +3365,7 @@ async function openSupportModal() { document.getElementById('supportModal').clas
 function closeSupportModal() { document.getElementById('supportModal').classList.add('hide'); }
 async function loadSupportTickets() { const list = document.getElementById('supportTicketsList'); try { const response = await fetch('/api/support', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }); const data = await response.json(); if (!response.ok) throw new Error(data.error); list.innerHTML = data.tickets?.length ? data.tickets.map(ticket => `<div class="p-2.5 border border-slate-800 rounded-xl"><div class="flex justify-between gap-2"><b class="text-slate-200">${escapeAiHtml(ticket.subject)}</b><span class="text-cyan-300">${escapeAiHtml(ticket.status)}</span></div><p class="mt-1">${escapeAiHtml(ticket.adminReply || 'بانتظار رد فريق الدعم')}</p></div>`).join('') : 'لا توجد تذاكر دعم بعد.'; } catch (error) { list.innerText = error.message || 'تعذر تحميل التذاكر'; } }
 async function createSupportTicket(event) { event.preventDefault(); const subject = document.getElementById('supportSubject').value; const message = document.getElementById('supportMessage').value; const response = await fetch('/api/support', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` }, body: JSON.stringify({ subject, message }) }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر إنشاء التذكرة'); event.target.reset(); showToast(data.message || 'تم إنشاء التذكرة'); loadSupportTickets(); }
-async function applyCoupon() { const input = document.getElementById('couponCodeInput'); const code = input?.value.trim(); if (!code) return showToast('أدخل رمز الكوبون'); const response = await fetch('/api/coupons/apply', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` }, body: JSON.stringify({ code }) }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر تطبيق الكوبون'); input.value = ''; showToast(data.message || 'تم تطبيق الكوبون'); loadUserProfile(); }
+async function applyCoupon() { const input = document.getElementById('couponCodeInput'); const code = input?.value.trim(); if (!code) return showToast('يرجى إدخال رمز الكوبون.'); const response = await fetch('/api/coupons/apply', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` }, body: JSON.stringify({ code }) }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر تطبيق الكوبون'); input.value = ''; showToast(data.message || 'تم تطبيق الكوبون بنجاح.'); loadUserProfile(); }
 function syncWithdrawalScheduleUI() {
     const status = document.getElementById('withdrawalScheduleStatus');
     const button = document.getElementById('btnSubmitWithdraw');
@@ -3426,7 +3426,7 @@ async function loadDepositAddress() {
         }
         const instructions = document.getElementById('depositNetworkInstructions');
         if (instructions) {
-            instructions.textContent = 'أرسل USDT على شبكة TRC20 إلى عنوان المنصة الظاهر أعلاه. بعد تأكيد التحويل على الشبكة، أرسل TxID للتحقق وإضافة الرصيد. لا يلزم أن يطابق عنوان الإرسال عنوان السحب المثبّت في ملفك. استخدم TxID مرة واحدة فقط؛ لا توجد رسوم وسيط.';
+            instructions.textContent = 'أرسل USDT على شبكة TRC20 إلى عنوان المنصة أعلاه. بعد تأكيد الشبكة، أرسل رقم TxID للتحقق وإضافة الرصيد. لا يلزم أن يطابق عنوان الإرسال عنوان السحب المثبت. استخدم كل TxID مرة واحدة فقط، ولا توجد رسوم وسيط.';
             instructions.classList.remove('hidden');
         }
         updateDepositAddressCopyState(data.address);
@@ -3448,11 +3448,11 @@ async function claimSharedDeposit() {
     const status = document.getElementById('depositModalStatus');
     const txHash = String(input?.value || '').trim();
     if (!/^[a-fA-F0-9]{64}$/.test(txHash)) {
-        if (status) status.textContent = 'أدخل TxHash صحيحًا من 64 خانة سداسية عشرية.';
+        if (status) status.textContent = 'أدخل رقم TxID صحيحًا من 64 خانة سداسية عشرية.';
         return;
     }
     if (button) { button.disabled = true; button.textContent = 'جارٍ التحقق...'; }
-    if (status) status.textContent = 'جارٍ التحقق من TxID ومطابقة التحويل المؤكد إلى محفظة المنصة.';
+    if (status) status.textContent = 'جارٍ التحقق من TxID ومطابقة التحويل المؤكد مع محفظة المنصة.';
     try {
         const response = await fetch('/api/wallet/deposit', {
             method: 'POST',
@@ -3461,9 +3461,9 @@ async function claimSharedDeposit() {
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'تعذر التحقق من الإيداع');
-        if (status) status.textContent = data.message || 'تم التحقق من الإيداع وإضافته إلى الرصيد.';
+        if (status) status.textContent = data.message || 'تم التحقق من الإيداع وإضافته إلى الرصيد بنجاح.';
         input.value = '';
-        showToast(data.message || 'تم التحقق من الإيداع وإضافته إلى محفظتك', 'win');
+        showToast(data.message || 'تم التحقق من الإيداع وإضافته إلى رصيدك بنجاح.', 'win');
         await loadUserProfile();
         await loadUserHistory?.();
     } catch (error) {
@@ -3475,7 +3475,7 @@ async function claimSharedDeposit() {
 
 async function confirmDeposit(event) {
     event?.preventDefault();
-    showToast('يتم اكتشاف إيداعات TRC20 وإضافتها تلقائيًا بعد تأكيد الشبكة.');
+    showToast('يتم اكتشاف إيداعات TRC20 تلقائيًا وإضافتها إلى الرصيد بعد تأكيد الشبكة.');
     return false;
 }
 
@@ -3512,15 +3512,15 @@ async function submitWithdraw() {
     }
 
     if (!Number.isFinite(amount) || amount < 20) {
-        showToast('الحد الأدنى للسحب هو 20$ USDT');
+        showToast('الحد الأدنى للسحب هو 20 USDT.');
         return;
     }
 
     if (!walletAddress) {
-        showToast('يرجى تثبيت عنوان المحفظة أولاً من الملف الشخصي');
+        showToast('يرجى تثبيت عنوان المحفظة أولاً من قسم الملف الشخصي.');
         return;
     }
-    if (!walletNetwork) { showToast('يرجى اختيار شبكة السحب'); return; }
+    if (!walletNetwork) { showToast('يرجى اختيار شبكة السحب.'); return; }
 
     btn.disabled = true;
     btn.dataset.submitting = 'true';
@@ -3548,7 +3548,7 @@ async function submitWithdraw() {
             return;
         }
         if(res.ok) {
-            showToast('تم تقديم طلب السحب وخصم المبلغ من محفظتك بنجاح');
+            showToast('تم تقديم طلب السحب بنجاح، وسيتم معالجته وفقًا للجدول المعلن.');
             closeWithdrawModal();
             sessionStorage.removeItem('operix_withdraw_key');
             sessionStorage.removeItem('operix_withdraw_intent');
@@ -3556,13 +3556,13 @@ async function submitWithdraw() {
             document.getElementById('withdrawEmailCodePanel')?.classList.add('hidden');
             btn.innerText = 'إرسال رمز التأكيد إلى البريد';
             if (data.wallet) updateWalletData(data.wallet);
-            await loadUserProfile(); // مزامنة وتحديث قيم الرصيد في الأماكن كافة فور نجاح الطلب
+            await loadUserProfile();
         } else {
             if (data.code === 'WITHDRAWAL_DAY_NOT_ALLOWED') syncWithdrawalScheduleUI();
-            showToast(data.error || 'تعذر إكمال طلب السحب');
+            showToast(data.error || 'تعذر إكمال طلب السحب.');
         }
     } catch(err) {
-        showToast('خطأ في الاتصال');
+        showToast('تعذر الاتصال بالخادم. يرجى المحاولة مرة أخرى.');
     } finally {
         delete btn.dataset.submitting;
         syncWithdrawalScheduleUI();
@@ -3683,7 +3683,7 @@ async function logout({ notifyServer = true } = {}) {
     if (token) {
         fetchWithTimeout('/api/auth/logout', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } }, 3000).catch(() => {});
     }
-    showToast('تم تسجيل الخروج وحفظ محفظتك بأمان');
+    showToast('تم تسجيل الخروج بنجاح. تم حفظ جلسة حسابك بأمان.');
 }
 
 function changeLanguage(language) {
