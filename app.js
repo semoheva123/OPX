@@ -2054,9 +2054,11 @@ function renderTaskBoard(completed, maximum) {
     if (!board) return;
     const taskHoliday = isWeeklyTaskHolidayUtc();
     const scheduleNotice = document.getElementById('weeklyScheduleNotice');
-    if (scheduleNotice) scheduleNotice.innerText = taskHoliday
-        ? 'اليوم عطلة مهام الجمعة: لا توجد مهام يوم الجمعة. تستأنف المهام مباشرة بعد انتهاء العطلة. مواعيد السحب: A1 وA2 يوم الجمعة، وبقية المستويات يوم السبت (UTC).'
-        : 'المهام متاحة اليوم. اليوم الحالي لا يفرض قفلًا زمنيًا أو تأخيرًا بين المهام؛ يتم فتح كامل قائمة المهام فور الظهور في اليوم. مواعيد السحب: A1 وA2 يوم الجمعة، وبقية المستويات يوم السبت (UTC).';
+    if (scheduleNotice) {
+        scheduleNotice.innerText = taskHoliday
+            ? 'اليوم عطلة مهام الجمعة: لا توجد مهام يوم الجمعة. تستأنف المهام مباشرة بعد انتهاء العطلة. مواعيد السحب: A1 وA2 يوم الجمعة، وبقية المستويات يوم السبت (UTC).'
+            : '';
+    }
     const activeTier = getActiveTaskTier();
     updateTaskLevelPanel(activeTier);
     const tierTask = {
@@ -2077,9 +2079,9 @@ function renderTaskBoard(completed, maximum) {
         ? visibleTasks.map(task => {
             const isLocked = Boolean(task.locked);
             const actionLabel = isLocked ? 'تفعيل المستوى' : task.id === 'daily' ? 'عرض المهام اليومية' : 'فتح الإجراء';
-            const actionClass = isLocked ? 'cursor-not-allowed border-slate-700 bg-slate-900 text-slate-500' : 'border-amber-500/25 bg-amber-500/10 text-amber-300 hover:border-amber-400/50';
-            const actionIcon = isLocked ? 'fa-lock' : task.id === 'daily' ? 'fa-arrow-left' : 'fa-arrow-left';
-            return `<article class="task-card rounded-2xl p-3 transition-all"><div class="flex items-start gap-3"><span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${isLocked ? 'bg-slate-400/10 text-slate-500' : 'bg-amber-400/12 text-amber-300'}"><i class="fa-solid ${task.icon} text-sm"></i></span><div class="min-w-0 flex-1"><div class="flex items-start justify-between gap-2"><div class="min-w-0"><div class="mb-1 flex items-center gap-2"><span class="task-badge rounded-full border border-amber-500/20 bg-amber-500/5 px-2 py-0.5 text-[9px] font-bold text-amber-200">${task.badge}</span><h4 class="text-xs font-bold text-white">${task.title}</h4></div><p class="mt-1 text-[10px] leading-5 text-slate-500">${task.description}</p></div><span class="shrink-0 rounded-full border border-slate-700 bg-slate-900/80 px-2 py-1 text-[9px] font-bold ${isLocked ? 'text-slate-500' : 'text-amber-300'}">${task.status}</span></div><div class="mt-2 flex items-center justify-between gap-2"><span class="text-[9px] ${isLocked ? 'text-slate-600' : 'text-slate-500'}">${isLocked ? 'مقفلة حتى التفعيل' : 'قيد الانتظار'}</span><button ${task.id === 'daily' ? 'id="btnCompleteTask"' : ''} ${isLocked ? 'disabled aria-disabled="true"' : `onclick="${task.action}"`} class="mt-0 rounded-xl border px-3 py-2 text-[10px] font-bold ${actionClass}">${actionLabel} <i class="fa-solid ${actionIcon} mr-1"></i></button></div></div></div></article>`;
+            const actionClass = isLocked ? 'cursor-not-allowed border-slate-700 bg-slate-900 text-slate-500' : 'border-amber-400/30 bg-gradient-to-r from-amber-500/10 to-orange-500/10 text-amber-200 shadow-[0_8px_18px_rgba(251,191,36,0.12)] hover:border-amber-300/60 hover:text-white';
+            const actionIcon = isLocked ? 'fa-lock' : 'fa-arrow-left';
+            return `<article class="group relative overflow-hidden rounded-3xl border border-slate-800/80 bg-[linear-gradient(135deg,rgba(15,23,42,0.96),rgba(15,23,42,0.82),rgba(17,24,39,0.96))] p-3.5 shadow-[0_10px_32px_rgba(2,6,23,0.35)] transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-400/35 hover:shadow-[0_18px_32px_rgba(127,86,20,0.18)]"><div class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-400/80 to-transparent"></div><div class="flex items-start gap-3"><span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${isLocked ? 'border-slate-700 bg-slate-800/80 text-slate-500' : 'border-amber-500/25 bg-amber-500/10 text-amber-300 shadow-inner shadow-amber-400/10'}"><i class="fa-solid ${task.icon} text-sm"></i></span><div class="min-w-0 flex-1"><div class="flex items-start justify-between gap-2"><div class="min-w-0"><div class="mb-1.5 flex items-center gap-2"><span class="rounded-full border border-amber-500/20 bg-amber-500/5 px-2 py-0.5 text-[9px] font-bold tracking-[0.12em] text-amber-200">${task.badge}</span><h4 class="text-[11px] font-black text-slate-50">${task.title}</h4></div><p class="mt-1 text-[10px] leading-5 text-slate-400">${task.description}</p></div><span class="shrink-0 rounded-full border border-slate-700 bg-slate-900/80 px-2 py-1 text-[9px] font-bold ${isLocked ? 'text-slate-400' : 'text-amber-200'}">${task.status}</span></div><div class="mt-3 flex items-center justify-between gap-2"><span class="text-[9px] ${isLocked ? 'text-slate-500' : 'text-slate-400'}">${isLocked ? 'مقفلة حتى التفعيل' : 'قيد الانتظار'}</span><button ${task.id === 'daily' ? 'id="btnCompleteTask"' : ''} ${isLocked ? 'disabled aria-disabled="true"' : `onclick="${task.action}"`} class="rounded-xl border px-3 py-2 text-[10px] font-bold transition-all ${actionClass}">${actionLabel} <i class="fa-solid ${actionIcon} mr-1"></i></button></div></div></div></article>`;
         }).join('')
         : '<p class="rounded-xl border border-emerald-500/15 bg-emerald-500/5 p-3 text-center text-[10px] text-emerald-300">لا توجد مهام معلقة في هذا التصنيف.</p>';
 
