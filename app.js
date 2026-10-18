@@ -1524,7 +1524,27 @@ function updateProfileAvatar(profileImage) {
 function applySocialProfile(user) {
     const bio = document.getElementById('socialBioInput');
     const cover = document.getElementById('profileCoverPreview');
+    const composer = document.getElementById('socialPostContent')?.closest('form');
     if (bio && document.activeElement !== bio) bio.value = user?.socialBio || '';
+    if (composer) {
+        let avatar = composer.querySelector('.social-compose-avatar');
+        if (!avatar) {
+            avatar = document.createElement('span');
+            avatar.className = 'social-compose-avatar';
+            avatar.setAttribute('aria-hidden', 'true');
+            composer.prepend(avatar);
+        }
+        avatar.replaceChildren();
+        if (user?.profileImage) {
+            const image = document.createElement('img');
+            image.src = user.profileImage;
+            image.alt = '';
+            image.loading = 'lazy';
+            avatar.appendChild(image);
+        } else {
+            avatar.textContent = String(user?.email || user?.username || 'O').trim().slice(0, 1).toUpperCase();
+        }
+    }
     if (cover) {
         cover.style.backgroundImage = user?.coverImage ? `url("${user.coverImage}")` : '';
         cover.querySelector('.social-cover-hint')?.classList.toggle('hidden', Boolean(user?.coverImage));

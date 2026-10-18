@@ -685,3 +685,210 @@ body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) .panel {
     #view-travel #taskBoard .task-card,
     #view-travel #dailyTaskList [data-task-card] { transition: none; }
 }
+
+/* Community timeline: familiar microblog hierarchy, with OPERIX branding. */
+@media (min-width: 900px) {
+    #appView:has(#view-feed:not(.hide)) { max-width: 1180px; }
+}
+#view-feed.twitter-shell {
+    display: grid;
+    width: min(100%, 1120px);
+    max-width: none;
+    margin-inline: auto;
+    grid-template-columns: minmax(0, 650px) minmax(250px, 320px);
+    grid-template-areas:
+        "timeline-tabs community-stats"
+        "timeline-compose community-members"
+        "timeline-posts community-members";
+    align-items: start;
+    gap: 12px 22px;
+}
+#view-feed > .social-feed-tabs { grid-area: timeline-tabs; }
+#view-feed > section:has(#socialStatPosts) { grid-area: community-stats; }
+#view-feed > section:has(#socialCommunityList) { grid-area: community-members; }
+#view-feed > section:has(#socialPostContent) { grid-area: timeline-compose; }
+#view-feed > section:has(#socialFeedList) { grid-area: timeline-posts; min-width: 0; }
+#view-feed > section.grid { display: none; }
+
+#view-feed > .social-feed-tabs {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    gap: 0;
+    padding: 0;
+    border: 1px solid rgba(255,255,255,.09);
+    border-radius: 17px 17px 0 0;
+    background: rgba(5,11,20,.94);
+    box-shadow: 0 12px 28px rgba(0,0,0,.2);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+}
+#view-feed .social-feed-tab {
+    position: relative;
+    min-height: 56px;
+    border-radius: 0;
+    color: #8b98a9;
+    font-size: 12px;
+    transition: color .18s ease, background .18s ease;
+}
+#view-feed .social-feed-tab:hover { color: #f8fafc; background: rgba(255,255,255,.035); }
+#view-feed .social-feed-tab.social-feed-mode-active { color: #fff; background: transparent; box-shadow: none; }
+#view-feed .social-feed-tab.social-feed-mode-active::after {
+    content: '';
+    position: absolute;
+    inset-inline: 24%;
+    bottom: 0;
+    height: 4px;
+    border-radius: 999px 999px 0 0;
+    background: linear-gradient(90deg, #f7b955, #ffe7b0);
+    box-shadow: 0 0 16px rgba(247,185,85,.24);
+}
+
+#view-feed > section:has(#socialPostContent) {
+    padding: 14px !important;
+    border-color: rgba(255,255,255,.1);
+    border-radius: 18px;
+    background: linear-gradient(155deg, rgba(14,22,34,.98), rgba(5,10,18,.99));
+    box-shadow: 0 16px 38px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.045);
+}
+#view-feed > section:has(#socialPostContent) > div:first-child { display: none; }
+#view-feed > section:has(#socialPostContent) form { position: relative; }
+#view-feed > section:has(#socialPostContent) form .social-compose-avatar {
+    position: absolute;
+    inset-inline-start: 0;
+    top: 3px;
+    display: grid;
+    width: 42px;
+    height: 42px;
+    place-items: center;
+    overflow: hidden;
+    border: 1px solid rgba(255,231,176,.35);
+    border-radius: 50%;
+    background: linear-gradient(145deg, #ffe7b0, #c18a43);
+    color: #17120b;
+    font-family: Georgia, serif;
+    font-size: 20px;
+    font-weight: 900;
+    box-shadow: 0 5px 16px rgba(0,0,0,.28);
+}
+#view-feed .social-compose-avatar img { width: 100%; height: 100%; object-fit: cover; }
+#view-feed #socialPostContent {
+    min-height: 76px;
+    padding: 12px 60px 12px 14px;
+    border: 1px solid rgba(148,163,184,.14);
+    border-radius: 16px;
+    background: rgba(2,7,14,.68);
+    font-size: 13px;
+    line-height: 1.8;
+    resize: vertical;
+}
+#view-feed #socialPostContent:focus { border-color: rgba(247,185,85,.42); }
+#view-feed #socialPostSubmit {
+    min-width: 86px;
+    min-height: 38px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #ffe7b0, #e7b85f 62%, #c18a43);
+    color: #1a140b;
+    box-shadow: 0 8px 20px rgba(185,121,45,.2), inset 0 1px 0 rgba(255,255,255,.55);
+}
+#view-feed #socialPostSubmit:disabled { opacity: .55; }
+#view-feed label[for="socialImageInput"] { border-color: rgba(255,231,176,.18); border-radius: 999px; }
+
+#view-feed > section:has(#socialStatPosts),
+#view-feed > section:has(#socialCommunityList) {
+    border-color: rgba(255,255,255,.1);
+    border-radius: 18px;
+    background: linear-gradient(155deg, rgba(14,22,34,.96), rgba(5,10,18,.98));
+    box-shadow: 0 14px 34px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.04);
+}
+#view-feed > section:has(#socialStatPosts) { padding: 14px !important; }
+#view-feed #communityPulseState,
+#view-feed #communityPulseTitle,
+#view-feed #communityPulseMeta { display: none; }
+#view-feed #socialCommunityList {
+    grid-template-columns: minmax(0,1fr);
+    max-height: min(54vh, 520px);
+    gap: 6px;
+}
+#view-feed #socialCommunityList .social-community-card { padding: 8px; border-radius: 14px; }
+#view-feed #socialCommunityList .social-community-cover { height: 30px; margin: -8px -8px 7px; }
+#view-feed .social-follow-button {
+    min-height: 30px;
+    padding-inline: 12px;
+    border-color: rgba(255,255,255,.72);
+    background: #f8fafc;
+    color: #10151c;
+    font-size: 10px;
+    font-weight: 900;
+}
+#view-feed .social-follow-button:hover { background: #dbe4ed; color: #10151c; }
+#view-feed .social-follow-button.is-following { border-color: rgba(148,163,184,.28); background: rgba(148,163,184,.1); color: #cbd5e1; }
+
+#view-feed > section:has(#socialFeedList) { padding: 0; }
+#view-feed > section:has(#socialFeedList) > div:first-child {
+    min-height: 54px;
+    padding: 0 16px;
+    border: 1px solid rgba(255,255,255,.1);
+    border-bottom: 0;
+    border-radius: 18px 18px 0 0;
+    background: rgba(5,11,20,.94);
+}
+#view-feed > section:has(#socialFeedList) > div:first-child h3 { font-size: 15px; }
+#view-feed #socialFeedList {
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 0 0 18px 18px;
+    background: rgba(5,10,18,.96);
+}
+#view-feed #socialFeedList > .twitter-post { border-bottom-color: rgba(255,255,255,.085); }
+#view-feed .twitter-post-inner { gap: 12px; padding: 16px; }
+#view-feed .twitter-avatar-badge { border-color: rgba(255,231,176,.22); }
+#view-feed .twitter-user-meta strong,
+#view-feed .twitter-user-meta .twitter-author-button { font-size: 13px; }
+#view-feed .twitter-post-body { margin-top: 5px; }
+#view-feed .twitter-post-body p { color: #e7edf4; font-size: 14px; line-height: 1.85; }
+#view-feed .twitter-post-media { border-color: rgba(255,255,255,.12); border-radius: 17px; }
+#view-feed .twitter-post .social-post-actions { padding: 8px 16px 12px; }
+#view-feed .twitter-post .social-post-button-group { justify-content: space-between; width: 100%; }
+#view-feed .twitter-post .social-post-actions .social-like-button,
+#view-feed .twitter-post .social-post-actions .social-comment-button,
+#view-feed .twitter-post .social-post-actions .social-mini-button {
+    min-width: 54px;
+    min-height: 36px;
+    justify-content: center;
+    border: 0;
+    background: transparent;
+    color: #8492a4;
+    font-size: 10px;
+}
+#view-feed .twitter-post .social-post-actions .social-like-button:hover { color: #fb7185; background: rgba(251,113,133,.08); }
+#view-feed .twitter-post .social-post-actions .social-comment-button:hover { color: #67e8f9; background: rgba(103,232,249,.08); }
+#view-feed .twitter-post .social-post-actions .social-mini-button:hover { color: #f7c45e; background: rgba(247,185,85,.08); }
+#view-feed #socialFeedMore { border-color: rgba(255,231,176,.16); color: #f7d994; }
+
+@media (max-width: 899px) {
+    #view-feed.twitter-shell {
+        width: 100%;
+        grid-template-columns: minmax(0,1fr);
+        grid-template-areas: "timeline-tabs" "timeline-compose" "timeline-posts" "community-stats" "community-members";
+        gap: 10px;
+    }
+    #view-feed > .social-feed-tabs { position: sticky; top: 0; }
+    #view-feed > section:has(#socialStatPosts) { padding: 10px 12px !important; }
+    #view-feed > section:has(#socialCommunityList) { padding: 12px !important; }
+    #view-feed #socialCommunityList { grid-template-columns: repeat(auto-fit, minmax(190px,1fr)); max-height: none; }
+    #view-feed #socialCommunityList .social-community-cover { height: 36px; }
+}
+@media (max-width: 480px) {
+    #view-feed.twitter-shell { padding-inline: 0; gap: 8px; }
+    #view-feed > section:has(#socialPostContent) { padding: 11px !important; border-radius: 15px; }
+    #view-feed > section:has(#socialPostContent) form .social-compose-avatar { width: 36px; height: 36px; font-size: 17px; }
+    #view-feed #socialPostContent { min-height: 66px; padding: 9px 52px 9px 10px; font-size: 12px; }
+    #view-feed > section:has(#socialFeedList) > div:first-child { min-height: 48px; padding-inline: 12px; }
+    #view-feed #socialFeedList { border-radius: 0 0 15px 15px; }
+    #view-feed .twitter-post-inner { grid-template-columns: 38px minmax(0,1fr); gap: 9px; padding: 13px 11px; }
+    #view-feed .twitter-post .social-post-actions { padding-inline: 8px; }
+    #view-feed .twitter-post .social-post-actions .social-like-button,
+    #view-feed .twitter-post .social-post-actions .social-comment-button,
+    #view-feed .twitter-post .social-post-actions .social-mini-button { min-width: 42px; padding-inline: 5px; }
+}
