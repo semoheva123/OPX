@@ -9,6 +9,7 @@ const { recordLedgerEntry } = require('../services/financialLedger');
 const { hasFullFeatureAccess } = require('../services/paidFeatureAccess');
 const withdrawalPayoutService = require('../services/withdrawalPayoutService');
 const dataAccess = require('../services/dataAccess');
+const { getTaskPeriodStarts } = require('../services/taskCalendar');
 const tronDepositService = require('../services/tronDepositService');
 const { getWithdrawalSchedule } = require('../services/weeklySchedule');
 const SecurityEvent = dataAccess.securityEvent;
@@ -175,7 +176,7 @@ async function withdrawSupabase(req, res) {
     const maxLimit = vipLevel ? Math.max(20, Number(vipLevel.price || 0) * 0.3) : 20;
     if (!fullFeatureAccess && withdrawNum > maxLimit) return res.status(400).json({ error: `الحد الأقصى للسحب الحالي هو ${maxLimit}$` });
     if (!fullFeatureAccess && Number(user.wallet?.profitBalance || 0) < withdrawNum) return res.status(400).json({ error: 'رصيد الأرباح غير كافٍ' });
-    const weekStart = new Date(); weekStart.setUTCHours(0, 0, 0, 0); weekStart.setUTCDate(weekStart.getUTCDate() - 6);
+    const { weekStart } = getTaskPeriodStarts();
     const weekly = await dataAccess.transaction.find({ userId: req.user.id, type: 'withdraw', status: { $in: ['pending', 'approved'] }, createdAt: { $gte: weekStart } });
     if (!fullFeatureAccess && weekly.reduce((sum, item) => sum + Number(item.amount || 0), 0) + withdrawNum > maxLimit) return res.status(400).json({ error: `تجاوزت الحد الأسبوعي للسحب البالغ ${maxLimit}$` });
 

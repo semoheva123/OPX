@@ -1,6 +1,7 @@
 const { withdrawalCompletedTemplate, withdrawalRejectedTemplate } = require('../services/emailTemplates');
 const realtimeService = require('../services/realtimeService');
 const dataAccess = require('../services/dataAccess');
+const { taskDateString } = require('../services/taskCalendar');
 const withdrawalPayoutService = require('../services/withdrawalPayoutService');
 const { checkFinancialReadiness } = require('../services/financialReadinessService');
 const { buildFinancialAccountingSummary } = require('../services/financialAccountingService');
@@ -206,7 +207,7 @@ async function analytics(req, res) {
       ? await dataAccess.securityEvent.find({ createdAt: { $gte: since } }, { limit: 10000 }).catch(() => [])
       : [];
     const dailyMap = new Map();
-    transactions.forEach(transaction => { const day = new Date(transaction.createdAt).toISOString().slice(0, 10); const key = `${day}:${transaction.type}`; const item = dailyMap.get(key) || { _id: { day, type: transaction.type }, total: 0, count: 0 }; item.total += Number(transaction.amount || 0); item.count += 1; dailyMap.set(key, item); });
+    transactions.forEach(transaction => { const day = taskDateString(transaction.createdAt); const key = `${day}:${transaction.type}`; const item = dailyMap.get(key) || { _id: { day, type: transaction.type }, total: 0, count: 0 }; item.total += Number(transaction.amount || 0); item.count += 1; dailyMap.set(key, item); });
     const roleMap = new Map();
     users.forEach(user => roleMap.set(user.role, (roleMap.get(user.role) || 0) + 1));
     const securityMap = new Map();
@@ -228,7 +229,7 @@ async function buildFinancialSummary(days = 30) {
   const pendingSummary = { count: pendingTransactions.length, total: pendingTransactions.reduce((sum, item) => sum + Number(item.amount || 0), 0) };
   const rejectedSummary = { count: rejectedTransactions.length, total: rejectedTransactions.reduce((sum, item) => sum + Number(item.amount || 0), 0) };
   const byDayMap = new Map();
-  transactions.forEach(item => { const date = new Date(item.createdAt).toISOString().slice(0, 10); const row = byDayMap.get(date) || { date, deposits: 0, withdrawals: 0, net: 0, count: 0 }; const amount = Number(item.amount || 0); if (item.type === 'deposit') { row.deposits += amount; row.net += amount; } if (item.type === 'withdraw') { row.withdrawals += amount; row.net -= amount; } row.count += 1; byDayMap.set(date, row); });
+  transactions.forEach(item => { const date = taskDateString(item.createdAt); const row = byDayMap.get(date) || { date, deposits: 0, withdrawals: 0, net: 0, count: 0 }; const amount = Number(item.amount || 0); if (item.type === 'deposit') { row.deposits += amount; row.net += amount; } if (item.type === 'withdraw') { row.withdrawals += amount; row.net -= amount; } row.count += 1; byDayMap.set(date, row); });
 
   return {
     periodDays: days,
@@ -571,7 +572,7 @@ async function disableUserTwoFactor(req, res) {
 async function resetDailyTasks(req, res) {
   try {
     const { userId, taskDate } = req.body || {};
-    const targetDate = taskDate || new Date().toISOString().slice(0, 10);
+    const targetDate = taskDate || taskDateString();
     if (dataAccess.isSupabaseRuntime()) {
       const cleanupTarget = userId ? { userId, taskDate: targetDate } : { taskDate: targetDate };
       const resetQueries = [

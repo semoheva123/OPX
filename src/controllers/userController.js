@@ -7,6 +7,7 @@ const VipLevel = dataAccess.vipLevel;
 const Session = dataAccess.session;
 const imgbbStorage = require('../services/imgbbStorage');
 const { hasPaidFeatureAccess } = require('../services/paidFeatureAccess');
+const { getTaskPeriodStarts } = require('../services/taskCalendar');
 
 function sanitizeProfileUser(user) {
   const safeUser = { ...user };
@@ -208,13 +209,7 @@ async function getUpgradeHistory(req, res) {
       const user = await dataAccess.user.findById(req.user.id);
       if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
 
-      const todayStart = new Date();
-      todayStart.setUTCHours(0, 0, 0, 0);
-      const todayDate = todayStart.toISOString().slice(0, 10);
-      const weekStart = new Date(todayStart);
-      weekStart.setUTCDate(weekStart.getUTCDate() - 6);
-      const monthStart = new Date(todayStart);
-      monthStart.setUTCDate(1);
+      const { todayStart, weekStart, monthStart, taskDate: todayDate } = getTaskPeriodStarts();
       const [transactions, vipLevels, dailyCompletions, referralCount] = await Promise.all([
         dataAccess.transaction.find({ userId: user.id || user._id }, {
           sort: { createdAt: -1 },
@@ -274,9 +269,7 @@ async function getUpgradeHistory(req, res) {
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
     const transactions = await Transaction.find({ userId: user._id }).sort({ createdAt: -1 }).limit(25).select('type amount status createdAt');
     const approvedTransactions = transactions.filter(transaction => ['approved', 'completed'].includes(transaction.status));
-    const todayStart = new Date(); todayStart.setUTCHours(0, 0, 0, 0);
-    const weekStart = new Date(todayStart); weekStart.setUTCDate(weekStart.getUTCDate() - 6);
-    const monthStart = new Date(todayStart); monthStart.setUTCDate(1);
+    const { todayStart, weekStart, monthStart } = getTaskPeriodStarts();
     const earningsAggregate = await Transaction.aggregate([
       { $match: { userId: user._id, status: { $in: ['approved', 'completed'] }, type: { $in: ['reward', 'staking_reward', 'referral_commission'] } } },
       { $group: {

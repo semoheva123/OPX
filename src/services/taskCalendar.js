@@ -40,4 +40,17 @@ function getTaskDayOfWeek(value = new Date()) {
   return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
 }
 
-module.exports = { TASK_TIME_ZONE, taskDateString, startOfTaskDay, getTaskDayOfWeek };
+function getTaskPeriodStarts(value = new Date()) {
+  const dateString = taskDateString(value);
+  const [year, month, day] = dateString.split('-').map(Number);
+  const weekDate = new Date(Date.UTC(year, month - 1, day - 6, 12));
+  const monthDateString = `${year}-${String(month).padStart(2, '0')}-01`;
+  return {
+    taskDate: dateString,
+    todayStart: startOfTaskDay(value),
+    weekStart: startOfTaskDay(weekDate),
+    monthStart: startOfTaskDay(new Date(`${monthDateString}T12:00:00.000Z`))
+  };
+}
+
+module.exports = { TASK_TIME_ZONE, taskDateString, startOfTaskDay, getTaskDayOfWeek, getTaskPeriodStarts };

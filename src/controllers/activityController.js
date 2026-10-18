@@ -496,7 +496,7 @@ async function rewardSupabase(req, res, min, max, label) {
     if (!paidFeatureAccess && Number(user[creditField] || 0) < 1) return res.status(400).json({ error: cycleRequirementMessage });
     const rewardAmount = Number((Math.random() * (max - min) + min).toFixed(2));
     const split = splitHybridReward(rewardAmount);
-    const history = await dataAccess.transaction.find({ userId: user.id || user._id, type: 'reward', walletAddress: { $in: ['Lucky Spin Wheel', 'Mystery Box'] }, status: 'approved', createdAt: { $gte: new Date(new Date().setUTCHours(0, 0, 0, 0)) } });
+    const history = await dataAccess.transaction.find({ userId: user.id || user._id, type: 'reward', walletAddress: { $in: ['Lucky Spin Wheel', 'Mystery Box'] }, status: 'approved', createdAt: { $gte: startOfTaskDay() } });
     const dailyTotal = history.reduce((sum, item) => sum + Number(item.amount || 0), 0);
     if (dailyTotal + rewardAmount > (req.app.locals.gameSettings.dailyGameRewardCap || 100)) return res.status(400).json({ error: 'تم بلوغ الحد اليومي لمكافآت الألعاب، حاول غدًا' });
     if (!paidFeatureAccess) user[creditField] = Number(user[creditField]) - 1;

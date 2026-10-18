@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const schedule = require('../src/services/weeklySchedule');
+const { getTaskPeriodStarts } = require('../src/services/taskCalendar');
 
 const read = relative => fs.readFileSync(path.join(__dirname, '..', relative), 'utf8');
 const activityController = read('src/controllers/activityController.js');
@@ -17,6 +18,9 @@ const sunday = new Date('2026-10-11T12:00:00.000Z');
 const thursday = new Date('2026-10-08T12:00:00.000Z');
 const fridayLocalBoundary = new Date('2026-10-08T21:00:00.000Z');
 const saturdayLocalBoundary = new Date('2026-10-09T21:00:00.000Z');
+const newIstanbulDay = getTaskPeriodStarts(new Date('2026-10-18T21:30:00.000Z'));
+assert.equal(newIstanbulDay.todayStart.toISOString(), '2026-10-18T21:00:00.000Z', 'daily limits should reset at Istanbul midnight');
+assert.equal(newIstanbulDay.weekStart.toISOString(), '2026-10-12T21:00:00.000Z', 'seven-day limits should use the same Istanbul calendar');
 
 assert.equal(schedule.isTaskHoliday(fridayLocalBoundary), true, 'Friday local midnight must count as the only task holiday in Istanbul time');
 assert.equal(schedule.isTaskHoliday(friday), true, 'Friday is the only task holiday');

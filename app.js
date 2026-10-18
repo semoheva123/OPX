@@ -521,6 +521,8 @@ if (typeof window !== 'undefined') {
 
 function renderHomeSummary(summary) {
     const completedTasks = Number(summary.completedTasks || 0);
+    const earnings = summary.earnings || {};
+    const earnedTodayValue = Number(earnings.today ?? summary.todayEarned ?? 0);
     const taskLimit = getTaskLimitForTier();
     const tierActive = Boolean(currentUserTierActive);
     const quickTaskStatus = document.getElementById('quickTaskStatus');
@@ -529,7 +531,7 @@ function renderHomeSummary(summary) {
 
     if (quickTaskStatus) quickTaskStatus.innerText = `${completedTasks} / ${taskLimit}`;
     if (quickTierStatus) quickTierStatus.innerText = currentUserTier || 'A1';
-    if (quickProfitStatus) quickProfitStatus.innerText = `$${Number(summary.todayEarned || 0).toFixed(2)}`;
+    if (quickProfitStatus) quickProfitStatus.innerText = `$${earnedTodayValue.toFixed(2)}`;
 
     if (currentUserData && Number.isFinite(completedTasks)) {
         currentUserData.todayCompletedTasks = Math.max(0, completedTasks);
@@ -538,7 +540,7 @@ function renderHomeSummary(summary) {
     const taskProgress = tierActive ? Math.min(100, Math.round((completedTasks / taskLimit) * 100)) : 0;
     const pulse = document.getElementById('homePulseMessage');
     const pulseMeta = document.getElementById('homePulseMeta');
-    if (pulse) pulse.innerText = summary.todayEarned > 0 ? `حسابك نشط اليوم وحققت $${summary.todayEarned.toFixed(2)} من الأرباح.` : 'لم تسجل أرباحًا اليوم بعد. لديك فرصة لبدء مهامك.';
+    if (pulse) pulse.innerText = earnedTodayValue > 0 ? `حسابك نشط اليوم وحققت $${earnedTodayValue.toFixed(2)} من الأرباح.` : 'لم تسجل أرباحًا اليوم بعد. لديك فرصة لبدء مهامك.';
     if (pulseMeta) pulseMeta.innerText = tierActive ? `${completedTasks} من ${taskLimit} مهمة مكتملة اليوم` : 'المهام اليومية تتطلب تفعيل المستوى';
 
     const goal = document.getElementById('homeNextGoal');
@@ -565,11 +567,10 @@ function renderHomeSummary(summary) {
     const readiness = document.getElementById('homeAccountReadiness');
     if (readiness) readiness.innerText = missingChecks.length ? `أكمل ${missingChecks.length} خطوة لرفع جاهزية الحساب.` : 'حسابك جاهز للعمليات الأساسية.';
 
-    const earnings = summary.earnings || {};
     const earnedToday = document.getElementById('homeEarnedToday');
     const earnedWeek = document.getElementById('homeEarnedWeek');
     const earnedMonth = document.getElementById('homeEarnedMonth');
-    if (earnedToday) earnedToday.innerText = `$${Number(earnings.today || summary.todayEarned || 0).toFixed(2)}`;
+    if (earnedToday) earnedToday.innerText = `$${earnedTodayValue.toFixed(2)}`;
     if (earnedWeek) earnedWeek.innerText = `$${Number(earnings.week || 0).toFixed(2)}`;
     if (earnedMonth) earnedMonth.innerText = `$${Number(earnings.month || 0).toFixed(2)}`;
     const pending = summary.pendingByType || {};
@@ -579,7 +580,7 @@ function renderHomeSummary(summary) {
     if (pendingStatus) pendingStatus.innerText = summary.pendingTransactions ? `${summary.pendingTransactions} طلب معلق` : '';
     if (pendingDetail) pendingDetail.innerText = pendingText;
     const syncStatus = document.getElementById('homeSyncStatus');
-    if (syncStatus) syncStatus.innerText = `آخر مزامنة: ${new Date().toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' })}`;
+    if (syncStatus) syncStatus.innerText = `آخر مزامنة: ${new Date().toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Istanbul' })} (إسطنبول)`;
 
     const opportunities = [];
     if (tierActive && completedTasks < taskLimit) opportunities.push(`أكمل ${taskLimit - completedTasks} مهمة متبقية اليوم`);
@@ -592,7 +593,7 @@ function renderHomeSummary(summary) {
 
     const typeLabels = { registered: 'إنشاء الحساب', deposit: 'إيداع', reward: 'مكافأة', staking_reward: 'عائد تخزين', referral_commission: 'عمولة إحالة', withdraw: 'سحب', upgrade_deduction: 'ترقية', token_burn: 'حرق OPX' };
     const timelineElement = document.getElementById('homeTimeline');
-    if (timelineElement) timelineElement.innerHTML = (summary.timeline || []).map(event => `<div class="flex justify-between border-b border-slate-800 pb-1"><span>${typeLabels[event.type] || event.title}</span><span class="text-slate-600">${new Date(event.date).toLocaleDateString('ar')}</span></div>`).join('') || '<span class="text-slate-500">سيظهر خط الحساب بعد تسجيل أول نشاط.</span>';
+    if (timelineElement) timelineElement.innerHTML = (summary.timeline || []).map(event => `<div class="flex justify-between border-b border-slate-800 pb-1"><span>${typeLabels[event.type] || event.title}</span><span class="text-slate-600">${new Date(event.date).toLocaleDateString('ar', { timeZone: 'Europe/Istanbul' })}</span></div>`).join('') || '<span class="text-slate-500">سيظهر خط الحساب بعد تسجيل أول نشاط.</span>';
 }
 
 /* --- 2. الإشعارات والأصوات والنوافذ التنبيهية --- */
