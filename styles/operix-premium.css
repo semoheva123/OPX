@@ -905,18 +905,18 @@ body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) .panel {
 #view-feed > section:has(#socialCommunityList) {
     position: sticky;
     top: 14px;
-    padding: 16px !important;
+    padding: 12px !important;
 }
 #view-feed > section:has(#socialCommunityList) > div:first-child {
     align-items: flex-start;
-    margin-bottom: 12px;
-    padding-bottom: 11px;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
     border-bottom: 1px solid rgba(255,255,255,.08);
 }
 #view-feed > section:has(#socialCommunityList) > div:first-child h3 { font-size: 14px; letter-spacing: -.01em; }
 #view-feed > section:has(#socialCommunityList) > div:first-child p { max-width: 210px; line-height: 1.6; }
 #view-feed #socialCommunityList {
-    max-height: min(70vh, 650px);
+    max-height: 230px;
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: rgba(148,163,184,.24) transparent;
@@ -954,12 +954,28 @@ body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) .panel {
         grid-template-areas: "timeline-tabs" "timeline-compose" "timeline-posts" "community-members";
     }
     #view-feed > section:has(#socialStatPosts) { display: none; }
-    #view-feed > section:has(#socialCommunityList) { position: static; padding: 12px !important; }
-    #view-feed #socialCommunityList { max-height: none; }
-    #view-feed #socialCommunityList .social-community-card { padding-block: 9px; }
+    #view-feed > section:has(#socialCommunityList) { position: static; padding: 10px 12px !important; }
+    #view-feed > section:has(#socialCommunityList) > div:first-child { margin-bottom: 6px; padding-bottom: 6px; }
+    #view-feed > section:has(#socialCommunityList) > div:first-child p { display: none; }
+    #view-feed #socialCommunityList {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: minmax(210px, 260px);
+        grid-template-columns: none;
+        max-height: none;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-bottom: 4px;
+        scrollbar-width: thin;
+    }
+    #view-feed #socialCommunityList .social-community-card { min-width: 0; padding: 7px 8px; border: 1px solid rgba(255,255,255,.07); border-radius: 13px; background: rgba(255,255,255,.018); }
+    #view-feed #socialCommunityList .social-community-user { gap: 7px; }
+    #view-feed #socialCommunityList .social-community-avatar { width: 32px; height: 32px; }
+    #view-feed #socialCommunityList .social-community-user > div:nth-child(2) > span:not(.social-community-handle) { display: none; }
 }
 @media (max-width: 480px) {
     #view-feed .social-floating-compose { display: grid; }
     #view-feed > section:has(#socialCommunityList) { border-radius: 15px; }
     #view-feed > section:has(#socialCommunityList) > div:first-child { margin-bottom: 8px; }
+    #view-feed #socialCommunityList { grid-auto-columns: minmax(190px, 78vw); }
 }
