@@ -892,3 +892,74 @@ body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) .panel {
     #view-feed .twitter-post .social-post-actions .social-comment-button,
     #view-feed .twitter-post .social-post-actions .social-mini-button { min-width: 42px; padding-inline: 5px; }
 }
+
+/* Final community refinement: cleaner timeline, practical discovery, less dashboard clutter. */
+#view-feed > section:has(#socialStatPosts) { display: none; }
+#view-feed.twitter-shell {
+    grid-template-areas:
+        "timeline-tabs community-members"
+        "timeline-compose community-members"
+        "timeline-posts community-members";
+    column-gap: 24px;
+}
+#view-feed > section:has(#socialCommunityList) {
+    position: sticky;
+    top: 14px;
+    padding: 16px !important;
+}
+#view-feed > section:has(#socialCommunityList) > div:first-child {
+    align-items: flex-start;
+    margin-bottom: 12px;
+    padding-bottom: 11px;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+}
+#view-feed > section:has(#socialCommunityList) > div:first-child h3 { font-size: 14px; letter-spacing: -.01em; }
+#view-feed > section:has(#socialCommunityList) > div:first-child p { max-width: 210px; line-height: 1.6; }
+#view-feed #socialCommunityList {
+    max-height: min(70vh, 650px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148,163,184,.24) transparent;
+}
+#view-feed #socialCommunityList .social-community-card {
+    padding: 10px 2px;
+    border: 0;
+    border-bottom: 1px solid rgba(255,255,255,.07);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+#view-feed #socialCommunityList .social-community-card:hover { transform: none; }
+#view-feed #socialCommunityList .social-community-cover { display: none; }
+#view-feed #socialCommunityList .social-community-user { gap: 9px; padding: 0; border: 0; }
+#view-feed #socialCommunityList .social-community-avatar { width: 38px; height: 38px; border-color: rgba(255,231,176,.2); background: linear-gradient(145deg, rgba(247,185,85,.18), rgba(34,211,238,.1)); color: #ffe7b0; }
+#view-feed #socialCommunityList .social-community-user > div:nth-child(2) { overflow: hidden; }
+#view-feed #socialCommunityList .social-community-user > div:nth-child(2) > b { font-size: 11px; }
+#view-feed #socialCommunityList .social-community-user > div:nth-child(2) > span { font-size: 9px; }
+#view-feed #socialCommunityList .social-follow-button { min-height: 28px; padding-inline: 10px; font-size: 9px; }
+#view-feed .social-floating-compose { display: none; }
+#view-feed .twitter-post { background: transparent; }
+#view-feed .twitter-post:hover { background: rgba(255,255,255,.018); }
+#view-feed .twitter-post .social-post-button-group { max-width: 470px; }
+#view-feed .twitter-post .social-post-actions .social-like-button,
+#view-feed .twitter-post .social-post-actions .social-comment-button,
+#view-feed .twitter-post .social-post-actions .social-mini-button { color: #78879a; }
+#view-feed .twitter-post .social-post-menu-group { padding-top: 2px; }
+#view-feed .twitter-post .social-post-menu-group .social-mini-button { min-height: 30px; padding-inline: 8px; font-size: 9px; }
+#view-feed .twitter-post .social-post-menu-group .social-mini-button.danger { color: #c17e8b; }
+#view-feed #socialFeedMore { margin-top: 10px; border-radius: 999px; background: rgba(247,185,85,.035); }
+
+@media (max-width: 899px) {
+    #view-feed.twitter-shell {
+        grid-template-areas: "timeline-tabs" "timeline-compose" "timeline-posts" "community-members";
+    }
+    #view-feed > section:has(#socialStatPosts) { display: none; }
+    #view-feed > section:has(#socialCommunityList) { position: static; padding: 12px !important; }
+    #view-feed #socialCommunityList { max-height: none; }
+    #view-feed #socialCommunityList .social-community-card { padding-block: 9px; }
+}
+@media (max-width: 480px) {
+    #view-feed .social-floating-compose { display: grid; }
+    #view-feed > section:has(#socialCommunityList) { border-radius: 15px; }
+    #view-feed > section:has(#socialCommunityList) > div:first-child { margin-bottom: 8px; }
+}
