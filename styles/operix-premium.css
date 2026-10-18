@@ -979,3 +979,156 @@ body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) .panel {
     #view-feed > section:has(#socialCommunityList) > div:first-child { margin-bottom: 8px; }
     #view-feed #socialCommunityList { grid-auto-columns: minmax(190px, 78vw); }
 }
+
+/* Games lounge: editorial header, elegant game stages, and clear reward states. */
+#view-spin {
+    max-width: 940px;
+    margin-inline: auto;
+    padding-bottom: 12px;
+}
+#view-spin > .glass-card:first-child {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    padding: clamp(18px, 3vw, 26px);
+    border: 1px solid rgba(255,231,176,.24);
+    border-radius: 26px;
+    background: radial-gradient(ellipse at 8% 0%, rgba(255,231,176,.12), transparent 38%), radial-gradient(ellipse at 100% 100%, rgba(103,232,249,.07), transparent 34%), linear-gradient(145deg, rgba(18,25,37,.98), rgba(5,10,18,.99));
+    box-shadow: 0 24px 62px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.075);
+}
+#view-spin > .glass-card:first-child::after {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: auto 8% 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,231,176,.42), rgba(103,232,249,.25), transparent);
+}
+#view-spin > .glass-card:first-child h3 { font-size: clamp(20px, 3vw, 25px); letter-spacing: -.025em; }
+#view-spin > .glass-card:first-child > p { max-width: 620px; font-size: 11px; line-height: 1.9; }
+#view-spin #gameReferralRequirement {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border: 1px solid rgba(255,231,176,.18);
+    border-radius: 999px;
+    padding: 7px 11px;
+    background: rgba(247,185,85,.07);
+    color: #f2d89e;
+    white-space: nowrap;
+}
+#view-spin #gameConfigStatus,
+#view-spin #platformStatus { display: inline-flex; align-items: center; min-height: 28px; padding: 5px 9px; border: 1px solid rgba(148,163,184,.12); border-radius: 999px; background: rgba(2,7,14,.42); }
+#view-spin #platformStatus { color: #92a0b2; }
+#view-spin > .grid.grid-cols-1.md\:grid-cols-2 { gap: 16px; }
+#view-spin > .grid.grid-cols-1.md\:grid-cols-2 > .glass-card {
+    --game-accent: #f3c76b;
+    --game-accent-rgb: 243,199,107;
+    position: relative;
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    align-items: stretch;
+    overflow: hidden;
+    gap: 18px;
+    padding: clamp(18px, 3vw, 25px);
+    border: 1px solid rgba(var(--game-accent-rgb),.22);
+    border-radius: 26px;
+    background: radial-gradient(ellipse at 50% 42%, rgba(var(--game-accent-rgb),.10), transparent 47%), linear-gradient(155deg, rgba(16,23,35,.98), rgba(5,10,18,.99));
+    box-shadow: 0 22px 56px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.055);
+    transition: transform .24s ease, border-color .24s ease, box-shadow .24s ease;
+}
+#view-spin > .grid.grid-cols-1.md\:grid-cols-2 > .glass-card::before {
+    content: '';
+    position: absolute;
+    inset: 0 14% auto;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(var(--game-accent-rgb),.5), transparent);
+}
+#view-spin > .grid.grid-cols-1.md\:grid-cols-2 > .glass-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(var(--game-accent-rgb),.4);
+    box-shadow: 0 28px 64px rgba(0,0,0,.38), 0 0 32px rgba(var(--game-accent-rgb),.055), inset 0 1px 0 rgba(255,255,255,.075);
+}
+#view-spin > .grid.grid-cols-1.md\:grid-cols-2 > .glass-card:nth-child(2) {
+    --game-accent: #b9a1ff;
+    --game-accent-rgb: 157,126,255;
+}
+#view-spin > .grid.grid-cols-1.md\:grid-cols-2 > .glass-card > div:first-child { min-height: 48px; align-items: center; }
+#view-spin > .grid.grid-cols-1.md\:grid-cols-2 > .glass-card > div:first-child h3 { font-size: 16px; letter-spacing: -.015em; }
+#view-spin > .grid.grid-cols-1.md\:grid-cols-2 > .glass-card > div:first-child p { margin-top: 4px; color: #99a6b7; font-size: 10px; }
+#view-spin #lblWheelCredits,
+#view-spin #lblMysteryBoxCredits { font-size: 12px; font-variant-numeric: tabular-nums; }
+#view-spin .wheel-disc {
+    width: min(100%, 224px);
+    height: auto;
+    aspect-ratio: 1;
+    border-width: 7px;
+    border-color: rgba(255,231,176,.78);
+    background: conic-gradient(from -22.5deg, #f6d990 0 12.5%, #8a5c24 12.5% 25%, #f0bd58 25% 37.5%, #513b25 37.5% 50%, #ffe7b0 50% 62.5%, #855c2b 62.5% 75%, #e8ae48 75% 87.5%, #3d3023 87.5% 100%);
+    box-shadow: 0 0 0 7px rgba(255,231,176,.055), 0 0 38px rgba(247,185,85,.17), inset 0 0 0 3px rgba(31,23,13,.58), inset 0 0 26px rgba(24,17,8,.45);
+}
+#view-spin .wheel-disc::before { inset: 12px; border: 1px solid rgba(255,255,255,.35); }
+#view-spin #spinWheelVisual > div {
+    width: 68px;
+    height: 68px;
+    border: 2px solid #ffe7b0;
+    background: radial-gradient(circle at 35% 25%, #28354a, #080d15 70%);
+    color: #ffe7b0;
+    box-shadow: 0 8px 28px rgba(0,0,0,.52), 0 0 0 6px rgba(255,231,176,.12), inset 0 1px 0 rgba(255,255,255,.16);
+}
+#view-spin #spinWheelVisual > div i { font-size: 22px; filter: drop-shadow(0 0 10px rgba(255,231,176,.28)); }
+#view-spin .fa-caret-down { top: -13px; z-index: 3; color: #fff0c7; filter: drop-shadow(0 4px 7px rgba(0,0,0,.65)); }
+#view-spin #mysteryBoxVisual {
+    position: relative;
+    width: min(100%, 176px);
+    height: auto;
+    aspect-ratio: 1;
+    border: 1px solid rgba(225,210,255,.5);
+    border-radius: 34px;
+    background: radial-gradient(circle at 34% 22%, rgba(255,255,255,.32), transparent 23%), radial-gradient(circle at 50% 110%, rgba(129,94,255,.7), transparent 54%), linear-gradient(145deg, #372958, #171426 70%);
+    box-shadow: 0 22px 42px rgba(0,0,0,.4), 0 0 44px rgba(139,92,246,.2), inset 0 1px 0 rgba(255,255,255,.23), inset 0 -14px 30px rgba(5,4,15,.44);
+}
+#view-spin #mysteryBoxVisual::before,
+#view-spin #mysteryBoxVisual::after { content: ''; position: absolute; pointer-events: none; }
+#view-spin #mysteryBoxVisual::before { inset: 12px; border: 1px solid rgba(231,220,255,.17); border-radius: 25px; }
+#view-spin #mysteryBoxVisual::after { width: 52px; height: 52px; border: 1px solid rgba(255,231,176,.62); border-radius: 16px; background: linear-gradient(145deg, rgba(255,231,176,.24), rgba(92,62,147,.6)); box-shadow: 0 4px 18px rgba(0,0,0,.35); }
+#view-spin #mysteryBoxVisual i { position: relative; z-index: 1; color: #f5eaff; font-size: 48px; filter: drop-shadow(0 9px 12px rgba(0,0,0,.5)); }
+#view-spin #wheelGameStatus,
+#view-spin #boxGameStatus { min-height: 34px; display: flex; align-items: center; justify-content: center; margin: 0; padding: 7px 10px; border: 1px solid rgba(148,163,184,.11); border-radius: 12px; background: rgba(2,7,14,.38); color: #a7b2c1; font-size: 10px; line-height: 1.65; }
+#view-spin #wheelGameStatus:has(+ button:not(:disabled)),
+#view-spin #boxGameStatus:has(+ button:not(:disabled)) { border-color: rgba(52,211,153,.17); background: rgba(16,185,129,.055); color: #a7e7c6; }
+#view-spin #btnLuckySpin,
+#view-spin #btnMysteryBox {
+    min-height: 48px;
+    margin-top: auto;
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 15px;
+    font-size: 12px;
+    letter-spacing: .01em;
+    box-shadow: 0 12px 28px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.24);
+}
+#view-spin #btnLuckySpin { background: linear-gradient(135deg, #fff0c7, #f1c66e 55%, #bd8437); }
+#view-spin #btnMysteryBox { background: linear-gradient(135deg, #d8c8ff, #9c7aff 55%, #6947c1); }
+#view-spin #btnLuckySpin:disabled,
+#view-spin #btnMysteryBox:disabled { filter: saturate(.5); box-shadow: none; }
+#view-spin > section:has(#gameHistoryList),
+#view-spin > section:has(#gameStatsList) { border-color: rgba(255,231,176,.12); border-radius: 21px; background: linear-gradient(150deg, rgba(12,19,30,.96), rgba(5,10,18,.98)); }
+#view-spin #gameHistoryList > div,
+#view-spin #gameStatsList > div { border-color: rgba(148,163,184,.13); border-radius: 14px; background: linear-gradient(135deg, rgba(17,26,39,.82), rgba(6,12,21,.85)); }
+#view-spin #gameResultModal > div { position: relative; overflow: hidden; border-color: rgba(255,231,176,.32) !important; border-radius: 28px; background: radial-gradient(ellipse at 50% 0%, rgba(52,211,153,.14), transparent 50%), linear-gradient(155deg, #111c2b, #060b13) !important; }
+#view-spin #gameResultModal > div::before { content: ''; position: absolute; inset: 0 12% auto; height: 2px; background: linear-gradient(90deg, transparent, #ffe7b0, #4ade80, transparent); }
+#view-spin #gameResultAmount { color: #8af0b6; font-size: clamp(36px, 8vw, 48px); font-variant-numeric: tabular-nums; text-shadow: 0 0 28px rgba(52,211,153,.2); }
+
+@media (max-width: 640px) {
+    #view-spin { gap: 10px; }
+    #view-spin > .glass-card:first-child { border-radius: 20px; }
+    #view-spin > .grid.grid-cols-1.md\:grid-cols-2 { gap: 10px; }
+    #view-spin > .grid.grid-cols-1.md\:grid-cols-2 > .glass-card { gap: 15px; padding: 16px; border-radius: 21px; }
+    #view-spin .wheel-disc { width: min(100%, 194px); }
+    #view-spin #mysteryBoxVisual { width: min(100%, 154px); border-radius: 28px; }
+    #view-spin #mysteryBoxVisual i { font-size: 42px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    #view-spin > .grid.grid-cols-1.md\:grid-cols-2 > .glass-card { transition: none; }
+}
