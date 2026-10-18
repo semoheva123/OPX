@@ -1370,7 +1370,7 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
 @media (max-width: 640px){body{overflow-x:hidden}}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 </style>
-<link rel="stylesheet" href="/styles/operix-premium.css?v=20261019-games-1">
+<link rel="stylesheet" href="/styles/operix-premium.css?v=20261019-referral-rewards-1">
 </head>
 <body class="min-h-screen flex flex-col justify-between pb-28">
 <div class="tech-grid-bg"></div>
@@ -2144,15 +2144,15 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
             </section>
 
             <div class="referral-rewards-card glass-card rounded-3xl border border-amber-400/20 p-5 text-right">
-                <div class="flex items-start justify-between gap-3">
-                    <div><span class="text-[10px] font-black tracking-wide text-amber-200">مكافآت الإحالات المباشرة</span><h3 class="mt-1 text-sm font-black text-white">إجمالي ما كسبته</h3></div>
-                    <i class="fa-solid fa-sack-dollar text-xl text-amber-300" aria-hidden="true"></i>
+                <div class="referral-rewards-heading flex items-start justify-between gap-3">
+                    <div><span class="text-[10px] font-black tracking-wide text-amber-200">مكافآت الإحالات المباشرة</span><h3 class="mt-1 text-sm font-black text-white">إجمالي ما كسبته</h3><p class="referral-rewards-caption">مكافآت الإحالات المؤهلة المضافة إلى رصيد أرباحك</p></div>
+                    <span class="referral-rewards-icon" aria-hidden="true"><i class="fa-solid fa-sack-dollar"></i></span>
                 </div>
-                <div class="mt-3 flex items-end gap-2"><strong id="referralRewardsTotal" class="text-4xl font-black text-amber-300">$0.00</strong><span class="pb-1 text-[11px] text-slate-400">USDT</span></div>
-                <div class="mt-4 grid grid-cols-3 gap-2 text-center text-[10px]">
-                    <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-2"><span class="block text-slate-500">المستوى الأول</span><b class="mt-1 block text-emerald-300">+$1</b><div class="mt-2 space-y-1"><span class="block text-emerald-300">مفعّل: <b id="lblTeamLevel1ActiveCount">0</b></span><span class="block text-slate-400">غير مفعّل: <b id="lblTeamLevel1InactiveCount">0</b></span></div></div>
-                    <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-2"><span class="block text-slate-500">المستوى الثاني</span><b class="mt-1 block text-emerald-300">+$2</b><div class="mt-2 space-y-1"><span class="block text-emerald-300">مفعّل: <b id="lblTeamLevel2ActiveCount">0</b></span><span class="block text-slate-400">غير مفعّل: <b id="lblTeamLevel2InactiveCount">0</b></span></div></div>
-                    <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-2"><span class="block text-slate-500">المستوى الثالث</span><b class="mt-1 block text-emerald-300">+$5</b><div class="mt-2 space-y-1"><span class="block text-emerald-300">مفعّل: <b id="lblTeamLevel3ActiveCount">0</b></span><span class="block text-slate-400">غير مفعّل: <b id="lblTeamLevel3InactiveCount">0</b></span></div></div>
+                <div class="referral-rewards-total mt-3 flex items-end gap-2" aria-label="إجمالي مكافآت الإحالات المباشرة"><strong id="referralRewardsTotal" class="text-4xl font-black text-amber-300">$0.00</strong><span class="pb-1 text-[11px] text-slate-400">USDT</span></div>
+                <div class="referral-reward-levels mt-4 grid grid-cols-3 gap-2 text-center text-[10px]">
+                    <div class="referral-reward-level rounded-xl border border-slate-800 bg-slate-950/60 p-2"><span class="block text-slate-500">المستوى الأول</span><b class="mt-1 block text-emerald-300">+$1</b><div class="mt-2 space-y-1"><span class="block text-emerald-300">مفعّل: <b id="lblTeamLevel1ActiveCount">0</b></span><span class="block text-slate-400">غير مفعّل: <b id="lblTeamLevel1InactiveCount">0</b></span></div></div>
+                    <div class="referral-reward-level rounded-xl border border-slate-800 bg-slate-950/60 p-2"><span class="block text-slate-500">المستوى الثاني</span><b class="mt-1 block text-emerald-300">+$2</b><div class="mt-2 space-y-1"><span class="block text-emerald-300">مفعّل: <b id="lblTeamLevel2ActiveCount">0</b></span><span class="block text-slate-400">غير مفعّل: <b id="lblTeamLevel2InactiveCount">0</b></span></div></div>
+                    <div class="referral-reward-level rounded-xl border border-slate-800 bg-slate-950/60 p-2"><span class="block text-slate-500">المستوى الثالث</span><b class="mt-1 block text-emerald-300">+$5</b><div class="mt-2 space-y-1"><span class="block text-emerald-300">مفعّل: <b id="lblTeamLevel3ActiveCount">0</b></span><span class="block text-slate-400">غير مفعّل: <b id="lblTeamLevel3InactiveCount">0</b></span></div></div>
                 </div>
                 <div id="referralRewardsHistory" class="mt-4 space-y-2 text-[10px] text-slate-400"><span>سيظهر سجل المكافآت هنا بعد تفعيل إحالاتك.</span></div>
             </div>

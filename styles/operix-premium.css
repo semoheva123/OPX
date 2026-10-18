@@ -1132,3 +1132,107 @@ body:not(:has(#appView)):not(:has(#sidebar)):not(:has(.cert-container)) .panel {
 @media (prefers-reduced-motion: reduce) {
     #view-spin > .grid.grid-cols-1.md\:grid-cols-2 > .glass-card { transition: none; }
 }
+
+/* Direct referral rewards: a clear, premium earnings summary. */
+#view-team .referral-rewards-card {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border: 1px solid rgba(255,231,176,.25);
+    border-radius: 26px;
+    background: radial-gradient(ellipse at 6% 0%, rgba(255,231,176,.11), transparent 36%), radial-gradient(ellipse at 100% 100%, rgba(52,211,153,.055), transparent 32%), linear-gradient(150deg, rgba(17,24,36,.98), rgba(5,10,18,.99));
+    box-shadow: 0 24px 62px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.065);
+}
+#view-team .referral-rewards-card::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: 0 9% auto;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,231,176,.55), rgba(52,211,153,.25), transparent);
+}
+#view-team .referral-rewards-heading { align-items: center; }
+#view-team .referral-rewards-heading > div > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #f4d99c;
+    letter-spacing: .04em;
+}
+#view-team .referral-rewards-heading > div > span::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #f6c76d; box-shadow: 0 0 12px rgba(246,199,109,.52); }
+#view-team .referral-rewards-heading h3 { margin-top: 5px; font-size: 17px; letter-spacing: -.02em; }
+#view-team .referral-rewards-caption { margin-top: 5px; color: #8492a4; font-size: 10px; line-height: 1.7; }
+#view-team .referral-rewards-icon {
+    display: grid;
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    place-items: center;
+    border: 1px solid rgba(255,231,176,.24);
+    border-radius: 15px;
+    background: linear-gradient(145deg, rgba(247,185,85,.18), rgba(247,185,85,.045));
+    color: #ffe7b0;
+    font-size: 17px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 8px 20px rgba(0,0,0,.16);
+}
+#view-team .referral-rewards-total {
+    position: relative;
+    min-height: 106px;
+    align-items: center;
+    gap: 9px;
+    margin-top: 16px;
+    padding: 17px 18px;
+    overflow: hidden;
+    border: 1px solid rgba(255,231,176,.17);
+    border-radius: 20px;
+    background: linear-gradient(110deg, rgba(247,185,85,.105), rgba(11,18,28,.58) 64%), rgba(2,7,14,.45);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.045);
+}
+#view-team .referral-rewards-total::after {
+    content: 'USDT';
+    position: absolute;
+    inset-inline-end: 14px;
+    top: 12px;
+    color: rgba(255,231,176,.25);
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: .16em;
+}
+#view-team #referralRewardsTotal {
+    color: #fff0c7;
+    font-size: clamp(36px, 8vw, 48px);
+    line-height: 1.1;
+    letter-spacing: -.045em;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 30px rgba(247,185,85,.18);
+}
+#view-team .referral-rewards-total > span { padding-bottom: 4px; color: #aab3c0; font-size: 10px; font-weight: 800; letter-spacing: .06em; }
+#view-team .referral-reward-levels { gap: 8px; }
+#view-team .referral-reward-level {
+    min-width: 0;
+    padding: 12px 9px;
+    border-color: rgba(148,163,184,.13);
+    border-radius: 16px;
+    background: linear-gradient(150deg, rgba(18,27,39,.86), rgba(5,10,18,.9));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.035);
+    transition: border-color .18s ease, transform .18s ease, background .18s ease;
+}
+#view-team .referral-reward-level:hover { transform: translateY(-2px); border-color: rgba(255,231,176,.23); background: linear-gradient(150deg, rgba(25,33,43,.94), rgba(6,11,18,.96)); }
+#view-team .referral-reward-level > span:first-child { color: #a2adbc; font-size: 9px; font-weight: 700; }
+#view-team .referral-reward-level > b { display: inline-flex; margin-top: 7px; padding: 4px 8px; border: 1px solid rgba(52,211,153,.14); border-radius: 999px; background: rgba(16,185,129,.065); color: #8be1b5; font-size: 10px; }
+#view-team .referral-reward-level > div { margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(148,163,184,.1); }
+#view-team .referral-reward-level > div span { display: flex; align-items: center; justify-content: space-between; gap: 4px; font-size: 9px; }
+#view-team .referral-reward-level > div span b { color: #f1f5f9; font-variant-numeric: tabular-nums; }
+#view-team #referralRewardsHistory { margin-top: 17px; padding-top: 12px; border-top: 1px solid rgba(148,163,184,.12); }
+#view-team #referralRewardsHistory > div { min-height: 38px; padding: 8px 10px 0; border: 0; border-radius: 11px; background: rgba(255,255,255,.018); }
+#view-team #referralRewardsHistory > div + div { margin-top: 5px; }
+#view-team #referralRewardsHistory > div strong { padding: 4px 8px; border: 1px solid rgba(52,211,153,.13); border-radius: 999px; background: rgba(16,185,129,.06); font-variant-numeric: tabular-nums; }
+
+@media (max-width: 480px) {
+    #view-team .referral-rewards-card { padding: 16px !important; border-radius: 21px; }
+    #view-team .referral-rewards-total { min-height: 88px; padding: 14px; border-radius: 16px; }
+    #view-team .referral-reward-levels { gap: 6px; }
+    #view-team .referral-reward-level { padding: 10px 6px; border-radius: 13px; }
+    #view-team .referral-reward-level > span:first-child { font-size: 8px; }
+    #view-team .referral-reward-level > div span { font-size: 8px; }
+}
