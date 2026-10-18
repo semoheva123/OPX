@@ -5,8 +5,6 @@ const { calculateDailyTaskRewardSplit } = require('../services/opxPricing');
 const { assignDailyEvaluationEntities, getEvaluationTags, getCategoryLabel, getOfficialBrandLogoUrl, utcDateString, startOfTaskDay } = require('../services/dailyTaskAutomation');
 const { getTaskSchedule } = require('../services/weeklySchedule');
 
-const DAILY_TASK_COOLDOWN_MS = 2 * 60 * 60 * 1000;
-
 function normalizeTaskKey(value) {
   if (value === null || value === undefined) return '';
   return String(value).trim();
@@ -27,11 +25,10 @@ function getTaskNumberFromRecord(record) {
 }
 
 function getDailyTaskProgress(tierCode, paidTaskCount, assignments = [], completions = [], now = Date.now()) {
-  let effectiveAssignments = Array.isArray(assignments) ? assignments : [];
   let effectiveCompletions = Array.isArray(completions) ? completions : [];
   let currentNow = Number.isFinite(Number(now)) ? Number(now) : Date.now();
 
-  if (typeof completions === 'number' && Array.isArray(assignments)) {
+  if (typeof completions === 'number') {
     currentNow = Number(completions);
     effectiveCompletions = [];
   }
@@ -40,31 +37,15 @@ function getDailyTaskProgress(tierCode, paidTaskCount, assignments = [], complet
     .map(item => getTaskKeyFromRecord(item))
     .filter(taskKey => taskKey.startsWith(`${tierCode}-task-`)));
 
-  const normalizedAssignments = effectiveAssignments
-    .map(item => {
-      const taskNumber = getTaskNumberFromRecord(item);
-      const createdAtMs = new Date(item.createdAt || item.created_at || '').getTime();
-      if (!Number.isFinite(taskNumber) || taskNumber < 1) return null;
-      return { taskNumber, createdAtMs, taskKey: `${tierCode}-task-${String(taskNumber).padStart(2, '0')}` };
-    })
-    .filter(Boolean)
-    .sort((left, right) => left.taskNumber - right.taskNumber);
-
-  const assignmentStartTimes = normalizedAssignments.map(item => item.createdAtMs).filter(Number.isFinite);
-  const planStartedAt = assignmentStartTimes.length
-    ? Math.min(currentNow, Math.min(...assignmentStartTimes))
-    : Number(currentNow);
-
   const taskWindows = [];
   const maxTaskNumber = Math.max(1, Number(paidTaskCount || 0));
   for (let taskNumber = 1; taskNumber <= maxTaskNumber; taskNumber += 1) {
     const taskKey = `${tierCode}-task-${String(taskNumber).padStart(2, '0')}`;
-    const availableAtMs = planStartedAt + Math.max(0, taskNumber - 1) * DAILY_TASK_COOLDOWN_MS;
     const window = {
       taskNumber,
       taskKey,
-      availableAt: new Date(availableAtMs).toISOString(),
-      remainingMs: Math.max(0, availableAtMs - Number(currentNow)),
+      availableAt: new Date(currentNow).toISOString(),
+      remainingMs: 0,
       completed: completionKeys.has(taskKey)
     };
     taskWindows.push(window);
@@ -84,7 +65,7 @@ function getDailyTaskProgress(tierCode, paidTaskCount, assignments = [], complet
     availableAt: availableWindow?.availableAt || null,
     remainingMs: availableWindow?.remainingMs || 0,
     remainingSeconds: availableWindow ? Math.ceil(availableWindow.remainingMs / 1000) : 0,
-    planStartedAt: new Date(planStartedAt).toISOString()
+    planStartedAt: new Date(currentNow).toISOString()
   };
 }
 
@@ -384,7 +365,7 @@ async function getDailyTasks(req, res) {
             lockReason: remainingMs > 0 ? 'cooldown' : null
           };
         });
-    const tasks = fallbackVisibleTasks.slice(0, 5);
+    const tasks = fallbackVisibleTasks;
     return res.json({
       success: true,
       tier: { code: tier.code, name: tier.name, taskLimit, dailyProfit },
@@ -425,9 +406,7 @@ async function completeTaskSupabase(req, res) {
     if (message.includes('VIP_LEVEL_NOT_FOUND')) return res.status(503).json({ error: 'إعدادات المستوى غير متاحة حاليًا، حاول لاحقًا' });
     if (message.includes('INVALID_TASK_KEY')) return res.status(400).json({ error: 'هذه المهمة غير صالحة لخطة مستواك الحالية' });
     if (message.includes('TASK_ALREADY_COMPLETED')) return res.status(400).json({ error: 'تمت إكمال هذه المهمة مسبقًا اليوم.' });
-    if (message.includes('TASK_SEQUENCE_REQUIRED')) return res.status(409).json({ error: 'يجب إكمال المهمة السابقة أولًا لفتح هذه المهمة.' });
-    if (message.includes('TASK_COOLDOWN_ACTIVE')) return res.status(429).json({ error: 'لم يُفتح موعد هذه المهمة بعد؛ حاول مرة أخرى لاحقًا.' });
-    if (message.includes('TASK_HOLIDAY')) return res.status(403).json({ success: false, code: 'TASK_HOLIDAY', error: 'عطلة المهام الأسبوعية: لا توجد مهام يوم الجمعة أو السبت.' });
+    if (message.includes('TASK_HOLIDAY')) return res.status(403).json({ success: false, code: 'TASK_HOLIDAY', error: 'عطلة المهام الأسبوعية: لا توجد مهام يوم الجمعة.' });
     if (message.includes('DAILY_CAP_REACHED')) return res.status(400).json({ error: 'تم بلوغ الحد اليومي للربح، ولا يمكن جمع أكثر من الربح اليومي الثابت.' });
     if (message.includes('OPTIONAL_TASK_NO_REWARD')) return res.status(400).json({ error: 'مهمة المجتمع اختيارية ولا تمنح مكافأة؛ أكمل مهام التقييم المدفوعة من نموذج التقييم.' });
     if (message.includes('EVALUATION_REQUIRED')) return res.status(400).json({ error: 'اختر التقييم بالنجوم وحدد جانب التقييم قبل إنهاء المهمة.' });
@@ -457,30 +436,6 @@ async function submitDailyEvaluation(req, res) {
     const assignmentEntityName = String(assignment.entityName || assignment.entity_name || assignment.targetName || assignment.name || '');
     const assignmentEntityKey = String(assignment.entityKey || assignment.entity_key || assignment.targetKey || assignment.key || '');
     const assignmentId = assignment.id || assignment._id || null;
-
-    const [completions, todayAssignments] = await Promise.all([
-      dataAccess.dailyTaskCompletion.find({ userId: user.id || user._id, taskDate: today }, { sort: { createdAt: 1 } }),
-      dataAccess.dailyTaskAssignment.find({ userId: user.id || user._id, tierCode: tier.code, taskDate: today }, { sort: { taskNumber: 1 }, limit: 100 })
-    ]);
-    const paidTaskCount = Math.max(0, Math.min(50, Number(tier.tasks || 0)));
-    const progress = getDailyTaskProgress(tier.code, paidTaskCount, todayAssignments, completions, Date.now());
-    const taskWindow = progress.taskWindows.find(window => window.taskNumber === taskNumber);
-    if (!taskWindow) return res.status(400).json({ error: 'مهمة التقييم غير موجودة ضمن خطة اليوم الحالية' });
-    const taskIsUnlocked = progress.unlockedTaskNumbers.includes(taskNumber);
-    if (taskWindow.remainingMs > 0 && !taskIsUnlocked) {
-      return res.status(429).json({ error: 'لم يحن موعد ظهور هذه المهمة بعد؛ حاول مرة أخرى لاحقًا.', unlockAt: taskWindow.availableAt });
-    }
-    if (taskNumber > 1) {
-      const previousTaskNumber = taskNumber - 1;
-      const previousTaskKey = `${tier.code}-task-${String(previousTaskNumber).padStart(2, '0')}`;
-      const previousAssignment = await dataAccess.dailyTaskAssignment.findOne({ userId: user.id || user._id, tierCode: tier.code, taskDate: today, taskNumber: previousTaskNumber });
-      if (previousAssignment) {
-        const previousCompleted = completions.some(item => getTaskKeyFromRecord(item) === previousTaskKey);
-        if (!previousCompleted) {
-          return res.status(409).json({ error: 'يجب إكمال المهمة السابقة أولًا قبل البدء بهذه المهمة.' });
-        }
-      }
-    }
 
     const rating = Number(req.body?.rating);
     const selectedTag = String(req.body?.selectedTag || '').trim();
@@ -518,9 +473,7 @@ async function submitDailyEvaluation(req, res) {
     console.error('Daily evaluation submission error:', message);
     if (message.includes('EVALUATION_REQUIRED')) return res.status(400).json({ error: 'اختر التقييم بالنجوم وحدد جانب التقييم قبل إنهاء المهمة.' });
     if (message.includes('TASK_ALREADY_COMPLETED')) return res.status(409).json({ error: 'تمت إكمال هذه المهمة اليوم مسبقًا.' });
-    if (message.includes('TASK_SEQUENCE_REQUIRED')) return res.status(409).json({ error: 'لم يتم فتح هذه المهمة بعد؛ أكمل المهمة السابقة أولًا.' });
-    if (message.includes('TASK_COOLDOWN_ACTIVE')) return res.status(429).json({ error: 'لم يُفتح موعد هذه المهمة بعد؛ حاول مرة أخرى لاحقًا.' });
-    if (message.includes('TASK_HOLIDAY')) return res.status(403).json({ success: false, code: 'TASK_HOLIDAY', error: 'عطلة المهام الأسبوعية: لا توجد مهام يوم الجمعة أو السبت.' });
+    if (message.includes('TASK_HOLIDAY')) return res.status(403).json({ success: false, code: 'TASK_HOLIDAY', error: 'عطلة المهام الأسبوعية: لا توجد مهام يوم الجمعة.' });
     if (message.includes('DAILY_CAP_REACHED')) return res.status(400).json({ error: 'تم بلوغ الحد اليومي للربح، ولا يمكن جمع أكثر من الربح اليومي الثابت.' });
     if (error?.code === 'PGRST202' || /operix_daily_task_complete_atomic.*does not exist/i.test(message)) return res.status(503).json({ error: 'قاعدة البيانات تحتاج إلى تحديث نظام مهام التقييم.' });
     if (migrationMessage) return res.status(503).json({ error: migrationMessage });

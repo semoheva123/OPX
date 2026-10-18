@@ -144,8 +144,8 @@ on conflict (key) do update set referrals_per_cycle = 6, updated_at = now();
 create or replace function public.operix_guard_weekend_task_completion()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
-  if extract(dow from (now() at time zone 'Europe/Istanbul')::date) in (5, 6)
-      or extract(dow from new.task_date) in (5, 6) then
+  if extract(dow from (now() at time zone 'Europe/Istanbul')::date) = 5
+      or extract(dow from new.task_date) = 5 then
     raise exception using errcode = 'P0001', message = 'TASK_HOLIDAY';
   end if;
   return new;

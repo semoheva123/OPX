@@ -11,8 +11,8 @@ const ratingCooldownMigration = fs.readFileSync(path.join(__dirname, '..', 'supa
 const adminController = fs.readFileSync(path.join(__dirname, '..', 'src/controllers/adminController.js'), 'utf8');
 const client = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
 
-assert.equal(weeklySchedule.isTaskHoliday(new Date('2026-10-09T12:00:00.000Z')), true, 'Friday must remain a task holiday');
-assert.equal(weeklySchedule.isTaskHoliday(new Date('2026-10-10T12:00:00.000Z')), true, 'Saturday must remain a task holiday');
+assert.equal(weeklySchedule.isTaskHoliday(new Date('2026-10-09T12:00:00.000Z')), true, 'Friday remains the only task holiday');
+assert.equal(weeklySchedule.isTaskHoliday(new Date('2026-10-10T12:00:00.000Z')), false, 'Saturday is not a task holiday');
 assert.equal(weeklySchedule.getWithdrawalSchedule('A1', new Date('2026-10-09T12:00:00.000Z')).allowed, true, 'A1 withdrawals are scheduled Friday');
 assert.equal(weeklySchedule.getWithdrawalSchedule('A2', new Date('2026-10-09T12:00:00.000Z')).allowed, true, 'A2 withdrawals are scheduled Friday');
 assert.equal(weeklySchedule.getWithdrawalSchedule('A3', new Date('2026-10-10T12:00:00.000Z')).allowed, true, 'remaining tiers withdraw Saturday');
@@ -54,7 +54,7 @@ const backlog = activityController.getDailyTaskProgress('A1', 4, backlogTasks, n
 assert.deepEqual(backlog.unlockedTaskNumbers, [1, 2, 3, 4], 'the backlog should keep all due paid tasks visible once their actual task numbers unlock');
 assert.equal(backlog.nextTaskNumber, 1, 'the first due paid task remains the real task-01 key in the backlog queue');
 const stageStartProgress = activityController.getDailyTaskProgress('A3', 6, [{ taskNumber: 1, createdAt: new Date(now).toISOString() }], [], now);
-assert.equal(stageStartProgress.taskWindows[1].remainingMs, 2 * 60 * 60 * 1000, 'task-02 should release exactly two hours after the start of the daily plan');
+assert.equal(stageStartProgress.taskWindows[1].remainingMs, 0, 'all paid tasks in the same day are immediately available once the batch appears');
 const sixPaidTaskAssignments = Array.from({ length: 6 }, (_, index) => ({
 	taskNumber: index + 1,
 	createdAt: new Date(now - 12 * 60 * 60 * 1000).toISOString()
@@ -92,16 +92,12 @@ assert.equal(activityController.hasDailyCommunityInteraction([
 assert.doesNotMatch(schema, /COMMUNITY_TASK_REQUIRED|OPTIONAL_TASK_NO_REWARD|tier_code \|\| '-community'/i, 'database must not enforce a community task again');
 assert.match(schema, /EVALUATION_REQUIRED/);
 assert.doesNotMatch(schema, /length\(trim\(submission\.feedback\)\) between 10 and 500/i, 'notes must not be a completion requirement');
-assert.match(schema, /operix_enforce_daily_task_sequence_and_cooldown/i);
-assert.match(migration, /operix_enforce_daily_task_sequence_and_cooldown/i);
-assert.match(ratingCooldownMigration, /TASK_COOLDOWN_ACTIVE/i);
-assert.match(ratingCooldownMigration, /interval '2 hours'/i);
-assert.doesNotMatch(ratingCooldownMigration, /length\(trim\(submission\.feedback\)\) between 10 and 500/i);
-assert.match(ratingCooldownMigration, /requested_task_number > max_tasks/i, 'task keys start at task-01, so the final paid assignment remains within the configured task count');
-assert.match(ratingCooldownMigration, /max_tasks := greatest\(coalesce\(level_row\.tasks, 1\), 1\)/i, 'the paid task count must start from the real first paid task without subtracting one');
-assert.match(ratingCooldownMigration, /if max_tasks < 1 then raise exception/i, 'the paid reward calculation must never divide by zero');
-assert.doesNotMatch(ratingCooldownMigration, /OPTIONAL_TASK_NO_REWARD|tier_code \|\| '-community'/i, 'the database must never keep an optional community task reward path');
-assert.match(ratingCooldownMigration, /plan_started_at \+ \(\(task_number - 1\) \* interval '2 hours'\)/i, 'the database release window must accrue from plan start, not the previous completion time');
+assert.doesNotMatch(schema, /operix_enforce_daily_task_sequence_and_cooldown/i, 'database no longer enforces task sequencing or locks');
+assert.doesNotMatch(migration, /operix_enforce_daily_task_sequence_and_cooldown/i, 'task generation should not keep the removed cooldown trigger');
+assert.doesNotMatch(ratingCooldownMigration, /TASK_COOLDOWN_ACTIVE/i, 'cooldown and task sequence code must be removed');
+assert.doesNotMatch(ratingCooldownMigration, /interval '2 hours'/i, 'the database must no longer impose a 2-hour task gate');
+assert.doesNotMatch(ratingCooldownMigration, /plan_started_at \+ \(\(task_number - 1\) \* interval '2 hours'\)/i, 'the database release window must be removed');
+assert.match(ratingCooldownMigration, /Friday remains the only official task holiday/i, 'the migration should clearly state the Friday-only task holiday');
 assert.match(ratingCooldownMigration, /total_daily_reward \+ gross_reward > coalesce\(level_row\.daily_profit, 0\)/i, 'the replacement task RPC must preserve the fixed daily reward cap');
 assert.match(ratingCooldownMigration, /DAILY_CAP_REACHED/i, 'the database must reject task rewards that exceed the daily cap');
 assert.match(schema, /daily_task_submissions/);
@@ -120,7 +116,7 @@ assert.match(client, /filter\(task => !task\.completed\)/, 'the paid task board 
 assert.match(client, /targetImageUrl.*alt.*targetName|brand.*task\.targetName/, 'the paid-task panel must show the evaluation brand logo and company name in a premium card');
 assert.match(client, /style="width:96px;height:48px".*object-fit:contain/, 'the company logo should use a fixed landscape tile and preserve the source aspect ratio');
 assert.doesNotMatch(client, /ملاحظة قصيرة|data-evaluation-field="feedback"/, 'the task evaluation form must not ask for a short note');
-assert.match(client, /data-task-cooldown/, 'the only next task should show a cooldown countdown when locked');
+assert.doesNotMatch(client, /data-task-cooldown/, 'the client must not enforce a task cooldown countdown');
 assert.match(client, /slice\(0,\s*5\)/, 'the visible daily list must never exceed five active tasks');
 assert.doesNotMatch(client, /مشاركة مجتمعية اختيارية — خارج المهام المدفوعة/, 'community engagement must no longer be exposed as a separate task');
 assert.doesNotMatch(client, /isCommunityTask \? "switchTab\('feed'\)" : isEvaluationTask/, 'the client must no longer treat the community task as a distinct card');

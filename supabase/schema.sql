@@ -1153,47 +1153,8 @@ grant all on table public.daily_task_submissions to service_role;
 
 create index if not exists daily_task_completions_user_date_idx on public.daily_task_completions(user_id, task_date);
 
-create or replace function public.operix_enforce_daily_task_sequence_and_cooldown()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  current_tier text;
-  task_number integer;
-  previous_task_key text;
-  plan_started_at timestamptz;
-begin
-  select tier_code into current_tier from public.users where id = new.user_id for update;
-  if current_tier is null then raise exception using errcode = 'P0002', message = 'USER_NOT_FOUND'; end if;
-  if new.task_key ~ ('^' || current_tier || '-task-[0-9]+$') then
-    task_number := substring(new.task_key from '[0-9]+$')::integer;
-  else
-    raise exception using errcode = 'P0001', message = 'INVALID_TASK_KEY';
-  end if;
-  if task_number < 1 then raise exception using errcode = 'P0001', message = 'INVALID_TASK_KEY'; end if;
-  if task_number > 1 then
-    previous_task_key := current_tier || '-task-' || lpad((task_number - 1)::text, 2, '0');
-    if not exists (
-      select 1 from public.daily_task_completions
-      where user_id = new.user_id and task_date = new.task_date and task_key = previous_task_key
-    ) then raise exception using errcode = 'P0001', message = 'TASK_SEQUENCE_REQUIRED'; end if;
-    select min(created_at) into plan_started_at from public.daily_task_assignments
-      where user_id = new.user_id and tier_code = current_tier and task_date = new.task_date;
-    if plan_started_at is null or plan_started_at > clock_timestamp() then
-      plan_started_at := clock_timestamp();
-    end if;
-    if plan_started_at + ((task_number - 1) * interval '2 hours') > clock_timestamp() then
-      raise exception using errcode = 'P0001', message = 'TASK_COOLDOWN_ACTIVE';
-    end if;
-  end if;
-  return new;
-end;
-$$;
-drop trigger if exists daily_task_sequence_and_cooldown on public.daily_task_completions;
-create trigger daily_task_sequence_and_cooldown before insert on public.daily_task_completions
-for each row execute function public.operix_enforce_daily_task_sequence_and_cooldown();
+-- Daily task completions are no longer constrained by pre-order sequence or 2-hour cooldown rules.
+-- Friday remains the only official task holiday in the Europe/Istanbul schedule.
 
 create or replace function public.operix_daily_task_complete_atomic(
   p_user_id uuid,

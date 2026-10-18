@@ -8,7 +8,6 @@ let soundEnabled = true;
 let currentUserData = null; // الاحتفاظ ببيانات المستخدم محلياً لسهولة الوصول
 let hasPendingDeposit = false; // متغير لتتبع وجود طلب إيداع معلق
 let taskCountdownTimer = null;
-let dailyTaskCooldownTimer = null;
 let taskBoardFilter = 'all';
 let expandedDailyTaskKey = null;
 let growthChartPoints = [];
@@ -2056,8 +2055,8 @@ function renderTaskBoard(completed, maximum) {
     const taskHoliday = isWeeklyTaskHolidayUtc();
     const scheduleNotice = document.getElementById('weeklyScheduleNotice');
     if (scheduleNotice) scheduleNotice.innerText = taskHoliday
-        ? 'اليوم عطلة أسبوعية: لا توجد مهام يوم الجمعة أو السبت. تستأنف المهام بعد انتهاء العطلة. مواعيد السحب: A1 وA2 الجمعة، وبقية المستويات السبت (UTC).'
-        : 'المهام متوقفة يومي الجمعة والسبت. مواعيد طلب السحب: A1 وA2 يوم الجمعة، وبقية المستويات يوم السبت (UTC).';
+        ? 'اليوم عطلة مهام الجمعة: لا توجد مهام يوم الجمعة. تستأنف المهام مباشرة بعد انتهاء العطلة. مواعيد السحب: A1 وA2 يوم الجمعة، وبقية المستويات يوم السبت (UTC).'
+        : 'المهام متاحة اليوم. اليوم الحالي لا يفرض قفلًا زمنيًا أو تأخيرًا بين المهام؛ يتم فتح كامل قائمة المهام فور الظهور في اليوم. مواعيد السحب: A1 وA2 يوم الجمعة، وبقية المستويات يوم السبت (UTC).';
     const activeTier = getActiveTaskTier();
     updateTaskLevelPanel(activeTier);
     const tierTask = {
@@ -2136,7 +2135,7 @@ function renderDailyTaskDetail(data) {
         window.__latestDailyTasks = [];
         title.innerText = 'عطلة المهام الأسبوعية';
         meta.innerText = data.schedule?.message || 'لا توجد مهام يوم الجمعة أو السبت.';
-        list.innerHTML = '<div class="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 text-center"><i class="fa-solid fa-calendar-check text-cyan-300 text-lg"></i><p class="mt-2 text-xs font-bold text-cyan-100">لا توجد مهام اليوم</p><p class="mt-1 text-[10px] text-slate-400">عطلة أسبوعية يومي الجمعة والسبت. تعود المهام بعد انتهاء العطلة.</p></div>';
+        list.innerHTML = '<div class="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 text-center"><i class="fa-solid fa-calendar-check text-cyan-300 text-lg"></i><p class="mt-2 text-xs font-bold text-cyan-100">لا توجد مهام اليوم</p><p class="mt-1 text-[10px] text-slate-400">عطلة مهام يوم الجمعة فقط. تعود المهام مباشرة بعد انتهاء العطلة.</p></div>';
         return;
     }
     const allTasks = Array.isArray(data.tasks) ? data.tasks : [];
@@ -2177,13 +2176,7 @@ function renderDailyTaskDetail(data) {
             </label>
             <button type="button" data-evaluation-submit disabled onclick="submitDailyEvaluation('${escapeAiHtml(task.taskKey)}')" class="w-full rounded-xl bg-cyan-400 px-3 py-2.5 text-[10px] font-black text-slate-950 enabled:hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-40">إرسال التقييم</button>
         </div>` : '';
-        const cooldownRemaining = Number(task.cooldownRemainingSeconds || 0);
-        const cooldownHours = Math.max(1, Math.ceil(cooldownRemaining / 3600));
-        const cooldownMessage = `المهمة المدفوعة التالية ستفتح بعد ${cooldownHours} ساعة`;
-        const cooldownStatus = task.lockReason === 'cooldown' && cooldownRemaining > 0
-            ? `<span data-task-cooldown data-unlock-at="${escapeAiHtml(task.availableAt || '')}" class="text-[10px] font-bold text-cyan-300">${escapeAiHtml(cooldownMessage)}</span>`
-            : '';
-        const statusLabel = task.lockReason === 'cooldown' ? cooldownMessage : task.lockReason === 'tier_inactive' ? 'مقفلة حتى تفعيل المستوى' : task.requirement && !task.requirementMet ? 'التقييم مطلوب' : 'متاحة';
+        const statusLabel = task.lockReason === 'tier_inactive' ? 'مقفلة حتى تفعيل المستوى' : task.requirement && !task.requirementMet ? 'التقييم مطلوب' : 'متاحة';
         return `${paidGroupHeading}<article class="rounded-2xl border ${task.completed ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-slate-800 bg-slate-950/45'} p-3" data-task-card="${escapeAiHtml(task.taskKey)}">
             <div class="flex items-start gap-3">
                 <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${task.completed ? 'bg-emerald-400/10 text-emerald-300' : 'bg-amber-400/10 text-amber-300'}"><i class="fa-solid ${escapeAiHtml(task.icon)}"></i></span>
@@ -2203,38 +2196,17 @@ function renderDailyTaskDetail(data) {
                     ${isExpanded ? `<div class="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3"><div class="mb-2 text-[10px] font-bold text-amber-300">خطوات سريعة</div><ol class="space-y-1 text-[10px] leading-5 text-slate-300 list-decimal list-inside">${(task.instructions || []).slice(0, 2).map((instruction) => `<li>${escapeAiHtml(instruction)}</li>`).join('')}</ol></div>` : ''}
                     <div class="mt-3 flex gap-2">
                         <button type="button" data-task-key="${escapeAiHtml(task.taskKey)}" onclick="toggleDailyTaskDetails('${escapeAiHtml(task.taskKey)}')" class="flex-1 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-[10px] font-bold text-slate-200">${isExpanded ? 'إخفاء' : 'فتح'} <i class="fa-solid ${isExpanded ? 'fa-chevron-up' : 'fa-arrow-left'} mr-1"></i></button>
-                        <button type="button" ${task.locked || task.completed ? 'disabled' : `onclick="toggleDailyTaskDetails('${escapeAiHtml(task.taskKey)}')"`} class="rounded-xl border px-3 py-2 text-[10px] font-bold ${task.locked || task.completed ? 'cursor-not-allowed border-slate-700 bg-slate-900 text-slate-500' : 'border-amber-500/25 bg-amber-500/10 text-amber-300'}">${task.completed ? 'تم الإنجاز' : task.lockReason === 'cooldown' ? 'انتظار المهمة المدفوعة' : task.locked ? 'تفعيل المستوى' : isExpanded ? 'إخفاء النموذج' : 'ابدأ التقييم'} <i class="fa-solid ${task.completed ? 'fa-check' : task.locked ? 'fa-lock' : 'fa-clipboard-check'} mr-1"></i></button>
+                        <button type="button" ${task.locked || task.completed ? 'disabled' : `onclick="toggleDailyTaskDetails('${escapeAiHtml(task.taskKey)}')"`} class="rounded-xl border px-3 py-2 text-[10px] font-bold ${task.locked || task.completed ? 'cursor-not-allowed border-slate-700 bg-slate-900 text-slate-500' : 'border-amber-500/25 bg-amber-500/10 text-amber-300'}">${task.completed ? 'تم الإنجاز' : task.locked ? 'تفعيل المستوى' : isExpanded ? 'إخفاء النموذج' : 'ابدأ التقييم'} <i class="fa-solid ${task.completed ? 'fa-check' : task.locked ? 'fa-lock' : 'fa-clipboard-check'} mr-1"></i></button>
                     </div>
                     ${evaluationForm}
                 </div>
             </div>
         </article>`;
     }).join('') || '<p class="rounded-xl border border-slate-800 p-4 text-center text-[10px] text-slate-500">لا توجد مهام متاحة.</p>';
-    if (dailyTaskCooldownTimer) clearInterval(dailyTaskCooldownTimer);
-    const cooldownElement = list.querySelector('[data-task-cooldown]');
-    if (cooldownElement) {
-        const updateCooldown = () => {
-            const remaining = Math.max(0, Math.ceil((new Date(cooldownElement.dataset.unlockAt).getTime() - Date.now()) / 1000));
-            if (remaining <= 0) {
-                clearInterval(dailyTaskCooldownTimer);
-                dailyTaskCooldownTimer = null;
-                openDailyTasks();
-                return;
-            }
-            const hours = Math.floor(remaining / 3600);
-            const minutes = Math.floor((remaining % 3600) / 60);
-            const seconds = remaining % 60;
-            cooldownElement.textContent = `المهمة المدفوعة التالية ستفتح بعد ${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-        };
-        updateCooldown();
-        dailyTaskCooldownTimer = setInterval(updateCooldown, 1000);
-    }
 }
 
 function closeDailyTasks() {
     expandedDailyTaskKey = null;
-    if (dailyTaskCooldownTimer) clearInterval(dailyTaskCooldownTimer);
-    dailyTaskCooldownTimer = null;
     document.getElementById('dailyTaskDetailPanel')?.classList.add('hidden');
     document.getElementById('taskBoard')?.classList.remove('hidden');
 }

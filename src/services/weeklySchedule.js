@@ -21,12 +21,12 @@ function getTaskDay(value = new Date()) {
 
 function isTaskHoliday(value = new Date()) {
   const day = getTaskDay(value);
-  return day === UTC_WEEKDAYS.FRIDAY || day === UTC_WEEKDAYS.SATURDAY;
+  return day === UTC_WEEKDAYS.FRIDAY;
 }
 
 function getTaskSchedule(value = new Date()) {
   const day = getTaskDay(value);
-  const dayName = day === UTC_WEEKDAYS.FRIDAY ? 'الجمعة' : day === UTC_WEEKDAYS.SATURDAY ? 'السبت' : null;
+  const dayName = day === UTC_WEEKDAYS.FRIDAY ? 'الجمعة' : null;
   return {
     dayOfWeek: day,
     timezone: TASK_TIME_ZONE,

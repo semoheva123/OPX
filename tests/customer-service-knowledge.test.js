@@ -27,7 +27,7 @@ assert.match(knowledge.gameRewardRanges, /2–8/);
 assert.match(knowledge.withdrawalFee, /10%/);
 assert.match(knowledge.withdrawalSchedule, /الجمعة/);
 assert.match(knowledge.taskRule, /التفاعل المجتمعي اختياري وبلا مكافأة/);
-assert.match(knowledge.taskRule, /ساعتين/);
+assert.match(knowledge.taskRule, /لا يوجد قفل زمني|قفل زمني/);
 assert.match(knowledge.upgradeRule, /سعر المستوى المستهدف كاملًا/);
 for (const tab of ['home', 'community', 'tiers', 'vault', 'tasks', 'games', 'team', 'profile', 'customerService']) {
   assert.ok(knowledge.tabGuides[tab], `knowledge must describe ${tab}`);
@@ -35,7 +35,7 @@ for (const tab of ['home', 'community', 'tiers', 'vault', 'tasks', 'games', 'tea
 
 const taskReply = localReply('كيف أنفذ المهام؟', 'member', 25, 'A2', knowledge);
 assert.match(taskReply, /الحالة «متاحة»/);
-assert.match(taskReply, /فاصل ساعتين/);
+assert.match(taskReply, /لا يوجد قفل زمني|قفل زمني/);
 
 const referralReply = localReply('كم إحالة أحتاج للألعاب؟', 'member', 25, 'A2', knowledge);
 assert.match(referralReply, /9 إحالات نشطة/);
