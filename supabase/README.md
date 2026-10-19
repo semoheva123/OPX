@@ -6,6 +6,7 @@ This folder contains the canonical Supabase schema and deployment checks for OPE
 - schema.sql — base SQL schema for users, wallet balances, ledger, transactions, sessions, and security events
 - production-readiness.sql — idempotent upgrade for automated tasks, 6-referral game cycles, one-time A4 milestone rewards, and backend-only RLS
 - automatic-withdrawals.sql — persists withdrawal networks and installs the backend-only payout queue/RPCs used for admin-triggered TRC20/BEP20 payouts
+- tiered-withdrawal-minimum.sql — allows a $10 minimum for A1/A2 and retains $20 for higher tiers in the atomic withdrawal RPC
 - weekly-schedule-guards.sql — blocks Friday task completions only and restricts new withdrawal requests to Friday for A1/A2 or Saturday for higher tiers (Europe/Istanbul)
 - admin-email-broadcasts.sql — installs the durable admin email announcement queue, verified-recipient enforcement, and update opt-out preference
 - email-verification-reminders.sql — installs a separate, rate-limited transactional queue for active unverified accounts; links expire after 24 hours
@@ -40,6 +41,7 @@ The project is configured for Supabase as the only application database layer.
 2. For a new database, run schema.sql. For an existing database, do not rerun the full starter schema blindly.
 3. Run production-readiness.sql in the Supabase SQL editor; it is transactional and safe to rerun.
 4. Run automatic-withdrawals.sql before deploying automatic payout code. Existing un-networked pending withdrawals must not be auto-paid.
+4b. Run tiered-withdrawal-minimum.sql after withdrawal-validation-hardening.sql before deploying the $10 A1/A2 withdrawal minimum.
 4a. Run withdrawal-fee-revenue.sql after automatic-withdrawals.sql. It records approved withdrawal fees as idempotent platform-revenue ledger entries only after payout confirmation and backfills fees from existing approved withdrawals.
 5. After production-readiness.sql and automatic-withdrawals.sql, run weekly-schedule-guards.sql before deploying the weekly task/withdrawal schedule. Friday is the only task holiday; A1/A2 may request withdrawal Friday and all higher tiers Saturday (Europe/Istanbul). This restricts new requests only; already accepted payouts continue through the existing settlement queue.
 6. Run admin-email-broadcasts.sql before deploying admin email announcements. Configure EMAIL_UNSUBSCRIBE_SECRET (a private random value; otherwise JWT_SECRET signs unsubscribe tokens) and a verified EMAIL_FROM. The queue sends only verified regular-user accounts not opted out, in batches of 100.

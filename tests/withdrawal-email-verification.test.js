@@ -48,7 +48,8 @@ assert.doesNotMatch(indexHtml, /withdraw2faCode|toggle2FA|authenticatorSetupModa
 assert.doesNotMatch(appJs, /twoFactorEnabled|toggle2FA|GoogleAuthenticator|\/2fa/);
 assert.match(appJs, /if \(!schedule\.allowed && emailCode\)/, 'schedule must gate final withdrawal but not email-code request');
 assert.match(appJs, /timeZone: 'Europe\/Istanbul'/, 'browser schedule timezone must match the server');
-assert.match(appJs, /يمكنك طلب رمز البريد الآن/);
+assert.match(appJs, /يمكنك طلب رمز التحقق عبر البريد الآن/);
+assert.match(appJs, /getClientMinimumWithdrawalAmount\(schedule\.tierCode\)/, 'withdrawal UI should display the minimum for the active tier');
 assert.match(emailTemplates, /function withdrawalEmailCodeTemplate/);
 assert.match(readiness, /withdrawal_email_codes/);
 

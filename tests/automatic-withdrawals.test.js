@@ -9,8 +9,11 @@ const dataAccess = require('../src/services/dataAccess');
 const read = relative => fs.readFileSync(path.join(__dirname, '..', relative), 'utf8');
 const migration = read('supabase/automatic-withdrawals.sql');
 const hardeningMigration = read('supabase/withdrawal-validation-hardening.sql');
+const tierMinimumMigration = read('supabase/tiered-withdrawal-minimum.sql');
 const controller = read('src/controllers/adminController.js');
 const walletController = read('src/controllers/walletController.js');
+const userIndex = read('index.html');
+const aiController = read('src/controllers/aiController.js');
 const server = read('server.js');
 const adminHtml = read('admin.html');
 const queueWorkflow = read('.github/workflows/financial-queue-workers.yml');
@@ -21,6 +24,9 @@ assert.equal(payout.getMaxPayoutAmount(), 100, 'single withdrawal cap must be 10
 assert.throws(() => payout.parseTokenUnits('1.0000001', 6), /INVALID_PAYOUT_AMOUNT/);
 assert.throws(() => payout.parseTokenUnits('-1', 6), /INVALID_PAYOUT_AMOUNT/);
 assert.equal(walletControllerModule.calculateHybridWithdrawalFee(20.001).feeAmount, 2.0001, '10% withdrawal fee must be applied before net payout');
+assert.equal(walletControllerModule.getMinimumWithdrawalAmount('A1'), 10, 'A1 minimum withdrawal should be $10');
+assert.equal(walletControllerModule.getMinimumWithdrawalAmount('a2'), 10, 'A2 minimum withdrawal should be $10, case-insensitively');
+assert.equal(walletControllerModule.getMinimumWithdrawalAmount('A3'), 20, 'higher-tier minimum withdrawal should remain $20');
 assert.equal(walletControllerModule.calculateHybridWithdrawalFee(20.001).netAmount, 18.0009, 'net payout must equal value minus the 10% fee');
 assert.equal(walletControllerModule.calculateHybridWithdrawalFee('20.1').feeAmount, 2.01, '10% fee rounding must match the database-supported four decimal places');
 assert.equal(walletControllerModule.sameWithdrawalIntent(
@@ -62,11 +68,16 @@ assert.match(hardeningMigration, /create or replace function public\.operix_with
 assert.match(hardeningMigration, /INVALID_WITHDRAWAL_AMOUNT/i);
 assert.match(hardeningMigration, /IDEMPOTENCY_KEY_REUSED/i);
 assert.match(hardeningMigration, /grant execute on function public\.operix_withdraw_atomic/i);
+assert.match(tierMinimumMigration, /case when upper\(coalesce\(user_row\.tier_code, ''\)\) in \('A1', 'A2'\) then 10 else 20 end/i, 'the atomic withdrawal RPC must use the $10 entry-tier minimum and preserve $20 for other tiers');
+assert.match(tierMinimumMigration, /p_amount < minimum_amount/i);
+assert.match(walletController, /getMinimumWithdrawalAmount\(user\.tierCode\)/);
 assert.match(walletController, /p_network: normalizedNetwork/);
 assert.match(walletController, /TronWeb\.isAddress\(normalizedWalletAddress\)/, 'invalid destination addresses are rejected before reserving funds');
 assert.match(walletController, /operix_withdrawal_email_code_consume_atomic/, 'withdrawals must consume a one-time email challenge');
 assert.doesNotMatch(walletController, /user\.twoFactorEnabled|user\.twoFactorSecret/, 'user withdrawals must not depend on TOTP setup');
 assert.match(walletController, /withdrawalPayoutService\.getMaxPayoutAmount\(\)/, 'withdrawal request and payout use the same hard maximum');
+assert.match(userIndex, /placeholder="المبلغ الأدنى حسب المستوى" min="10"/);
+assert.match(aiController, /const withdrawalMinimum = \['A1', 'A2'\]/);
 assert.match(controller, /operix_admin_withdrawal_claim_atomic/);
 assert.match(controller, /WITHDRAWAL_PAYOUTS_ENABLED/);
 assert.match(controller, /operix_admin_withdrawal_record_broadcast_atomic/);

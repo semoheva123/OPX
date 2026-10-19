@@ -1370,7 +1370,7 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
 @media (max-width: 640px){body{overflow-x:hidden}}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 </style>
-<link rel="stylesheet" href="/styles/operix-premium.css?v=20261019-referral-rewards-1">
+<link rel="stylesheet" href="/styles/operix-premium.css?v=20261019-withdraw-minimum-1">
 </head>
 <body class="min-h-screen flex flex-col justify-between pb-28">
 <div class="tech-grid-bg"></div>
@@ -2443,15 +2443,15 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
             </div>
 
             <div class="panel-modal-alert"><i class="fa-solid fa-circle-info"></i><span>السحب متاح حصراً من رصيد الأرباح المتاح.</span></div>
-            <div id="withdrawalScheduleStatus" class="panel-modal-status" aria-live="polite">مواعيد طلب السحب: A1 وA2 يوم الجمعة، وبقية المستويات يوم السبت (UTC).</div>
+                    <div id="withdrawalScheduleStatus" class="panel-modal-status" aria-live="polite">A1/A2: الحد الأدنى 10 USDT. بقية المستويات: 20 USDT.</div>
 
             <div class="panel-modal-form">
                 <div class="panel-modal-row">
                     <div>
                         <label class="panel-modal-label">المبلغ ($)</label>
-                        <input type="number" id="withdrawAmount" oninput="updateHybridWithdrawFee()" placeholder="20.00" min="20" step="any" class="panel-modal-input">
+                        <input type="number" id="withdrawAmount" oninput="updateHybridWithdrawFee()" placeholder="المبلغ الأدنى حسب المستوى" min="10" step="any" class="panel-modal-input">
                     </div>
-                    <div id="withdrawFeeSummary" class="text-[10px] text-slate-400">الرسوم: 10% • الحد الأدنى: 20$</div>
+                    <div id="withdrawFeeSummary" class="text-[10px] text-slate-400">الرسوم: 10% • A1/A2: الحد الأدنى 10$، وبقية المستويات 20$</div>
                 </div>
                 <div class="panel-modal-row">
                     <div>

@@ -3413,11 +3413,13 @@ function syncWithdrawalScheduleUI() {
     const status = document.getElementById('withdrawalScheduleStatus');
     const button = document.getElementById('btnSubmitWithdraw');
     const schedule = getTierWithdrawalSchedule();
+    const minimum = getClientMinimumWithdrawalAmount(schedule.tierCode);
+    updateWithdrawalMinimumUI();
     const todayName = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'][schedule.currentDay];
     if (status) {
         status.innerText = schedule.allowed
-            ? `السحب لمستوى ${schedule.tierCode} متاح اليوم (${todayName}). جميع المواعيد وفق توقيت إسطنبول.`
-            : `السحب لمستوى ${schedule.tierCode} متاح يوم ${schedule.allowedDayName} فقط. اليوم ${todayName}؛ يمكنك طلب رمز التحقق عبر البريد الآن، ثم إتمام السحب يوم ${schedule.allowedDayName}. (توقيت إسطنبول)`;
+            ? `السحب لمستوى ${schedule.tierCode} متاح اليوم (${todayName})، بحد أدنى ${minimum} USDT. جميع المواعيد وفق توقيت إسطنبول.`
+            : `الحد الأدنى للسحب لمستوى ${schedule.tierCode}: ${minimum} USDT. موعد السحب يوم ${schedule.allowedDayName} فقط؛ اليوم ${todayName}. يمكنك طلب رمز التحقق عبر البريد الآن وإتمام السحب في الموعد. (توقيت إسطنبول)`;
         status.classList.toggle('border-emerald-500/20', schedule.allowed);
         status.classList.toggle('bg-emerald-500/5', schedule.allowed);
         status.classList.toggle('text-emerald-100', schedule.allowed);
@@ -3437,12 +3439,29 @@ function syncWithdrawalScheduleUI() {
 
 function openWithdrawModal() {
     document.getElementById('withdrawModal').classList.remove('hide');
+    updateWithdrawalMinimumUI();
     document.getElementById('withdrawEmailCodePanel')?.classList.add('hidden');
     document.getElementById('withdrawEmailCode').value = '';
     const button = document.getElementById('btnSubmitWithdraw');
     if (button) button.innerText = 'إرسال رمز التأكيد إلى البريد';
     syncWithdrawalScheduleUI();
 }
+
+function getClientMinimumWithdrawalAmount(tierCode = currentUserData?.tierCode || currentUserTier) {
+    return ['A1', 'A2'].includes(String(tierCode || '').trim().toUpperCase()) ? 10 : 20;
+}
+
+function updateWithdrawalMinimumUI() {
+    const minimum = getClientMinimumWithdrawalAmount();
+    const input = document.getElementById('withdrawAmount');
+    if (input) {
+        input.min = String(minimum);
+        input.placeholder = `${minimum}.00`;
+    }
+    updateHybridWithdrawFee();
+    return minimum;
+}
+
 function closeWithdrawModal() {
     document.getElementById('withdrawModal').classList.add('hide');
     document.getElementById('withdrawEmailCodePanel')?.classList.add('hidden');
@@ -3528,8 +3547,9 @@ function updateHybridWithdrawFee() {
     if (!amountInput || !feeSummary) return;
     const amountText = String(amountInput.value || '').trim();
     const amountMatch = amountText.match(/^(?:0|[1-9]\d*)(?:\.(\d{1,4}))?$/);
+    const minimum = getClientMinimumWithdrawalAmount();
     if (!amountMatch) {
-        feeSummary.innerHTML = 'الرسوم: 10% • الحد الأدنى: 20$';
+        feeSummary.innerHTML = `الرسوم: 10% • الحد الأدنى لمستواك: ${minimum}$`;
         return;
     }
     const [whole, fraction = ''] = amountText.split('.');
@@ -3537,7 +3557,7 @@ function updateHybridWithdrawFee() {
     const feeUnits = (amountUnits * 10n) / 100n;
     const feeAmount = Number(feeUnits) / 10000;
     const netAmount = Number(amountUnits - feeUnits) / 10000;
-    feeSummary.innerHTML = `الرسوم: <span class="text-amber-300 font-bold">$${feeAmount.toFixed(2)}</span> • صافي الدفع: <span class="text-emerald-300 font-bold">$${netAmount.toFixed(2)}</span> • الحد الأدنى: <span class="text-slate-300">20$</span>`;
+    feeSummary.innerHTML = `الرسوم: <span class="text-amber-300 font-bold">$${feeAmount.toFixed(2)}</span> • صافي الدفع: <span class="text-emerald-300 font-bold">$${netAmount.toFixed(2)}</span> • الحد الأدنى لمستواك: <span class="text-slate-300">${minimum}$</span>`;
 }
 
 async function submitWithdraw() {
@@ -3554,8 +3574,9 @@ async function submitWithdraw() {
         return;
     }
 
-    if (!Number.isFinite(amount) || amount < 20) {
-        showToast('الحد الأدنى للسحب هو 20 USDT.');
+    const minimumWithdrawalAmount = getClientMinimumWithdrawalAmount();
+    if (!Number.isFinite(amount) || amount < minimumWithdrawalAmount) {
+        showToast(`الحد الأدنى للسحب لمستوى ${currentUserTier || 'الحساب'} هو ${minimumWithdrawalAmount} USDT.`);
         return;
     }
 

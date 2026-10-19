@@ -109,6 +109,7 @@ function buildPlatformKnowledge(levels = [], settings = {}, userTier = '', vault
     : 'لا توجد عقود فعالة مؤكدة الآن؛ راجع القائمة المباشرة في تبويب الخزنة ولا تخمّن النسب';
   let withdrawalMax = 5000;
   try { withdrawalMax = withdrawalPayoutService.getMaxPayoutAmount(); } catch { withdrawalMax = null; }
+  const withdrawalMinimum = ['A1', 'A2'].includes(String(userTier || '').trim().toUpperCase()) ? 10 : 20;
   return {
     levelFacts,
     currentLevelTaskLimit: currentLevel ? Math.max(0, Number(currentLevel.tasks || 1) - 1) : null,
@@ -119,9 +120,9 @@ function buildPlatformKnowledge(levels = [], settings = {}, userTier = '', vault
     gameDailyRewardCap: Number(settings.dailyGameRewardCap || 100),
     vaultMinimum: 10,
     vaultContractFacts,
-    withdrawalMinimum: 20,
+    withdrawalMinimum,
     withdrawalMaximum: withdrawalMax,
-    withdrawalFee: '10% من المبلغ؛ الحد الأدنى 20 USDT',
+    withdrawalFee: `10% من المبلغ؛ الحد الأدنى ${withdrawalMinimum} USDT لمستوى ${userTier || 'الحساب'}`,
     withdrawalAutomationEnabled: String(process.env.WITHDRAWAL_PAYOUTS_ENABLED || '').toLowerCase() === 'true',
     sharedDepositAddressConfigured: (() => { try { return Boolean(tronDepositService.getSharedDepositAddress()); } catch { return false; } })(),
     referralCashRewards: '$1 لتفعيل إحالة مباشرة في A1، $2 في A2، و$5 في A3؛ مكافأة واحدة لكل مستوى مؤهل',
@@ -131,7 +132,7 @@ function buildPlatformKnowledge(levels = [], settings = {}, userTier = '', vault
     gameCycleRule: `تتطلب دورة اللعبة ${Math.max(1, Number(settings.referralsPerCycle) || 6)} إحالات مباشرة نشطة مع تفعيل الحساب، ويخصم الاستخدام دورة؛ الأرصدة المتاحة تظهر بجوار اللعبة؛ الحد اليومي ${Number(settings.dailyGameRewardCap || 100)} USDT؛ مكافأة اللعب توزع حاليًا 90% USDT و10% OPX`,
   upgradeRule: `السعر وشروط التفعيل والترقية تظهر في تبويب المستويات والتأكيد؛ كل تفعيل أو ترقية مدفوعة يتطلب سعر المستوى المستهدف كاملًا؛ لا يشترط تسلسل مستويات أو إحالات للترقية العادية؛ تفعيل A4 المجاني يتطلب الإنجاز المؤهل؛ OPX الداخلي بسعر حساب الترقية ${OPX_INTERNAL_USD_PRICE} USDT لكل OPX ويغطي بحد أقصى ${Math.round(OPX_MAX_UPGRADE_DISCOUNT_SHARE * 100)}% أو ${OPX_MAX_UPGRADE_VALUE_USD} USDT أيهما أقل، والباقي USDT؛ OPX غير قابل للسحب`,
     depositRule: (() => { try { return tronDepositService.getSharedDepositAddress() ? 'إيداع USDT مباشر إلى عنوان محفظة المنصة على TRC20؛ يرسل المستخدم TxID ويتحقق النظام من التحويل المؤكد على الشبكة قبل قيد الرصيد.' : 'عنوان محفظة الإيداع غير مهيأ؛ لا ترسل أموالًا ووجّه المستخدم للدعم.'; } catch { return 'عنوان محفظة الإيداع غير صالح؛ لا ترسل أموالًا ووجّه المستخدم للدعم.'; } })(),
-    withdrawalRule: `USDT فقط على TRC20؛ المصدر رصيد الأرباح المتاح؛ الحد الأدنى 20 USDT؛ الرسوم 10% من المبلغ؛ موعد ${userTier}: ${withdrawalSchedule.message}; يتطلب بريدًا موثقًا ورمز تأكيد لمرة واحدة يصل إلى البريد وعنوانًا مثبتًا مطابقًا، ويظهر الطلب في السجل وقد يبقى قيد المراجعة.`,
+    withdrawalRule: `USDT فقط على TRC20؛ المصدر رصيد الأرباح المتاح؛ الحد الأدنى ${withdrawalMinimum} USDT لمستوى ${userTier || 'الحساب'} (A1/A2: 10 USDT، بقية المستويات: 20 USDT)؛ الرسوم 10% من المبلغ؛ موعد ${userTier}: ${withdrawalSchedule.message}; يتطلب بريدًا موثقًا ورمز تأكيد لمرة واحدة يصل إلى البريد وعنوانًا مثبتًا مطابقًا، ويظهر الطلب في السجل وقد يبقى قيد المراجعة.`,
     tabGuides: {
       home: 'الرئيسية: الرصيد الإجمالي وتفصيل USDT (إيداع/أرباح) وOPX، التقدم اليومي، نشاط الحساب، سجل زمني، تحديث السوق الخارجي OPXUSD من Bitfinex. سعر السوق ليس سعرًا داخليًا ولا عائدًا أو توصية.',
       community: 'المجتمع: موجز كل المنشورات أو المتابَعين، نشر نص وصورة، إعجاب وتعليق ومتابعة ملفات اجتماعية ورسائل خاصة؛ المحتوى يخضع للإشراف.',

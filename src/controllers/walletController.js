@@ -14,8 +14,15 @@ const tronDepositService = require('../services/tronDepositService');
 const { getWithdrawalSchedule } = require('../services/weeklySchedule');
 const SecurityEvent = dataAccess.securityEvent;
 
-const MIN_WITHDRAWAL_AMOUNT = 20;
+const DEFAULT_MIN_WITHDRAWAL_AMOUNT = 20;
+const ENTRY_TIER_MIN_WITHDRAWAL_AMOUNT = 10;
 const WITHDRAWAL_EMAIL_CODE_TTL_MS = 10 * 60 * 1000;
+
+function getMinimumWithdrawalAmount(tierCode) {
+  return ['A1', 'A2'].includes(String(tierCode || '').trim().toUpperCase())
+    ? ENTRY_TIER_MIN_WITHDRAWAL_AMOUNT
+    : DEFAULT_MIN_WITHDRAWAL_AMOUNT;
+}
 
 function hashWithdrawalEmailCode(userId, code) {
   const secret = String(process.env.JWT_SECRET || '');
@@ -150,7 +157,7 @@ async function withdrawSupabase(req, res) {
     try { maxPayoutAmount = withdrawalPayoutService.getMaxPayoutAmount(); }
     catch { return res.status(503).json({ error: 'إعداد الحد الأقصى للسحب غير صالح؛ لم يُحجز أي رصيد.' }); }
     const feeSummary = calculateHybridWithdrawalFee(amountText);
-    if (!Number.isFinite(withdrawNum) || withdrawNum < MIN_WITHDRAWAL_AMOUNT) return res.status(400).json({ error: `الحد الأدنى للسحب هو ${MIN_WITHDRAWAL_AMOUNT}$ USDT` });
+    if (!Number.isFinite(withdrawNum)) return res.status(400).json({ error: 'أدخل مبلغ سحب صالحًا.' });
     if (withdrawNum > maxPayoutAmount) return res.status(400).json({ error: 'المبلغ خارج النطاق المسموح للسحب' });
     if (!walletAddress || typeof walletAddress !== 'string' || !walletAddress.trim()) return res.status(400).json({ error: 'يرجى إدخال عنوان المحفظة' });
     const normalizedWalletAddress = walletAddress.trim();
@@ -166,12 +173,14 @@ async function withdrawSupabase(req, res) {
     }
     const user = await dataAccess.user.findById(req.user.id);
     if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
+    const minimumWithdrawalAmount = getMinimumWithdrawalAmount(user.tierCode);
+    if (withdrawNum < minimumWithdrawalAmount) return res.status(400).json({ error: `الحد الأدنى للسحب لمستوى ${user.tierCode || 'الحساب'} هو ${minimumWithdrawalAmount}$ USDT` });
     const withdrawalSchedule = getWithdrawalSchedule(user.tierCode, new Date());
     const fullFeatureAccess = hasFullFeatureAccess(user);
     if (!user.emailVerified) return res.status(400).json({ error: 'يجب تأكيد بريدك الإلكتروني قبل طلب السحب' });
     if (!user.walletAddress || String(user.walletAddress).trim() !== normalizedWalletAddress) return res.status(400).json({ error: 'عنوان المحفظة لا يطابق العنوان المثبت في حسابك' });
     if (String(user.walletNetwork || '').toUpperCase() !== normalizedNetwork) return res.status(400).json({ error: 'شبكة السحب لا تطابق الشبكة المثبتة مع العنوان' });
-    if (!fullFeatureAccess && Number(user.wallet?.profitBalance || 0) < MIN_WITHDRAWAL_AMOUNT) return res.status(400).json({ error: `الحد الأدنى لرصيد الأرباح للسحب هو ${MIN_WITHDRAWAL_AMOUNT}$` });
+    if (!fullFeatureAccess && Number(user.wallet?.profitBalance || 0) < minimumWithdrawalAmount) return res.status(400).json({ error: `يلزم توفر ${minimumWithdrawalAmount}$ على الأقل في رصيد الأرباح لمستوى ${user.tierCode || 'الحساب'}.` });
     const vipLevel = await dataAccess.vipLevel.findOne({ code: user.tierCode });
     const maxLimit = vipLevel ? Math.max(20, Number(vipLevel.price || 0) * 0.3) : 20;
     if (!fullFeatureAccess && withdrawNum > maxLimit) return res.status(400).json({ error: `الحد الأقصى للسحب الحالي هو ${maxLimit}$` });
@@ -306,4 +315,4 @@ async function getDepositConfig(req, res) {
   }
 }
 
-module.exports = { deposit, withdraw, getMyHistory, getDepositConfig, calculateHybridWithdrawalFee, sameWithdrawalIntent };
+module.exports = { deposit, withdraw, getMyHistory, getDepositConfig, calculateHybridWithdrawalFee, sameWithdrawalIntent, getMinimumWithdrawalAmount };
