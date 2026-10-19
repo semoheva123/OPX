@@ -1995,7 +1995,7 @@ body.modal-open{overflow:hidden}
                 document.getElementById('emailVerificationReminderConfirmation').value = '';
                 document.getElementById('emailVerificationReminderPreview')?.classList.add('hidden');
                 const status = document.getElementById('emailVerificationReminderStatus');
-                if (status) status.innerText = 'أُضيفت التذكيرات للطابور؛ راقب سجل الدفعات أدناه.';
+                if (status) status.innerText = 'أُضيفت التذكيرات للطابور؛ تبدأ المعالجة تلقائيًا على دفعات كل خمس دقائق. راقب سجل الدفعات أدناه.';
                 showToast(data.message || 'تمت جدولة تذكيرات التوثيق على دفعات.');
                 await fetchEmailVerificationReminderCampaigns();
             } catch (error) {

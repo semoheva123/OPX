@@ -1372,7 +1372,7 @@ async function createEmailVerificationReminders(req, res) {
     });
     const campaignId = String(created?.id || created?.campaignId || created?.campaign_id || '');
     if (!campaignId) throw new Error('EMAIL_VERIFICATION_REMINDER_ID_MISSING');
-    return res.status(202).json({ success: true, campaignId, recipientCount: recipients.length, message: 'تمت جدولة تذكيرات التوثيق على دفعات.' });
+    return res.status(202).json({ success: true, campaignId, recipientCount: recipients.length, message: 'تمت جدولة تذكيرات التوثيق؛ يبدأ إرسالها تلقائيًا على دفعات كل خمس دقائق.' });
   } catch (error) {
     if (String(error.message || '').startsWith('RECIPIENT_LIMIT_EXCEEDED')) return res.status(400).json({ success: false, error: 'تجاوز عدد الحسابات حد الإرسال الآمن البالغ 10000.' });
     console.error('Email verification reminder queue failed:', error.message);

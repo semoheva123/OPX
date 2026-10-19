@@ -46,6 +46,7 @@ assert.match(routes, /email-verification-reminders\/preview', requirePermission\
 assert.match(routes, /email-verification-reminders', requirePermission\('broadcast'/);
 assert.match(routes, /email-verification-reminders\/recover-rejected', requirePermission\('broadcast'/);
 assert.match(reminderOnlyWorker, /process-email-verification-reminders/);
+assert.match(reminderOnlyWorker, /schedule:\s*\n\s+- cron: '\*\/5 \* \* \* \*'/, 'queued verification reminders should be processed automatically every five minutes');
 assert.doesNotMatch(reminderOnlyWorker, /process-email-broadcasts/);
 assert.match(server, /process-email-verification-reminders/);
 assert.match(worker, /process-email-verification-reminders/);
