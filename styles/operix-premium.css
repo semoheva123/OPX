@@ -1677,9 +1677,9 @@ body:has(#appView) #toast, body:has(#authView) #toast { max-width: min(92vw, 560
     #appView .operix-app-header { top: max(5px, env(safe-area-inset-top)); }
     #appNavBar {
         bottom: 0;
-        display: grid;
+        display: grid !important;
         min-height: calc(116px + env(safe-area-inset-bottom));
-        grid-template-columns: repeat(5, minmax(0, 1fr));
+        grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
         grid-auto-rows: minmax(48px, auto);
         align-content: center;
         justify-content: stretch !important;
@@ -1687,17 +1687,18 @@ body:has(#appView) #toast, body:has(#authView) #toast { max-width: min(92vw, 560
         overflow: hidden;
         padding: 6px max(8px, env(safe-area-inset-left)) calc(6px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-right));
     }
+    #appNavBar button,
     #appNavBar > .app-nav-item {
         width: auto;
         min-width: 0;
         min-height: 48px;
         flex: initial;
-        grid-column: auto;
+        grid-column: auto !important;
         padding: 4px 2px;
         gap: 4px;
         transform: none !important;
     }
-    #appNavBar > .app-nav-item:nth-child(6) { grid-column: auto !important; }
+    #appNavBar button:nth-child(6) { grid-column: auto !important; }
     #appNavBar > .app-nav-item > span { font-size: 9px; line-height: 1.15; transform: none; }
     :is(#productTourModal, #onboardingModal, #platformConfirmModal, #depositModal, #withdrawModal,
         #historyModal, #privateMessagesModal, #notificationsModal, #supportModal, #forgotPasswordModal,

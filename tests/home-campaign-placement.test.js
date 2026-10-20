@@ -24,8 +24,12 @@ assert.match(tailwindSource, /#landing-faq details > p\s*\{\s*display:\s*none;/,
   'FAQ answers should be hidden by default');
 assert.match(tailwindSource, /#landing-faq details\[open\] > p\s*\{\s*display:\s*block;/,
   'opening an FAQ disclosure should show its answer');
-assert.match(premiumCss, /@media \(max-width: 767px\)\s*\{[\s\S]*?#appNavBar\s*\{[\s\S]*?display:\s*grid;/,
+assert.match(premiumCss, /@media \(max-width: 767px\)\s*\{[\s\S]*?#appNavBar\s*\{[\s\S]*?display:\s*grid(?:\s*!important)?;/,
   'mobile app navigation should fit into a compact grid instead of overflowing horizontally');
+assert.match(premiumCss, /grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\) !important;/,
+  'mobile navigation should use five columns so nine links fit in two short rows');
+assert.match(premiumCss, /#appNavBar button,[\s\S]*?grid-column:\s*auto !important;/,
+  'legacy navigation span rules should not expand each item into a tall two-column menu');
 assert.match(premiumCss, /#appNavBar \.app-nav-item > i\s*\{[\s\S]*?font-size:\s*19px !important;[\s\S]*?transform:\s*none !important;/,
   'navigation icon size must remain stable between idle and active states');
 assert.match(index, /box-sizing:\s*border-box;\s*min-height:\s*76px/,
