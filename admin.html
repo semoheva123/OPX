@@ -13,6 +13,10 @@
     <link rel="apple-touch-icon" href="/operix-icon.svg">
     <title>OPERIX - لوحة تحكم الإدارة الشاملة</title>
     <link rel="stylesheet" href="/dist/tailwind.css">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-regular-400.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-brands-400.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.ably.com/lib/ably.min-2.js"></script>
     <style>
@@ -108,9 +112,9 @@ body.modal-open{overflow:hidden}
 .admin-modal{overscroll-behavior:contain}
 @media (max-width:767px){.admin-modal>.glass-card{width:100%;max-height:calc(100dvh - 1.5rem);overflow-y:auto;border-radius:1.5rem 1.5rem 1rem 1rem}}
 </style>
-<link rel="stylesheet" href="/styles/operix-premium.css?v=20261020-admin-system-1">
+<link rel="stylesheet" href="/styles/operix-premium.css?v=20261021-admin-mobile-fix-1">
 </head>
-<body class="min-h-screen bg-slate-950 text-slate-100 flex flex-col md:flex-row">
+<body class="admin-shell min-h-screen bg-slate-950 text-slate-100 flex flex-col md:flex-row">
 <div class="tech-grid-bg"></div>
 
     <div id="toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 z-50 hide bg-slate-900 border border-amber-500 text-white px-6 py-3 rounded-2xl shadow-2xl text-sm font-medium transition-all duration-300"></div>

@@ -13,6 +13,8 @@ assert.match(adminHtml, /fetch\('\/api\/health', \{ cache: 'no-store' \}\)/, 'se
 assert.match(adminHtml, /health\.financialSchema\?\.ready/, 'service status must check financial schema readiness');
 assert.doesNotMatch(adminHtml, /\+12%/, 'overview must not show a fabricated growth percentage');
 assert.match(adminHtml, /طلبات مالية معلقة/, 'pending metric must include both deposits and withdrawals');
+assert.match(adminHtml, /class="admin-shell /, 'admin shell should expose an explicit root class for responsive styling');
+assert.match(read('styles/operix-premium.css'), /body\.admin-shell main \.glass-card \{ animation: none !important; \}/, 'admin cards must not start shrunken from scroll-linked reveal animations');
 assert.match(adminHtml, /const totalsByDay = new Map\(\)/, 'overview chart must aggregate all transaction types per day');
 assert.match(adminHtml, /api\/admin\/users\/export/, 'user CSV export must retrieve all filtered server results');
 assert.match(adminHtml, /api\/admin\/referrals\/export/, 'referral CSV export must retrieve all filtered server results');
