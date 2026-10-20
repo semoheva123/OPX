@@ -1340,37 +1340,12 @@
         }
         @media (min-width: 768px) {
             #view-feed > section:first-child { padding: 1.25rem; }
-                padding: 12px;
         }
-
-                align-items: center;
-
-
-                grid-template-columns: 1.15fr .85fr;
-/* ===== Safe CSS-only motion layer for OPERIX ===== */
-html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
-                grid-template-columns: repeat(3, minmax(0, 1fr));
-            }
-            .home-referral-tier-item {
-                flex-direction: column;
-                justify-content: center;
-                gap: 3px;
-                min-height: 46px;
-                padding: 6px 3px;
-                text-align: center;
-            }
-            .home-campaign-prizes-heading p {
-                display: none;
-@supports (animation-timeline: scroll()){body::before{animation:operixParallaxFloat linear both;animation-timeline:scroll(root block);animation-range:0% 100%}}
-@supports (animation-timeline: view()){.company-intro{animation:operixHeroScaleFade 1000ms cubic-bezier(.22,1,.36,1) both;animation-timeline:view();animation-range:entry 0% cover 85%}.product-preview{animation:operixPreviewScale 1000ms cubic-bezier(.22,1,.36,1) both;animation-timeline:view();animation-range:entry 0% cover 82%}.intro-reveal,.intro-feature,.about-panel,.glass-card,.opx-market-card{animation:operixRevealFadeUp 850ms cubic-bezier(.22,1,.36,1) both;animation-timeline:view();animation-range:entry 0% cover 78%}.intro-feature{animation-delay:80ms}.about-panel{animation-delay:150ms}.opx-market-card{animation-delay:120ms}}
-@keyframes operixHeroScaleFade{from{opacity:0.78;transform:scale(0.985)}to{opacity:1;transform:scale(1)}}
-@keyframes operixPreviewScale{from{opacity:0;transform:translateY(16px) scale(0.96);filter:blur(4px)}to{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}}
-@keyframes operixRevealFadeUp{from{opacity:0;transform:translateY(28px) scale(0.98)}to{opacity:1;transform:translateY(0) scale(1)}}
-@keyframes operixParallaxFloat{0%{transform:scale(1.08) translateY(-4%);opacity:0.65}50%{transform:scale(1.12) translateY(2%);opacity:0.75}100%{transform:scale(1.16) translateY(5%);opacity:0.82}}
-@media (max-width: 640px){body{overflow-x:hidden}}
-@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+        @media (prefers-reduced-motion: reduce) {
+            #view-feed *, #view-feed *::before, #view-feed *::after { scroll-behavior: auto !important; }
+        }
 </style>
-<link rel="stylesheet" href="/styles/operix-premium.css?v=20261019-withdraw-minimum-1">
+<link rel="stylesheet" href="/styles/operix-premium.css?v=20261020-uipro-refresh-1">
 </head>
 <body class="min-h-screen flex flex-col justify-between pb-28">
 <div class="tech-grid-bg"></div>
@@ -2335,7 +2310,7 @@ html{overflow-x:hidden}body{overflow-x:hidden;overscroll-behavior-x:none}
     </div>
 
     <!-- 5. شريط التنقل السفلي (Bottom Navigation) -->
-    <nav id="appNavBar" class="hide fixed bottom-0 left-0 right-0 bg-slate-950/90 backdrop-blur-md border-t border-slate-800 px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] flex justify-around items-center z-40 max-w-lg mx-auto">
+    <nav id="appNavBar" aria-label="التنقل الرئيسي" class="hide fixed bottom-0 left-0 right-0 bg-slate-950/90 backdrop-blur-md border-t border-slate-800 px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] flex justify-around items-center z-40 max-w-lg mx-auto">
         <button id="nav-home" onclick="switchTab('home')" class="flex flex-col items-center flex-1 text-amber-500 transition-all">
             <i class="fa-solid fa-house text-base"></i>
             <span class="text-[10px] font-bold mt-1">الرئيسية</span>

@@ -4,6 +4,7 @@ const path = require('node:path');
 
 const index = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 const client = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+const tailwindSource = fs.readFileSync(path.join(__dirname, '..', 'styles', 'tailwind.input.css'), 'utf8');
 const homeStart = index.indexOf('<div id="view-home"');
 const homeEnd = index.indexOf('<div id="socialUserCardModal"', homeStart);
 const campaign = index.indexOf('<section class="home-referral-campaign');
@@ -18,6 +19,10 @@ assert.match(index, /Apple-Foldable-iPhone-Plan[\s\S]*?loading="lazy"/,
   'phone prize images in the authenticated home should load lazily');
 assert.match(index, /<details class="home-campaign-prizes">\s*<summary>/,
   'the detailed prize showcase should be collapsed by default to keep the home card compact');
+assert.match(tailwindSource, /#landing-faq details > p\s*\{\s*display:\s*none;/,
+  'FAQ answers should be hidden by default');
+assert.match(tailwindSource, /#landing-faq details\[open\] > p\s*\{\s*display:\s*block;/,
+  'opening an FAQ disclosure should show its answer');
 assert.match(index, /box-sizing:\s*border-box;\s*min-height:\s*76px/,
   'the home reward metrics should use compact, padding-inclusive sizing');
 assert.match(client, /if\s*\(tabName\s*===\s*'home'\)\s*\{\s*loadReferralRewardHistory\(\);/,

@@ -58,10 +58,10 @@ body {
 }
 
 #landing-faq details > p {
-  display: block;
+  display: none;
 }
 
-#landing-faq details:not([open]) > p {
+#landing-faq details[open] > p {
   display: block;
 }
 
