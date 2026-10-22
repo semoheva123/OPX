@@ -119,9 +119,9 @@
             background: linear-gradient(135deg, rgba(34, 211, 238, 0.2), rgba(14, 116, 144, 0.18), rgba(15, 23, 42, 0.7));
         }
         .hide { display: none !important; }
-        .telegram-admin-float { position: fixed; left: 18px; bottom: calc(88px + env(safe-area-inset-bottom)); z-index: 45; display: grid; place-items: center; width: 54px; height: 54px; border: 1px solid rgba(255,255,255,.35); border-radius: 50%; color: #fff; background: linear-gradient(145deg, #38bdf8, #0284c7); box-shadow: 0 14px 32px rgba(2,132,199,.38), inset 0 1px 0 rgba(255,255,255,.35); font-size: 25px; transition: transform .2s ease, box-shadow .2s ease; }
-        .telegram-admin-float:hover { transform: translateY(-3px); box-shadow: 0 18px 38px rgba(2,132,199,.48), inset 0 1px 0 rgba(255,255,255,.4); }
-        .telegram-admin-float:focus-visible { outline: 3px solid #bae6fd; outline-offset: 4px; }
+        .telegram-admin-float { position: fixed; left: 18px; bottom: calc(128px + env(safe-area-inset-bottom)); z-index: 45; display: grid; place-items: center; width: 50px; height: 50px; border: 1px solid rgba(247,185,85,.48); border-radius: 50%; color: #67e8f9; background: radial-gradient(circle at 32% 24%, rgba(103,232,249,.12), transparent 42%), linear-gradient(145deg, rgba(15,29,47,.98), rgba(3,10,19,.98)); box-shadow: 0 10px 26px rgba(0,0,0,.38), 0 0 0 4px rgba(7,17,31,.72), inset 0 1px 0 rgba(255,255,255,.1); font-size: 23px; transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease, color .2s ease; }
+        .telegram-admin-float:hover { transform: translateY(-3px); border-color: rgba(247,185,85,.82); color: #a5f3fc; box-shadow: 0 14px 30px rgba(0,0,0,.44), 0 0 0 4px rgba(7,17,31,.78), 0 0 20px rgba(34,211,238,.2); }
+        .telegram-admin-float:focus-visible { outline: 2px solid #67e8f9; outline-offset: 5px; }
         body.is-booting #companyIntroView,
         body.is-booting #authView,
         body.is-booting #appView,
