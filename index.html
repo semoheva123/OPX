@@ -119,6 +119,9 @@
             background: linear-gradient(135deg, rgba(34, 211, 238, 0.2), rgba(14, 116, 144, 0.18), rgba(15, 23, 42, 0.7));
         }
         .hide { display: none !important; }
+        .telegram-admin-float { position: fixed; left: 18px; bottom: calc(88px + env(safe-area-inset-bottom)); z-index: 45; display: grid; place-items: center; width: 54px; height: 54px; border: 1px solid rgba(255,255,255,.35); border-radius: 50%; color: #fff; background: linear-gradient(145deg, #38bdf8, #0284c7); box-shadow: 0 14px 32px rgba(2,132,199,.38), inset 0 1px 0 rgba(255,255,255,.35); font-size: 25px; transition: transform .2s ease, box-shadow .2s ease; }
+        .telegram-admin-float:hover { transform: translateY(-3px); box-shadow: 0 18px 38px rgba(2,132,199,.48), inset 0 1px 0 rgba(255,255,255,.4); }
+        .telegram-admin-float:focus-visible { outline: 3px solid #bae6fd; outline-offset: 4px; }
         body.is-booting #companyIntroView,
         body.is-booting #authView,
         body.is-booting #appView,
@@ -1664,6 +1667,7 @@
 
     <!-- 4. الواجهة الرئيسية للتطبيق (App View) -->
     <div id="appView" class="hide flex-1 max-w-lg mx-auto w-full p-4 space-y-6">
+        <a class="telegram-admin-float" href="https://t.me/OPERIX_COMMUNITY" target="_blank" rel="noopener noreferrer" aria-label="تواصل مع الإدارة عبر تيليجرام" title="تواصل مع الإدارة عبر تيليجرام"><i class="fa-brands fa-telegram" aria-hidden="true"></i></a>
         
         <!-- Header المستخدم -->
         <div class="operix-app-header flex justify-between items-center bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800">
