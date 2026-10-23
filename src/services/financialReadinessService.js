@@ -97,9 +97,8 @@ async function checkFinancialReadiness() {
       ]);
       checks.payoutBalancesReadable = true;
       checks.payoutUsdtFunded = BigInt(String(tokenBalance)) > 0n;
-      const feeLimit = BigInt(process.env.TRON_WITHDRAWAL_FEE_LIMIT_SUN || '100000000');
-      const minTrx = BigInt(process.env.TRON_WITHDRAWAL_MIN_TRX_SUN || feeLimit.toString());
-      checks.payoutTrxSufficient = BigInt(String(trxBalance)) >= (minTrx > feeLimit ? minTrx : feeLimit);
+      const minTrx = BigInt(process.env.TRON_WITHDRAWAL_MIN_TRX_SUN || '4000000');
+      checks.payoutTrxSufficient = BigInt(String(trxBalance)) >= minTrx;
     } catch {
       checks.tronProviderReachable = false;
     }

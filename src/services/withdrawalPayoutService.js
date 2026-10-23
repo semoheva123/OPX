@@ -86,8 +86,8 @@ async function prepareTrc20Payout({ recipient, amount }) {
   const feeLimit = BigInt(process.env.TRON_WITHDRAWAL_FEE_LIMIT_SUN || '100000000');
   if (feeLimit <= 0n || feeLimit > 1_000_000_000n) throw new Error('TRON_WITHDRAWAL_FEE_LIMIT_INVALID');
   const nativeBalance = await tronProvider.withTronWeb(async client => BigInt(String(await client.trx.getBalance(senderAddress))), { endpoints, privateKey });
-  const minimumTrx = BigInt(process.env.TRON_WITHDRAWAL_MIN_TRX_SUN || feeLimit.toString());
-  if (nativeBalance < (minimumTrx > feeLimit ? minimumTrx : feeLimit)) throw new Error('PAYOUT_NATIVE_GAS_BALANCE_INSUFFICIENT');
+  const minimumTrx = BigInt(process.env.TRON_WITHDRAWAL_MIN_TRX_SUN || '4000000');
+  if (nativeBalance < minimumTrx) throw new Error('PAYOUT_NATIVE_GAS_BALANCE_INSUFFICIENT');
 
   // Get public reference-block data, then construct/sign locally without ever sending the private key to the RPC.
   const blockHeader = await tronProvider.withTronWeb(client => client.trx.getCurrentRefBlockParams(), { endpoints, privateKey });

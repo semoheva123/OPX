@@ -17,10 +17,16 @@ const aiController = read('src/controllers/aiController.js');
 const server = read('server.js');
 const adminHtml = read('admin.html');
 const queueWorkflow = read('.github/workflows/financial-queue-workers.yml');
+const payoutService = read('src/services/withdrawalPayoutService.js');
+const financialReadiness = read('src/services/financialReadinessService.js');
+const envExample = read('.env.example');
 
 assert.equal(payout.parseTokenUnits('20', 6), 20_000_000n);
 assert.equal(payout.parseTokenUnits('1.250001', 6), 1_250_001n);
 assert.equal(payout.getMaxPayoutAmount(), 100, 'single withdrawal cap must be 100 USD in the backend');
+assert.match(payoutService, /TRON_WITHDRAWAL_MIN_TRX_SUN \\|\\| '4000000'/, 'payout default minimum must be 4 TRX');
+assert.match(financialReadiness, /TRON_WITHDRAWAL_MIN_TRX_SUN \\|\\| '4000000'/, 'readiness default minimum must be 4 TRX');
+assert.match(envExample, /TRON_WITHDRAWAL_MIN_TRX_SUN=4000000/, 'environment template must set minimum to 4 TRX');
 assert.throws(() => payout.parseTokenUnits('1.0000001', 6), /INVALID_PAYOUT_AMOUNT/);
 assert.throws(() => payout.parseTokenUnits('-1', 6), /INVALID_PAYOUT_AMOUNT/);
 assert.equal(walletControllerModule.calculateHybridWithdrawalFee(20.001).feeAmount, 2.0001, '10% withdrawal fee must be applied before net payout');
