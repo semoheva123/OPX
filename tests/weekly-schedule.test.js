@@ -48,6 +48,8 @@ assert.match(activityController, /TASK_HOLIDAY/, 'task completion can still reje
 assert.match(walletController, /getWithdrawalSchedule\(user\.tierCode, new Date\(\)\)/, 'withdrawal request must enforce tier weekday on the server');
 assert.match(walletController, /code: 'WITHDRAWAL_DAY_NOT_ALLOWED'/, 'withdrawal schedule rejection must be explicit');
 assert.match(client, /يوم الجمعة/);
+assert.match(client, /return day === 5;/, 'the client should treat Friday as the only task holiday');
+assert.doesNotMatch(client, /return day === 5 \|\| day === 6;/, 'Saturday must remain available for tasks in the client');
 assert.match(index, /withdrawalScheduleStatus/);
 for (const source of [migration, readiness]) {
   assert.match(source, /daily_task_weekend_holiday_guard/i, 'database should only guard Friday as the task holiday');

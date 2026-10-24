@@ -2004,7 +2004,7 @@ function isWeeklyTaskHolidayUtc(date = new Date()) {
     const dateParts = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Istanbul', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date);
     const values = Object.fromEntries(dateParts.filter(part => part.type !== 'literal').map(part => [part.type, Number(part.value)]));
     const day = new Date(Date.UTC(values.year, values.month - 1, values.day)).getUTCDay();
-    return day === 5 || day === 6;
+    return day === 5;
 }
 
 function isWeeklyTaskHoliday(date = new Date()) {
