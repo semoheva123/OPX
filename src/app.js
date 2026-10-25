@@ -158,6 +158,16 @@ function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
     headers: { 'Cache-Control': 'no-store, max-age=0, must-revalidate', 'X-Content-Type-Options': 'nosniff' }
   });
 
+  app.get('/sitemap.xml', (req, res) => res.sendFile(path.join(staticRoot, 'sitemap.xml'), {
+    lastModified: false,
+    headers: {
+      'Cache-Control': 'no-store, max-age=0, must-revalidate',
+      'Content-Type': 'application/xml; charset=utf-8',
+      'Last-Modified': new Date().toUTCString(),
+      'X-Content-Type-Options': 'nosniff'
+    }
+  }));
+
   app.get('/', (req, res) => sendNoStoreStatic(req, res, 'index.html'));
   app.get('/index.html', (req, res) => sendNoStoreStatic(req, res, 'index.html'));
   app.get('/app.js', (req, res) => sendNoStoreStatic(req, res, 'app.js'));

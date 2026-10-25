@@ -65,6 +65,7 @@ assert.match(supabaseConfig, /requiredColumns: 'tx_hash,user_id,transaction_id,a
 assert.match(app, /financialSchema: supabase\?\.financialSchema/);
 assert.match(app, /requestHost !== 'www\.operix\.website'/, 'www host must be redirected to the canonical domain');
 assert.match(app, /res\.redirect\(308, `https:\/\/operix\.website\$\{req\.originalUrl\}`\)/, 'canonical host redirects must be permanent and preserve paths/query strings');
+assert.match(app, /app\.get\('\/sitemap\.xml',[\s\S]*?lastModified: false[\s\S]*?'Last-Modified': new Date\(\)\.toUTCString\(\)/, 'the sitemap must not inherit a stale static-file Last-Modified date');
 const canonicalHostRedirect = vercelConfig.redirects?.find(redirect => redirect.has?.some(condition => condition.type === 'host' && condition.value === 'www\\.operix\\.website'));
 assert.ok(canonicalHostRedirect?.permanent, 'Vercel must permanently redirect the www host before serverless routing');
 assert.equal(canonicalHostRedirect.destination, 'https://operix.website/:path*', 'Vercel must preserve paths on the canonical host');
