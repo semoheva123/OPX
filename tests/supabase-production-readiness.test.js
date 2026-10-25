@@ -62,6 +62,8 @@ assert.match(supabaseConfig, /withdrawalEmailCodesReady/);
 assert.match(supabaseConfig, /missingDepositTables/);
 assert.match(supabaseConfig, /requiredColumns: 'tx_hash,user_id,transaction_id,amount,to_address,block_timestamp'/);
 assert.match(app, /financialSchema: supabase\?\.financialSchema/);
+assert.match(app, /requestHost !== 'www\.operix\.website'/, 'www host must be redirected to the canonical domain');
+assert.match(app, /res\.redirect\(308, `https:\/\/operix\.website\$\{req\.originalUrl\}`\)/, 'canonical host redirects must be permanent and preserve paths/query strings');
 assert.match(sitemap, /<loc>https:\/\/operix\.website\//);
 assert.doesNotMatch(sitemap, /localhost|127\.0\.0\.1/);
 assert.match(robots, /Sitemap: https:\/\/operix\.website\/sitemap\.xml/);

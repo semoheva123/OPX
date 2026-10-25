@@ -38,6 +38,12 @@ function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
   app.locals.gameSettings = gameSettings;
   const realtimeRateLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 60, standardHeaders: true, legacyHeaders: false, message: { error: 'تم تجاوز عدد محاولات التحديث اللحظي، يرجى المحاولة لاحقاً' } });
 
+  app.use((req, res, next) => {
+    const requestHost = String(req.headers.host || '').toLowerCase().replace(/:\d+$/, '');
+    if (requestHost !== 'www.operix.website') return next();
+    return res.redirect(308, `https://operix.website${req.originalUrl}`);
+  });
+
   app.use(helmet({
     contentSecurityPolicy: {
       directives: {
