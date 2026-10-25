@@ -64,6 +64,14 @@
       ]
     }
   ],
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "www\\.operix\\.website" }],
+      "destination": "https://operix.website/:path*",
+      "permanent": true
+    }
+  ],
   "routes": [
     {
       "src": "/(.*)",
