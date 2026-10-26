@@ -73,6 +73,9 @@
     }
   ],
   "routes": [
+    { "src": "/sitemap.xml", "dest": "/sitemap.xml" },
+    { "src": "/robots.txt", "dest": "/robots.txt" },
+    { "src": "/googlede2b417dbc49edbc.html", "dest": "/googlede2b417dbc49edbc.html" },
     {
       "src": "/(.*)",
       "dest": "server.js"
