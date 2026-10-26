@@ -105,21 +105,21 @@ const app = createApp({
 
 app.get('/sitemap.xml', (req, res) => {
   res.setHeader('Content-Type', 'application/xml');
-  res.sendFile(path.join(__dirname, 'sitemap.xml'));
+  res.sendFile(path.join(process.cwd(), 'sitemap.xml'));
 });
 
 app.get('/robots.txt', (req, res) => {
   res.setHeader('Content-Type', 'text/plain');
-  res.sendFile(path.join(__dirname, 'robots.txt'));
+  res.sendFile(path.join(process.cwd(), 'robots.txt'));
 });
 
 app.get('/googlede2b417dbc49edbc.html', (req, res) => {
   res.setHeader('Content-Type', 'text/html');
-  res.sendFile(path.join(__dirname, 'googlede2b417dbc49edbc.html'));
+  res.sendFile(path.join(process.cwd(), 'googlede2b417dbc49edbc.html'));
 });
 
 // تخديم جميع الملفات الثابتة في الجذر (مثل about.html, privacy.html)
-app.use(express.static(path.join(__dirname)));
+app.use(express.static(process.cwd()));
 
 // ==============================================================================
 
