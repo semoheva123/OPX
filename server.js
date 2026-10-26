@@ -101,6 +101,28 @@ const app = createApp({
   }
 });
 
+// ==================== 📌 مسارات SEO وإثبات الملكية والملفات الثابتة ====================
+
+app.get('/sitemap.xml', (req, res) => {
+  res.setHeader('Content-Type', 'application/xml');
+  res.sendFile(path.join(__dirname, 'sitemap.xml'));
+});
+
+app.get('/robots.txt', (req, res) => {
+  res.setHeader('Content-Type', 'text/plain');
+  res.sendFile(path.join(__dirname, 'robots.txt'));
+});
+
+app.get('/googlede2b417dbc49edbc.html', (req, res) => {
+  res.setHeader('Content-Type', 'text/html');
+  res.sendFile(path.join(__dirname, 'googlede2b417dbc49edbc.html'));
+});
+
+// تخديم جميع الملفات الثابتة في الجذر (مثل about.html, privacy.html)
+app.use(express.static(path.join(__dirname)));
+
+// ==============================================================================
+
 // دالة تهيئة مستويات VIP الافتراضية
 async function seedVipLevels() {
   try {
