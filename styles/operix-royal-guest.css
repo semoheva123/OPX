@@ -45,26 +45,62 @@
 /* ---------------------------------------------------------------------------
    1. Scene — one deep field, one warm light source, one hairline grid
    ------------------------------------------------------------------------- */
-#companyIntroView.company-intro {
-    position: relative;
-    background-color: var(--ink-950);
-    background-image:
-        radial-gradient(1500px 760px at 50% -18%, rgba(200, 155, 74, .16), transparent 62%),
-        radial-gradient(900px 560px at 92% 16%, rgba(216, 178, 103, .07), transparent 60%),
-        radial-gradient(1100px 700px at 4% 96%, rgba(94, 128, 176, .06), transparent 62%),
-        linear-gradient(180deg, #05070b 0%, #070a10 44%, #04060a 100%);
+/* The scene is painted by the (previously empty) .tech-grid-bg layer: a fixed,
+   full-viewport plate that sits behind everything. Painting it on a fixed
+   element — instead of relying on `background-attachment: fixed` — keeps the
+   aurora identical on iOS Safari, where fixed backgrounds silently drop out.
+   Layers, top to bottom: gold hairline grid · a warm aurora at the fold · a
+   second gold lobe upper-right · a cool counter-light lower-left · a low
+   horizon glow · a soft vignette · the ink base. */
+body:has(#companyIntroView:not(.hide)) {
+    background-color: #04060a;
+    background-image: linear-gradient(180deg, #070a10 0%, #080c13 46%, #04060a 100%);
 }
 
-/* The 36px slate lattice becomes a fine, fading royal grid. */
-#companyIntroView.company-intro.intro-grid {
+body:has(#companyIntroView:not(.hide)) .tech-grid-bg {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: -1;
+    display: block;
+    pointer-events: none;
+    background-color: #04060a;
     background-image:
-        radial-gradient(1500px 760px at 50% -18%, rgba(200, 155, 74, .16), transparent 62%),
-        radial-gradient(900px 560px at 92% 16%, rgba(216, 178, 103, .07), transparent 60%),
-        radial-gradient(1100px 700px at 4% 96%, rgba(94, 128, 176, .06), transparent 62%),
-        linear-gradient(rgba(255, 255, 255, .014) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, .014) 1px, transparent 1px),
-        linear-gradient(180deg, #05070b 0%, #070a10 44%, #04060a 100%);
-    background-size: auto, auto, auto, 56px 56px, 56px 56px, auto;
+        linear-gradient(rgba(216, 178, 103, .030) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(216, 178, 103, .030) 1px, transparent 1px),
+        radial-gradient(60% 44% at 50% -6%, rgba(216, 178, 103, .40), transparent 68%),
+        radial-gradient(34% 30% at 96% 0%, rgba(196, 154, 78, .24), transparent 70%),
+        radial-gradient(42% 38% at -2% 98%, rgba(86, 120, 168, .16), transparent 70%),
+        radial-gradient(70% 30% at 50% 46%, rgba(216, 178, 103, .09), transparent 76%),
+        radial-gradient(120% 120% at 50% 50%, transparent 42%, rgba(0, 0, 0, .55) 100%),
+        linear-gradient(180deg, #070a10 0%, #0b111a 38%, #080c12 70%, #04060a 100%);
+    background-size: 64px 64px, 64px 64px, auto, auto, auto, auto, auto, auto;
+    background-repeat: repeat, repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+}
+
+/* The section must not paint over that scene. */
+#companyIntroView.company-intro {
+    position: relative;
+    background-color: transparent;
+    background-image: none;
+}
+
+#companyIntroView.company-intro.intro-grid {
+    background-image: none;
+    background-size: auto;
+}
+
+/* One hairline of gold across the very top of the page. */
+#companyIntroView.company-intro::before {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    top: 0;
+    height: 1px;
+    background-image: linear-gradient(90deg, transparent, rgba(216, 178, 103, .5) 24%, rgba(255, 248, 231, .8) 50%, rgba(216, 178, 103, .5) 76%, transparent);
+    pointer-events: none;
 }
 
 /* ---------------------------------------------------------------------------
@@ -79,14 +115,21 @@
     text-wrap: balance;
 }
 
-/* The one piece of gold foil in the headline. */
+/* The one piece of gold foil in the headline. The solid colour stays as the
+   fallback: the transparent fill is only applied where clipping is supported,
+   so the headline can never disappear. */
 #companyIntroView h1 span {
     color: var(--gold-200);
     background-image: linear-gradient(180deg, var(--gold-050) 0%, var(--gold-300) 54%, var(--gold-500) 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
     padding-bottom: .06em;
+}
+
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+    #companyIntroView h1 span {
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
 }
 
 #companyIntroView h2 {
@@ -517,8 +560,8 @@
 }
 
 .company-intro .intro-stat strong {
-    color: var(--text-primary);
-    font-size: 21px;
+    color: var(--gold-100);
+    font-size: 22px;
     font-weight: 900;
     letter-spacing: -.02em;
     font-variant-numeric: tabular-nums;
@@ -544,6 +587,17 @@
         0 1px 0 rgba(255, 255, 255, .07) inset,
         0 44px 88px -40px rgba(0, 0, 0, .98),
         0 0 60px -28px rgba(200, 155, 74, .45);
+}
+
+/* A soft pool of gold behind the frame — the halo sells the object. */
+.company-intro .product-preview::after {
+    content: "";
+    position: absolute;
+    inset: -14% -12%;
+    z-index: -1;
+    border-radius: 40px;
+    background-image: radial-gradient(closest-side, rgba(216, 178, 103, .20), transparent 74%);
+    pointer-events: none;
 }
 
 .company-intro .product-preview::before {
@@ -738,12 +792,22 @@
 }
 
 .company-intro .about-kicker {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     color: var(--gold-300);
     font-size: 9.5px;
     font-weight: 800;
     letter-spacing: .18em;
     text-transform: uppercase;
+}
+
+/* A short gold rule leads every section kicker. */
+.company-intro .about-kicker::before {
+    content: "";
+    width: 20px;
+    height: 1px;
+    background-image: linear-gradient(90deg, transparent, var(--gold-400));
 }
 
 .company-intro .about-principle {
@@ -844,8 +908,13 @@
 #authView {
     background-color: #04060a;
     background-image:
-        radial-gradient(900px 520px at 50% -10%, rgba(200, 155, 74, .16), transparent 62%),
-        radial-gradient(700px 480px at 50% 108%, rgba(94, 128, 176, .06), transparent 62%);
+        linear-gradient(rgba(216, 178, 103, .026) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(216, 178, 103, .026) 1px, transparent 1px),
+        radial-gradient(1050px 620px at 50% -14%, rgba(216, 178, 103, .30), transparent 62%),
+        radial-gradient(820px 560px at 92% 96%, rgba(86, 120, 168, .12), transparent 62%),
+        linear-gradient(180deg, #070a10 0%, #080c12 58%, #04060a 100%);
+    background-size: 64px 64px, 64px 64px, auto, auto, auto;
+    background-repeat: repeat, repeat, no-repeat, no-repeat, no-repeat;
 }
 
 #authView .auth-panel {
