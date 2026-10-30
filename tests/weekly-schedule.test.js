@@ -56,6 +56,16 @@ assert.match(client, /عطلة المهام المدفوعة الأسبوعية/
 assert.match(client, /السحب متاح يوميًا لجميع المستويات/, 'the holiday notice must state that withdrawals stay available every day');
 assert.doesNotMatch(scheduleSource, /day === 6|day === 0/, 'only Friday may pause tasks in the schedule service');
 assert.match(client, /السحب متاح يوميًا لمستوى/);
+// The paid-task board must not promise a Sunday resume: Friday is the only holiday, so the next
+// task day is Saturday on the Istanbul calendar the whole board already uses.
+assert.match(client, /تستأنف السبت/, 'the holiday state on the task board must resume on Saturday');
+assert.doesNotMatch(client, /استئناف الأحد/, 'the stale Sunday-resume copy must not come back');
+assert.doesNotMatch(client, /استئناف الأحد \(UTC\)|تستأنف الأحد/, 'the board must never resume tasks on Sunday');
+assert.match(client, /'تستأنف السبت \(Europe\/Istanbul\)'/, 'the resume state must state its timezone explicitly');
+assert.doesNotMatch(client, /عطلة المهام الأسبوعية/, 'the board must name the paid tasks, not a vague weekly holiday');
+// The strategy card header was legacy copy from the old multi-day plan.
+assert.doesNotMatch(index, /استراتيجية الإنجاز/, 'legacy "استراتيجية الإنجاز" copy must not remain in the task board');
+assert.match(index, /ملخص خطة اليوم/, 'the task board summary card must use the current copy');
 assert.match(index, /withdrawalScheduleStatus/);
 for (const source of [migration, readiness, allDaysMigration]) {
   assert.match(source, /drop trigger if exists withdrawal_tier_day_guard/i, 'database migrations must remove the legacy withdrawal weekday guard');
