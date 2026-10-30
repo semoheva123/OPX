@@ -13,9 +13,9 @@ const client = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
 
 assert.equal(weeklySchedule.isTaskHoliday(new Date('2026-10-09T12:00:00.000Z')), true, 'Friday remains the only task holiday');
 assert.equal(weeklySchedule.isTaskHoliday(new Date('2026-10-10T12:00:00.000Z')), false, 'Saturday is not a task holiday');
-assert.equal(weeklySchedule.getWithdrawalSchedule('A1', new Date('2026-10-09T12:00:00.000Z')).allowed, true, 'A1 withdrawals are scheduled Friday');
-assert.equal(weeklySchedule.getWithdrawalSchedule('A2', new Date('2026-10-09T12:00:00.000Z')).allowed, true, 'A2 withdrawals are scheduled Friday');
-assert.equal(weeklySchedule.getWithdrawalSchedule('A3', new Date('2026-10-10T12:00:00.000Z')).allowed, true, 'remaining tiers withdraw Saturday');
+assert.equal(weeklySchedule.getWithdrawalSchedule('A1', new Date('2026-10-09T12:00:00.000Z')).allowed, true, 'A1 withdrawals are available every day');
+assert.equal(weeklySchedule.getWithdrawalSchedule('A2', new Date('2026-10-09T12:00:00.000Z')).allowed, true, 'A2 withdrawals are available every day');
+assert.equal(weeklySchedule.getWithdrawalSchedule('A3', new Date('2026-10-10T12:00:00.000Z')).allowed, true, 'higher tiers withdrawals are available every day');
 
 const assignments = [
 	{ entityKey: 'wiki:example-systems', entityName: 'Example Systems', category: 'technology', summary: 'شركة تقنية للاختبار.', imageUrl: '', submissionComplete: false },

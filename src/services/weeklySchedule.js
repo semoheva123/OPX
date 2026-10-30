@@ -4,7 +4,6 @@ const UTC_WEEKDAYS = Object.freeze({
   SATURDAY: 6
 });
 const TASK_TIME_ZONE = 'Europe/Istanbul';
-const { startOfTaskDay } = require('./taskCalendar');
 
 function getUtcDay(value = new Date()) {
   const date = value instanceof Date ? value : new Date(value);
@@ -38,30 +37,15 @@ function getTaskSchedule(value = new Date()) {
 
 function getWithdrawalSchedule(tierCode, value = new Date()) {
   const normalizedTier = String(tierCode || '').trim().toUpperCase();
-  const isEntryTier = normalizedTier === 'A1' || normalizedTier === 'A2';
-  const allowedDay = isEntryTier ? UTC_WEEKDAYS.FRIDAY : UTC_WEEKDAYS.SATURDAY;
-  const currentDay = getTaskDay(value);
-  const allowedDayName = isEntryTier ? 'الجمعة' : 'السبت';
-  const allowed = currentDay === allowedDay;
-  let nextAvailableAt = null;
-
-  if (!allowed && currentDay !== null) {
-    const todayStart = startOfTaskDay(value);
-    const daysUntil = (allowedDay - currentDay + 7) % 7 || 7;
-    nextAvailableAt = new Date(todayStart.getTime() + daysUntil * 24 * 60 * 60 * 1000).toISOString();
-  }
-
   return {
     tierCode: normalizedTier,
-    allowedDay,
-    allowedDayName,
-    currentDay,
-    allowed,
+    allowedDay: null,
+    allowedDayName: 'كل أيام الأسبوع',
+    currentDay: getTaskDay(value),
+    allowed: true,
     timezone: TASK_TIME_ZONE,
-    nextAvailableAt,
-    message: allowed
-      ? `يمكنك تقديم طلب السحب اليوم (${allowedDayName}، ${TASK_TIME_ZONE}).`
-      : `طلبات السحب لهذا المستوى متاحة يوم ${allowedDayName} فقط (${TASK_TIME_ZONE}).`
+    nextAvailableAt: null,
+    message: `يمكنك تقديم طلب السحب يوميًا، طوال أيام الأسبوع (${TASK_TIME_ZONE}).`
   };
 }
 

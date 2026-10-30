@@ -2013,13 +2013,10 @@ function isWeeklyTaskHoliday(date = new Date()) {
 
 function getTierWithdrawalSchedule(tierCode = currentUserData?.tierCode || currentUserTier, date = new Date()) {
     const normalizedTier = String(tierCode || '').trim().toUpperCase();
-    const allowedDay = normalizedTier === 'A1' || normalizedTier === 'A2' ? 5 : 6;
-    const allowedDayName = allowedDay === 5 ? 'الجمعة' : 'السبت';
     const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Istanbul', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date);
     const values = Object.fromEntries(parts.filter(part => part.type !== 'literal').map(part => [part.type, Number(part.value)]));
     const currentDay = new Date(Date.UTC(values.year, values.month - 1, values.day)).getUTCDay();
-    const allowed = currentDay === allowedDay;
-    return { allowed, allowedDay, allowedDayName, currentDay, tierCode: normalizedTier, timezone: 'Europe/Istanbul' };
+    return { allowed: true, allowedDay: null, allowedDayName: 'كل أيام الأسبوع', currentDay, tierCode: normalizedTier, timezone: 'Europe/Istanbul' };
 }
 
 function getActiveTaskTier() {
@@ -3417,9 +3414,7 @@ function syncWithdrawalScheduleUI() {
     updateWithdrawalMinimumUI();
     const todayName = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'][schedule.currentDay];
     if (status) {
-        status.innerText = schedule.allowed
-            ? `السحب لمستوى ${schedule.tierCode} متاح اليوم (${todayName})، بحد أدنى ${minimum} USDT. جميع المواعيد وفق توقيت إسطنبول.`
-            : `الحد الأدنى للسحب لمستوى ${schedule.tierCode}: ${minimum} USDT. موعد السحب يوم ${schedule.allowedDayName} فقط؛ اليوم ${todayName}. يمكنك طلب رمز التحقق عبر البريد الآن وإتمام السحب في الموعد. (توقيت إسطنبول)`;
+        status.innerText = `السحب متاح يوميًا لمستوى ${schedule.tierCode}، طوال أيام الأسبوع. الحد الأدنى ${minimum} USDT. اليوم ${todayName} (توقيت إسطنبول).`;
         status.classList.toggle('border-emerald-500/20', schedule.allowed);
         status.classList.toggle('bg-emerald-500/5', schedule.allowed);
         status.classList.toggle('text-emerald-100', schedule.allowed);
@@ -3429,7 +3424,7 @@ function syncWithdrawalScheduleUI() {
     }
     if (button && !button.dataset.submitting) {
         const codeRequested = !document.getElementById('withdrawEmailCodePanel')?.classList.contains('hidden');
-        button.disabled = !schedule.allowed && codeRequested;
+        button.disabled = false;
         button.classList.toggle('opacity-50', button.disabled);
         button.classList.toggle('cursor-not-allowed', button.disabled);
         button.innerText = codeRequested ? 'تأكيد طلب السحب' : 'إرسال رمز التأكيد إلى البريد';
@@ -3566,14 +3561,9 @@ async function submitWithdraw() {
     const walletNetwork = document.getElementById('withdrawWalletNetwork').value;
     const token = localStorage.getItem('token');
     const btn = document.getElementById('btnSubmitWithdraw');
-    const schedule = syncWithdrawalScheduleUI();
+    syncWithdrawalScheduleUI();
 
     const emailCode = document.getElementById('withdrawEmailCode').value.trim();
-    if (!schedule.allowed && emailCode) {
-        showToast(`السحب لمستوى ${schedule.tierCode} متاح يوم ${schedule.allowedDayName} فقط. يمكنك إتمامه في ذلك اليوم (توقيت إسطنبول).`);
-        return;
-    }
-
     const minimumWithdrawalAmount = getClientMinimumWithdrawalAmount();
     if (!Number.isFinite(amount) || amount < minimumWithdrawalAmount) {
         showToast(`الحد الأدنى للسحب لمستوى ${currentUserTier || 'الحساب'} هو ${minimumWithdrawalAmount} USDT.`);
@@ -3612,7 +3602,7 @@ async function submitWithdraw() {
             return;
         }
         if(res.ok) {
-            showToast('تم تقديم طلب السحب بنجاح، وسيتم معالجته وفقًا للجدول المعلن.');
+            showToast('تم تقديم طلب السحب بنجاح، وسيتم معالجته وفق إجراءات المنصة.');
             closeWithdrawModal();
             sessionStorage.removeItem('operix_withdraw_key');
             sessionStorage.removeItem('operix_withdraw_intent');
@@ -3622,7 +3612,6 @@ async function submitWithdraw() {
             if (data.wallet) updateWalletData(data.wallet);
             await loadUserProfile();
         } else {
-            if (data.code === 'WITHDRAWAL_DAY_NOT_ALLOWED') syncWithdrawalScheduleUI();
             showToast(data.error || 'تعذر إكمال طلب السحب.');
         }
     } catch(err) {
