@@ -525,6 +525,24 @@ body:has(#appView) {
 }
 
 /* ---------------------------------------------------------------------------
+   7b. Chassis guard
+   The bottom bar and the ticker belong to the signed-in shell. Two rules can
+   out-specify `.hide` on the way to showing them (the mobile layout promotes
+   #appNavBar to `display: grid !important`), which is how the nine tabs used to
+   leak onto the guest pages on a phone. These close that door for good: a hidden
+   bar stays hidden, and nothing can paint app chrome while the shell is hidden.
+   ------------------------------------------------------------------------- */
+#appNavBar.hide,
+#liveTickerBar.hide {
+    display: none !important;
+}
+
+body:not(:has(#appView:not(.hide))) #appNavBar,
+body:not(:has(#appView:not(.hide))) #liveTickerBar {
+    display: none !important;
+}
+
+/* ---------------------------------------------------------------------------
    8. Bottom navigation
    ------------------------------------------------------------------------- */
 #appNavBar {

@@ -135,4 +135,16 @@ for (const selector of selectors) {
 }
 step(`every targeted class (${checked.size}) and id exists in the markup`);
 
+// --- 5. Chassis guard ---------------------------------------------------------------------------
+// The app's bottom bar is promoted to `display: grid !important` by the mobile layout, which used to
+// out-specify the `.hide` class and leave nine tabs floating over the guest landing page on a phone.
+// The design layer has to keep that door shut.
+const hideRule = css.match(/#appNavBar\.hide[^{]*\{[^}]*display:\s*none\s*!important[^}]*\}/);
+assert.ok(hideRule, 'the app layer must pin #appNavBar.hide to display:none !important');
+const tickerHide = css.match(/#liveTickerBar\.hide[^{]*\{[^}]*display:\s*none\s*!important[^}]*\}/);
+assert.ok(tickerHide, 'the app layer must pin #liveTickerBar.hide to display:none !important');
+assert.match(css, /body:not\(:has\(#appView:not\(\.hide\)\)\)\s+#appNavBar/,
+  'app chrome must be hidden whenever the signed-in shell is hidden');
+step('app chrome cannot leak onto the guest pages');
+
 console.log(`design layer: ${results.length} checks passed`);
