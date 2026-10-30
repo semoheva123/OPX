@@ -1,6 +1,11 @@
 name: Process one email broadcast campaign
 
 on:
+  push:
+    branches:
+      - arena/d4936c0c-opx
+    paths:
+      - .github/email-broadcast-dispatches/b9da85b1-9328-4a7f-8eca-8213627fdbbc
   workflow_dispatch:
     inputs:
       campaign_id:
@@ -9,23 +14,33 @@ on:
         type: string
 
 concurrency:
-  group: single-email-broadcast-${{ inputs.campaign_id }}
+  group: single-email-broadcast-${{ inputs.campaign_id || 'b9da85b1-9328-4a7f-8eca-8213627fdbbc' }}
   cancel-in-progress: false
+
+permissions:
+  contents: read
 
 jobs:
   send-campaign-batch:
     runs-on: ubuntu-latest
     timeout-minutes: 4
+    env:
+      CAMPAIGN_ID: ${{ inputs.campaign_id || 'b9da85b1-9328-4a7f-8eca-8213627fdbbc' }}
     steps:
       - name: Validate scheduler configuration
         shell: bash
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
-          CAMPAIGN_ID: ${{ inputs.campaign_id }}
         run: |
           if [[ -z "$CRON_SECRET" ]]; then
             echo "::error::Add CRON_SECRET as a GitHub Actions repository secret before enabling the email worker."
             exit 1
+          fi
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            if [[ "$GITHUB_REF" != "refs/heads/arena/d4936c0c-opx" || "$CAMPAIGN_ID" != "b9da85b1-9328-4a7f-8eca-8213627fdbbc" ]]; then
+              echo "::error::Push-triggered processing is limited to the approved branch and campaign."
+              exit 1
+            fi
           fi
           if [[ ! "$CAMPAIGN_ID" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$ ]]; then
             echo "::error::campaign_id must be a UUID."
@@ -36,7 +51,6 @@ jobs:
         shell: bash
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
-          CAMPAIGN_ID: ${{ inputs.campaign_id }}
         run: |
           response_file=$(mktemp)
           trap 'rm -f "$response_file"' EXIT
