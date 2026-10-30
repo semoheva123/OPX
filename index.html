@@ -1432,11 +1432,25 @@
     </div>
 
     <script>
-        // The service worker gives offline access to the shell and caches static assets only;
-        // /api/* responses are never cached, so balances and tickets always come from the network.
+        // The service worker gives offline access to the shell; /api/* is never cached. It always
+        // revalidates from the network first, and updateViaCache:'none' makes sure a new worker is
+        // picked up on the next navigation instead of after the browser's 24-hour script cache.
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () {
-                navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function () {});
+                navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' }).then(function (registration) {
+                    registration.update().catch(function () {});
+                }).catch(function () {});
+                var reloadingForNewWorker = false;
+                navigator.serviceWorker.addEventListener('controllerchange', function () {
+                    if (reloadingForNewWorker) return;
+                    reloadingForNewWorker = true;
+                    // A worker that has just taken over may still have served this page with the
+                    // previous bundle; one reload guarantees the page runs the current one.
+                    if (sessionStorage.getItem('operix_sw_reloaded') !== location.pathname) {
+                        sessionStorage.setItem('operix_sw_reloaded', location.pathname);
+                        location.reload();
+                    }
+                });
             });
         }
 

@@ -2,10 +2,10 @@
 //
 // Rules:
 //   * Never cache /api/* — balances, tickets and deposits must always come from the network.
-//   * Navigations are network-first, so a deploy is visible immediately; the cached offline page is
-//     only used when the network is unreachable.
-//   * Static assets use stale-while-revalidate: an instant cached response plus a background update.
-const CACHE_VERSION = 'operix-v20261031-1';
+//   * Everything else is network-first: a deploy must reach the browser on the first load. The cache
+//     is only a fallback for a dead connection. Serving scripts from the cache first (the previous
+//     strategy) kept users on the bundle of the *previous* release after every deploy.
+const CACHE_VERSION = 'operix-v20261104-2';
 const OFFLINE_URL = '/offline.html';
 const PRECACHE = [OFFLINE_URL, '/operix-icon.svg', '/dist/tailwind.css', '/styles/operix-premium.css'];
 const CACHEABLE_DESTINATIONS = new Set(['script', 'style', 'font', 'image']);
@@ -41,14 +41,16 @@ async function networkFirstNavigation(request) {
   }
 }
 
-async function staleWhileRevalidate(request) {
+async function networkFirstAsset(request) {
   const cache = await caches.open(CACHE_VERSION);
-  const cached = await cache.match(request);
-  const network = fetch(request).then(response => {
+  try {
+    const response = await fetch(request);
     if (response && response.ok && response.type === 'basic') cache.put(request, response.clone()).catch(() => {});
     return response;
-  }).catch(() => null);
-  return cached || (await network) || new Response('', { status: 504 });
+  } catch (error) {
+    const cached = await cache.match(request);
+    return cached || new Response('', { status: 504, statusText: 'Offline' });
+  }
 }
 
 self.addEventListener('fetch', event => {
@@ -62,7 +64,7 @@ self.addEventListener('fetch', event => {
     return;
   }
   if (CACHEABLE_DESTINATIONS.has(request.destination) || /\.(css|js|svg|png|jpg|jpeg|webp|woff2?)$/i.test(url.pathname)) {
-    event.respondWith(staleWhileRevalidate(request));
+    event.respondWith(networkFirstAsset(request));
   }
 });
 

@@ -103,6 +103,26 @@ let liveTickerTimer = null;
 let liveTickerRefreshTimer = null;
 let homeSummaryRetryTimer = null;
 
+// --- Build freshness guard -------------------------------------------------------------------
+// The HTML is served with `no-store` and carries <meta name="operix-build">, while this file is
+// requested as /app.js?v=<build>. If an older bundle is handed back anyway (stale tab, CDN, an old
+// service worker cache), the page reloads once so the UI always runs the deployed code. A stale
+// bundle was why a shipped fix could appear "not to work" until the user hard-reloaded.
+(function ensureFreshBundle() {
+    try {
+        const meta = document.querySelector('meta[name="operix-build"]');
+        const script = [...document.querySelectorAll('script[src]')].find(tag => /(^|\/)app\.js(\?|$)/.test(tag.getAttribute('src') || ''));
+        if (!meta || !script) return;
+        const expected = String(meta.getAttribute('content') || '').trim();
+        const loaded = new URL(script.src, location.href).searchParams.get('v') || '';
+        window.__OPERIX_BUILD = loaded || 'unknown';
+        if (!expected || !loaded || loaded === expected) return;
+        if (sessionStorage.getItem('operix_build_reload') === expected) return;
+        sessionStorage.setItem('operix_build_reload', expected);
+        location.reload();
+    } catch (error) { }
+})();
+
 // Records browser-side failures on the server so a broken deploy or a device-specific crash is
 // visible in the logs. Reports are de-duplicated per session and never block the UI.
 const reportedClientErrors = new Set();

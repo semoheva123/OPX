@@ -112,6 +112,19 @@ const visible = (window, id) => {
 
   assert.deepEqual(pageErrors, [], 'logout must not raise page errors');
 
+  // A browser that still holds an older bundle must correct itself instead of showing stale UI.
+  // The external bundle was stripped above, so the stale page is rebuilt with the old build id.
+  const staleHtml = html.replace('</head>', '<meta name="operix-build" content="newbuild">\n<script src="app.js?v=oldbuild"></script>\n</head>');
+  const staleConsole = new VirtualConsole();
+  const staleDom = new JSDOM(staleHtml, { runScripts: 'dangerously', pretendToBeVisual: true, url: 'https://operix.website/', virtualConsole: staleConsole });
+  staleDom.window.fetch = () => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ success: true }) });
+  staleDom.window.matchMedia = staleDom.window.matchMedia || (() => ({ matches: false, addEventListener() {}, removeEventListener() {} }));
+  staleDom.window.eval(clientSource);
+  assert.equal(staleDom.window.sessionStorage.getItem('operix_build_reload'), 'newbuild',
+    'a page running an older bundle must schedule exactly one reload of the current build');
+  assert.equal(staleDom.window.__OPERIX_BUILD, 'oldbuild', 'the bundle must expose the build it was loaded as');
+  step('runtime: an older cached bundle triggers a single self-heal reload');
+
   console.log(`Logout shell tests: ok (${results.length} checks)`);
   process.exit(0);
 })().catch(error => {

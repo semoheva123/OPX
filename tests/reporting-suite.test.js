@@ -109,9 +109,21 @@ step('the service worker caches the shell but never the API', () => {
   assert.doesNotMatch(sw, /unregister/, 'sw.js must not unregister itself');
   assert.match(sw, /url\.pathname\.startsWith\('\/api\/'\)\) return;/, 'API responses must bypass the cache');
   assert.match(sw, /networkFirstNavigation/);
+  assert.match(sw, /networkFirstAsset/, 'static assets must try the network first so a deploy is not masked');
+  assert.doesNotMatch(sw, /staleWhileRevalidate/, 'cache-first scripts kept users on the previous release');
   assert.match(sw, /'push'/);
   assert.match(read('index.html'), /navigator\.serviceWorker\.register\('\/sw\.js'/, 'index.html must register the worker');
   assert.ok(fs.existsSync(path.join(root, 'offline.html')));
+});
+
+step('the served page pins a cache-busting build id', () => {
+  const appSource = read('src/app.js');
+  assert.match(appSource, /app\\.js\[\^"\]\*/g, 'the page must be rewritten with a build query string');
+  assert.match(appSource, /<meta name="operix-build" content="\$\{clientBuild\}">/, 'the page must expose the build id it expects');
+  assert.match(appSource, /X-Operix-Build/, 'responses must expose the build id for diagnostics');
+  const client = read('app.js');
+  assert.match(client, /function ensureFreshBundle\(\)/, 'the client must detect that it is running an older bundle');
+  assert.match(client, /sessionStorage\.setItem\('operix_build_reload', expected\)/, 'the reload must happen at most once per build');
 });
 
 step('app.js is served minified with a revalidating cache policy', () => {
@@ -164,6 +176,12 @@ async function live() {
     assert.equal(page.headers['referrer-policy'], 'strict-origin-when-cross-origin');
     assert.match(page.headers['strict-transport-security'] || '', /max-age=15552000/);
     assert.ok(page.headers['x-request-id'], 'every response must expose a request id');
+
+    const manifest = JSON.parse(read('dist/app-manifest.json'));
+    assert.match(page.body, new RegExp(`<meta name="operix-build" content="${manifest.sourceHash}">`),
+      'the served page must carry the current build id');
+    assert.match(page.body, new RegExp(`app\\.js\\?v=${manifest.sourceHash}`), 'the script tag must be cache-busted per build');
+    assert.equal(page.headers['x-operix-build'], manifest.sourceHash, 'the build id must be exposed as a header');
 
     const script = await request(port, 'GET', '/app.js');
     assert.equal(script.status, 200);
