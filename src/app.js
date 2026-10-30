@@ -232,6 +232,8 @@ function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
   app.get('/app.js', (req, res) => sendNoStoreStatic(req, res, 'app.js'));
   app.get('/sw.js', (req, res) => sendNoStoreStatic(req, res, 'sw.js'));
 
+  // Legacy bookmark: /admin must not bypass the console gate.
+  app.get('/admin', verifyAdmin, (req, res) => res.redirect(302, '/admin.html'));
   app.get('/admin.html', verifyAdmin, (req, res) => res.sendFile(path.join(__dirname, '..', 'admin.html'), {
     headers: { 'Cache-Control': 'no-store, max-age=0, must-revalidate', 'X-Content-Type-Options': 'nosniff', 'X-Robots-Tag': 'noindex, nofollow' }
   }));

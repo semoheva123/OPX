@@ -75,11 +75,12 @@ assert.match(adminHtml, /monitor: \['read_overview', 'read_users', 'read_audit',
 assert.match(adminHtml, /function tabAllowed\(tab\)/, 'client must enforce tab permissions');
 assert.match(adminHtml, /applyRoleVisibility\(\);\n            markAdminSync\(\);|applyRoleVisibility\(\);/, 'role visibility must be re-applied after tab switches');
 
-async function request(port, method, urlPath, { origin, body } = {}) {
+async function request(port, method, urlPath, { origin, body, Accept } = {}) {
   return new Promise((resolve, reject) => {
     const payload = body ? JSON.stringify(body) : null;
     const headers = { 'Content-Type': 'application/json' };
     if (origin) headers.Origin = origin;
+    if (Accept) headers.Accept = Accept;
     if (payload) headers['Content-Length'] = Buffer.byteLength(payload);
     const req = http.request({ hostname: '127.0.0.1', port, path: urlPath, method, headers }, response => {
       let data = '';
@@ -130,6 +131,13 @@ async function run() {
     const adminPage = await request(port, 'GET', '/admin.html');
     assert.equal(adminPage.status, 302, 'admin.html must not be served without an admin session');
     assert.equal(adminPage.headers?.location, '/admin-login.html', 'unauthenticated admin visits must be redirected to the login page');
+
+    const legacyAdminPage = await request(port, 'GET', '/admin', { Accept: 'text/html' });
+    assert.equal(legacyAdminPage.status, 302, '/admin must follow the same gate as /admin.html');
+    assert.equal(legacyAdminPage.headers?.location, '/admin-login.html', '/admin must redirect guests to the login page');
+
+    const legacyAdminApi = await request(port, 'GET', '/admin', { Accept: 'application/json' });
+    assert.equal(legacyAdminApi.status, 401, 'non-browser callers must still receive an explicit 401');
 
     console.log('admin console hardening tests: ok');
   } finally {

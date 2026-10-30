@@ -16,9 +16,9 @@ const webpush = require('web-push');
 const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 const createApp = require('./src/app');
+const { verifyAdmin } = require('./src/middlewares/auth');
 const { connectDatabase, closeDatabase, getDatabaseMode } = require('./src/config/database');
 const dataAccess = require('./src/services/dataAccess');
-const { verifyAdmin } = require('./src/middlewares/auth');
 const User = dataAccess.user;
 const Transaction = dataAccess.transaction;
 const Staking = dataAccess.staking;
@@ -1075,10 +1075,8 @@ app.post('/api/wallet/withdraw', verifyToken, async (req, res) => {
 
 // ==================== 5. مسارات الإدارة (Admin APIs) ====================
 
-// 🔐 لوحة التحكم الإدارية — محمية بجلسة إدارية، وتُحوّل الزوار إلى صفحة الدخول
-app.get('/admin', verifyAdmin, (req, res) => {
-  res.redirect(302, '/admin.html');
-});
+// 🔐 لوحة التحكم الإدارية — المحمية موجودة في src/app.js (هذا الملف يُسجّل مساراته بعد
+// معالج 404 في createApp، فأي مسار هنا لن يُنفَّذ؛ أُبقيت الإشارة للتوثيق فقط).
 /*
 // 💎 إضافة أو تعديل مستوى VIP من الأدمن
 app.post('/api/admin/vip-levels', verifyAdmin, async (req, res) => {
