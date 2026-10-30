@@ -1,0 +1,1051 @@
+/* ============================================================================
+   OPERIX — Royal Black design layer (guest experience)
+   ----------------------------------------------------------------------------
+   The public face of the product: the landing section (#companyIntroView), the
+   sign-in / sign-up screen (#authView) and the visitor-facing product tour.
+
+   Same ink-and-gold identity as the signed-in app (styles/operix-royal.css), at
+   a more composed pace: deeper black, larger display type, gold foil only where
+   the eye should land, hairline rules instead of coloured boxes.
+
+   Rules of the layer
+   · Presentation only — no layout, no behaviour.
+   · Scoped to the guest surfaces; the marketing sub-pages and the admin console
+     are not touched.
+   · Every selector matches real markup (verified with a DOM scan before commit).
+   ========================================================================== */
+
+#companyIntroView,
+#authView,
+#productTourModal {
+    --ink-950: #04060a;
+    --ink-900: #070a10;
+    --ink-850: #0a0e15;
+    --ink-800: #0d121b;
+    --line-soft: rgba(148, 163, 184, .10);
+    --line: rgba(203, 175, 116, .17);
+    --line-strong: rgba(216, 178, 103, .38);
+    --gold-050: #fff8e7;
+    --gold-100: #f8ebcb;
+    --gold-200: #efd9a8;
+    --gold-300: #e3c57f;
+    --gold-400: #d8b267;
+    --gold-500: #c49a4e;
+    --gold-600: #a87f35;
+    --text-primary: #edf0f5;
+    --text-secondary: #b9c2ce;
+    --text-muted: #8d99a9;
+    --text-faint: #6e7a8b;
+    --shadow-raise: 0 1px 0 rgba(255, 255, 255, .04) inset, 0 20px 46px -24px rgba(0, 0, 0, .92);
+    --shadow-float: 0 1px 0 rgba(255, 255, 255, .05) inset, 0 34px 74px -34px rgba(0, 0, 0, .96);
+    --shadow-gold: 0 18px 40px -20px rgba(200, 155, 74, .55);
+    --ease: cubic-bezier(.22, .61, .36, 1);
+}
+
+/* ---------------------------------------------------------------------------
+   1. Scene — one deep field, one warm light source, one hairline grid
+   ------------------------------------------------------------------------- */
+#companyIntroView.company-intro {
+    position: relative;
+    background-color: var(--ink-950);
+    background-image:
+        radial-gradient(1500px 760px at 50% -18%, rgba(200, 155, 74, .16), transparent 62%),
+        radial-gradient(900px 560px at 92% 16%, rgba(216, 178, 103, .07), transparent 60%),
+        radial-gradient(1100px 700px at 4% 96%, rgba(94, 128, 176, .06), transparent 62%),
+        linear-gradient(180deg, #05070b 0%, #070a10 44%, #04060a 100%);
+}
+
+/* The 36px slate lattice becomes a fine, fading royal grid. */
+#companyIntroView.company-intro.intro-grid {
+    background-image:
+        radial-gradient(1500px 760px at 50% -18%, rgba(200, 155, 74, .16), transparent 62%),
+        radial-gradient(900px 560px at 92% 16%, rgba(216, 178, 103, .07), transparent 60%),
+        radial-gradient(1100px 700px at 4% 96%, rgba(94, 128, 176, .06), transparent 62%),
+        linear-gradient(rgba(255, 255, 255, .014) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, .014) 1px, transparent 1px),
+        linear-gradient(180deg, #05070b 0%, #070a10 44%, #04060a 100%);
+    background-size: auto, auto, auto, 56px 56px, 56px 56px, auto;
+}
+
+/* ---------------------------------------------------------------------------
+   2. Type — display scale, one warm grey ramp
+   ------------------------------------------------------------------------- */
+#companyIntroView h1 {
+    color: var(--text-primary);
+    font-size: clamp(2.35rem, 5.2vw, 4.05rem);
+    font-weight: 900;
+    line-height: 1.22;
+    letter-spacing: -.035em;
+    text-wrap: balance;
+}
+
+/* The one piece of gold foil in the headline. */
+#companyIntroView h1 span {
+    color: var(--gold-200);
+    background-image: linear-gradient(180deg, var(--gold-050) 0%, var(--gold-300) 54%, var(--gold-500) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    padding-bottom: .06em;
+}
+
+#companyIntroView h2 {
+    color: var(--text-primary);
+    letter-spacing: -.022em;
+    line-height: 1.42;
+}
+
+#companyIntroView h3 {
+    color: var(--text-primary);
+    letter-spacing: -.012em;
+}
+
+#companyIntroView p {
+    line-height: 1.9;
+}
+
+#companyIntroView .text-slate-500 {
+    color: var(--text-faint);
+}
+
+#companyIntroView .text-slate-400 {
+    color: var(--text-muted);
+}
+
+#companyIntroView .text-slate-300 {
+    color: var(--text-secondary);
+}
+
+#companyIntroView .text-slate-200 {
+    color: #d6dde7;
+}
+
+#companyIntroView .text-white {
+    color: var(--text-primary);
+}
+
+/* Cool accents retire; the palette is gold, ink and a whisper of steel. */
+#companyIntroView .text-cyan-200,
+#companyIntroView .text-cyan-300 {
+    color: #cfdae7;
+}
+
+#companyIntroView .text-amber-200,
+#companyIntroView .text-amber-300,
+#companyIntroView .text-amber-400 {
+    color: var(--gold-300);
+}
+
+#companyIntroView .text-emerald-400 {
+    color: #8fbfa3;
+}
+
+/* ---------------------------------------------------------------------------
+   3. Header — a floating hairline bar, not a card
+   ------------------------------------------------------------------------- */
+.company-intro > div > header {
+    top: 12px;
+    padding: 10px 14px;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background-color: rgba(6, 9, 14, .7);
+    background-image: linear-gradient(180deg, rgba(24, 30, 40, .55), rgba(6, 9, 14, .72));
+    box-shadow: 0 1px 0 rgba(255, 255, 255, .05) inset, 0 18px 44px -26px rgba(0, 0, 0, .95);
+    backdrop-filter: blur(22px) saturate(140%);
+    -webkit-backdrop-filter: blur(22px) saturate(140%);
+}
+
+.company-intro > div > header img {
+    filter: drop-shadow(0 6px 18px rgba(200, 155, 74, .22));
+}
+
+.company-intro > div > header a {
+    color: var(--text-muted);
+    transition: color .18s var(--ease);
+}
+
+.company-intro > div > header a:hover {
+    color: var(--gold-200);
+}
+
+/* Ghost login + gold pill, the standard pair from here on. */
+.company-intro > div > header button {
+    border-radius: 999px;
+    color: var(--text-secondary);
+    transition: color .18s var(--ease), border-color .18s var(--ease), box-shadow .18s var(--ease), transform .12s var(--ease);
+}
+
+.company-intro > div > header button:hover {
+    color: var(--gold-200);
+}
+
+.company-intro > div > header button[class*="bg-amber-500"] {
+    color: #1a1206;
+    background-image: linear-gradient(180deg, var(--gold-200), var(--gold-500));
+    box-shadow: var(--shadow-gold), 0 1px 0 rgba(255, 255, 255, .55) inset;
+}
+
+.company-intro > div > header button[class*="bg-amber-500"]:hover {
+    color: #1a1206;
+    filter: brightness(1.05);
+}
+
+/* ---------------------------------------------------------------------------
+   4. Trust strip — three quiet cells divided by hairlines
+   ------------------------------------------------------------------------- */
+.company-intro .trust-strip {
+    gap: 1px;
+    margin-top: 22px;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background-image: linear-gradient(90deg, rgba(216, 178, 103, .28), rgba(148, 163, 184, .14) 55%, rgba(216, 178, 103, .28));
+    box-shadow: var(--shadow-raise);
+}
+
+.company-intro .trust-item {
+    min-height: 68px;
+    padding: 13px 16px;
+    background-color: #070a10;
+    background-image: linear-gradient(180deg, #0a0e15, #06090e);
+}
+
+.company-intro .trust-item > i {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    flex: 0 0 30px;
+    border: 1px solid var(--line-strong);
+    border-radius: 9px;
+    background-image: linear-gradient(160deg, rgba(216, 178, 103, .18), rgba(216, 178, 103, .04));
+    color: var(--gold-300);
+    font-size: 12px;
+}
+
+.company-intro .trust-item b {
+    color: var(--text-primary);
+    font-size: 11.5px;
+    font-weight: 800;
+    letter-spacing: -.005em;
+}
+
+.company-intro .trust-item small {
+    color: var(--text-faint);
+    font-size: 9.5px;
+    line-height: 1.7;
+}
+
+.company-intro .trust-item a {
+    color: var(--gold-300);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(216, 178, 103, .4);
+}
+
+.company-intro .trust-item a:hover {
+    color: var(--gold-100);
+    border-bottom-color: var(--gold-300);
+}
+
+/* ---------------------------------------------------------------------------
+   5. Rewards campaign — the one gilded frame on the page
+   ------------------------------------------------------------------------- */
+.company-intro .rewards-campaign {
+    margin-top: 18px;
+    padding: clamp(20px, 3.4vw, 38px);
+    border: 1px solid var(--line-strong);
+    border-radius: 28px;
+    background-image:
+        radial-gradient(ellipse at 100% 0%, rgba(216, 178, 103, .13), transparent 44%),
+        linear-gradient(150deg, #0c1119 0%, #080b11 58%, #06090e 100%);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, .05) inset, 0 34px 80px -40px rgba(0, 0, 0, .96);
+}
+
+/* Replace the diagonal white sweep with a still hairline of light. */
+.company-intro .rewards-campaign::before {
+    inset: 0;
+    background-image: linear-gradient(180deg, rgba(255, 255, 255, .05), transparent 22%);
+    opacity: .55;
+}
+
+.company-intro .reward-campaign-heading {
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--line);
+}
+
+.company-intro .reward-campaign-kicker {
+    padding: 7px 13px;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    background-image: linear-gradient(160deg, rgba(216, 178, 103, .16), rgba(216, 178, 103, .04));
+    color: var(--gold-200);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .06em;
+    box-shadow: none;
+}
+
+.company-intro .reward-campaign-title {
+    color: var(--text-primary);
+    font-size: clamp(24px, 3.4vw, 34px);
+    font-weight: 900;
+    letter-spacing: -.03em;
+    text-shadow: none;
+}
+
+.company-intro .reward-campaign-subtitle {
+    color: var(--text-muted);
+    font-size: 12.5px;
+    line-height: 1.85;
+}
+
+.company-intro .reward-campaign-cta {
+    min-height: 44px;
+    padding: 0 20px;
+    border: 1px solid rgba(255, 240, 205, .42);
+    border-radius: 999px;
+    background-image: linear-gradient(180deg, var(--gold-200), var(--gold-500));
+    color: #17110a;
+    font-size: 12px;
+    font-weight: 900;
+    box-shadow: var(--shadow-gold), 0 1px 0 rgba(255, 255, 255, .5) inset;
+}
+
+.company-intro .reward-campaign-cta:hover {
+    color: #17110a;
+    transform: translateY(-1px);
+    box-shadow: 0 22px 46px -22px rgba(200, 155, 74, .7), 0 1px 0 rgba(255, 255, 255, .55) inset;
+}
+
+.company-intro .reward-prize-grid {
+    gap: 14px;
+}
+
+.company-intro .reward-prize-card {
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    background-image: linear-gradient(160deg, #0d121b, #070a10);
+    box-shadow: var(--shadow-raise);
+    transition: transform .3s var(--ease), border-color .3s var(--ease), box-shadow .3s var(--ease);
+}
+
+.company-intro .reward-prize-card:hover {
+    border-color: var(--line-strong);
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-float);
+}
+
+.company-intro .reward-prize-card--grand {
+    border-color: rgba(216, 178, 103, .5);
+    background-image:
+        radial-gradient(ellipse at 50% 0%, rgba(216, 178, 103, .12), transparent 62%),
+        linear-gradient(160deg, #10141d, #070a10);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, .06) inset, 0 26px 60px -30px rgba(0, 0, 0, .96);
+}
+
+.company-intro .reward-prize-art {
+    height: 172px;
+    border-bottom: 1px solid var(--line-soft);
+    background-color: #06090e;
+}
+
+.company-intro .reward-prize-art img {
+    filter: drop-shadow(0 16px 20px rgba(0, 0, 0, .5));
+}
+
+.company-intro .reward-prize-copy {
+    padding: 16px;
+}
+
+.company-intro .reward-prize-place {
+    color: var(--text-faint);
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+}
+
+.company-intro .reward-points {
+    padding: 6px 10px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background-image: linear-gradient(160deg, rgba(216, 178, 103, .14), rgba(216, 178, 103, .03));
+    color: var(--gold-200);
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.company-intro .reward-prize-name {
+    margin: 11px 0 4px;
+    color: var(--text-primary);
+    font-size: 15px;
+    font-weight: 900;
+    letter-spacing: -.015em;
+}
+
+.company-intro .reward-prize-detail {
+    color: var(--text-faint);
+    font-size: 10.5px;
+    line-height: 1.8;
+}
+
+/* The four prize cards keep their own hue, but the glow behind them is warm. */
+.company-intro .reward-prize-art--cyan {
+    --reward-glow: rgba(148, 163, 184, .14);
+}
+
+.company-intro .reward-prize-art--violet {
+    --reward-glow: rgba(148, 163, 184, .12);
+}
+
+.company-intro .reward-prize-art--cash {
+    --reward-glow: rgba(143, 191, 163, .13);
+}
+
+.company-intro .reward-cash-visual {
+    width: 84px;
+    height: 84px;
+    border: 1px solid var(--line-strong);
+    background-image: radial-gradient(circle at 50% 30%, rgba(216, 178, 103, .22), transparent 66%);
+    color: var(--gold-300);
+    box-shadow: 0 0 32px -12px rgba(216, 178, 103, .5);
+}
+
+.company-intro .reward-campaign-note {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+    color: var(--text-faint);
+    line-height: 1.85;
+}
+
+.company-intro .reward-campaign-note i {
+    color: var(--gold-400);
+}
+
+.company-intro .reward-photo-credit {
+    color: #5d6877;
+}
+
+.company-intro .reward-photo-credit a {
+    color: var(--text-muted);
+    text-decoration: none;
+    border-bottom: 1px solid var(--line);
+}
+
+.company-intro .campaign-leaderboard {
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background-color: rgba(6, 9, 14, .7);
+}
+
+.company-intro .campaign-leaderboard summary {
+    color: var(--text-secondary);
+}
+
+/* ---------------------------------------------------------------------------
+   6. Hero
+   ------------------------------------------------------------------------- */
+/* Kickers, pills and tags above the headline. */
+.company-intro .intro-reveal > span[class*="border-cyan-400"] {
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    background-image: linear-gradient(160deg, rgba(216, 178, 103, .14), rgba(216, 178, 103, .03));
+    color: var(--gold-200);
+    font-weight: 800;
+    letter-spacing: .02em;
+}
+
+.company-intro .intro-reveal > span[class*="border-cyan-400"] i {
+    color: var(--gold-300);
+}
+
+/* Primary / secondary / tertiary action row. */
+.company-intro .gold-gradient {
+    color: #17110a;
+    border: 1px solid rgba(255, 240, 205, .45);
+    background-image: linear-gradient(180deg, var(--gold-200) 0%, var(--gold-400) 52%, var(--gold-500) 100%);
+    font-weight: 900;
+    box-shadow: var(--shadow-gold), 0 1px 0 rgba(255, 255, 255, .55) inset;
+    transition: filter .18s var(--ease), box-shadow .18s var(--ease), transform .12s var(--ease);
+}
+
+.company-intro .gold-gradient:hover {
+    filter: brightness(1.05);
+    box-shadow: 0 24px 48px -22px rgba(200, 155, 74, .72), 0 1px 0 rgba(255, 255, 255, .6) inset;
+}
+
+.company-intro .gold-gradient:not(:disabled):active {
+    transform: scale(.988);
+}
+
+/* Ghost button: hairline, warm on hover. */
+.company-intro button[class*="bg-slate-900"] {
+    border: 1px solid var(--line);
+    color: var(--text-secondary);
+    background-color: rgba(10, 14, 21, .72);
+    transition: border-color .18s var(--ease), color .18s var(--ease), background-color .18s var(--ease);
+}
+
+.company-intro button[class*="bg-slate-900"]:hover {
+    border-color: var(--line-strong);
+    color: var(--gold-200);
+    background-color: rgba(16, 21, 30, .9);
+}
+
+/* Quiet tertiary button (product tour). */
+.company-intro button[class*="border-cyan-400"] {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background-color: rgba(10, 14, 21, .6);
+    color: var(--text-secondary);
+}
+
+.company-intro button[class*="border-cyan-400"]:hover {
+    border-color: var(--line-strong);
+    color: var(--gold-200);
+}
+
+.company-intro .intro-reveal .fa-arrow-left,
+.company-intro .intro-reveal .fa-play {
+    color: var(--gold-300) !important;
+}
+
+/* Hero statistics on hairline rules. */
+.company-intro .intro-stat {
+    border-right: 1px solid var(--line);
+}
+
+.company-intro .intro-stat strong {
+    color: var(--text-primary);
+    font-size: 21px;
+    font-weight: 900;
+    letter-spacing: -.02em;
+    font-variant-numeric: tabular-nums;
+}
+
+.company-intro .intro-stat span {
+    color: var(--text-faint);
+    letter-spacing: .04em;
+}
+
+/* ---------------------------------------------------------------------------
+   7. Product preview — the showpiece, framed like an object
+   ------------------------------------------------------------------------- */
+.company-intro .product-preview {
+    width: min(100%, 424px);
+    padding: 13px;
+    border: 1px solid var(--line-strong);
+    border-radius: 26px;
+    background-image:
+        radial-gradient(120% 90% at 100% 0%, rgba(216, 178, 103, .12), transparent 58%),
+        linear-gradient(155deg, #101722, #06090e 72%);
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, .07) inset,
+        0 44px 88px -40px rgba(0, 0, 0, .98),
+        0 0 60px -28px rgba(200, 155, 74, .45);
+}
+
+.company-intro .product-preview::before {
+    inset: 7px;
+    border: 1px solid rgba(255, 255, 255, .05);
+    border-radius: 20px;
+}
+
+.company-intro .preview-topbar {
+    padding: 9px 8px 13px;
+    color: var(--text-faint);
+    letter-spacing: .08em;
+}
+
+.company-intro .preview-brand {
+    color: var(--text-primary);
+    font-weight: 800;
+    letter-spacing: .04em;
+}
+
+.company-intro .preview-brand i {
+    color: var(--gold-300);
+    font-family: Georgia, "Times New Roman", serif;
+}
+
+.company-intro .preview-dots span {
+    background: rgba(148, 163, 184, .28);
+}
+
+.company-intro .preview-dots span:first-child {
+    background: var(--gold-400);
+}
+
+.company-intro .preview-balance {
+    padding: 20px;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background-image:
+        radial-gradient(circle at 100% 0%, rgba(216, 178, 103, .18), transparent 13rem),
+        linear-gradient(140deg, rgba(216, 178, 103, .10), rgba(6, 9, 14, .8));
+}
+
+.company-intro .preview-balance strong {
+    color: var(--gold-100);
+    font-size: 27px;
+    font-weight: 900;
+    letter-spacing: -.02em;
+}
+
+.company-intro .preview-balance em {
+    color: var(--gold-300);
+    font-weight: 800;
+}
+
+.company-intro .preview-label {
+    color: var(--text-faint);
+    letter-spacing: .08em;
+}
+
+.company-intro .preview-stat {
+    padding: 11px;
+    border: 1px solid var(--line-soft);
+    border-radius: 12px;
+    background-color: rgba(6, 9, 14, .6);
+}
+
+.company-intro .preview-stat b {
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.company-intro .preview-stat:nth-child(2) b {
+    color: var(--gold-200);
+}
+
+.company-intro .preview-stat:nth-child(3) b {
+    color: var(--gold-300);
+}
+
+.company-intro .preview-lower {
+    gap: 8px;
+}
+
+.company-intro .preview-chart,
+.company-intro .preview-security {
+    padding: 13px;
+    border: 1px solid var(--line-soft);
+    border-radius: 14px;
+    background-color: rgba(6, 9, 14, .55);
+}
+
+.company-intro .preview-bars span {
+    background-image: linear-gradient(180deg, var(--gold-300), rgba(168, 127, 53, .55));
+    box-shadow: 0 0 12px -4px rgba(216, 178, 103, .5);
+}
+
+.company-intro .preview-security .security-ring {
+    border: 1px solid var(--line-strong);
+    background-image:
+        radial-gradient(circle, #070a10 58%, transparent 60%),
+        conic-gradient(var(--gold-400) 0 82%, rgba(148, 163, 184, .16) 82% 100%);
+    color: var(--gold-200);
+}
+
+.company-intro .preview-opx {
+    padding: 13px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background-image:
+        radial-gradient(circle at 0% 0%, rgba(216, 178, 103, .12), transparent 60%),
+        linear-gradient(140deg, #0a0e15, #06090e);
+}
+
+.company-intro .preview-opx-price {
+    color: var(--gold-200);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.01em;
+}
+
+.company-intro .preview-opx-status {
+    color: var(--text-faint);
+    letter-spacing: .06em;
+}
+
+.company-intro .preview-opx-chart {
+    opacity: .95;
+}
+
+/* ---------------------------------------------------------------------------
+   8. Feature trio
+   ------------------------------------------------------------------------- */
+.company-intro .intro-feature {
+    min-height: 104px;
+    padding: 18px;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    background-image: linear-gradient(160deg, #0d121b, #070a10);
+    box-shadow: var(--shadow-raise);
+    transition: transform .28s var(--ease), border-color .28s var(--ease), box-shadow .28s var(--ease);
+}
+
+.company-intro .intro-feature:hover {
+    border-color: var(--line-strong);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-float);
+}
+
+/* The bare icon becomes a small engraved medallion. */
+.company-intro .intro-feature > i {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+    margin-top: 0;
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    background-image: linear-gradient(160deg, rgba(216, 178, 103, .18), rgba(216, 178, 103, .04));
+    color: var(--gold-300) !important;
+    font-size: 12px;
+}
+
+.company-intro .intro-feature b {
+    color: var(--text-primary);
+    font-weight: 800;
+    letter-spacing: -.01em;
+}
+
+.company-intro .intro-feature span {
+    color: var(--text-faint);
+    line-height: 1.8;
+}
+
+/* ---------------------------------------------------------------------------
+   9. Content panels: the OPX note, About, FAQ
+   ------------------------------------------------------------------------- */
+.company-intro .about-panel {
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    background-image: linear-gradient(160deg, #0c1119, #070a10 72%);
+    box-shadow: var(--shadow-raise);
+}
+
+/* Drop the amber-to-cyan glass wash in favour of a single hairline of light. */
+.company-intro .about-panel::before {
+    border-radius: inherit;
+    background-image: linear-gradient(180deg, rgba(255, 255, 255, .045), transparent 30%);
+}
+
+.company-intro .about-panel:hover {
+    border-color: var(--line-strong);
+}
+
+.company-intro .about-kicker {
+    display: inline-block;
+    color: var(--gold-300);
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+}
+
+.company-intro .about-principle {
+    border-top: 1px solid var(--line);
+    padding-top: 13px;
+}
+
+.company-intro .about-principle b {
+    color: var(--text-primary);
+    letter-spacing: -.01em;
+}
+
+/* The mini-cards inside the OPX note. */
+.company-intro .about-panel .rounded-2xl[class*="border-cyan-400"],
+.company-intro .about-panel .rounded-2xl[class*="border-amber-400"],
+.company-intro .about-panel .rounded-2xl[class*="border-slate-700"] {
+    border: 1px solid var(--line);
+    background-color: rgba(6, 9, 14, .6);
+    background-image: none;
+}
+
+#companyIntroView #landing-faq details {
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background-color: rgba(6, 9, 14, .55);
+    transition: border-color .2s var(--ease), background-color .2s var(--ease);
+}
+
+#companyIntroView #landing-faq details:hover,
+#companyIntroView #landing-faq details[open] {
+    border-color: var(--line-strong);
+    background-color: rgba(10, 14, 21, .7);
+}
+
+#companyIntroView #landing-faq summary {
+    color: var(--text-primary);
+    font-weight: 800;
+}
+
+#companyIntroView #landing-faq summary i {
+    color: var(--gold-400);
+}
+
+#companyIntroView #landing-faq details p {
+    color: var(--text-muted);
+    line-height: 1.9;
+}
+
+/* ---------------------------------------------------------------------------
+   10. Closing band and footer
+   ------------------------------------------------------------------------- */
+.company-intro .guest-cta-band {
+    border: 1px solid var(--line-strong);
+    border-radius: 22px;
+    background-image:
+        radial-gradient(ellipse at 100% 0%, rgba(216, 178, 103, .14), transparent 56%),
+        linear-gradient(150deg, #0d1219, #070a10);
+    box-shadow: var(--shadow-raise);
+}
+
+.company-intro .guest-cta-band b {
+    color: var(--text-primary);
+    letter-spacing: -.012em;
+}
+
+.company-intro .guest-cta-band span {
+    color: var(--text-muted);
+}
+
+.company-intro .guest-cta-band a[class*="bg-amber-400"] {
+    border-radius: 12px;
+    background-image: linear-gradient(180deg, var(--gold-200), var(--gold-500));
+    color: #17110a;
+    font-weight: 900;
+    box-shadow: var(--shadow-gold), 0 1px 0 rgba(255, 255, 255, .45) inset;
+}
+
+.company-intro footer {
+    padding: 18px 0 6px;
+    border-top: 1px solid var(--line);
+    color: var(--text-faint);
+    letter-spacing: .02em;
+}
+
+.company-intro footer a {
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color .16s var(--ease);
+}
+
+.company-intro footer a:hover {
+    color: var(--gold-300);
+}
+
+/* ---------------------------------------------------------------------------
+   11. Sign in / sign up
+   ------------------------------------------------------------------------- */
+#authView {
+    background-color: #04060a;
+    background-image:
+        radial-gradient(900px 520px at 50% -10%, rgba(200, 155, 74, .16), transparent 62%),
+        radial-gradient(700px 480px at 50% 108%, rgba(94, 128, 176, .06), transparent 62%);
+}
+
+#authView .auth-panel {
+    padding: clamp(24px, 5vw, 34px);
+    border: 1px solid var(--line-strong);
+    border-radius: 26px;
+    background-image:
+        radial-gradient(120% 90% at 50% 0%, rgba(216, 178, 103, .12), transparent 52%),
+        linear-gradient(168deg, #0d121b, #06090e 78%);
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, .06) inset,
+        0 44px 96px -44px rgba(0, 0, 0, .98),
+        0 0 70px -34px rgba(200, 155, 74, .5);
+}
+
+/* The logo sits in a thin gold ring, like an embossed seal. */
+#authView .auth-panel > div:first-child img {
+    padding: 10px;
+    border: 1px solid var(--line-strong);
+    border-radius: 18px;
+    background-image: radial-gradient(circle at 50% 20%, rgba(216, 178, 103, .16), rgba(6, 9, 14, .9));
+    box-shadow: 0 0 0 6px rgba(216, 178, 103, .04), var(--shadow-gold);
+}
+
+#authView .auth-panel h1 {
+    color: var(--text-primary);
+    letter-spacing: -.028em;
+}
+
+#authView .auth-panel > div:first-child p {
+    color: var(--text-faint);
+    letter-spacing: .01em;
+}
+
+/* Tab switch: ink well with a gold pill inside. */
+#authView #tabLoginBtn,
+#authView #tabRegisterBtn {
+    min-height: 42px;
+    border-radius: 11px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-muted);
+    transition: color .18s var(--ease), background-color .18s var(--ease), box-shadow .18s var(--ease);
+}
+
+#authView #tabRegisterBtn:hover {
+    color: var(--gold-200);
+}
+
+#authView #tabLoginBtn[class*="bg-amber-500"],
+#authView #tabRegisterBtn.purple-gradient {
+    color: #17110a;
+    background-image: linear-gradient(180deg, var(--gold-200), var(--gold-500));
+    box-shadow: 0 1px 0 rgba(255, 255, 255, .5) inset, 0 10px 24px -14px rgba(200, 155, 74, .8);
+}
+
+#authView .auth-panel div[class*="bg-slate-900"] {
+    border: 1px solid var(--line);
+    background-color: rgba(6, 9, 14, .8);
+    background-image: none;
+}
+
+#authView label {
+    color: var(--text-muted);
+    font-weight: 700;
+    letter-spacing: .01em;
+}
+
+#authView input,
+#authView .auth-panel div[class*="border-slate-800"] {
+    border-color: var(--line);
+    background-color: rgba(5, 8, 13, .92);
+    color: var(--text-primary);
+}
+
+#authView input:focus {
+    border-color: var(--gold-500) !important;
+    box-shadow: 0 0 0 3px rgba(216, 178, 103, .16);
+}
+
+#authView input::placeholder {
+    color: #5f6a79;
+}
+
+#authView .gold-gradient {
+    color: #17110a;
+    border: 1px solid rgba(255, 240, 205, .45);
+    background-image: linear-gradient(180deg, var(--gold-200), var(--gold-400) 54%, var(--gold-500));
+    box-shadow: var(--shadow-gold), 0 1px 0 rgba(255, 255, 255, .55) inset;
+}
+
+/* The registration button was violet; there is only one accent now. */
+#authView .purple-gradient {
+    color: #17110a !important;
+    border: 1px solid rgba(255, 240, 205, .45);
+    background-image: linear-gradient(180deg, var(--gold-200), var(--gold-400) 54%, var(--gold-500));
+    box-shadow: var(--shadow-gold), 0 1px 0 rgba(255, 255, 255, .55) inset;
+}
+
+#authView .purple-gradient:hover {
+    filter: brightness(1.05);
+}
+
+#authView .auth-panel a {
+    color: var(--gold-300);
+}
+
+#authView .auth-panel a:hover {
+    color: var(--gold-100);
+}
+
+#authView button[class*="text-cyan"] {
+    color: var(--text-muted);
+}
+
+#authView input[type="checkbox"] {
+    accent-color: var(--gold-400);
+}
+
+/* ---------------------------------------------------------------------------
+   12. Product tour (visitor-facing)
+   ------------------------------------------------------------------------- */
+#productTourModal .glass-card {
+    border: 1px solid var(--line-strong);
+    border-radius: 24px;
+    background-image:
+        radial-gradient(120% 90% at 100% 0%, rgba(216, 178, 103, .12), transparent 58%),
+        linear-gradient(165deg, #0d121b, #06090e 78%);
+    box-shadow: var(--shadow-float);
+}
+
+#productTourModal .glass-card > div:first-child span {
+    color: var(--gold-300);
+    letter-spacing: .14em;
+}
+
+#productTourModal .glass-card h2 {
+    color: var(--text-primary);
+    letter-spacing: -.022em;
+}
+
+#productTourModal .glass-card div[class*="border-amber-400"],
+#productTourModal .glass-card div[class*="border-emerald-400"],
+#productTourModal .glass-card div[class*="border-cyan-400"] {
+    border: 1px solid var(--line);
+    background-color: rgba(6, 9, 14, .6);
+    background-image: none;
+}
+
+#productTourModal .glass-card div[class*="border-amber-400"] b,
+#productTourModal .glass-card div[class*="border-emerald-400"] b,
+#productTourModal .glass-card div[class*="border-cyan-400"] b {
+    color: var(--text-primary);
+}
+
+#productTourModal span[class*="bg-amber-400"],
+#productTourModal span[class*="bg-emerald-400"],
+#productTourModal span[class*="bg-cyan-400"] {
+    border: 1px solid var(--line-strong);
+    background-image: linear-gradient(160deg, rgba(216, 178, 103, .2), rgba(216, 178, 103, .05));
+    color: var(--gold-200);
+}
+
+#productTourModal button[class*="bg-amber-400"] {
+    border-radius: 12px;
+    background-image: linear-gradient(180deg, var(--gold-200), var(--gold-500));
+    color: #17110a;
+    box-shadow: var(--shadow-gold), 0 1px 0 rgba(255, 255, 255, .45) inset;
+}
+
+#productTourModal a[class*="border"] {
+    border-color: var(--line);
+    color: var(--text-secondary);
+}
+
+/* ---------------------------------------------------------------------------
+   13. Finish
+   ------------------------------------------------------------------------- */
+#companyIntroView ::selection,
+#authView ::selection {
+    background-color: rgba(216, 178, 103, .28);
+    color: var(--gold-050);
+}
+
+.company-intro button:focus-visible,
+.company-intro a:focus-visible,
+#authView :is(button, a, input):focus-visible {
+    outline: 2px solid var(--gold-400);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .company-intro *,
+    #authView * {
+        transition-duration: .01ms !important;
+        animation-duration: .01ms !important;
+    }
+
+    .company-intro .reward-prize-card:hover,
+    .company-intro .intro-feature:hover {
+        transform: none;
+    }
+}
