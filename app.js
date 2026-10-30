@@ -2327,9 +2327,17 @@ function renderTaskBoard(completed, maximum) {
     const strategyTitle = document.getElementById('taskStrategyTitle');
     const strategyMeta = document.getElementById('taskStrategyMeta');
     const strategyState = document.getElementById('taskStrategyState');
-    if (strategyTitle) strategyTitle.innerText = taskHoliday ? 'عطلة المهام الأسبوعية' : nextTask ? nextTask.title : 'الخطة مكتملة اليوم';
+    if (strategyTitle) strategyTitle.innerText = taskHoliday ? 'عطلة المهام المدفوعة' : nextTask ? nextTask.title : 'الخطة مكتملة اليوم';
     if (strategyMeta) strategyMeta.innerText = `${pendingTasks.length} / ${Math.max(0, tasks.length - (taskHoliday ? 1 : 0))} خطوات متبقية`;
-    if (strategyState) strategyState.innerText = taskHoliday ? 'استئناف الأحد (UTC)' : completed >= maximum ? 'مكتمل اليوم' : 'الخطة مفتوحة';
+    if (strategyState) {
+        // The paid-task holiday is Friday only, so tasks resume the next day (Saturday) on the
+        // Istanbul calendar the rest of the board already uses — never Sunday and never UTC.
+        strategyState.innerText = taskHoliday
+            ? 'تستأنف السبت (Europe/Istanbul)'
+            : !currentUserTierActive
+                ? 'يتطلب تفعيل المستوى'
+                : completed >= maximum ? 'مكتمل اليوم' : 'الخطة مفتوحة';
+    }
 }
 
 async function openDailyTasks() {
@@ -2373,7 +2381,7 @@ function renderDailyTaskDetail(data) {
     if (!title || !meta || !list) return;
     if (data.holiday) {
         window.__latestDailyTasks = [];
-        title.innerText = 'عطلة المهام الأسبوعية';
+        title.innerText = 'عطلة المهام المدفوعة';
         meta.innerText = data.schedule?.message || 'عطلة المهام المدفوعة الأسبوعية: لا توجد مهام يوم الجمعة فقط.';
         list.innerHTML = '<div class="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 text-center"><i class="fa-solid fa-calendar-check text-cyan-300 text-lg"></i><p class="mt-2 text-xs font-bold text-cyan-100">لا توجد مهام اليوم</p><p class="mt-1 text-[10px] text-slate-400">عطلة مهام يوم الجمعة فقط. تعود المهام مباشرة بعد انتهاء العطلة.</p></div>';
         return;

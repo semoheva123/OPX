@@ -1,7 +1,7 @@
 {
-  "builtAt": "2026-10-30T13:11:56.084Z",
-  "sourceHash": "6717213c9dcfb706",
+  "builtAt": "2026-10-30T13:23:12.530Z",
+  "sourceHash": "b209954b9664e84f",
   "file": "app.min.js",
-  "bytes": 185137,
-  "sourceBytes": 256753
+  "bytes": 185204,
+  "sourceBytes": 257089
 }
