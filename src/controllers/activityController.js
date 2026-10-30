@@ -406,7 +406,7 @@ async function completeTaskSupabase(req, res) {
     if (message.includes('VIP_LEVEL_NOT_FOUND')) return res.status(503).json({ error: 'إعدادات المستوى غير متاحة حاليًا، حاول لاحقًا' });
     if (message.includes('INVALID_TASK_KEY')) return res.status(400).json({ error: 'هذه المهمة غير صالحة لخطة مستواك الحالية' });
     if (message.includes('TASK_ALREADY_COMPLETED')) return res.status(400).json({ error: 'تمت إكمال هذه المهمة مسبقًا اليوم.' });
-    if (message.includes('TASK_HOLIDAY')) return res.status(403).json({ success: false, code: 'TASK_HOLIDAY', error: 'عطلة المهام الأسبوعية: لا توجد مهام يوم الجمعة.' });
+    if (message.includes('TASK_HOLIDAY')) return res.status(403).json({ success: false, code: 'TASK_HOLIDAY', error: 'عطلة المهام المدفوعة الأسبوعية: لا توجد مهام يوم الجمعة فقط.' });
     if (message.includes('DAILY_CAP_REACHED')) return res.status(400).json({ error: 'تم بلوغ الحد اليومي للربح، ولا يمكن جمع أكثر من الربح اليومي الثابت.' });
     if (message.includes('OPTIONAL_TASK_NO_REWARD')) return res.status(400).json({ error: 'مهمة المجتمع اختيارية ولا تمنح مكافأة؛ أكمل مهام التقييم المدفوعة من نموذج التقييم.' });
     if (message.includes('EVALUATION_REQUIRED')) return res.status(400).json({ error: 'اختر التقييم بالنجوم وحدد جانب التقييم قبل إنهاء المهمة.' });
@@ -473,7 +473,7 @@ async function submitDailyEvaluation(req, res) {
     console.error('Daily evaluation submission error:', message);
     if (message.includes('EVALUATION_REQUIRED')) return res.status(400).json({ error: 'اختر التقييم بالنجوم وحدد جانب التقييم قبل إنهاء المهمة.' });
     if (message.includes('TASK_ALREADY_COMPLETED')) return res.status(409).json({ error: 'تمت إكمال هذه المهمة اليوم مسبقًا.' });
-    if (message.includes('TASK_HOLIDAY')) return res.status(403).json({ success: false, code: 'TASK_HOLIDAY', error: 'عطلة المهام الأسبوعية: لا توجد مهام يوم الجمعة.' });
+    if (message.includes('TASK_HOLIDAY')) return res.status(403).json({ success: false, code: 'TASK_HOLIDAY', error: 'عطلة المهام المدفوعة الأسبوعية: لا توجد مهام يوم الجمعة فقط.' });
     if (message.includes('DAILY_CAP_REACHED')) return res.status(400).json({ error: 'تم بلوغ الحد اليومي للربح، ولا يمكن جمع أكثر من الربح اليومي الثابت.' });
     if (error?.code === 'PGRST202' || /operix_daily_task_complete_atomic.*does not exist/i.test(message)) return res.status(503).json({ error: 'قاعدة البيانات تحتاج إلى تحديث نظام مهام التقييم.' });
     if (migrationMessage) return res.status(503).json({ error: migrationMessage });

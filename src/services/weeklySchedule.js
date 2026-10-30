@@ -31,7 +31,7 @@ function getTaskSchedule(value = new Date()) {
     timezone: TASK_TIME_ZONE,
     holiday: dayName !== null,
     dayName,
-    message: dayName ? `عطلة المهام الأسبوعية: لا توجد مهام يوم ${dayName}.` : null
+    message: dayName ? `عطلة المهام المدفوعة الأسبوعية: لا توجد مهام يوم ${dayName} فقط.` : null
   };
 }
 
