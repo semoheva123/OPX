@@ -649,13 +649,14 @@ const WITHDRAWAL_UPDATE_NOTIFICATION_TITLE = 'تحديث مهم: السحب مت
 
 function queueWithdrawalUpdatePopup(notifications = []) {
     if (!Array.isArray(notifications) || !currentUserData) return;
-    const notice = notifications.find(item => item?.title === WITHDRAWAL_UPDATE_NOTIFICATION_TITLE && !item.readAt);
+    const notice = notifications.find(item => item?.title === WITHDRAWAL_UPDATE_NOTIFICATION_TITLE);
     if (!notice) return;
     const noticeId = String(notice.id || notice._id || '');
     if (!noticeId) return;
     const userId = String(currentUserData.id || currentUserData._id || '');
     if (!userId) return;
     try {
+        if (localStorage.getItem(`operix_withdrawal_update_dismissed:${userId}:${noticeId}`) === '1') return;
         if (sessionStorage.getItem(`operix_withdrawal_update_seen:${userId}:${noticeId}`) === '1') return;
     } catch (error) { }
     pendingWithdrawalUpdateNotification = { ...notice, id: noticeId, userId };
@@ -687,7 +688,7 @@ function showPendingWithdrawalUpdatePopup() {
     const userId = String(currentUserData?.id || currentUserData?._id || '');
     if (!userId || userId !== notice.userId) return;
     try {
-        if (sessionStorage.getItem(`operix_withdrawal_update_seen:${userId}:${notice.id}`) === '1') {
+        if (localStorage.getItem(`operix_withdrawal_update_dismissed:${userId}:${notice.id}`) === '1' || sessionStorage.getItem(`operix_withdrawal_update_seen:${userId}:${notice.id}`) === '1') {
             pendingWithdrawalUpdateNotification = null;
             return;
         }
@@ -712,6 +713,7 @@ async function closeWithdrawalUpdatePopup(openWithdraw = false) {
     activeWithdrawalUpdateNotification = null;
     if (openWithdraw) window.setTimeout(() => openWithdrawModal(), 80);
     if (notice?.id) {
+        try { localStorage.setItem(`operix_withdrawal_update_dismissed:${notice.userId}:${notice.id}`, '1'); } catch (error) { }
         try {
             await fetch(`/api/notifications/${encodeURIComponent(notice.id)}/read`, {
                 method: 'POST',
@@ -3799,6 +3801,16 @@ async function logout({ notifyServer = true } = {}) {
     if (profileSyncTimer) clearInterval(profileSyncTimer);
     profileSyncTimer = null;
     unreadNotificationCount = null;
+    const previousUserId = String(currentUserData?.id || currentUserData?._id || '');
+    if (previousUserId) {
+        try {
+            const seenPrefix = `operix_withdrawal_update_seen:${previousUserId}:`;
+            for (let index = sessionStorage.length - 1; index >= 0; index--) {
+                const key = sessionStorage.key(index);
+                if (key?.startsWith(seenPrefix)) sessionStorage.removeItem(key);
+            }
+        } catch (error) { }
+    }
     pendingWithdrawalUpdateNotification = null;
     activeWithdrawalUpdateNotification = null;
     document.getElementById('withdrawalUpdateModal')?.classList.add('hide');
