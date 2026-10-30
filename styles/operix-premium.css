@@ -1758,3 +1758,245 @@ body:has(#appView) #toast, body:has(#authView) #toast { max-width: min(92vw, 560
     #admin-overview .overview-text-button,
     #admin-overview .overview-refresh-button { transition: none; }
 }
+
+/* Home dashboard: editorial hierarchy, calmer surfaces, and a responsive account-first layout. */
+#appView { max-width: 900px; }
+#view-home.home-dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding-bottom: calc(100px + env(safe-area-inset-bottom));
+}
+#view-home .home-overview {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    padding: clamp(18px, 3.5vw, 28px);
+    border: 1px solid rgba(255,231,176,.18);
+    border-radius: 26px;
+    background: radial-gradient(ellipse at 100% 0%, rgba(247,185,85,.13), transparent 27rem), linear-gradient(145deg, rgba(15,28,44,.96), rgba(5,12,22,.98));
+    box-shadow: 0 22px 54px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.055);
+}
+#view-home .home-overview::after {
+    position: absolute;
+    z-index: -1;
+    inset-inline-start: -70px;
+    bottom: -130px;
+    width: 230px;
+    height: 230px;
+    border: 1px solid rgba(103,232,249,.07);
+    border-radius: 50%;
+    content: '';
+    box-shadow: 0 0 0 24px rgba(103,232,249,.018), 0 0 0 48px rgba(103,232,249,.012);
+    pointer-events: none;
+}
+#view-home .home-overview-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+#view-home .home-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: #f6cb78;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: .08em;
+}
+#view-home .home-overview-heading h2 {
+    margin: 7px 0 0;
+    color: #fff;
+    font-size: clamp(19px, 3vw, 24px);
+    font-weight: 950;
+    line-height: 1.4;
+}
+#view-home .home-overview-heading p {
+    margin: 5px 0 0;
+    color: #9aa9bc;
+    font-size: 12px;
+    line-height: 1.7;
+}
+#view-home .home-overview-mark {
+    display: grid;
+    width: 52px;
+    height: 52px;
+    flex: 0 0 auto;
+    place-items: center;
+    border: 1px solid rgba(255,231,176,.2);
+    border-radius: 17px;
+    background: linear-gradient(145deg, rgba(247,185,85,.16), rgba(8,18,31,.76));
+    color: #f8d58d;
+    font-size: 21px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+}
+#view-home .premium-status-strip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0,1fr));
+    gap: 10px;
+    margin: 0;
+}
+#view-home .premium-status-strip .status-pill {
+    min-width: 0;
+    min-height: 68px;
+    padding: 11px 13px;
+    border: 1px solid rgba(148,163,184,.14);
+    border-radius: 17px;
+    background: rgba(4,11,20,.62);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.035);
+}
+#view-home .premium-status-strip .status-pill span { color: #91a0b3; font-size: 10px; }
+#view-home .premium-status-strip .status-pill strong { margin-top: 3px; color: #f8fafc; font-size: 15px; font-weight: 900; font-variant-numeric: tabular-nums; }
+#view-home .home-overview-pulse {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    margin-top: 14px;
+    padding: 12px 14px;
+    border: 1px solid rgba(103,232,249,.13);
+    border-radius: 16px;
+    background: rgba(34,211,238,.045);
+}
+#view-home .home-pulse-icon {
+    display: grid;
+    width: 32px;
+    height: 32px;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 11px;
+    background: rgba(247,185,85,.11);
+    color: #f6cb78;
+}
+#view-home .home-overview-pulse p { margin: 0; color: #d9e2ed; font-size: 11px; line-height: 1.75; }
+#view-home .home-pulse-meta { display: block; margin-top: 2px; color: #8291a5; font-size: 9px; }
+#view-home > .operix-wallet {
+    display: flex !important;
+    flex-direction: column;
+    gap: 15px !important;
+    overflow: hidden;
+    padding: clamp(18px, 3.5vw, 27px) !important;
+    border: 1px solid rgba(255,211,128,.34) !important;
+    border-radius: 26px !important;
+    background: radial-gradient(ellipse at 100% 0%, rgba(247,185,85,.14), transparent 26rem), linear-gradient(145deg, rgba(13,25,40,.98), rgba(5,12,22,.99)) !important;
+    box-shadow: 0 24px 58px rgba(0,0,0,.27), inset 0 1px 0 rgba(255,255,255,.07) !important;
+}
+#view-home > .operix-wallet > * { margin: 0 !important; }
+#view-home > .operix-wallet > :first-child { padding: 0; border: 0; border-radius: 0; background: transparent; }
+#view-home > .operix-wallet > :nth-child(2) { padding: 0 0 2px; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+#view-home > .operix-wallet > :nth-child(3) { padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+#view-home > .operix-wallet > :last-child { padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+#view-home > .operix-wallet > :nth-child(4) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 14px;
+    padding: 10px 12px;
+    border: 1px solid rgba(148,163,184,.12);
+    border-radius: 13px;
+    background: rgba(3,9,18,.38);
+}
+#view-home .balance-summary-grid { grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-top: 2px; }
+#view-home .balance-summary-card { min-width: 0; min-height: 88px; padding: 13px; border-radius: 17px; }
+#view-home .balance-card-head { gap: 5px; font-size: 10px; }
+#view-home .balance-card-value { margin-top: 8px; font-size: clamp(16px,2.1vw,21px); font-variant-numeric: tabular-nums; }
+#view-home .balance-card-note { margin-top: 4px; color: #8190a4; font-size: 9px; }
+#view-home > .operix-wallet > .grid { gap: 9px; padding-top: 1px; }
+#view-home > .operix-wallet > .grid button {
+    min-height: 48px;
+    border-radius: 14px;
+    font-size: 11px;
+    font-weight: 900;
+    transition: transform .18s ease, border-color .18s ease, background .18s ease;
+}
+#view-home > .operix-wallet > .grid button:hover { transform: translateY(-1px); }
+#view-home .home-dashboard-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 15px; align-items: stretch; }
+#view-home .home-panel {
+    min-width: 0;
+    padding: 19px;
+    border: 1px solid rgba(148,163,184,.15);
+    border-radius: 21px;
+    background: linear-gradient(150deg, rgba(13,24,39,.94), rgba(5,11,20,.97));
+    box-shadow: 0 16px 40px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.04);
+}
+#view-home .home-panel > div:first-child h3 { font-size: 13px; letter-spacing: -.01em; }
+#view-home .home-next-step { border-color: rgba(247,185,85,.22); }
+#view-home .home-next-step > p { margin-top: 13px; min-height: 42px; }
+#view-home .home-progress-track {
+    height: 8px;
+    overflow: hidden;
+    margin: 13px 0 7px;
+    border: 1px solid rgba(148,163,184,.08);
+    border-radius: 999px;
+    background: rgba(2,7,15,.76);
+}
+#view-home .home-progress-fill { height: 100%; min-width: 0; border-radius: inherit; background: linear-gradient(90deg, #d99b38, #ffe1a1); box-shadow: 0 0 16px rgba(247,185,85,.3); transition: width .35s ease; }
+#view-home .home-next-step #homeGoalMeta { display: block; color: #91a0b3; }
+#view-home .home-opportunities-block { margin-top: 17px; padding-top: 13px; border-top: 1px solid rgba(148,163,184,.12); }
+#view-home .home-mini-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; color: #a9b5c5; font-size: 10px; font-weight: 800; }
+#view-home #homeOpportunities { display: grid; gap: 7px; }
+#view-home #homeOpportunities button {
+    min-height: 40px;
+    padding: 8px 10px;
+    border: 1px solid rgba(148,163,184,.1);
+    border-radius: 12px;
+    background: rgba(3,9,18,.4);
+    color: #cbd5e1;
+    font-size: 10px;
+    line-height: 1.55;
+}
+#view-home #homeOpportunities button:hover { border-color: rgba(247,185,85,.24); background: rgba(247,185,85,.05); }
+#view-home .home-readiness { border-color: rgba(103,232,249,.18); }
+#view-home .home-readiness #homeHealthScore { padding: 5px 8px; border: 1px solid rgba(52,211,153,.18); border-radius: 999px; background: rgba(16,185,129,.07); font-size: 11px; }
+#view-home .home-readiness-progress { height: 8px; margin-top: 16px; overflow: hidden; border-radius: 999px; background: rgba(2,7,15,.76); }
+#view-home .home-readiness #homeHealthProgress { transition: width .35s ease; }
+#view-home .home-readiness #homeHealthMessage { min-height: 32px; margin-top: 10px; line-height: 1.8; }
+#view-home .home-readiness-footer { margin-top: 13px; padding: 12px; border: 1px solid rgba(103,232,249,.14); border-radius: 15px; background: rgba(34,211,238,.045); }
+#view-home .home-readiness-footer button { min-height: 40px; white-space: nowrap; }
+#view-home .home-activity > .grid { gap: 8px; margin-top: 15px; padding: 13px 8px; border: 1px solid rgba(148,163,184,.1); border-radius: 15px; background: rgba(3,9,18,.42); }
+#view-home .home-activity > .grid strong { font-size: 15px; font-variant-numeric: tabular-nums; }
+#view-home .home-activity > .grid span { display: block; margin-top: 3px; font-size: 9px; }
+#view-home .home-activity #homePendingStatusDetail { margin-top: 12px; padding: 10px 11px; border-inline-start: 2px solid rgba(103,232,249,.4); border-radius: 0 10px 10px 0; background: rgba(34,211,238,.04); line-height: 1.7; }
+#view-home .home-timeline #homeTimeline { max-height: 190px; margin-top: 13px; padding-inline-end: 3px; scrollbar-color: rgba(148,163,184,.3) transparent; }
+#view-home .home-timeline #homeTimeline > div { min-height: 31px; align-items: center; gap: 8px; border-color: rgba(148,163,184,.1); }
+#view-home .home-referral-campaign { margin-top: 0; border-radius: 24px; }
+#view-home .opx-market-card { border-radius: 24px; }
+#view-home #homeTrustTitle { font-size: 13px; }
+#view-home #homePlatformStatus { white-space: nowrap; }
+#view-home .home-overview :focus-visible,
+#view-home .home-panel :focus-visible { outline: 2px solid #f6cb78; outline-offset: 3px; }
+@media (max-width: 680px) {
+    #view-home.home-dashboard { gap: 13px; }
+    #view-home .home-overview { padding: 17px; border-radius: 21px; }
+    #view-home .home-overview-heading { margin-bottom: 15px; }
+    #view-home .home-overview-mark { width: 43px; height: 43px; border-radius: 14px; font-size: 18px; }
+    #view-home .premium-status-strip { gap: 6px; }
+    #view-home .premium-status-strip .status-pill { min-height: 59px; padding: 8px 7px; gap: 5px; border-radius: 13px; }
+    #view-home .premium-status-strip .status-pill span { font-size: 8px; }
+    #view-home .premium-status-strip .status-pill strong { font-size: 12px; }
+    #view-home .premium-status-strip .status-pill i { width: 25px; height: 25px; font-size: 10px; }
+    #view-home .home-overview-pulse { margin-top: 10px; padding: 10px; }
+    #view-home > .operix-wallet { gap: 12px !important; padding: 16px !important; border-radius: 21px !important; }
+    #view-home .balance-summary-grid { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 7px; }
+    #view-home .balance-summary-card { min-height: 76px; padding: 10px; border-radius: 14px; }
+    #view-home .balance-card-head { font-size: 9px; }
+    #view-home .balance-card-value { margin-top: 5px; font-size: 16px; }
+    #view-home .balance-card-note { font-size: 8px; }
+    #view-home .home-dashboard-grid { grid-template-columns: minmax(0,1fr); gap: 11px; }
+    #view-home .home-panel { padding: 16px; border-radius: 18px; }
+    #view-home .home-readiness-footer { padding: 10px; }
+    #view-home .home-readiness-footer button { padding-inline: 10px; font-size: 9px; }
+    #view-home .opx-market-card { padding: 14px; }
+}
+@media (max-width: 360px) {
+    #view-home .home-overview-mark { display: none; }
+    #view-home .premium-status-strip .status-pill { flex-direction: column-reverse; align-items: flex-start; }
+    #view-home .premium-status-strip .status-pill i { display: none; }
+    #view-home .home-readiness-footer > div { align-items: flex-start; flex-direction: column; }
+}
+@media (prefers-reduced-motion: reduce) {
+    #view-home .home-progress-fill,
+    #view-home .home-readiness #homeHealthProgress,
+    #view-home > .operix-wallet > .grid button { transition: none; }
+}

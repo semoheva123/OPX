@@ -1399,7 +1399,7 @@
             #view-feed *, #view-feed *::before, #view-feed *::after { scroll-behavior: auto !important; }
         }
 </style>
-<link rel="stylesheet" href="/styles/operix-premium.css?v=20261021-mobile-nav-fix-2">
+<link rel="stylesheet" href="/styles/operix-premium.css?v=20261030-home-dashboard-refresh-1">
 </head>
 <body class="min-h-screen flex flex-col justify-between pb-28">
 <div class="tech-grid-bg"></div>
@@ -1733,8 +1733,17 @@
         </div>
 
         <!-- 4.1 تبويب الرئيسية (Home View) -->
-        <div id="view-home" class="space-y-5">
-            <div class="premium-status-strip" aria-label="مؤشرات سريعة لحالة الحساب">
+        <div id="view-home" class="home-dashboard space-y-5">
+            <section class="home-overview" aria-labelledby="homeOverviewTitle">
+                <div class="home-overview-heading">
+                    <div>
+                        <span class="home-eyebrow"><i class="fa-solid fa-layer-group" aria-hidden="true"></i> مساحة OPERIX</span>
+                        <h2 id="homeOverviewTitle">نظرة عامة على حسابك</h2>
+                        <p>ملخص يومك، تقدمك، ورصيدك في مكان واحد.</p>
+                    </div>
+                    <span class="home-overview-mark" aria-hidden="true"><i class="fa-solid fa-compass"></i></span>
+                </div>
+                <div class="premium-status-strip" aria-label="مؤشرات سريعة لحالة الحساب">
                 <div class="status-pill status-pill--gold">
                     <div>
                         <span>المهام اليوم</span>
@@ -1757,10 +1766,15 @@
                     <i class="fa-solid fa-sack-dollar" aria-hidden="true"></i>
                 </div>
             </div>
-            <!-- كارت المحفظة الرئيسي المحدث (تفصيل الأرباح والإيداع) -->
+                <div class="home-overview-pulse">
+                    <span class="home-pulse-icon"><i class="fa-solid fa-sparkles" aria-hidden="true"></i></span>
+                    <div><p id="homePulseMessage" class="text-xs leading-6 text-slate-300">جارٍ تحليل نشاط حسابك...</p><span id="homePulseMeta" class="text-[10px] text-slate-500"></span></div>
+                </div>
+            </section>
+
             <div class="operix-wallet glass-card p-5 rounded-3xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 to-slate-900 relative overflow-hidden shadow-xl space-y-4">
                 <div class="flex items-center justify-between gap-3 text-xs text-slate-400">
-                    <span>إجمالي رصيد المحفظة</span>
+                    <span>إجمالي رصيد USDT</span>
                     <div class="flex items-center gap-3"><button onclick="window.refreshHomeDashboard?.()" title="تحديث البيانات" class="text-slate-400 hover:text-amber-400 transition-colors" aria-label="تحديث بيانات المحفظة"><i id="homeRefreshIcon" class="fa-solid fa-arrows-rotate"></i></button><i class="fa-solid fa-wallet text-amber-400 text-base" aria-hidden="true"></i></div>
                 </div>
                 <div class="flex items-baseline space-x-2 space-x-reverse">
@@ -1770,19 +1784,19 @@
 
                 <div class="balance-summary-grid">
                     <div class="balance-summary-card balance-usdt">
-                        <div class="balance-card-head"><span><i class="fa-solid fa-wallet"></i> الرصيد الحالي</span><span class="text-[10px]">USDT</span></div>
+                        <div class="balance-card-head"><span><i class="fa-solid fa-wallet"></i> رصيد USDT</span><span class="text-[10px]">USDT</span></div>
                         <span class="balance-card-value"><span id="lblWalletBalanceMini">0.00</span> <small>USDT</small></span>
-                        <span class="balance-card-note">الرصيد المتاح</span>
+                        <span class="balance-card-note">الإجمالي المتاح</span>
                     </div>
                     <div class="balance-summary-card balance-deposit">
                         <div class="balance-card-head"><span><i class="fa-solid fa-piggy-bank"></i> الإيداع</span><span class="text-[10px]">USDT</span></div>
                         <span class="balance-card-value"><span id="lblDepositBalanceMini">0.00</span> <small>USDT</small></span>
-                        <span class="balance-card-note">إيداعك</span>
+                        <span class="balance-card-note">الرصيد المودع</span>
                     </div>
                     <div class="balance-summary-card balance-profit">
                         <div class="balance-card-head"><span><i class="fa-solid fa-sack-dollar"></i> الأرباح</span><span class="text-[10px]">USDT</span></div>
                         <span class="balance-card-value"><span id="lblProfitBalanceMini">0.00</span> <small>USDT</small></span>
-                        <span class="balance-card-note">قابل للسحب</span>
+                        <span class="balance-card-note">أرباح الحساب</span>
                     </div>
                     <div class="balance-summary-card balance-opx">
                         <div class="balance-card-head"><span><i class="fa-solid fa-coins"></i> OPX</span><span class="text-[10px]">العملة</span></div>
@@ -1792,7 +1806,7 @@
                 </div>
 
                 <div class="flex justify-between items-center text-[10px] text-slate-500"><span id="homeSyncStatus">آخر مزامنة: --</span><span id="homePendingStatus" class="text-amber-400"></span></div>
-                <div class="rounded-2xl border border-cyan-500/15 bg-cyan-500/5 p-3"><div class="flex items-center justify-between gap-3"><div><span class="text-[10px] font-bold text-cyan-300">حالة الحساب</span><p id="homeAccountReadiness" class="mt-1 text-[10px] text-slate-400">جارٍ فحص جاهزية الحساب...</p></div><button onclick="switchTab('profile')" class="shrink-0 rounded-xl border border-cyan-400/25 px-3 py-2 text-[10px] font-bold text-cyan-300">إكمال الإعداد</button></div></div>
+
 
                 <!-- أزرار الإيداع والسحب -->
                 <div class="grid grid-cols-3 gap-2 pt-2">
@@ -1800,6 +1814,36 @@
                     <button onclick="openWithdrawModal()" class="py-2.5 bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold rounded-xl text-xs active:scale-95 transition-all">سحب <i class="fa-solid fa-arrow-up mr-1"></i></button>
                     <button onclick="openHistoryModal()" class="py-2.5 bg-slate-800 text-slate-300 border border-slate-700 font-bold rounded-xl text-xs active:scale-95 transition-all">السجل <i class="fa-solid fa-clock-rotate-left mr-1"></i></button>
                 </div>
+            </div>
+
+            <div class="home-dashboard-grid">
+                <section class="home-panel home-next-step">
+                    <div class="flex justify-between items-center"><h3 class="font-black text-sm text-white">خطوتك التالية</h3><i class="fa-solid fa-bullseye text-amber-400"></i></div>
+                    <p id="homeNextGoal" class="text-xs leading-6 text-slate-300">جارٍ تحديد الهدف...</p>
+                    <div class="home-progress-track" role="progressbar" aria-label="تقدم هدف اليوم" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="homeGoalProgress" class="home-progress-fill" style="width:0%"></div></div>
+                    <span id="homeGoalMeta" class="text-[10px] text-slate-500"></span>
+
+                    <div class="home-opportunities-block">
+                        <div class="home-mini-heading"><span>اقتراحات مناسبة لك</span><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i></div>
+                        <div id="homeOpportunities" class="space-y-2 text-xs text-slate-300"></div>
+                    </div>
+                </section>
+                <section class="home-panel home-readiness">
+                    <div class="flex justify-between items-center"><h3 class="font-black text-sm text-white">جاهزية حسابك</h3><strong id="homeHealthScore" class="text-emerald-400">--%</strong></div>
+                    <div class="home-readiness-progress" role="progressbar" aria-label="نسبة جاهزية الحساب" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="homeHealthProgress" class="h-full bg-emerald-400 rounded-full" style="width:0%"></div></div>
+                    <p id="homeHealthMessage" class="text-[10px] text-slate-400">جارٍ فحص إعدادات الحساب...</p>
+
+                    <div class="home-readiness-footer"><div class="flex items-center justify-between gap-3"><div><span class="text-[10px] font-bold text-cyan-300">حالة الحساب</span><p id="homeAccountReadiness" class="mt-1 text-[10px] text-slate-400">جارٍ فحص جاهزية الحساب...</p></div><button onclick="switchTab('profile')" class="shrink-0 rounded-xl border border-cyan-400/25 px-3 py-2 text-[10px] font-bold text-cyan-300">إكمال الإعداد</button></div></div>
+                </section>
+                <section class="home-panel home-activity">
+                    <div class="flex justify-between items-center"><h3 class="font-black text-sm text-white">الأداء والنشاط</h3><i class="fa-solid fa-chart-column text-cyan-400"></i></div>
+                    <div class="grid grid-cols-3 gap-2 text-center text-[10px]"><div><strong id="homeEarnedToday" class="block text-emerald-400">$0</strong><span class="text-slate-500">اليوم</span></div><div><strong id="homeEarnedWeek" class="block text-emerald-400">$0</strong><span class="text-slate-500">7 أيام</span></div><div><strong id="homeEarnedMonth" class="block text-emerald-400">$0</strong><span class="text-slate-500">الشهر</span></div></div>
+                    <p id="homePendingStatusDetail" class="text-[10px] text-slate-400">لا توجد طلبات معلقة.</p>
+                </section>
+                <section class="home-panel home-timeline">
+                    <div class="flex justify-between items-center"><h3 class="font-black text-sm text-white">آخر الحركات</h3><i class="fa-solid fa-timeline text-cyan-400"></i></div>
+                    <div id="homeTimeline" class="space-y-2 text-[11px] text-slate-400 max-h-40 overflow-y-auto"></div>
+                </section>
             </div>
 
             <section class="home-referral-campaign glass-card" aria-labelledby="homeCampaignTitle">
@@ -1859,12 +1903,11 @@
 
                 <div id="referralHomeRewardsHistory" class="home-referral-history"><span>سيظهر سجل الحملة هنا بعد تفعيل إحالاتك.</span></div>
             </section>
-
             <section class="opx-market-card glass-card rounded-3xl border border-cyan-400/20" aria-labelledby="opx-market-title">
                 <div class="opx-market-head">
                     <div>
                         <div class="flex items-center gap-2"><span class="opx-market-symbol">OPX / USD</span><span class="opx-market-status opx-market-status-live">السوق نشط</span></div>
-                        <p id="opx-market-title" class="opx-market-subtitle">نظرة عامة على المسار الداخلي للعملة</p>
+                        <p id="opx-market-title" class="opx-market-subtitle">بيانات سوق خارجية لزوج OPX/USD — ليست سعرًا داخليًا</p>
                     </div>
                     <div class="opx-market-price"><strong id="opxMarketLivePrice">--</strong><span id="opxMarketSource">جارٍ تحميل بيانات السوق</span><span id="opxMarketChange" class="opx-market-change is-positive">--% 24س</span></div>
                 </div>
@@ -1873,46 +1916,6 @@
                 <div class="opx-market-footer"><span><i class="fa-solid fa-chart-line" aria-hidden="true"></i> OPXUSD / Bitfinex</span><strong>بيانات سوق مباشرة</strong><span class="opx-market-link">Optimism · شبكة الأصل</span></div>
                 <p class="opx-market-disclaimer">بيانات الشموع والسعر من Bitfinex لزوج OPXUSD ويتم تحديثها دوريًا. السعر الداخلي للمنصة ورصيد OPX على شبكة Optimism منفصلان عن سعر السوق، ولا يمثل الرسم عائدًا مضمونًا أو توصية مالية.</p>
             </section>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="glass-card p-5 rounded-3xl border border-amber-500/20 space-y-3">
-                    <div class="flex justify-between items-center"><h3 class="font-black text-sm text-white">هدفك القادم</h3><i class="fa-solid fa-bullseye text-amber-400"></i></div>
-                    <p id="homeNextGoal" class="text-xs leading-6 text-slate-300">جارٍ تحديد الهدف...</p>
-                    <div class="h-2 bg-slate-950 rounded-full overflow-hidden"><div id="homeGoalProgress" class="h-full gold-gradient rounded-full" style="width:0%"></div></div>
-                    <span id="homeGoalMeta" class="text-[10px] text-slate-500"></span>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="glass-card p-5 rounded-3xl space-y-3">
-                    <div class="flex justify-between items-center"><h3 class="font-black text-sm text-white">جاهزية الحساب</h3><strong id="homeHealthScore" class="text-emerald-400">--%</strong></div>
-                    <div class="h-3 bg-slate-950 rounded-full overflow-hidden"><div id="homeHealthProgress" class="h-full bg-emerald-400 rounded-full" style="width:0%"></div></div>
-                    <p id="homeHealthMessage" class="text-[10px] text-slate-400">جارٍ فحص إعدادات الحساب...</p>
-                </div>
-                <div class="glass-card p-5 rounded-3xl space-y-3">
-                    <div class="flex justify-between items-center"><h3 class="font-black text-sm text-white">نشاط الحساب</h3><i class="fa-solid fa-chart-column text-cyan-400"></i></div>
-                    <div class="grid grid-cols-3 gap-2 text-center text-[10px]"><div><strong id="homeEarnedToday" class="block text-emerald-400">$0</strong><span class="text-slate-500">اليوم</span></div><div><strong id="homeEarnedWeek" class="block text-emerald-400">$0</strong><span class="text-slate-500">7 أيام</span></div><div><strong id="homeEarnedMonth" class="block text-emerald-400">$0</strong><span class="text-slate-500">الشهر</span></div></div>
-                    <p id="homePendingStatusDetail" class="text-[10px] text-slate-400">لا توجد طلبات معلقة.</p>
-                </div>
-            </div>
-
-            <div class="glass-card p-5 rounded-3xl border border-emerald-500/20 space-y-3">
-                <div class="flex justify-between items-center"><h3 class="font-black text-sm text-white">نبض الحساب</h3><i class="fa-solid fa-heart-pulse text-emerald-400"></i></div>
-                <p id="homePulseMessage" class="text-xs leading-6 text-slate-300">جارٍ تحليل نشاط حسابك...</p>
-                <span id="homePulseMeta" class="text-[10px] text-slate-500"></span>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="glass-card p-5 rounded-3xl space-y-3">
-                    <div class="flex justify-between items-center"><h3 class="font-black text-sm text-white">خريطة الفرص</h3><i class="fa-solid fa-route text-amber-400"></i></div>
-                    <div id="homeOpportunities" class="space-y-2 text-xs text-slate-300"></div>
-                </div>
-                <div class="glass-card p-5 rounded-3xl space-y-3">
-                    <div class="flex justify-between items-center"><h3 class="font-black text-sm text-white">خط زمني للحساب</h3><i class="fa-solid fa-timeline text-cyan-400"></i></div>
-                    <div id="homeTimeline" class="space-y-2 text-[11px] text-slate-400 max-h-40 overflow-y-auto"></div>
-                </div>
-            </div>
-
             <section class="glass-card p-5 rounded-3xl border border-cyan-500/20 space-y-4" aria-labelledby="homeTrustTitle">
                 <div class="flex justify-between items-start gap-3">
                     <div><h3 id="homeTrustTitle" class="font-black text-sm text-white">مركز الثقة والوضوح</h3><p class="text-[10px] text-slate-500 mt-1">كل ما تحتاجه لفهم حسابك واستخدام المنصة بوعي.</p></div>
@@ -1929,7 +1932,6 @@
                     <div class="flex gap-3 text-[10px] font-bold"><a href="/transparency.html" class="text-amber-400 hover:text-amber-300">الشفافية</a><a href="/status.html" class="text-cyan-300 hover:text-cyan-200">حالة الخدمات</a><a href="/help.html" class="text-slate-300 hover:text-white">المساعدة</a></div>
                 </div>
             </section>
-
         </div>
 
         <div id="socialUserCardModal" class="hide fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/80 p-4" role="dialog" aria-modal="true" aria-label="بطاقة المستخدم"><div class="w-full max-w-md overflow-hidden rounded-3xl border border-cyan-400/20 bg-slate-900 shadow-2xl"><div class="flex justify-end p-3"><button type="button" onclick="closeSocialUserCard()" class="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-800 hover:text-white" aria-label="إغلاق"><i class="fa-solid fa-xmark"></i></button></div><div id="socialUserCardContent"></div></div></div>
@@ -2739,6 +2741,6 @@
     </script>
 
     <!-- استدعاء ملف الجافاسكربت المفصول الأساسي -->
-    <script src="app.js?v=deposit-consent-20261013-1"></script>
+    <script src="app.js?v=20261030-home-dashboard-refresh-1"></script>
 </body>
 </html>
