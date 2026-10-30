@@ -28,6 +28,10 @@ The repository includes application-level protections and endpoints, but backups
 
 Deposits use the platform's own USDT TRC20 receiving wallet. The app displays its address and QR; the user submits the transaction ID (TxID), and the server credits only after checking the confirmed on-chain transfer's token contract and destination. Duplicate TxIDs are rejected idempotently. No payment intermediary, provider key, callback, or deposit fee is involved. Withdrawals use a separate TRON payout wallet and remain independently controlled.
 
+### Withdrawal availability update
+
+Withdrawals are available every day of the week for every tier. Before deploying the matching application code, run `supabase/withdrawals-all-weekdays.sql` in the production Supabase SQL editor. It removes the legacy weekday trigger and adds an internal unread notification for every existing user, without duplicating it on reruns. The daily schedule does not bypass withdrawal minimums, balance/weekly limits, verified-email and pinned-wallet requirements, email-code verification, review, or payout safety controls.
+
 ### Required setup — keep all switches off until validation
 
 1. Apply `supabase/automatic-withdrawals.sql`, `supabase/trc20-only-financials.sql`, `supabase/withdrawal-validation-hardening.sql`, and `supabase/shared-tron-deposit-txid.sql` to production Supabase after the canonical schema. The shared-wallet credit RPC is service-role-only and records each verified TxID exactly once. Keep old provider order tables/history intact for audit and reconciliation; this runtime no longer creates provider invoices or processes callbacks.
