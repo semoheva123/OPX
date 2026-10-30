@@ -369,6 +369,28 @@
             .campaign-popup-foot p { font-size:10px; }
         }
         @media (prefers-reduced-motion: reduce) { .campaign-popup-backdrop,.campaign-popup,.campaign-popup-status::before { animation:none !important; } }
+        .withdrawal-update-backdrop { position:fixed; inset:0; z-index:10050 !important; display:flex; align-items:center; justify-content:center; padding:18px; background:rgba(2,6,15,.84); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); animation:withdrawalNoticeFade .24s ease both; }
+        .withdrawal-update-card { position:relative; width:min(100%,540px); max-height:min(92vh,760px); overflow:auto; border:1px solid rgba(247,185,85,.34); border-radius:28px; background:radial-gradient(ellipse at 50% -10%,rgba(247,185,85,.18),transparent 42%),linear-gradient(145deg,#0c1727 0%,#101b2d 54%,#09131f 100%); box-shadow:0 36px 100px rgba(0,0,0,.58),0 0 56px rgba(247,185,85,.1),inset 0 1px 0 rgba(255,255,255,.07); animation:withdrawalNoticeRise .34s cubic-bezier(.2,.8,.2,1) both; }
+        .withdrawal-update-close { position:absolute; top:14px; left:14px; z-index:2; display:grid; width:38px; height:38px; place-items:center; border:1px solid rgba(148,163,184,.16); border-radius:13px; background:rgba(2,6,15,.48); color:#94a3b8; cursor:pointer; }
+        .withdrawal-update-close:hover { color:#fff; border-color:rgba(247,185,85,.35); }
+        .withdrawal-update-content { padding:34px clamp(20px,5vw,38px) 28px; text-align:center; }
+        .withdrawal-update-icon { position:relative; display:grid; width:78px; height:78px; place-items:center; margin:0 auto 18px; border:1px solid rgba(247,185,85,.35); border-radius:25px; background:linear-gradient(145deg,rgba(247,185,85,.2),rgba(52,211,153,.1)); color:#ffe1a1; font-size:29px; box-shadow:0 12px 35px rgba(247,185,85,.12),inset 0 1px 0 rgba(255,255,255,.12); }
+        .withdrawal-update-icon::after { position:absolute; inset:-7px; border:1px solid rgba(247,185,85,.12); border-radius:30px; content:''; }
+        .withdrawal-update-eyebrow { display:inline-flex; align-items:center; gap:7px; padding:7px 11px; border:1px solid rgba(52,211,153,.24); border-radius:999px; background:rgba(16,185,129,.08); color:#a7f3d0; font-size:10px; font-weight:900; }
+        .withdrawal-update-title { margin:16px 0 8px; color:#fff; font-size:clamp(22px,5vw,30px); font-weight:900; line-height:1.4; text-wrap:balance; }
+        .withdrawal-update-body { margin:0 auto; max-width:440px; color:#aab6c9; font-size:12px; line-height:2; white-space:pre-line; }
+        .withdrawal-update-points { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; margin-top:22px; }
+        .withdrawal-update-point { padding:12px 8px; border:1px solid rgba(148,163,184,.13); border-radius:16px; background:rgba(2,6,15,.36); color:#e2e8f0; font-size:10px; font-weight:800; line-height:1.7; }
+        .withdrawal-update-point i { display:block; margin-bottom:7px; color:#f7b955; font-size:14px; }
+        .withdrawal-update-note { margin-top:14px; padding:11px 13px; border:1px solid rgba(56,189,248,.15); border-radius:14px; background:rgba(14,165,233,.045); color:#94a3b8; font-size:10px; line-height:1.8; text-align:right; }
+        .withdrawal-update-actions { display:flex; gap:9px; margin-top:21px; }
+        .withdrawal-update-backdrop[dir="ltr"] .withdrawal-update-note { text-align:left; }
+        .withdrawal-update-action { display:inline-flex; flex:1; min-height:46px; align-items:center; justify-content:center; gap:8px; padding:0 15px; border:1px solid rgba(247,185,85,.36); border-radius:14px; background:linear-gradient(135deg,#ffe1a1,#f7b955 58%,#d88d31); color:#111827; font-size:11px; font-weight:900; box-shadow:0 10px 28px rgba(247,185,85,.14); cursor:pointer; }
+        .withdrawal-update-action--secondary { border-color:rgba(148,163,184,.18); background:rgba(15,23,42,.65); color:#cbd5e1; box-shadow:none; }
+        @keyframes withdrawalNoticeFade { from { opacity:0; } to { opacity:1; } }
+        @keyframes withdrawalNoticeRise { from { opacity:0; transform:translateY(14px) scale(.985); } to { opacity:1; transform:translateY(0) scale(1); } }
+        @media (max-width:480px) { .withdrawal-update-backdrop { padding:11px; } .withdrawal-update-card { border-radius:22px; } .withdrawal-update-content { padding:29px 18px 20px; } .withdrawal-update-icon { width:68px; height:68px; border-radius:22px; font-size:25px; } .withdrawal-update-points { gap:6px; } .withdrawal-update-point { padding:10px 5px; font-size:9px; } .withdrawal-update-actions { flex-direction:column; } }
+        @media (prefers-reduced-motion: reduce) { .withdrawal-update-backdrop,.withdrawal-update-card { animation:none !important; } }
         .home-referral-campaign {
             position: relative;
             overflow: hidden;
@@ -2633,6 +2655,28 @@
                 <button type="button" onclick="closeActiveSessionsModal()" class="py-2 bg-slate-800 text-slate-300 border border-slate-700 font-bold rounded-xl text-xs">إغلاق</button>
             </div>
         </div>
+    </div>
+
+    <div id="withdrawalUpdateModal" class="withdrawal-update-backdrop hide" role="dialog" aria-modal="true" aria-labelledby="withdrawalUpdateTitle" aria-describedby="withdrawalUpdateBody" aria-hidden="true" dir="rtl">
+        <section class="withdrawal-update-card">
+            <button type="button" class="withdrawal-update-close" onclick="closeWithdrawalUpdatePopup()" aria-label="إغلاق إشعار تحديث السحب" title="إغلاق"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+            <div class="withdrawal-update-content">
+                <div class="withdrawal-update-icon" aria-hidden="true"><i class="fa-solid fa-calendar-check"></i></div>
+                <span class="withdrawal-update-eyebrow"><i class="fa-solid fa-bullhorn" aria-hidden="true"></i> تحديث جديد في خدمات الحساب</span>
+                <h2 id="withdrawalUpdateTitle" class="withdrawal-update-title">أصبحت طلبات السحب متاحة يوميًا</h2>
+                <p id="withdrawalUpdateBody" class="withdrawal-update-body">يمكنك الآن تقديم طلب سحب في أي يوم من أيام الأسبوع، مهما كان مستواك.</p>
+                <div class="withdrawal-update-points" aria-label="ملخص التحديث">
+                    <div class="withdrawal-update-point"><i class="fa-solid fa-calendar-week" aria-hidden="true"></i>كل أيام الأسبوع</div>
+                    <div class="withdrawal-update-point"><i class="fa-solid fa-layer-group" aria-hidden="true"></i>جميع المستويات</div>
+                    <div class="withdrawal-update-point"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i>إجراءات الأمان مستمرة</div>
+                </div>
+                <p class="withdrawal-update-note"><i class="fa-solid fa-circle-info ml-1 text-cyan-300" aria-hidden="true"></i> تبقى شروط السحب، والحدود، والتحقق من البريد والمحفظة، ومراجعة الطلب كما هي.</p>
+                <div class="withdrawal-update-actions">
+                    <button id="withdrawalUpdateAcknowledge" type="button" class="withdrawal-update-action" onclick="closeWithdrawalUpdatePopup()">حسنًا، فهمت <i class="fa-solid fa-check" aria-hidden="true"></i></button>
+                    <button type="button" class="withdrawal-update-action withdrawal-update-action--secondary" onclick="closeWithdrawalUpdatePopup(true)">فتح صفحة السحب <i class="fa-solid fa-arrow-up" aria-hidden="true"></i></button>
+                </div>
+            </div>
+        </section>
     </div>
 
     <div id="rewardsCampaignModal" class="campaign-popup-backdrop hide" role="dialog" aria-modal="true" aria-labelledby="rewardsCampaignModalTitle" aria-hidden="true" onclick="if(event.target === this) closeRewardsCampaignModal()">

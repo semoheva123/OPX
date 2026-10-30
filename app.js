@@ -13,6 +13,8 @@ let expandedDailyTaskKey = null;
 let growthChartPoints = [];
 let growthChartSummary = { startBalance: 0, currentBalance: 0, netGrowth: 0, growthRate: 0 };
 let unreadNotificationCount = null;
+let pendingWithdrawalUpdateNotification = null;
+let activeWithdrawalUpdateNotification = null;
 let notificationPollTimer = null;
 let profileSyncTimer = null;
 let platformSupportUrl = '';
@@ -632,6 +634,7 @@ async function fetchUnreadNotifications(isLiveUpdate = false) {
         const response = await fetch('/api/notifications', { headers: { Authorization: `Bearer ${token}` } });
         if (!response.ok) return;
         const data = await response.json();
+        queueWithdrawalUpdatePopup(data.notifications || []);
         const count = Number(data.unread || 0);
         if (isLiveUpdate && unreadNotificationCount !== null && count > unreadNotificationCount) {
             showToast(`لديك ${count - unreadNotificationCount} إشعار جديد`, 'default');
@@ -640,6 +643,83 @@ async function fetchUnreadNotifications(isLiveUpdate = false) {
         badge.innerText = count > 99 ? '99+' : count;
         badge.classList.toggle('hidden', count === 0);
     } catch (error) { }
+}
+
+const WITHDRAWAL_UPDATE_NOTIFICATION_TITLE = 'تحديث مهم: السحب متاح يوميًا';
+
+function queueWithdrawalUpdatePopup(notifications = []) {
+    if (!Array.isArray(notifications) || !currentUserData) return;
+    const notice = notifications.find(item => item?.title === WITHDRAWAL_UPDATE_NOTIFICATION_TITLE && !item.readAt);
+    if (!notice) return;
+    const noticeId = String(notice.id || notice._id || '');
+    if (!noticeId) return;
+    const userId = String(currentUserData.id || currentUserData._id || '');
+    if (!userId) return;
+    try {
+        if (sessionStorage.getItem(`operix_withdrawal_update_seen:${userId}:${noticeId}`) === '1') return;
+    } catch (error) { }
+    pendingWithdrawalUpdateNotification = { ...notice, id: noticeId, userId };
+    showPendingWithdrawalUpdatePopup();
+}
+
+function renderWithdrawalUpdatePopupText(notice) {
+    const modal = document.getElementById('withdrawalUpdateModal');
+    if (!modal) return;
+    const isEnglish = localStorage.getItem('ag_language') === 'en';
+    modal.dir = isEnglish ? 'ltr' : 'rtl';
+    const title = document.getElementById('withdrawalUpdateTitle');
+    if (title) title.textContent = isEnglish ? 'Withdrawals are now available every day' : 'أصبحت طلبات السحب متاحة يوميًا';
+    const body = document.getElementById('withdrawalUpdateBody');
+    if (body) body.textContent = isEnglish
+        ? 'You can now submit a withdrawal request any day of the week, for every tier. Email and wallet verification, minimums, limits, and request review remain in effect.'
+        : notice?.body || 'أصبح تقديم طلبات السحب متاحًا يوميًا لجميع المستويات، طوال أيام الأسبوع. تستمر شروط السحب والتحقق والحدود المعتمدة كما هي.';
+    modal.querySelector('.withdrawal-update-close')?.setAttribute('aria-label', isEnglish ? 'Close withdrawal update announcement' : 'إغلاق إشعار تحديث السحب');
+}
+
+function showPendingWithdrawalUpdatePopup() {
+    const notice = pendingWithdrawalUpdateNotification;
+    const modal = document.getElementById('withdrawalUpdateModal');
+    if (!notice || !modal || !localStorage.getItem('token')) return;
+    const rewardsModal = document.getElementById('rewardsCampaignModal');
+    const onboardingModal = document.getElementById('onboardingModal');
+    if ((rewardsModal && !rewardsModal.classList.contains('hide')) || (onboardingModal && !onboardingModal.classList.contains('hide'))) return;
+
+    const userId = String(currentUserData?.id || currentUserData?._id || '');
+    if (!userId || userId !== notice.userId) return;
+    try {
+        if (sessionStorage.getItem(`operix_withdrawal_update_seen:${userId}:${notice.id}`) === '1') {
+            pendingWithdrawalUpdateNotification = null;
+            return;
+        }
+        sessionStorage.setItem(`operix_withdrawal_update_seen:${userId}:${notice.id}`, '1');
+    } catch (error) { }
+
+    activeWithdrawalUpdateNotification = notice;
+    pendingWithdrawalUpdateNotification = null;
+    renderWithdrawalUpdatePopupText(notice);
+    modal.classList.remove('hide');
+    modal.setAttribute('aria-hidden', 'false');
+    document.getElementById('withdrawalUpdateAcknowledge')?.focus({ preventScroll: true });
+}
+
+async function closeWithdrawalUpdatePopup(openWithdraw = false) {
+    const modal = document.getElementById('withdrawalUpdateModal');
+    if (modal) {
+        modal.classList.add('hide');
+        modal.setAttribute('aria-hidden', 'true');
+    }
+    const notice = activeWithdrawalUpdateNotification;
+    activeWithdrawalUpdateNotification = null;
+    if (openWithdraw) window.setTimeout(() => openWithdrawModal(), 80);
+    if (notice?.id) {
+        try {
+            await fetch(`/api/notifications/${encodeURIComponent(notice.id)}/read`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+            });
+        } catch (error) { }
+    }
+    fetchUnreadNotifications();
 }
 
 function startRealtimeStream() {
@@ -926,6 +1006,7 @@ function closeRewardsCampaignModal() {
     if (!modal) return;
     modal.classList.add('hide');
     modal.setAttribute('aria-hidden', 'true');
+    window.setTimeout(showPendingWithdrawalUpdatePopup, 0);
 }
 
 async function handleRegister(e) {
@@ -1872,6 +1953,7 @@ function continueOnboarding() {
 function closeOnboarding() {
     localStorage.setItem('operix_onboarding_seen', '1');
     document.getElementById('onboardingModal')?.classList.add('hide');
+    window.setTimeout(showPendingWithdrawalUpdatePopup, 0);
 }
 
 function showAuthView(tab = 'login') {
@@ -3717,6 +3799,10 @@ async function logout({ notifyServer = true } = {}) {
     if (profileSyncTimer) clearInterval(profileSyncTimer);
     profileSyncTimer = null;
     unreadNotificationCount = null;
+    pendingWithdrawalUpdateNotification = null;
+    activeWithdrawalUpdateNotification = null;
+    document.getElementById('withdrawalUpdateModal')?.classList.add('hide');
+    document.getElementById('withdrawalUpdateModal')?.setAttribute('aria-hidden', 'true');
     currentUserData = null;
     hasPendingDeposit = false;
     localStorage.removeItem('operix_ref_code');
@@ -3762,7 +3848,13 @@ function changeLanguage(language) {
         'الأمان والحماية': 'Security', 'إعدادات المنصة والدعم': 'Platform settings and support',
         'الأصوات والتنبيهات': 'Sounds and alerts', 'لغة التطبيق': 'Application language',
         'شروط الاستخدام': 'Terms of use', 'سياسة الخصوصية': 'Privacy policy',
-        'تسجيل الخروج من الحساب': 'Log out of account', 'نسخ': 'Copy'
+        'تسجيل الخروج من الحساب': 'Log out of account', 'نسخ': 'Copy',
+        'تحديث جديد في خدمات الحساب': 'New account-services update',
+        'أصبحت طلبات السحب متاحة يوميًا': 'Withdrawals are now available every day',
+        'يمكنك الآن تقديم طلب سحب في أي يوم من أيام الأسبوع، مهما كان مستواك.': 'You can now submit a withdrawal request any day of the week, regardless of your tier.',
+        'كل أيام الأسبوع': 'Every day of the week', 'جميع المستويات': 'All tiers', 'إجراءات الأمان مستمرة': 'Security checks remain in place',
+        'تبقى شروط السحب، والحدود، والتحقق من البريد والمحفظة، ومراجعة الطلب كما هي.': 'Withdrawal requirements, limits, email and wallet verification, and request review remain unchanged.',
+        'حسنًا، فهمت': 'Got it', 'فتح صفحة السحب': 'Open withdrawals'
     };
     const translations = {
         ar: {
@@ -3784,6 +3876,7 @@ function changeLanguage(language) {
     localStorage.setItem('ag_language', language);
     document.documentElement.lang = language;
     document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
+    if (activeWithdrawalUpdateNotification) renderWithdrawalUpdatePopupText(activeWithdrawalUpdateNotification);
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
         acceptNode: node => ['SCRIPT', 'STYLE', 'NOSCRIPT'].includes(node.parentElement?.tagName)
             ? NodeFilter.FILTER_REJECT
