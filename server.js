@@ -16,6 +16,7 @@ const webpush = require('web-push');
 const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 const createApp = require('./src/app');
+const { verifyAdmin } = require('./src/middlewares/auth');
 const { connectDatabase, closeDatabase, getDatabaseMode } = require('./src/config/database');
 const dataAccess = require('./src/services/dataAccess');
 const User = dataAccess.user;
@@ -1074,10 +1075,8 @@ app.post('/api/wallet/withdraw', verifyToken, async (req, res) => {
 
 // ==================== 5. مسارات الإدارة (Admin APIs) ====================
 
-// 🔐 صفحة لوحة التحكم الأدمين
-app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'admin.html'));
-});
+// 🔐 لوحة التحكم الإدارية — المحمية موجودة في src/app.js (هذا الملف يُسجّل مساراته بعد
+// معالج 404 في createApp، فأي مسار هنا لن يُنفَّذ؛ أُبقيت الإشارة للتوثيق فقط).
 /*
 // 💎 إضافة أو تعديل مستوى VIP من الأدمن
 app.post('/api/admin/vip-levels', verifyAdmin, async (req, res) => {

@@ -55,8 +55,14 @@ const verifyToken = async (req, res, next) => {
 
 const adminRoles = ['admin', 'financial_admin', 'support_admin', 'monitor'];
 
+const ADMIN_PAGE_PATHS = new Set(['/admin', '/admin.html']);
+
 function rejectAdminRequest(req, res, status, error) {
-  if (req.path === '/admin.html' && req.accepts('html')) return res.redirect('/admin-login.html');
+  // Browser navigations to the console should land on the login screen instead of a JSON error.
+  // Only unauthenticated access redirects; a wrong role or a revoked session would loop back.
+  // Browsers navigating to a page send text/html or */*; an API client asking for JSON gets JSON.
+  const wantsHtml = !/application\/json/i.test(String(req.headers.accept || ''));
+  if (status === 401 && ADMIN_PAGE_PATHS.has(req.path) && wantsHtml) return res.redirect(302, '/admin-login.html');
   return res.status(status).json({ error });
 }
 

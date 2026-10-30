@@ -60,3 +60,13 @@ Withdrawals are available every day of the week for every tier. Before deploying
 - Pre-broadcast validation failures remain retryable and do not send funds. Confirmed payouts are final. Ambiguous transactions become `manual_review`; do not refund or create another payment until the hash has been checked on the relevant explorer. The system intentionally favors a manual investigation over risking a duplicate transfer.
 - Apply the database migration before deploying this application version. Existing pending withdrawal requests created before network persistence have no trustworthy network recorded and cannot be paid automatically; reject/refund them or have the user create a new request after deployment.
 - Never use production keys for testing. Monitor the payout status and transaction hash from the Finance room and fund native gas balances before approving requests.
+
+## Admin console security model
+
+- Admin authentication is a separate JWT scope plus mandatory TOTP. The session is issued as an `HttpOnly; SameSite=Lax; Secure` cookie (`operix_admin`, 8 hours) and the console never reads or stores the bearer token in web storage.
+- `/admin.html` and `/admin` require a live admin session; unauthenticated visitors are redirected to `/admin-login.html`.
+- State-changing API requests are rejected with `403` when the `Origin`/`Referer` does not match the request host or `ALLOWED_ORIGINS`. Server-to-server callbacks (no `Origin` header) are unaffected.
+- Rate limits: 200 requests / 15 min for end users, 1200 / 15 min for `/api/admin/*`, and a dedicated 10 / 15 min limit on `/api/auth/admin-login`. Admin traffic no longer consumes the end-user budget, which previously locked operators out behind shared NAT.
+- Every admin action is written to `audit_logs` with actor, target, metadata, IP and device. Run `supabase/admin-audit-hardening.sql` so those origin columns and the paginated read RPC exist.
+- Operators can review and revoke their own admin sessions from «أمان الإدارة», and revoke every other session with one action.
+- Balance adjustments require an operator reason and record the wallet values before and after the change.

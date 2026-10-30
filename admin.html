@@ -37,7 +37,6 @@
             -webkit-backdrop-filter: blur(18px);
         }
         .glass-card:hover { border-color: rgba(247,185,85,0.26); box-shadow: 0 24px 66px rgba(2, 8, 18, 0.48), 0 0 0 1px rgba(247,185,85,0.04); }
-        .glass-card { background: var(--operix-panel); backdrop-filter: blur(16px); border: 1px solid var(--operix-line); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.16); }
         .gold-gradient { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
         .purple-gradient { background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); }
         .emerald-gradient { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
@@ -112,13 +111,39 @@ body::before{content:'';position:fixed;inset:-12%;z-index:-1;pointer-events:none
 body.modal-open{overflow:hidden}
 .admin-modal{overscroll-behavior:contain}
 @media (max-width:767px){.admin-modal>.glass-card{width:100%;max-height:calc(100dvh - 1.5rem);overflow-y:auto;border-radius:1.5rem 1.5rem 1rem 1rem}}
+
+/* ===== Typography floor: keep operational tables and notes readable ===== */
+main table tbody td, main table thead th { font-size: .75rem; line-height: 1.45; }
+main table tbody td span.text-\[9px\], main table tbody td span.text-\[10px\] { font-size: .68rem !important; line-height: 1.4; }
+main .overview-panel small, main .overview-section-heading span, main .table-empty, main p.text-\[9px\], main p.text-\[10px\], main span.text-\[9px\] { font-size: .7rem; }
+main label.block.text-\[10px\], main label.text-\[10px\] { font-size: .72rem; }
+
+/* ===== Admin navigation drawer (mobile), toast variants, table states ===== */
+@media (max-width: 767px) {
+    #sidebar { position: fixed; top: 0; right: 0; bottom: 0; height: 100dvh; width: min(88vw, 20rem); z-index: 80; overflow-y: auto; border-radius: 0; border-left: 1px solid var(--operix-line); transform: translateX(102%); transition: transform .26s cubic-bezier(.22,1,.36,1); will-change: transform; }
+    #sidebar.is-open { display: flex !important; transform: translateX(0); }
+}
+@media (min-width: 768px) { #sidebarBackdrop { display: none !important; } }
+#sidebar nav button[aria-current="page"] { box-shadow: inset 0 1px 0 rgba(255,255,255,.28); }
+#sidebar nav button:disabled { opacity: .45; cursor: not-allowed; }
+#toast { display: flex; align-items: center; gap: .5rem; max-width: min(92vw, 34rem); }
+#toast.hide { display: none !important; }
+#toast i { flex-shrink: 0; }
+.table-empty { padding: 2rem 1rem; text-align: center; color: #94a3b8; font-size: .75rem; }
+.table-empty i { display: block; font-size: 1.5rem; margin-bottom: .6rem; color: #475569; }
+.table-loading td { padding: .75rem 1rem; }
+.badge-count { display: inline-flex; min-width: 1.1rem; justify-content: center; align-items: center; margin-inline-start: .35rem; border-radius: 999px; padding: 0 .3rem; background: #f43f5e; color: #fff; font-size: .55rem; line-height: 1.4; }
+.toolbar-chip { border-radius: .75rem; border: 1px solid rgba(148,163,184,.18); padding: .45rem .7rem; font-size: .65rem; font-weight: 700; color: #cbd5e1; background: rgba(2,6,23,.6); }
+.toolbar-chip[aria-pressed="true"] { border-color: rgba(247,185,85,.5); background: rgba(247,185,85,.15); color: #fbbf24; }
+.filter-bar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.kbd-hint { border: 1px solid rgba(148,163,184,.28); border-radius: .4rem; padding: 0 .3rem; font-size: .6rem; color: #94a3b8; }
 </style>
 <link rel="stylesheet" href="/styles/operix-premium.css?v=20261021-admin-mobile-fix-1">
 </head>
 <body class="admin-shell min-h-screen bg-slate-950 text-slate-100 flex flex-col md:flex-row">
 <div class="tech-grid-bg"></div>
 
-    <div id="toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 z-50 hide bg-slate-900 border border-amber-500 text-white px-6 py-3 rounded-2xl shadow-2xl text-sm font-medium transition-all duration-300"></div>
+    <div id="toast" role="status" aria-live="polite" aria-atomic="true" class="fixed top-5 left-1/2 transform -translate-x-1/2 z-[90] hide bg-slate-900 border border-amber-500 text-white px-6 py-3 rounded-2xl shadow-2xl text-sm font-medium transition-all duration-300"></div>
 
     <div id="adminConfirmModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] hide items-center justify-center p-4 pointer-events-auto" role="dialog" aria-modal="true" aria-labelledby="adminConfirmTitle" aria-hidden="true">
         <div class="glass-card relative z-10 w-full max-w-sm p-6 rounded-3xl border border-amber-500/30 space-y-4">
@@ -136,8 +161,8 @@ body.modal-open{overflow:hidden}
             <img src="/operix-logo.svg" alt="OPERIX" class="h-8 w-auto">
             <span class="font-black text-white text-sm">OPERIX Admin</span>
         </div>
-        <button onclick="toggleMobileSidebar()" class="text-white text-xl p-2 hover:bg-slate-900 rounded-lg">
-            <i class="fa-solid fa-bars"></i>
+        <button type="button" data-sidebar-toggle onclick="toggleMobileSidebar()" aria-controls="sidebar" aria-expanded="false" aria-label="فتح قائمة الإدارة" class="text-white text-xl p-2 hover:bg-slate-900 rounded-lg">
+            <i class="fa-solid fa-bars" aria-hidden="true"></i>
         </button>
     </div>
 
@@ -182,9 +207,9 @@ body.modal-open{overflow:hidden}
                     <i class="fa-solid fa-list-check text-base"></i>
                     <span>سجل التدقيق</span>
                 </button>
-                <button data-permission="manage_users" onclick="switchAdminTab('support')" id="btn-tab-support" class="w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-900 hover:text-white transition-all"><i class="fa-solid fa-ticket text-base"></i><span>تذاكر الدعم</span></button>
-                <button data-permission="manage_users" onclick="switchAdminTab('social-feed')" id="btn-tab-social-feed" class="w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-900 hover:text-white transition-all"><i class="fa-solid fa-comments text-base"></i><span>مراجعة جدار التواصل</span></button>
-                <button data-full-admin="true" onclick="switchAdminTab('security')" id="btn-tab-security" class="w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-900 hover:text-white transition-all"><i class="fa-solid fa-shield-halved text-base"></i><span>أمان الإدارة</span></button>
+                <button data-permission="manage_users" onclick="switchAdminTab('support')" id="btn-tab-support" class="w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-900 hover:text-white transition-all"><i class="fa-solid fa-ticket text-base"></i><span>تذاكر الدعم <b id="pendingSupportBadge" class="badge-count hidden">0</b></span></button>
+                <button data-permission="manage_users" onclick="switchAdminTab('social-feed')" id="btn-tab-social-feed" class="w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-900 hover:text-white transition-all"><i class="fa-solid fa-comments text-base"></i><span>مراجعة جدار التواصل <b id="pendingReportsBadge" class="badge-count hidden">0</b></span></button>
+                <button data-permission="read_overview" onclick="switchAdminTab('security')" id="btn-tab-security" class="w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-900 hover:text-white transition-all"><i class="fa-solid fa-shield-halved text-base"></i><span>أمان الإدارة</span></button>
                 <button data-permission="read_referrals" onclick="switchAdminTab('referrals')" id="btn-tab-referrals" class="w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-900 hover:text-white transition-all">
                     <i class="fa-solid fa-share-nodes text-base"></i>
                     <span>إدارة الإحالات</span>
@@ -199,9 +224,18 @@ body.modal-open{overflow:hidden}
             </button>
         </div>
     </aside>
+    <div id="sidebarBackdrop" class="hidden fixed inset-0 z-[70] bg-slate-950/70 backdrop-blur-sm md:hidden" onclick="toggleMobileSidebar(false)" aria-hidden="true"></div>
 
     <!-- المحتوى الرئيسي -->
     <main class="flex-1 p-4 md:p-8 overflow-y-auto space-y-6">
+
+        <div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-2 text-[10px] text-slate-400">
+            <span id="adminGlobalSync" role="status" aria-live="polite">آخر تحديث: --</span>
+            <div class="flex items-center gap-3">
+                <label class="flex cursor-pointer items-center gap-1.5"><input type="checkbox" id="adminAutoRefresh" checked class="h-3.5 w-3.5 accent-amber-400"> تحديث تلقائي كل 60 ثانية</label>
+                <button type="button" onclick="refreshActiveAdminTab({ manual: true })" title="تحديث بيانات التبويب الحالي" class="rounded-lg bg-slate-900 px-3 py-1.5 font-bold text-slate-200"><i class="fa-solid fa-arrows-rotate ml-1" aria-hidden="true"></i>تحديث</button>
+            </div>
+        </div>
 
         <!-- تبويب: نظرة عامة -->
         <div id="admin-overview" class="admin-overview space-y-5">
@@ -262,7 +296,34 @@ body.modal-open{overflow:hidden}
             </details>
         </div>
 
-        <div id="admin-analytics" class="space-y-6 hide"><div class="flex justify-between items-center"><div><h2 class="text-xl font-black text-white">مركز التحليلات</h2><p class="text-[10px] text-slate-500 mt-1">آخر 30 يومًا من نشاط المنصة والسجل الأمني</p></div><div class="flex gap-2"><button onclick="exportAnalyticsCsv()" title="تصدير التحليلات" class="px-3 py-2 bg-slate-900 text-emerald-400 rounded-xl"><i class="fa-solid fa-file-csv"></i></button><button onclick="fetchAdminAnalytics()" title="تحديث التحليلات" class="px-3 py-2 bg-slate-900 text-slate-300 rounded-xl"><i class="fa-solid fa-arrows-rotate"></i></button></div></div><div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div class="glass-card p-5 rounded-2xl"><span class="text-xs text-slate-400">دخول ناجح</span><strong id="analyticsLoginSuccess" class="block text-3xl text-emerald-400 mt-2">--</strong></div><div class="glass-card p-5 rounded-2xl"><span class="text-xs text-slate-400">محاولات فاشلة</span><strong id="analyticsLoginFailed" class="block text-3xl text-rose-400 mt-2">--</strong></div><div class="glass-card p-5 rounded-2xl"><span class="text-xs text-slate-400">بريد موثق</span><strong id="analyticsEmailVerified" class="block text-3xl text-cyan-400 mt-2">--</strong></div></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-4"><div class="glass-card p-5 rounded-2xl"><h3 class="font-bold text-white text-sm mb-4">توزيع الأدوار</h3><div id="analyticsRoles" class="space-y-3"></div></div><div class="glass-card p-5 rounded-2xl"><h3 class="font-bold text-white text-sm mb-4">نشاط المعاملات اليومية</h3><div id="analyticsDaily" class="space-y-2 max-h-72 overflow-y-auto"></div></div></div></div>
+        <div id="admin-analytics" class="space-y-6 hide">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div><h2 class="text-xl font-black text-white">مركز التحليلات</h2><p class="text-[10px] text-slate-500 mt-1">مقارنة الفترة الحالية بالفترة السابقة، مع السجل الأمني لنفس المدة.</p></div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <label class="flex items-center gap-2 text-[10px] text-slate-400">الفترة
+                        <select id="analyticsPeriod" onchange="fetchAdminAnalytics()" aria-label="فترة التحليلات" class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-[11px] text-white">
+                            <option value="7">7 أيام</option><option value="30" selected>30 يومًا</option><option value="90">90 يومًا</option>
+                        </select>
+                    </label>
+                    <button onclick="exportAnalyticsCsv()" title="تصدير التحليلات" aria-label="تصدير التحليلات" class="px-3 py-2 bg-slate-900 text-emerald-400 rounded-xl"><i class="fa-solid fa-file-csv" aria-hidden="true"></i></button>
+                    <button onclick="fetchAdminAnalytics()" title="تحديث التحليلات" aria-label="تحديث التحليلات" class="px-3 py-2 bg-slate-900 text-slate-300 rounded-xl"><i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i></button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <article class="glass-card p-5 rounded-2xl"><span class="text-xs text-slate-400">دخول ناجح</span><strong id="analyticsLoginSuccess" class="block text-3xl text-emerald-400 mt-2">--</strong><small id="analyticsLoginSuccessDelta" class="text-[10px] text-slate-500"></small></article>
+                <article class="glass-card p-5 rounded-2xl"><span class="text-xs text-slate-400">محاولات فاشلة</span><strong id="analyticsLoginFailed" class="block text-3xl text-rose-400 mt-2">--</strong><small class="text-[10px] text-slate-500">خلال الفترة المحددة</small></article>
+                <article class="glass-card p-5 rounded-2xl"><span class="text-xs text-slate-400">بريد موثق</span><strong id="analyticsEmailVerified" class="block text-3xl text-cyan-400 mt-2">--</strong><small id="analyticsVerifiedPercent" class="text-[10px] text-slate-500"></small></article>
+                <article class="glass-card p-5 rounded-2xl"><span class="text-xs text-slate-400">حجم المعاملات</span><strong id="analyticsVolume" class="block text-3xl text-amber-300 mt-2">--</strong><small id="analyticsVolumeDelta" class="text-[10px] text-slate-500"></small></article>
+            </div>
+
+            <div class="glass-card p-5 rounded-2xl"><div class="flex items-center justify-between"><h3 class="font-bold text-white text-sm">حركة المعاملات اليومية</h3><span class="text-[10px] text-slate-500">إجمالي القيمة لكل يوم</span></div><div id="analyticsChart" class="ops-chart mt-4" role="img" aria-label="رسم أعمدة لحجم المعاملات اليومية"></div><div id="analyticsChartLabels" class="overview-chart-labels"></div></div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="glass-card p-5 rounded-2xl"><h3 class="font-bold text-white text-sm mb-4">توزيع الأدوار</h3><div id="analyticsRoles" class="space-y-3"></div></div>
+                <div class="glass-card p-5 rounded-2xl"><h3 class="font-bold text-white text-sm mb-4">نشاط المعاملات حسب النوع</h3><div id="analyticsDaily" class="space-y-2 max-h-72 overflow-y-auto"></div></div>
+            </div>
+        </div>
 
         <!-- تبويب: إدارة المستخدمين -->
         <div id="admin-users" class="space-y-6 hide">
@@ -305,7 +366,20 @@ body.modal-open{overflow:hidden}
 
         <div id="admin-social-feed" class="space-y-6 hide">
             <div class="flex items-center justify-between gap-3"><div><h2 class="text-xl font-black text-white">مراجعة جدار التواصل</h2><p class="text-[10px] text-slate-500 mt-1">راجع البلاغات والمنشورات المحجوبة واتخذ قرار النشر.</p></div><button onclick="fetchSocialFeedReports()" title="تحديث البلاغات" class="rounded-xl bg-slate-900 px-3 py-2 text-slate-300"><i class="fa-solid fa-arrows-rotate"></i></button></div>
+            <div class="filter-bar">
+                <button type="button" class="toolbar-chip" data-report-filter="all" aria-pressed="true" onclick="setReportFilter('all')">الكل</button>
+                <button type="button" class="toolbar-chip" data-report-filter="visible" aria-pressed="false" onclick="setReportFilter('visible')">ظاهرة</button>
+                <button type="button" class="toolbar-chip" data-report-filter="hidden" aria-pressed="false" onclick="setReportFilter('hidden')">مخفية</button>
+                <button type="button" class="toolbar-chip" data-report-filter="banned" aria-pressed="false" onclick="setReportFilter('banned')">محجوبة</button>
+                <button type="button" class="toolbar-chip" data-report-filter="removed" aria-pressed="false" onclick="setReportFilter('removed')">محذوفة</button>
+                <span id="reportFilterSummary" class="text-[10px] text-slate-500"></span>
+            </div>
             <div id="socialFeedReportsList" class="space-y-3"><p class="glass-card rounded-2xl p-4 text-center text-xs text-slate-500">جارٍ تحميل البلاغات...</p></div>
+            <div class="flex items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-950/60 p-3 text-[11px] text-slate-400">
+                <button type="button" id="reportsPrevButton" onclick="changeReportPage(-1)" class="rounded-lg bg-slate-900 px-3 py-1.5 font-bold disabled:opacity-40">السابق</button>
+                <span id="reportsPaginationInfo" aria-live="polite">جارٍ التحميل...</span>
+                <button type="button" id="reportsNextButton" onclick="changeReportPage(1)" class="rounded-lg bg-slate-900 px-3 py-1.5 font-bold disabled:opacity-40">التالي</button>
+            </div>
         </div>
 
         <!-- تبويب: طلبات السحب والشحن -->
@@ -313,9 +387,9 @@ body.modal-open{overflow:hidden}
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div class="flex items-center gap-2"><div><h2 class="text-xl font-black text-white">إدارة المعاملات المالية</h2><p class="text-[10px] text-slate-500 mt-1">الإيداعات المتحققة من blockchain تعتمد تلقائيًا؛ المعلّق فقط يحتاج قرارًا إداريًا.</p></div><button onclick="exportTransactionsCsv()" title="تصدير CSV" class="px-3 py-2 bg-slate-900 text-emerald-400 rounded-xl"><i class="fa-solid fa-file-csv"></i></button></div>
                 <div class="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto">
-                    <input id="txSearch" onkeydown="if(event.key === 'Enter') fetchTransactionsList(1)" placeholder="بريد / هاش / محفظة" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white">
-                    <input id="txFrom" type="date" onchange="fetchTransactionsList(1)" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white">
-                    <input id="txTo" type="date" onchange="fetchTransactionsList(1)" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white">
+                    <input id="txSearch" onkeydown="if(event.key === 'Enter') fetchTransactionsList(1)" aria-label="بحث بالبريد أو الهاش أو المحفظة" placeholder="بريد / هاش / محفظة" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white">
+                    <input id="txFrom" type="date" aria-label="من تاريخ" onchange="fetchTransactionsList(1)" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white">
+                    <input id="txTo" type="date" aria-label="إلى تاريخ" onchange="fetchTransactionsList(1)" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white">
                     <select id="filterTxNetwork" onchange="fetchTransactionsList(1)" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-[10px] text-white"><option value="">كل الشبكات</option><option value="TRC20">TRC20</option><option value="BEP20">BEP20</option></select>
                     <select id="filterTxType" onchange="fetchTransactionsList()" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
                         <option value="all">جميع أنواع المعاملات</option>
@@ -327,7 +401,8 @@ body.modal-open{overflow:hidden}
                         <option value="vault_penalty">غرامة فتح مبكر</option>
                         <option value="token_burn">حرق OPX</option>
                     </select>
-                    <select id="filterTxStatus" onchange="fetchTransactionsList()" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                    <button type="button" onclick="clearTransactionFilters()" class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-[10px] font-bold text-slate-300" title="مسح الفلاتر">مسح الفلاتر</button>
+                    <select id="filterTxStatus" aria-label="تصفية حسب الحالة" onchange="fetchTransactionsList()" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
                         <option value="pending">المعلقة فقط</option>
                         <option value="approved">المقبولة</option>
                         <option value="rejected">المرفوضة</option>
@@ -481,14 +556,92 @@ body.modal-open{overflow:hidden}
             <div class="glass-card rounded-3xl overflow-hidden border border-slate-800"><div class="flex items-center justify-between p-4 border-b border-slate-800"><div><h3 class="text-sm font-bold text-white">سجل تحديثات البريد</h3><p class="mt-1 text-[9px] text-slate-500">حالات الطابور والإرسال والتعثرات</p></div><button onclick="fetchEmailBroadcasts()" aria-label="تحديث سجل حملات البريد" class="rounded-lg bg-slate-900 px-3 py-2 text-slate-300"><i class="fa-solid fa-arrows-rotate"></i></button></div><div class="overflow-x-auto"><table class="w-full min-w-[720px] text-right text-xs"><thead class="bg-slate-900/80 text-slate-400"><tr><th class="p-3">العنوان</th><th class="p-3">الحالة</th><th class="p-3">وصل لمزود البريد</th><th class="p-3">تعذّر</th><th class="p-3">مستبعد/ألغى الاشتراك</th><th class="p-3">مراجعة يدوية</th><th class="p-3">تاريخ الإنشاء</th></tr></thead><tbody id="emailBroadcastHistory"><tr><td colspan="7" class="p-4 text-center text-slate-500">جارٍ تحميل سجل البريد...</td></tr></tbody></table></div></div>
         </div>
 
-        <div id="admin-audit" class="space-y-6 hide">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3"><h2 class="text-xl font-black text-white">سجل تدقيق الإدارة</h2><div class="flex flex-wrap gap-2 w-full sm:w-auto"><select id="auditAction" onchange="fetchAuditLogs(1)" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"><option value="all">كل الإجراءات</option><option value="transaction_approve">المعاملات المقبولة</option><option value="transaction_reject">المعاملات المرفوضة</option><option value="update_user_balance">تعديل الأرصدة</option><option value="update_user_role">تعديل الأدوار</option><option value="schedule_broadcast">جدولة بث</option></select><input id="auditSearch" placeholder="بحث بالمعرف أو الإجراء" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"><input id="auditDate" type="date" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"><button onclick="fetchAuditLogs(1)" title="تحديث السجل" class="px-3 bg-slate-900 text-slate-400 rounded-xl"><i class="fa-solid fa-arrows-rotate"></i></button></div></div>
-            <div class="glass-card rounded-3xl overflow-hidden border border-slate-800"><div class="overflow-x-auto"><table class="w-full text-right text-xs"><thead class="bg-slate-900/80 text-slate-400"><tr><th class="p-4">التاريخ</th><th class="p-4">المدير</th><th class="p-4">الإجراء</th><th class="p-4">المعرف</th><th class="p-4">IP / الجهاز</th><th class="p-4">التفاصيل</th></tr></thead><tbody id="tblAuditBody" class="divide-y divide-slate-800/50"></tbody></table></div><div class="flex justify-between items-center p-4 border-t border-slate-800 text-xs text-slate-400"><button onclick="changeAuditPage(-1)" class="px-3 py-1.5 bg-slate-900 rounded-lg">السابق</button><span>صفحة <span id="auditCurrentPage">1</span> من <span id="auditTotalPages">1</span></span><button onclick="changeAuditPage(1)" class="px-3 py-1.5 bg-slate-900 rounded-lg">التالي</button></div></div>
+            <section class="glass-card rounded-3xl border border-rose-500/20 p-5 sm:p-6 space-y-4" aria-labelledby="emailQueueHeading">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex items-start gap-3"><span class="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-rose-400/20 bg-rose-400/10 text-rose-300"><i class="fa-solid fa-envelope-circle-check" aria-hidden="true"></i></span><div><h3 id="emailQueueHeading" class="text-base font-black text-white">مراقبة طابور البريد</h3><p class="mt-1 text-[10px] leading-5 text-slate-400">حالة كل مستلم في حملات البريد، وأسباب الفشل، مع إمكانية إعادة إرسال الفاشلين فقط دون تكرار من استلم الرسالة.</p></div></div>
+                    <button type="button" onclick="fetchEmailQueue()" title="تحديث طابور البريد" aria-label="تحديث طابور البريد" class="rounded-lg bg-slate-900 px-3 py-2 text-slate-300"><i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i></button>
+                </div>
+                <div id="emailQueueCounts" class="grid grid-cols-2 gap-2 sm:grid-cols-5"></div>
+                <div class="filter-bar">
+                    <button type="button" class="toolbar-chip" data-email-queue-filter="failed" aria-pressed="true" onclick="setEmailQueueFilter('failed')">فاشلة</button>
+                    <button type="button" class="toolbar-chip" data-email-queue-filter="unknown" aria-pressed="false" onclick="setEmailQueueFilter('unknown')">مجهولة</button>
+                    <button type="button" class="toolbar-chip" data-email-queue-filter="suppressed" aria-pressed="false" onclick="setEmailQueueFilter('suppressed')">مستبعدة</button>
+                    <button type="button" class="toolbar-chip" data-email-queue-filter="queued" aria-pressed="false" onclick="setEmailQueueFilter('queued')">بالانتظار</button>
+                    <button type="button" class="toolbar-chip" data-email-queue-filter="sent" aria-pressed="false" onclick="setEmailQueueFilter('sent')">مرسلة</button>
+                </div>
+                <div id="emailQueueList" class="space-y-2 text-[11px] text-slate-300" aria-live="polite"></div>
+                <div id="emailQueueActions" class="flex flex-wrap gap-2"></div>
+            </section>
         </div>
 
-        <div id="admin-support" class="space-y-6 hide"><div class="flex justify-between items-center"><h2 class="text-xl font-black text-white">تذاكر الدعم</h2><button onclick="fetchAdminSupport()" class="px-3 py-2 bg-slate-900 text-slate-300 rounded-xl"><i class="fa-solid fa-arrows-rotate"></i></button></div><div id="adminSupportList" class="grid gap-3"></div></div>
+        <div id="admin-audit" class="space-y-6 hide">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 class="text-xl font-black text-white">سجل تدقيق الإدارة</h2><p class="text-[10px] text-slate-500 mt-1">كل إجراء إداري مسجّل بالمُنفذ والوقت وعنوان IP، وقابل للتصدير للمراجعة.</p></div><div class="flex flex-wrap gap-2 w-full sm:w-auto">
+                <select id="auditAction" onchange="fetchAuditLogs(1)" aria-label="تصفية حسب نوع الإجراء" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                    <option value="all">كل الإجراءات</option>
+                    <option value="transaction_approve">المعاملات المقبولة</option>
+                    <option value="transaction_reject">المعاملات المرفوضة</option>
+                    <option value="update_user_balance">تعديل الأرصدة</option>
+                    <option value="update_user_role">تعديل الأدوار</option>
+                    <option value="update_user_account">تعديل بيانات الحساب</option>
+                    <option value="ban_user">حظر مستخدم</option>
+                    <option value="unban_user">إلغاء حظر</option>
+                    <option value="bulk_ban_users">حظر جماعي</option>
+                    <option value="bulk_unban_users">إلغاء حظر جماعي</option>
+                    <option value="reset_daily_tasks">إعادة تعيين المهام</option>
+                    <option value="revoke_user_sessions">إنهاء جلسات مستخدم</option>
+                    <option value="verify_user_email">توثيق بريد مستخدم</option>
+                    <option value="update_vip_level">تعديل مستوى VIP</option>
+                    <option value="delete_vip_level">حذف مستوى VIP</option>
+                    <option value="update_game_settings">تعديل إعدادات الألعاب</option>
+                    <option value="update_investment_vault_contracts">تعديل عقود الخزنة</option>
+                    <option value="schedule_broadcast">جدولة بث</option>
+                    <option value="broadcast_notification">إرسال إشعار</option>
+                    <option value="recover_rejected_email_verification_reminders">استرداد تذكيرات مرفوضة</option>
+                </select>
+                <input id="auditSearch" onkeydown="if(event.key === 'Enter') fetchAuditLogs(1)" placeholder="بحث بالمعرف أو الإجراء" aria-label="بحث في سجل التدقيق" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                <input id="auditDate" type="date" onchange="fetchAuditLogs(1)" aria-label="تصفية حسب تاريخ اليوم" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                <button type="button" onclick="exportAuditLogsCsv()" title="تصدير سجل التدقيق CSV" aria-label="تصدير سجل التدقيق" class="px-3 bg-slate-900 text-emerald-400 rounded-xl"><i class="fa-solid fa-file-csv" aria-hidden="true"></i></button>
+                <button type="button" onclick="fetchAuditLogs(1)" title="تحديث السجل" aria-label="تحديث سجل التدقيق" class="px-3 bg-slate-900 text-slate-400 rounded-xl"><i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i></button>
+            </div></div>
+            <div class="glass-card rounded-3xl overflow-hidden border border-slate-800"><div class="overflow-x-auto"><table class="w-full text-right text-xs"><thead class="bg-slate-900/80 text-slate-400"><tr><th scope="col" class="p-4">التاريخ</th><th scope="col" class="p-4">المدير</th><th scope="col" class="p-4">الإجراء</th><th scope="col" class="p-4">المعرف</th><th scope="col" class="p-4">IP / الجهاز</th><th scope="col" class="p-4">التفاصيل</th></tr></thead><tbody id="tblAuditBody" class="divide-y divide-slate-800/50"></tbody></table></div><div class="flex justify-between items-center p-4 border-t border-slate-800 text-xs text-slate-400"><button onclick="changeAuditPage(-1)" class="px-3 py-1.5 bg-slate-900 rounded-lg">السابق</button><span>صفحة <span id="auditCurrentPage">1</span> من <span id="auditTotalPages">1</span></span><button onclick="changeAuditPage(1)" class="px-3 py-1.5 bg-slate-900 rounded-lg">التالي</button></div></div>
+        </div>
 
-        <div id="admin-security" class="space-y-6 hide"><div><span class="text-[10px] text-emerald-300 font-bold tracking-widest">ADMIN SECURITY</span><h2 class="text-xl font-black text-white mt-1">إعدادات أمان الإدارة</h2><p class="text-[10px] text-slate-500 mt-1">هذه المصادقة مستقلة تمامًا عن مصادقة المستخدمين.</p></div><div class="glass-card max-w-lg p-6 rounded-3xl border border-emerald-500/20 space-y-4"><div id="adminSecurityStatus" class="p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300">جاري فحص الحالة...</div><button id="adminSecuritySetupButton" onclick="setupAdminSecurity2FA()" class="w-full py-3 bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 rounded-xl text-xs font-bold">إنشاء رمز Google Authenticator</button><div id="adminSecuritySetupPanel" class="hidden space-y-3"><div class="bg-white rounded-2xl p-3 w-fit mx-auto"><img id="adminSecurityQr" class="w-48 h-48" alt="QR مصادقة الإدارة"></div><code id="adminSecuritySecret" class="block text-center text-[10px] text-amber-300 break-all"></code><input id="adminSecurityCode" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="أدخل الرمز المكون من 6 أرقام" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-center tracking-[.4em] text-white"><button onclick="confirmAdminSecurity2FA()" class="w-full py-3 bg-amber-400 text-slate-950 rounded-xl text-xs font-black">تأكيد وتفعيل مصادقة الإدارة</button></div></div></div>
+        <div id="admin-support" class="space-y-6 hide">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 class="text-xl font-black text-white">تذاكر الدعم</h2><p class="text-[10px] text-slate-500 mt-1">تُعرض التذاكر غير المغلقة فقط، والأحدث تحديثًا أولًا.</p></div><button onclick="fetchAdminSupport()" aria-label="تحديث تذاكر الدعم" title="تحديث التذاكر" class="self-start rounded-xl bg-slate-900 px-3 py-2 text-slate-300"><i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i></button></div>
+            <div class="filter-bar">
+                <input id="supportSearch" type="search" oninput="onSupportSearchInput(this.value)" placeholder="ابحث بالموضوع أو البريد..." aria-label="بحث في تذاكر الدعم" class="min-w-0 flex-1 rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-[10px] text-white sm:max-w-xs">
+                <button type="button" class="toolbar-chip" data-support-filter="all" aria-pressed="true" onclick="setSupportFilter('all')">الكل</button>
+                <button type="button" class="toolbar-chip" data-support-filter="open" aria-pressed="false" onclick="setSupportFilter('open')">مفتوحة</button>
+                <button type="button" class="toolbar-chip" data-support-filter="in_progress" aria-pressed="false" onclick="setSupportFilter('in_progress')">قيد المعالجة</button>
+                <button type="button" class="toolbar-chip" data-support-filter="resolved" aria-pressed="false" onclick="setSupportFilter('resolved')">محلولة</button>
+            </div>
+            <div id="adminSupportList" class="grid gap-3" aria-live="polite"></div>
+            <div class="flex items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-950/60 p-3 text-[11px] text-slate-400">
+                <button type="button" id="supportPrevButton" onclick="changeSupportPage(-1)" class="rounded-lg bg-slate-900 px-3 py-1.5 font-bold disabled:opacity-40">السابق</button>
+                <span id="supportPaginationInfo" aria-live="polite">جارٍ التحميل...</span>
+                <button type="button" id="supportNextButton" onclick="changeSupportPage(1)" class="rounded-lg bg-slate-900 px-3 py-1.5 font-bold disabled:opacity-40">التالي</button>
+            </div>
+        </div>
+
+        <div id="admin-security" class="space-y-6 hide">
+            <div><span class="text-[10px] text-emerald-300 font-bold tracking-widest">ADMIN SECURITY</span><h2 class="text-xl font-black text-white mt-1">إعدادات أمان الإدارة</h2><p class="text-[10px] text-slate-500 mt-1">هذه المصادقة مستقلة تمامًا عن مصادقة المستخدمين. الجلسة محفوظة في كوكي HttpOnly ولا يمكن قراءتها من جافاسكربت.</p></div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <section class="glass-card p-6 rounded-3xl border border-emerald-500/20 space-y-4" aria-labelledby="adminSecurityHeading">
+                    <h3 id="adminSecurityHeading" class="text-sm font-black text-white">المصادقة الثنائية</h3>
+                    <div id="adminSecurityStatus" class="p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300" aria-live="polite">جاري فحص الحالة...</div>
+                    <div id="adminSessionMeta" class="text-[10px] leading-5 text-slate-500"></div>
+                    <button id="adminSecuritySetupButton" data-full-admin="true" onclick="setupAdminSecurity2FA()" class="w-full py-3 bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 rounded-xl text-xs font-bold">إنشاء رمز Google Authenticator</button>
+                    <div id="adminSecuritySetupPanel" class="hidden space-y-3"><div class="bg-white rounded-2xl p-3 w-fit mx-auto"><img id="adminSecurityQr" class="w-48 h-48" alt="QR مصادقة الإدارة"></div><code id="adminSecuritySecret" class="block text-center text-[10px] text-amber-300 break-all"></code><input id="adminSecurityCode" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" aria-label="رمز المصادقة" placeholder="أدخل الرمز المكون من 6 أرقام" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-center tracking-[.4em] text-white"><button onclick="confirmAdminSecurity2FA()" class="w-full py-3 bg-amber-400 text-slate-950 rounded-xl text-xs font-black">تأكيد وتفعيل مصادقة الإدارة</button></div>
+                </section>
+
+                <section class="glass-card p-6 rounded-3xl border border-cyan-500/20 space-y-4" aria-labelledby="adminSessionsHeading">
+                    <div class="flex items-start justify-between gap-3"><div><h3 id="adminSessionsHeading" class="text-sm font-black text-white">جلسات الإدارة</h3><p class="mt-1 text-[10px] leading-5 text-slate-500">كل جهاز دخل بحسابك خلال آخر 8 ساعات. أنهِ أي جلسة لا تعرفها فورًا.</p></div><button type="button" onclick="loadAdminSessions()" title="تحديث الجلسات" aria-label="تحديث جلسات الإدارة" class="rounded-lg bg-slate-900 px-2.5 py-2 text-slate-300"><i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i></button></div>
+                    <div id="adminSessionsList" class="space-y-2 text-[11px]" aria-live="polite"><span class="text-slate-500">جارٍ التحميل...</span></div>
+                    <button type="button" onclick="revokeOtherAdminSessions()" class="w-full py-2.5 bg-rose-500/10 text-rose-300 border border-rose-500/20 rounded-xl text-xs font-bold"><i class="fa-solid fa-right-from-bracket ml-1"></i>إنهاء كل الجلسات الأخرى</button>
+                </section>
+            </div>
+        </div>
 
         <div id="admin-referrals" class="space-y-6 hide">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"><h2 class="text-xl font-black text-white">إدارة إحالات المنصة</h2><div class="flex gap-2 w-full sm:w-auto"><input id="txtSearchReferral" onkeydown="if(event.key==='Enter') fetchReferrals(1)" placeholder="ابحث بالبريد أو الاسم أو الكود..." class="bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white w-full sm:w-64"><button type="button" onclick="fetchReferrals(1)" title="بحث الإحالات" aria-label="بحث الإحالات" class="px-3 bg-slate-900 text-slate-300 rounded-xl"><i class="fa-solid fa-magnifying-glass"></i></button><button onclick="exportReferralsCsv()" title="تصدير كل النتائج المطابقة CSV" aria-label="تصدير كل الإحالات المطابقة" class="px-3 bg-slate-900 text-emerald-400 rounded-xl"><i class="fa-solid fa-file-csv"></i></button></div></div>
@@ -516,12 +669,19 @@ body.modal-open{overflow:hidden}
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="block text-xs text-slate-400 mb-1">المستوى الحالي</label>
-                    <p id="editUserTierDisplay" class="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-2.5 text-xs text-amber-300">غير مفعّل</p>
+                    <p id="editUserTierDisplay" class="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-2.5 text-xs text-amber-300" title="تعديل المستوى يدويًا معطّل سياسيًا">غير مفعّل</p>
+                    <span class="mt-1 block text-[9px] leading-4 text-slate-500">المستوى يُغيَّر فقط عبر تفعيل مدفوع موثّق.</span>
                 </div>
                 <div>
                     <label class="block text-xs text-slate-400 mb-1">رصيد المحفظة ($)</label>
-                    <input type="number" id="editUserBalance" step="0.01" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white">
+                    <input type="number" id="editUserBalance" step="0.01" min="0" oninput="updateBalancePreview()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white" aria-describedby="editUserBalancePreview">
+                    <span id="editUserBalancePreview" class="mt-1 block text-[9px] leading-4 text-slate-500" aria-live="polite"></span>
                 </div>
+            </div>
+            <div data-action-permission="finance">
+                <label class="block text-xs text-slate-400 mb-1">سبب تعديل الرصيد <span class="text-rose-300">*</span></label>
+                <input type="text" id="editUserBalanceReason" maxlength="200" placeholder="مثال: تعويض عن تحويل مرفوض #TX-2291" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white" aria-describedby="editUserBalanceReasonHint">
+                <span id="editUserBalanceReasonHint" class="mt-1 block text-[9px] leading-4 text-slate-500">يُحفظ السبب في سجل التدقيق مع الرصيد قبل وبعد التعديل (5 أحرف على الأقل).</span>
             </div>
             <div>
                 <label class="block text-xs text-slate-400 mb-1">دور الإدارة</label>
@@ -554,7 +714,7 @@ body.modal-open{overflow:hidden}
         <div class="glass-card my-auto flex max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-cyan-500/30">
             <div class="flex shrink-0 items-center justify-between gap-3 border-b border-slate-800 bg-slate-950/90 p-4 sm:p-6"><div><h3 class="text-base font-bold text-white">تفاصيل المستخدم</h3><p id="userDetailsEmail" class="text-[10px] text-slate-500 mt-1"></p></div><button onclick="closeUserDetails()" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white" aria-label="إغلاق تفاصيل المستخدم"><i class="fa-solid fa-xmark text-lg"></i></button></div>
             <div class="shrink-0 border-b border-slate-800 bg-slate-950/75 p-4 sm:px-6"><div id="userDetailsSummary" class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs"></div>
-            <div class="mt-3 flex flex-wrap gap-2"><button onclick="verifyDetailsEmail()" class="px-3 py-2 bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 rounded-xl text-[10px] font-bold">توثيق البريد</button><button onclick="disableDetails2FA()" class="px-3 py-2 bg-amber-500/15 text-amber-300 border border-amber-500/20 rounded-xl text-[10px] font-bold">تعطيل 2FA</button><button onclick="revokeDetailsSessions()" class="px-3 py-2 bg-rose-500/15 text-rose-300 border border-rose-500/20 rounded-xl text-[10px] font-bold">إنهاء جلسات المستخدم</button><button onclick="loadUserDetails(currentDetailsUserId)" class="px-3 py-2 bg-slate-900 text-slate-300 rounded-xl text-[10px]">تحديث التفاصيل</button></div></div>
+            <div class="mt-3 flex flex-wrap gap-2"><button onclick="verifyDetailsEmail()" class="px-3 py-2 bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 rounded-xl text-[10px] font-bold">توثيق البريد</button><button onclick="disableDetails2FA()" class="px-3 py-2 bg-amber-500/15 text-amber-300 border border-amber-500/20 rounded-xl text-[10px] font-bold">تعطيل 2FA</button><button data-action-permission="manage_users" onclick="resetDetailsDailyTasks()" class="px-3 py-2 bg-indigo-500/15 text-indigo-200 border border-indigo-500/20 rounded-xl text-[10px] font-bold">إعادة تعيين مهام اليوم</button><button onclick="revokeDetailsSessions()" class="px-3 py-2 bg-rose-500/15 text-rose-300 border border-rose-500/20 rounded-xl text-[10px] font-bold">إنهاء جلسات المستخدم</button><button onclick="loadUserDetails(currentDetailsUserId)" class="px-3 py-2 bg-slate-900 text-slate-300 rounded-xl text-[10px]">تحديث التفاصيل</button></div></div>
             <div class="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div class="space-y-3">
@@ -578,19 +738,30 @@ body.modal-open{overflow:hidden}
     </div>
 
     <script>
-        const adminStorageGetItem = localStorage.getItem.bind(localStorage);
-        const adminStorageRemoveItem = localStorage.removeItem.bind(localStorage);
-        localStorage.getItem = key => key === 'token' ? adminStorageGetItem('adminToken') : adminStorageGetItem(key);
-        localStorage.removeItem = key => adminStorageRemoveItem(key === 'token' ? 'adminToken' : key);
-        const nativeAdminFetch = window.fetch.bind(window);
+        // The admin session lives in an HttpOnly, SameSite cookie (operix_admin). The console never
+        // reads or stores the bearer token, so a script injection cannot exfiltrate an admin session.
+        const adminStorageGetItem = key => {
+            try { return window.localStorage.getItem(key); } catch (error) { return null; }
+        };
+        const adminStorageSetItem = (key, value) => {
+            try { window.localStorage.setItem(key, value); } catch (error) { }
+        };
+        const adminStorageRemoveItem = key => {
+            try { window.localStorage.removeItem(key); } catch (error) { }
+        };
+        try { window.localStorage.removeItem('adminToken'); } catch (error) { }
+
+        const nativeAdminFetch = typeof window.fetch === 'function'
+            ? window.fetch.bind(window)
+            : () => Promise.reject(new Error('المتصفح لا يدعم fetch. حدّث المتصفح للمتابعة.'));
         window.fetch = (input, init = {}) => {
             const url = String(typeof input === 'string' ? input : input?.url || '');
-            if (!url.startsWith('/api/admin') && !url.startsWith('/api/auth/admin')) return nativeAdminFetch(input, init);
+            const requestInit = { ...init, credentials: 'same-origin' };
+            if (!url.startsWith('/api/')) return nativeAdminFetch(input, requestInit);
             const headers = new Headers(init.headers || {});
             headers.delete('Authorization');
-            const adminToken = adminStorageGetItem('adminToken');
-            if (adminToken) headers.set('Authorization', `Bearer ${adminToken}`);
-            return nativeAdminFetch(input, { ...init, credentials: 'same-origin', headers });
+            requestInit.headers = headers;
+            return nativeAdminFetch(input, requestInit);
         };
         let allUsersData = [];
         let usersCurrentPage = 1;
@@ -601,25 +772,67 @@ body.modal-open{overflow:hidden}
         let auditCurrentPage = 1;
         let auditTotalPages = 1;
 
-        function toggleMobileSidebar() {
+        function toggleMobileSidebar(forceState) {
             const sidebar = document.getElementById('sidebar');
-            sidebar.classList.toggle('hidden');
+            const backdrop = document.getElementById('sidebarBackdrop');
+            const isOpen = typeof forceState === 'boolean' ? forceState : !sidebar.classList.contains('is-open');
+            sidebar.classList.toggle('is-open', isOpen);
+            if (!isOpen && window.innerWidth < 768) sidebar.classList.add('hidden');
+            if (isOpen) sidebar.classList.remove('hidden');
+            if (backdrop) backdrop.classList.toggle('hidden', !isOpen);
+            document.body.classList.toggle('modal-open', isOpen);
+            const toggle = document.querySelector('[data-sidebar-toggle]');
+            if (toggle) toggle.setAttribute('aria-expanded', String(isOpen));
+            if (isOpen) sidebar.querySelector('nav button')?.focus({ preventScroll: true });
         }
 
-        function showToast(msg) {
+        function closeMobileSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            if (!sidebar.classList.contains('is-open')) return;
+            toggleMobileSidebar(false);
+        }
+
+        function toastStyle(type) {
+            const styles = {
+                success: ['border-emerald-400/60', 'text-emerald-50', 'fa-circle-check', 'text-emerald-300'],
+                error: ['border-rose-400/60', 'text-rose-50', 'fa-circle-exclamation', 'text-rose-300'],
+                warning: ['border-amber-400/60', 'text-amber-50', 'fa-triangle-exclamation', 'text-amber-300'],
+                info: ['border-amber-500/70', 'text-white', 'fa-circle-info', 'text-amber-300']
+            };
+            return styles[type] || styles.info;
+        }
+
+        function showToast(msg, type = 'info') {
             const toast = document.getElementById('toast');
-            toast.innerText = msg;
+            if (!toast) return;
+            const [border, text, icon, iconColor] = toastStyle(type);
+            toast.className = `fixed top-5 left-1/2 transform -translate-x-1/2 z-[90] ${border} ${text} bg-slate-900/95 px-5 py-3 rounded-2xl shadow-2xl text-sm font-medium transition-all duration-300`;
+            toast.innerHTML = `<i class="fa-solid ${icon} ${iconColor}" aria-hidden="true"></i><span class="leading-6"></span>`;
+            toast.querySelector('span').textContent = String(msg ?? '');
             toast.classList.remove('hide');
-            setTimeout(() => toast.classList.add('hide'), 3000);
+            clearTimeout(showToast._timer);
+            showToast._timer = setTimeout(() => toast.classList.add('hide'), type === 'error' ? 6000 : 3500);
+        }
+
+        function showToastSuccess(msg) { showToast(msg, 'success'); }
+        function showToastError(msg) { showToast(msg, 'error'); }
+
+        function setTableState(tbody, columns, { loading = false, message = 'لا توجد بيانات لعرضها', icon = 'fa-inbox' } = {}) {
+            if (!tbody) return;
+            if (loading) {
+                tbody.innerHTML = Array.from({ length: 4 }, () => `<tr class="table-loading">${Array.from({ length: columns }, () => '<td><span class="skeleton block h-3 w-full"></span></td>').join('')}</tr>`).join('');
+                return;
+            }
+            tbody.innerHTML = `<tr><td colspan="${columns}"><div class="table-empty"><i class="fa-solid ${icon}" aria-hidden="true"></i>${escapeAdminHtml(message)}</div></td></tr>`;
         }
 
         function getAdminAuthToken() {
-            return localStorage.getItem('adminToken') || localStorage.getItem('token') || '';
+            // Retained for backwards compatibility with older call sites; authentication is cookie based.
+            return '';
         }
 
         function adminHeaders(extra = {}) {
-            const token = getAdminAuthToken();
-            return { ...extra, Authorization: token ? `Bearer ${token}` : '' };
+            return { ...extra };
         }
 
         function adminJsonHeaders(extra = {}) {
@@ -704,18 +917,77 @@ body.modal-open{overflow:hidden}
 
         function closeAuditDetails() { document.getElementById('auditDetailsModal')?.classList.add('hide'); }
 
-        function switchAdminTab(tab) {
-            ['overview', 'analytics', 'users', 'withdrawals', 'plans', 'games', 'broadcast', 'audit', 'support', 'social-feed', 'security', 'referrals'].forEach(t => {
+        const ADMIN_TABS = ['overview', 'analytics', 'users', 'withdrawals', 'plans', 'games', 'broadcast', 'audit', 'support', 'social-feed', 'security', 'referrals'];
+        let adminActiveTab = 'overview';
+
+        function markAdminSync() {
+            const label = document.getElementById('adminGlobalSync');
+            if (label) label.textContent = `آخر تحديث: ${new Date().toLocaleTimeString('ar')}`;
+        }
+
+        function refreshActiveAdminTab({ manual = false } = {}) {
+            if (manual) markAdminSync();
+            const tasks = {
+                overview: () => refreshOverviewDashboard(),
+                analytics: () => fetchAdminAnalytics(),
+                users: () => fetchUsersList(usersCurrentPage),
+                withdrawals: () => { fetchTransactionsList(txCurrentPage); fetchInvestmentVaultSummary(); fetchInvestmentVaultList(); },
+                plans: () => { fetchVipPlans(); fetchVaultContractsAdmin(); },
+                games: () => fetchGameSettings(),
+                broadcast: () => { fetchBroadcasts(); fetchEmailBroadcasts(); fetchEmailVerificationReminderCampaigns(); fetchEmailQueue(); },
+                audit: () => fetchAuditLogs(auditCurrentPage),
+                support: () => fetchAdminSupport(adminSupportState.page),
+                'social-feed': () => fetchSocialFeedReports(),
+                security: () => { loadAdminSecurityStatus(); loadAdminSessions(); },
+                referrals: () => fetchReferrals(referralsCurrentPage)
+            };
+            try { Promise.resolve((tasks[adminActiveTab] || tasks.overview)()).catch(error => console.warn('Admin refresh failed:', error.message)); }
+            catch (error) { console.warn('Admin refresh failed:', error.message); }
+            if (manual) showToast('تم تحديث بيانات التبويب الحالي', 'info');
+        }
+
+        function startAdminAutoRefresh() {
+            setInterval(() => {
+                if (document.hidden) return;
+                if (!document.getElementById('adminAutoRefresh')?.checked) return;
+                refreshActiveAdminTab();
+                refreshAdminAlerts();
+            }, 60000);
+        }
+
+        function switchAdminTab(tab, options = {}) {
+            if (!ADMIN_TABS.includes(tab) || !document.getElementById(`admin-${tab}`) || !tabAllowed(tab)) tab = 'overview';
+            ADMIN_TABS.forEach(t => {
                 const el = document.getElementById(`admin-${t}`);
                 if (el) el.classList.add('hide');
                 const btn = document.getElementById(`btn-tab-${t}`);
-                if (btn) btn.className = "w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-900 hover:text-white transition-all";
+                if (btn) {
+                    btn.classList.remove('bg-amber-500', 'text-slate-950');
+                    btn.classList.add('text-slate-400', 'hover:bg-slate-900', 'hover:text-white');
+                    btn.removeAttribute('aria-current');
+                }
             });
             document.getElementById(`admin-${tab}`).classList.remove('hide');
             const activeBtn = document.getElementById(`btn-tab-${tab}`);
-            if (activeBtn) activeBtn.className = "w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-xl text-xs font-bold bg-amber-500 text-slate-950 transition-all";
+            if (activeBtn) {
+                activeBtn.classList.remove('text-slate-400', 'hover:bg-slate-900', 'hover:text-white');
+                activeBtn.classList.add('bg-amber-500', 'text-slate-950');
+                activeBtn.setAttribute('aria-current', 'page');
+            }
+            applyRoleVisibility();
+            if (options.updateHash !== false) {
+                const cleanHash = `#${tab}`;
+                const hashTab = decodeURIComponent((window.location.hash || '').replace(/^#/, '')).split('?')[0];
+                if (hashTab !== tab) {
+                    try { window.history.replaceState(null, '', cleanHash); } catch (error) { }
+                }
+                applyAdminFiltersFromHash(tab);
+            }
+            adminActiveTab = tab;
+            try { adminStorageSetItem('operixAdminTab', tab); } catch (error) { }
+            markAdminSync();
 
-            if (window.innerWidth < 768) document.getElementById('sidebar').classList.add('hidden');
+            closeMobileSidebar();
 
             if(tab === 'overview') refreshOverviewDashboard();
             if(tab === 'analytics') fetchAdminAnalytics();
@@ -724,13 +996,111 @@ body.modal-open{overflow:hidden}
             if(tab === 'plans') { fetchVipPlans(); fetchVaultContractsAdmin(); }
             if(tab === 'games') fetchGameSettings();
             if(tab === 'audit') fetchAuditLogs();
-            if(tab === 'broadcast') { fetchBroadcasts(); fetchEmailBroadcasts(); fetchEmailVerificationReminderCampaigns(); }
+            if(tab === 'broadcast') { fetchBroadcasts(); fetchEmailBroadcasts(); fetchEmailVerificationReminderCampaigns(); fetchEmailQueue(); }
             if(tab === 'support') fetchAdminSupport();
             if(tab === 'social-feed') fetchSocialFeedReports();
-            if(tab === 'security') loadAdminSecurityStatus();
+            if(tab === 'security') { loadAdminSecurityStatus(); loadAdminSessions(); renderAdminSessionMeta(); }
             if(tab === 'referrals') fetchReferrals();
             refreshAdminAlerts();
         }
+
+        function tabAllowed(tab) {
+            const button = document.getElementById(`btn-tab-${tab}`);
+            if (!button) return false;
+            if (button.hasAttribute('data-full-admin')) return currentAdminRole === 'admin';
+            const permission = button.dataset.permission;
+            return !permission || canAdmin(permission);
+        }
+
+        const ADMIN_FILTER_FIELDS = {
+            users: { q: 'txtSearchUser', role: 'userFilterRole', tier: 'userFilterTier', status: 'userFilterStatus', verified: 'userFilterVerified', page: 'adminUsersPageState' },
+            withdrawals: { q: 'txSearch', status: 'filterTxStatus', type: 'filterTxType', network: 'filterTxNetwork', from: 'txFrom', to: 'txTo', page: 'adminTxPageState' },
+            audit: { action: 'auditAction', q: 'auditSearch', date: 'auditDate', page: 'adminAuditPageState' },
+            support: { status: null, q: 'supportSearch', page: null },
+            'social-feed': { status: null, page: null }
+        };
+
+        function currentTabFilters(tab = adminActiveTab) {
+            const fields = ADMIN_FILTER_FIELDS[tab];
+            if (!fields) return {};
+            const filters = {};
+            Object.entries(fields).forEach(([key, elementId]) => {
+                if (!elementId) return;
+                const element = document.getElementById(elementId);
+                if (element && typeof element.value === 'string' && element.value.trim()) filters[key] = element.value.trim();
+            });
+            return filters;
+        }
+
+        function syncAdminFiltersToHash() {
+            const filters = currentTabFilters();
+            if (adminActiveTab === 'support') { if (adminSupportState.status !== 'all') filters.status = adminSupportState.status; if (adminSupportState.page > 1) filters.page = String(adminSupportState.page); if (adminSupportState.query.trim()) filters.q = adminSupportState.query.trim(); }
+            if (adminActiveTab === 'social-feed') { if (adminReportsState.status !== 'all') filters.status = adminReportsState.status; if (adminReportsState.page > 1) filters.page = String(adminReportsState.page); }
+            const query = new URLSearchParams(filters).toString();
+            const nextHash = `#${adminActiveTab}${query ? `?${query}` : ''}`;
+            if (window.location.hash === nextHash) return;
+            try { window.history.replaceState(null, '', nextHash); } catch (error) { }
+            try { adminStorageSetItem(`operixAdminFilters:${adminActiveTab}`, query); } catch (error) { }
+        }
+
+        function applyAdminFiltersFromHash(tab = adminActiveTab) {
+            const raw = decodeURIComponent((window.location.hash || '').replace(/^#/, ''));
+            const queryIndex = raw.indexOf('?');
+            let queryString = queryIndex >= 0 ? raw.slice(queryIndex + 1) : '';
+            if (queryIndex >= 0 && raw.slice(0, queryIndex) && raw.slice(0, queryIndex) !== tab) return;
+            if (!queryString && !ADMIN_FILTER_FIELDS[tab]) return;
+            if (!queryString) {
+                try { queryString = adminStorageGetItem(`operixAdminFilters:${tab}`) || ''; } catch (error) { queryString = ''; }
+            }
+            if (!queryString) return;
+            const params = new URLSearchParams(queryString);
+            if (tab === 'support') {
+                const status = params.get('status');
+                if (['open', 'in_progress', 'resolved', 'all'].includes(status)) adminSupportState.status = status;
+                adminSupportState.query = params.get('q') || '';
+                const searchField = document.getElementById('supportSearch');
+                if (searchField) searchField.value = adminSupportState.query;
+                document.querySelectorAll('[data-support-filter]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.supportFilter === adminSupportState.status)));
+                adminSupportState.page = Math.max(1, Number(params.get('page')) || 1);
+                return;
+            }
+            if (tab === 'social-feed') {
+                const status = params.get('status');
+                if (['visible', 'hidden', 'banned', 'removed', 'all'].includes(status)) adminReportsState.status = status;
+                document.querySelectorAll('[data-report-filter]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.reportFilter === adminReportsState.status)));
+                adminReportsState.page = Math.max(1, Number(params.get('page')) || 1);
+                return;
+            }
+            const fields = ADMIN_FILTER_FIELDS[tab] || {};
+            Object.entries(fields).forEach(([key, elementId]) => {
+                if (key === 'page' || !elementId) return;
+                const element = document.getElementById(elementId);
+                if (element && params.has(key)) element.value = params.get(key);
+            });
+            if (tab === 'users' && params.get('page')) usersCurrentPage = Math.max(1, Number(params.get('page')) || 1);
+            if (tab === 'withdrawals' && params.get('page')) txCurrentPage = Math.max(1, Number(params.get('page')) || 1);
+            if (tab === 'audit' && params.get('page')) auditCurrentPage = Math.max(1, Number(params.get('page')) || 1);
+        }
+
+        function initialAdminTab() {
+            const hash = decodeURIComponent((window.location.hash || '').replace(/^#/, '')).trim().split('?')[0];
+            if (ADMIN_TABS.includes(hash) && tabAllowed(hash)) return hash;
+            try {
+                const saved = adminStorageGetItem('operixAdminTab');
+                if (ADMIN_TABS.includes(saved) && tabAllowed(saved)) return saved;
+            } catch (error) { }
+            return 'overview';
+        }
+
+
+        window.addEventListener('hashchange', () => {
+            const raw = decodeURIComponent((window.location.hash || '').replace(/^#/, '')).trim();
+            const hash = raw.split('?')[0];
+            if (!ADMIN_TABS.includes(hash)) return;
+            const isCurrentTab = hash === adminActiveTab;
+            switchAdminTab(hash);
+            if (isCurrentTab) refreshActiveAdminTab();
+        });
 
         const adminPermissions = {
             admin: ['read_overview', 'read_users', 'manage_users', 'finance', 'manage_vip', 'manage_games', 'broadcast', 'read_audit', 'read_referrals'],
@@ -739,6 +1109,7 @@ body.modal-open{overflow:hidden}
             monitor: ['read_overview', 'read_users', 'read_audit', 'read_referrals']
         };
         let currentAdminRole = 'monitor';
+        let adminSessionInfo = { sessionId: null, expiresAt: null, twoFactorEnabled: false };
         let adminRealtimeClient = null;
         function canAdmin(permission) { return adminPermissions[currentAdminRole]?.includes(permission); }
         function applyRoleVisibility() {
@@ -746,14 +1117,40 @@ body.modal-open{overflow:hidden}
             document.querySelectorAll('[data-full-admin]').forEach(element => { element.classList.toggle('hidden', currentAdminRole !== 'admin'); });
             document.querySelectorAll('[data-action-permission]').forEach(element => { element.classList.toggle('hidden', !canAdmin(element.dataset.actionPermission)); });
         }
+        function setSidebarBadge(id, count) {
+            const badge = document.getElementById(id);
+            if (!badge) return;
+            const value = Number(count) || 0;
+            badge.textContent = value > 99 ? '99+' : String(value);
+            badge.classList.toggle('hidden', value === 0);
+            badge.setAttribute('title', value ? `${value} عنصر يحتاج مراجعة` : '');
+        }
+
+        function updateSupportBadge() {
+            setSidebarBadge('pendingSupportBadge', Number(adminSupportCounts.active || 0));
+        }
+
         async function refreshAdminAlerts() {
-            if (!canAdmin('finance')) return;
+            if (canAdmin('finance')) {
+                try {
+                    const response = await fetch('/api/admin/overview', { headers: adminHeaders() });
+                    const data = await response.json();
+                    if (response.ok) setSidebarBadge('pendingAlertBadge', data.stats?.pendingRequests || 0);
+                } catch (error) { }
+            }
+            if (!canAdmin('manage_users')) return;
             try {
-                const response = await fetch('/api/admin/overview', { headers: adminHeaders() });
-                const data = await response.json();
-                const badge = document.getElementById('pendingAlertBadge');
-                const count = Number(data.stats?.pendingRequests || 0);
-                if (badge) { badge.innerText = count; badge.classList.toggle('hidden', count === 0); }
+                const ticketsResponse = await fetch('/api/admin/support/tickets?limit=1', { headers: adminHeaders() });
+                const ticketsData = await ticketsResponse.json();
+                if (ticketsResponse.ok && ticketsData.counts) {
+                    adminSupportCounts = ticketsData.counts;
+                    updateSupportBadge();
+                }
+            } catch (error) { }
+            try {
+                const reportsResponse = await fetch('/api/admin/social-feed/reports', { headers: adminHeaders() });
+                const reportsData = await reportsResponse.json();
+                if (reportsResponse.ok) setSidebarBadge('pendingReportsBadge', (reportsData.posts || []).length);
             } catch (error) { }
         }
 
@@ -1036,7 +1433,7 @@ body.modal-open{overflow:hidden}
         }
 
         async function fetchAuditLogs(page = 1) {
-            const token = getAdminAuthToken();
+            setTableState(document.getElementById('tblAuditBody'), 6, { loading: true });
             try {
                 const search = encodeURIComponent(document.getElementById('auditSearch')?.value || '');
                 const date = encodeURIComponent(document.getElementById('auditDate')?.value || '');
@@ -1046,12 +1443,17 @@ body.modal-open{overflow:hidden}
                 const data = await res.json();
                 const tbody = document.getElementById('tblAuditBody');
                 if (!tbody) return;
-                if (!res.ok || !data.success || !data.logs?.length) {
-                    tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-500">لا توجد سجلات تدقيق بعد</td></tr>';
+                if (!res.ok || !data.success) {
+                    setTableState(tbody, 6, { message: data.error || 'تعذر تحميل سجل التدقيق', icon: 'fa-triangle-exclamation' });
+                    return;
+                }
+                if (!data.logs?.length) {
+                    setTableState(tbody, 6, { message: 'لا توجد سجلات تدقيق مطابقة للفلاتر الحالية', icon: 'fa-clipboard-list' });
                     return;
                 }
                 auditCurrentPage = data.page || 1; auditTotalPages = data.totalPages || 1;
                 document.getElementById('auditCurrentPage').innerText = auditCurrentPage; document.getElementById('auditTotalPages').innerText = auditTotalPages;
+                syncAdminFiltersToHash();
                 const labels = { update_game_settings: 'تعديل إعدادات الألعاب', update_user: 'تعديل مستخدم', update_user_balance: 'تعديل رصيد', update_user_role: 'تعديل دور', transaction_approve: 'الموافقة على معاملة', transaction_reject: 'رفض معاملة', schedule_broadcast: 'جدولة بث', broadcast_notification: 'إرسال بث', reset_daily_tasks: 'إعادة المهام' };
                 tbody.innerHTML = data.logs.map(log => `<tr><td class="p-4 text-slate-400 whitespace-nowrap">${escapeAdminHtml(new Date(log.createdAt).toLocaleString('ar'))}</td><td class="p-4 text-white">${escapeAdminHtml(log.adminId?.email || 'مدير')}</td><td class="p-4 text-amber-400">${escapeAdminHtml(labels[log.action] || log.action)}</td><td class="p-4 font-mono text-[10px] text-slate-500">${escapeAdminHtml(log.targetId || '-')}</td><td class="p-4 text-slate-400 text-[10px] max-w-40"><span class="block">${escapeAdminHtml(log.ip || '-')}</span><span class="block truncate" title="${escapeAdminHtml(log.userAgent || '')}">${escapeAdminHtml(log.userAgent || '-')}</span></td><td class="p-4 text-slate-400 max-w-xs"><div class="max-w-xs truncate">${formatAuditDetails(log.details || {})}</div><button onclick='showAuditDetails(${JSON.stringify(log.details || {}).replace(/'/g, '&#39;')})' class="mt-1 text-[10px] text-cyan-300 hover:underline">عرض التفاصيل</button></td></tr>`).join('');
             } catch (error) { showToast('تعذر تحميل سجل التدقيق'); }
@@ -1059,39 +1461,250 @@ body.modal-open{overflow:hidden}
 
         function changeAuditPage(delta) { const target = auditCurrentPage + delta; if (target >= 1 && target <= auditTotalPages) fetchAuditLogs(target); }
 
-        async function fetchAdminSupport() {
-            const list = document.getElementById('adminSupportList');
+        async function exportAuditLogsCsv() {
+            const search = document.getElementById('auditSearch')?.value || '';
+            const date = document.getElementById('auditDate')?.value || '';
+            const action = document.getElementById('auditAction')?.value || 'all';
+            const rows = [['التاريخ', 'المدير', 'الإجراء', 'المعرف', 'IP', 'الجهاز', 'التفاصيل']];
+            const pushLogs = logs => (logs || []).forEach(log => {
+                rows.push([
+                    log.createdAt ? new Date(log.createdAt).toISOString() : '',
+                    log.adminId?.email || '',
+                    log.action || '',
+                    log.targetId || log.entity || '',
+                    log.ip || '',
+                    log.userAgent || '',
+                    JSON.stringify(log.metadata || log.details || {})
+                ]);
+            });
+            showToast('جارٍ تجهيز تصدير سجل التدقيق...');
             try {
-                const response = await fetch('/api/admin/support/tickets', { headers: adminHeaders() });
+                const query = new URLSearchParams({ action, search, date, limit: 5000 });
+                const response = await fetch(`/api/admin/audit-logs/export?${query.toString()}`, { headers: adminHeaders() });
+                if (response.status === 401 || response.status === 403) return adminLogout();
+                if (response.ok) {
+                    const data = await response.json();
+                    if (!data.success) throw new Error(data.error || 'تعذر تصدير سجل التدقيق');
+                    pushLogs(data.logs);
+                    if (data.total > (data.logs || []).length) showToast(`تم تصدير أحدث ${(data.logs || []).length} من ${data.total} سجل`, 'warning');
+                } else {
+                    // Older deployments: page through the paginated endpoint instead.
+                    let page = 1;
+                    let totalPages = 1;
+                    do {
+                        const pageQuery = new URLSearchParams({ limit: 100, page, action, search, date });
+                        const pageResponse = await fetch(`/api/admin/audit-logs?${pageQuery.toString()}`, { headers: adminHeaders() });
+                        const pageData = await pageResponse.json();
+                        if (!pageResponse.ok || !pageData.success) throw new Error(pageData.error || 'تعذر تصدير سجل التدقيق');
+                        totalPages = Number(pageData.totalPages) || 1;
+                        pushLogs(pageData.logs);
+                        page += 1;
+                    } while (page <= totalPages && rows.length <= 5000);
+                }
+                if (rows.length === 1) return showToast('لا توجد سجلات مطابقة للتصدير', 'warning');
+                exportCsv(rows, `audit-logs-${new Date().toISOString().slice(0, 10)}.csv`);
+                showToastSuccess(`تم تصدير ${rows.length - 1} سجل تدقيق`);
+            } catch (error) {
+                showToastError(error.message || 'تعذر تصدير سجل التدقيق');
+            }
+        }
+
+        let adminSupportTickets = [];
+        let adminSupportCounts = { open: 0, in_progress: 0, resolved: 0, active: 0, all: 0 };
+        let adminSupportState = { page: 1, limit: 10, status: 'all', query: '', totalPages: 1, total: 0 };
+        let adminSupportSearchTimer = null;
+
+        const SUPPORT_STATUS_LABELS = { all: 'الكل', open: 'مفتوحة', in_progress: 'قيد المعالجة', resolved: 'محلولة' };
+
+        function setSupportFilter(status) {
+            adminSupportState.status = status;
+            adminSupportState.page = 1;
+            document.querySelectorAll('[data-support-filter]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.supportFilter === status)));
+            fetchAdminSupport();
+        }
+
+        function onSupportSearchInput(value) {
+            adminSupportState.query = String(value || '');
+            clearTimeout(adminSupportSearchTimer);
+            adminSupportSearchTimer = setTimeout(() => { adminSupportState.page = 1; fetchAdminSupport(); }, 350);
+        }
+
+        function renderAdminSupportTickets() {
+            const list = document.getElementById('adminSupportList');
+            if (!list) return;
+            if (!adminSupportTickets.length) {
+                list.innerHTML = '<div class="table-empty glass-card rounded-2xl"><i class="fa-solid fa-inbox" aria-hidden="true"></i>لا توجد تذاكر مطابقة للفلاتر الحالية</div>';
+                return;
+            }
+            list.innerHTML = adminSupportTickets.map(ticket => {
+                const statusTone = ticket.status === 'open' ? 'border-rose-500/25 text-rose-300' : ticket.status === 'in_progress' ? 'border-amber-500/25 text-amber-300' : 'border-emerald-500/25 text-emerald-300';
+                const ticketId = escapeAdminHtml(ticket._id || ticket.id || '');
+                return `<div class="glass-card p-4 rounded-2xl border ${statusTone} space-y-3" data-ticket-id="${ticketId}"><div class="flex justify-between gap-3"><div><b class="text-white">${escapeAdminHtml(ticket.subject)}</b><p class="text-[10px] text-slate-400 mt-1">${escapeAdminHtml(ticket.userId?.email || '-')} · ${escapeAdminHtml(new Date(ticket.updatedAt || ticket.createdAt || Date.now()).toLocaleString('ar'))}</p></div><select id="support-status-${ticketId}" aria-label="حالة التذكرة" class="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-[10px] text-cyan-300"><option value="open" ${ticket.status === 'open' ? 'selected' : ''}>مفتوحة</option><option value="in_progress" ${ticket.status === 'in_progress' ? 'selected' : ''}>قيد المعالجة</option><option value="resolved" ${ticket.status === 'resolved' ? 'selected' : ''}>محلولة</option><option value="closed" ${ticket.status === 'closed' ? 'selected' : ''}>مغلقة</option></select></div><p class="text-xs text-slate-300 whitespace-pre-line">${escapeAdminHtml(ticket.message)}</p><textarea id="support-reply-${ticketId}" rows="2" placeholder="اكتب رد الإدارة..." aria-label="رد الإدارة" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">${escapeAdminHtml(ticket.adminReply || '')}</textarea><button onclick="updateAdminSupport('${ticketId}')" class="w-full py-2 bg-cyan-500/15 text-cyan-300 border border-cyan-500/20 rounded-xl text-xs font-bold">حفظ والرد</button></div>`;
+            }).join('');
+        }
+
+        function renderSupportPagination() {
+            const counter = document.getElementById('supportPaginationInfo');
+            const prev = document.getElementById('supportPrevButton');
+            const next = document.getElementById('supportNextButton');
+            if (counter) counter.textContent = adminSupportState.total ? `صفحة ${adminSupportState.page} من ${adminSupportState.totalPages} · ${adminSupportState.total} تذكرة` : 'لا تذاكر';
+            if (prev) prev.disabled = adminSupportState.page <= 1;
+            if (next) next.disabled = adminSupportState.page >= adminSupportState.totalPages;
+            document.querySelectorAll('[data-support-filter]').forEach(button => {
+                const key = button.dataset.supportFilter;
+                const label = SUPPORT_STATUS_LABELS[key] || key;
+                const count = key === 'all' ? adminSupportCounts.all : adminSupportCounts[key];
+                button.textContent = `${label} (${Number(count || 0)})`;
+            });
+        }
+
+        async function fetchAdminSupport(page = adminSupportState.page) {
+            const list = document.getElementById('adminSupportList');
+            if (list && !adminSupportTickets.length) list.innerHTML = '<div class="table-empty glass-card rounded-2xl"><i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>جارٍ تحميل التذاكر...</div>';
+            try {
+                const params = new URLSearchParams({ page, limit: adminSupportState.limit });
+                if (adminSupportState.status !== 'all') params.set('status', adminSupportState.status);
+                if (adminSupportState.query.trim()) params.set('search', adminSupportState.query.trim());
+                const response = await fetch(`/api/admin/support/tickets?${params.toString()}`, { headers: adminHeaders() });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.error || 'تعذر تحميل التذاكر');
-                list.innerHTML = data.tickets?.length ? data.tickets.map(ticket => `<div class="glass-card p-4 rounded-2xl border border-slate-800 space-y-3"><div class="flex justify-between gap-3"><div><b class="text-white">${escapeAdminHtml(ticket.subject)}</b><p class="text-[10px] text-slate-400 mt-1">${escapeAdminHtml(ticket.userId?.email || '-')}</p></div><select id="support-status-${ticket._id}" class="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-[10px] text-cyan-300"><option value="open" ${ticket.status === 'open' ? 'selected' : ''}>مفتوحة</option><option value="in_progress" ${ticket.status === 'in_progress' ? 'selected' : ''}>قيد المعالجة</option><option value="resolved" ${ticket.status === 'resolved' ? 'selected' : ''}>محلولة</option><option value="closed" ${ticket.status === 'closed' ? 'selected' : ''}>مغلقة</option></select></div><p class="text-xs text-slate-300 whitespace-pre-line">${escapeAdminHtml(ticket.message)}</p><textarea id="support-reply-${ticket._id}" rows="2" placeholder="اكتب رد الإدارة..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">${escapeAdminHtml(ticket.adminReply || '')}</textarea><button onclick="updateAdminSupport('${ticket._id}')" class="w-full py-2 bg-cyan-500/15 text-cyan-300 border border-cyan-500/20 rounded-xl text-xs font-bold">حفظ والرد</button></div>`).join('') : '<div class="text-center text-slate-500 py-8">لا توجد تذاكر مفتوحة</div>';
-            } catch (error) { list.innerHTML = `<div class="text-rose-300">${escapeAdminHtml(error.message)}</div>`; }
+                adminSupportTickets = Array.isArray(data.tickets) ? data.tickets : [];
+                adminSupportCounts = data.counts || adminSupportCounts;
+                adminSupportState.page = Number(data.page) || 1;
+                adminSupportState.totalPages = Number(data.totalPages) || 1;
+                adminSupportState.total = Number(data.total) || 0;
+                renderAdminSupportTickets();
+                renderSupportPagination();
+                updateSupportBadge();
+                syncAdminFiltersToHash();
+            } catch (error) {
+                if (list) list.innerHTML = `<div class="table-empty glass-card rounded-2xl"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>${escapeAdminHtml(error.message)}</div>`;
+            }
         }
 
-        async function loadAdminSecurityStatus() { const status = document.getElementById('adminSecurityStatus'); try { const response = await fetch('/api/admin/security/2fa', { headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` } }); const data = await response.json(); if (!response.ok) throw new Error(data.error); status.innerHTML = data.enabled ? '<span class="text-emerald-300">● مصادقة الإدارة مفعلة ومحمية</span>' : '<span class="text-amber-300">● مصادقة الإدارة غير مفعلة</span>'; document.getElementById('adminSecuritySetupButton').classList.toggle('hidden', data.enabled); ensureAdminInvitePanel(); } catch (error) { status.innerText = error.message || 'تعذر فحص أمان الإدارة'; } }
-        function ensureAdminInvitePanel() { if (document.getElementById('adminInvitePanel')) return; const parent = document.getElementById('admin-security'); const panel = document.createElement('div'); panel.id = 'adminInvitePanel'; panel.className = 'glass-card max-w-lg p-6 rounded-3xl border border-amber-500/20 space-y-3'; panel.innerHTML = '<h3 class="text-sm font-bold text-white">دعوة مدير جديد لمرة واحدة</h3><p class="text-[10px] text-slate-500">ينشئ رابطًا صالحًا 24 ساعة، ويكمل المدير الجديد كلمة المرور و2FA بنفسه.</p><div class="grid grid-cols-2 gap-2"><input id="inviteAdminEmail" type="email" placeholder="البريد الإداري" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"><select id="inviteAdminRole" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"><option value="monitor">مراقب</option><option value="support_admin">مدير دعم</option><option value="financial_admin">مدير مالي</option></select></div><button onclick="inviteNewAdmin()" class="w-full py-2.5 bg-amber-500/15 text-amber-300 border border-amber-500/20 rounded-xl text-xs font-bold">إنشاء دعوة الإدارة</button><div id="adminInviteResult" class="hidden text-[10px] break-all"></div>'; parent.appendChild(panel); }
-        async function inviteNewAdmin() { const email = document.getElementById('inviteAdminEmail').value.trim(); const role = document.getElementById('inviteAdminRole').value; const result = document.getElementById('adminInviteResult'); const response = await fetch('/api/admin/security/invite-admin', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('adminToken')}` }, body: JSON.stringify({ email, role }) }); const data = await response.json(); result.classList.remove('hidden'); result.className = `text-[10px] break-all ${response.ok ? 'text-emerald-300' : 'text-rose-300'}`; result.innerHTML = response.ok ? `${data.message}<br><a class="text-amber-300 underline" href="${data.inviteUrl}" target="_blank">${data.inviteUrl}</a>` : (data.error || 'تعذر إنشاء الدعوة'); }
-        async function setupAdminSecurity2FA() { const response = await fetch('/api/admin/security/2fa/setup', { method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` } }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر إنشاء الرمز'); document.getElementById('adminSecurityQr').src = data.qrCode; document.getElementById('adminSecuritySecret').innerText = `المفتاح اليدوي: ${data.secret}`; document.getElementById('adminSecuritySetupPanel').classList.remove('hidden'); }
-        async function confirmAdminSecurity2FA() { const code = document.getElementById('adminSecurityCode').value.trim(); const response = await fetch('/api/admin/security/2fa/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('adminToken')}` }, body: JSON.stringify({ code }) }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'رمز غير صحيح'); showToast(data.message || 'تم التفعيل'); document.getElementById('adminSecuritySetupPanel').classList.add('hidden'); loadAdminSecurityStatus(); }
+        function changeSupportPage(delta) {
+            const target = adminSupportState.page + delta;
+            if (target < 1 || target > adminSupportState.totalPages) return;
+            fetchAdminSupport(target);
+        }
+
+        async function loadAdminSecurityStatus() { const status = document.getElementById('adminSecurityStatus'); try { const response = await fetch('/api/admin/security/2fa', { headers: adminHeaders() }); const data = await response.json(); if (!response.ok) throw new Error(data.error); status.innerHTML = data.enabled ? '<span class="text-emerald-300">● مصادقة الإدارة مفعلة ومحمية</span>' : '<span class="text-amber-300">● مصادقة الإدارة غير مفعلة</span>'; document.getElementById('adminSecuritySetupButton').classList.toggle('hidden', data.enabled); ensureAdminInvitePanel(); } catch (error) { status.innerText = error.message || 'تعذر فحص أمان الإدارة'; } }
+        async function loadAdminSessions() {
+            const list = document.getElementById('adminSessionsList');
+            if (!list) return;
+            try {
+                const response = await fetch('/api/admin/security/sessions', { headers: adminHeaders() });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'تعذر تحميل الجلسات');
+                const sessions = (data.sessions || []).filter(session => session.active).slice(0, 12);
+                list.innerHTML = sessions.length ? sessions.map(session => `
+                    <div class="rounded-xl border ${session.current ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-slate-800 bg-slate-950/60'} p-3">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0">
+                                <b class="block truncate text-white">${escapeAdminHtml((session.userAgent || 'جهاز غير معروف').slice(0, 70))}</b>
+                                <span class="block text-[10px] text-slate-500">${escapeAdminHtml(session.ip || 'IP غير متاح')} · ${escapeAdminHtml(new Date(session.createdAt || Date.now()).toLocaleString('ar'))}</span>
+                            </div>
+                            ${session.current ? '<span class="shrink-0 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[9px] font-bold text-emerald-300">هذه الجلسة</span>' : `<button type="button" onclick="revokeAdminSession('${escapeAdminHtml(session.id || session._id)}')" class="shrink-0 rounded-lg bg-rose-500/15 px-2 py-1 text-[10px] font-bold text-rose-300">إنهاء</button>`}
+                        </div>
+                    </div>`).join('') : '<span class="text-slate-500">لا توجد جلسات نشطة أخرى.</span>';
+            } catch (error) { list.innerHTML = `<span class="text-rose-300">${escapeAdminHtml(error.message)}</span>`; }
+        }
+
+        async function revokeAdminSession(sessionId) {
+            if (!await showAdminConfirm('سيتم إنهاء هذه الجلسة الإدارية فورًا. هل تتابع؟', 'إنهاء جلسة إدارة')) return;
+            const response = await fetch('/api/admin/security/sessions/revoke', { method: 'POST', headers: adminJsonHeaders(), body: JSON.stringify({ sessionId }) });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) return showToastError(data.error || 'تعذر إنهاء الجلسة');
+            showToastSuccess(data.message || 'تم إنهاء الجلسة');
+            if (data.current) return setTimeout(() => { window.location.href = '/admin-login.html'; }, 1500);
+            loadAdminSessions();
+        }
+
+        async function revokeOtherAdminSessions() {
+            if (!await showAdminConfirm('سيتم إنهاء كل جلسات الإدارة الأخرى مع إبقاء جلستك الحالية. هل تتابع؟', 'إنهاء الجلسات الأخرى')) return;
+            const response = await fetch('/api/admin/security/sessions/revoke-others', { method: 'POST', headers: adminJsonHeaders() });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) return showToastError(data.error || 'تعذر إنهاء الجلسات');
+            showToastSuccess(data.message || 'تم إنهاء الجلسات الأخرى');
+            loadAdminSessions();
+        }
+
+        function renderAdminSessionMeta() {
+            const meta = document.getElementById('adminSessionMeta');
+            if (!meta) return;
+            const parts = [];
+            if (adminSessionInfo.expiresAt) parts.push(`تنتهي الجلسة الحالية: ${new Date(adminSessionInfo.expiresAt).toLocaleString('ar')}`);
+            if (adminSessionInfo.sessionId) parts.push(`معرّف الجلسة: ${String(adminSessionInfo.sessionId).slice(0, 8)}…`);
+            meta.textContent = parts.join(' · ');
+        }
+
+        function ensureAdminInvitePanel() {
+            if (currentAdminRole !== 'admin') return;
+            if (document.getElementById('adminInvitePanel')) return; const parent = document.getElementById('admin-security'); const panel = document.createElement('div'); panel.id = 'adminInvitePanel'; panel.className = 'glass-card max-w-lg p-6 rounded-3xl border border-amber-500/20 space-y-3'; panel.innerHTML = '<h3 class="text-sm font-bold text-white">دعوة مدير جديد لمرة واحدة</h3><p class="text-[10px] text-slate-500">ينشئ رابطًا صالحًا 24 ساعة، ويكمل المدير الجديد كلمة المرور و2FA بنفسه.</p><div class="grid grid-cols-2 gap-2"><input id="inviteAdminEmail" type="email" placeholder="البريد الإداري" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"><select id="inviteAdminRole" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"><option value="monitor">مراقب</option><option value="support_admin">مدير دعم</option><option value="financial_admin">مدير مالي</option></select></div><div class="rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-[10px] leading-5 text-slate-400">تتم الدعوة برابط لمرة واحدة صالح 24 ساعة، ويُطلب من المدير الجديد تعيين كلمة مروره و2FA بنفسه. تسجيل الدخول الإداري لا يعمل إلا بعد تفعيل Google Authenticator.</div><button onclick="inviteNewAdmin()" class="w-full py-2.5 bg-amber-500/15 text-amber-300 border border-amber-500/20 rounded-xl text-xs font-bold">إنشاء دعوة الإدارة</button><div id="adminInviteResult" class="hidden text-[10px] break-all"></div>'; parent.appendChild(panel); }
+        async function inviteNewAdmin() { const email = document.getElementById('inviteAdminEmail').value.trim(); const role = document.getElementById('inviteAdminRole').value; const result = document.getElementById('adminInviteResult'); const response = await fetch('/api/admin/security/invite-admin', { method: 'POST', headers: adminJsonHeaders(), body: JSON.stringify({ email, role }) }); const data = await response.json(); result.classList.remove('hidden'); result.className = `text-[10px] break-all ${response.ok ? 'text-emerald-300' : 'text-rose-300'}`; result.innerHTML = response.ok ? `${data.message}<br><a class="text-amber-300 underline" href="${escapeAdminHtml(data.inviteUrl)}" target="_blank" rel="noopener noreferrer">${escapeAdminHtml(data.inviteUrl)}</a>` : (data.error || 'تعذر إنشاء الدعوة'); }
+        async function setupAdminSecurity2FA() { const response = await fetch('/api/admin/security/2fa/setup', { method: 'POST', headers: adminHeaders() }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر إنشاء الرمز'); document.getElementById('adminSecurityQr').src = data.qrCode; document.getElementById('adminSecuritySecret').innerText = `المفتاح اليدوي: ${data.secret}`; document.getElementById('adminSecuritySetupPanel').classList.remove('hidden'); }
+        async function confirmAdminSecurity2FA() { const code = document.getElementById('adminSecurityCode').value.trim(); const response = await fetch('/api/admin/security/2fa/confirm', { method: 'POST', headers: adminJsonHeaders(), body: JSON.stringify({ code }) }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'رمز غير صحيح'); showToast(data.message || 'تم التفعيل'); document.getElementById('adminSecuritySetupPanel').classList.add('hidden'); loadAdminSecurityStatus(); }
         async function updateAdminSupport(id) { const status = document.getElementById(`support-status-${id}`).value; const reply = document.getElementById(`support-reply-${id}`).value; const response = await fetch(`/api/admin/support/tickets/${id}`, { method: 'POST', headers: adminJsonHeaders(), body: JSON.stringify({ status, reply }) }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر تحديث التذكرة'); showToast('تم تحديث التذكرة وإرسال الإشعار'); fetchAdminSupport(); }
 
+        function analyticsDeltaText(value) {
+            const number = Number(value || 0);
+            if (!Number.isFinite(number)) return '';
+            if (!number) return 'بدون تغيير عن الفترة السابقة';
+            return `${number > 0 ? '▲' : '▼'} ${Math.abs(number).toFixed(1)}% عن الفترة السابقة`;
+        }
+
         async function fetchAdminAnalytics() {
+            const periodSelect = document.getElementById('analyticsPeriod');
+            const days = Number(periodSelect?.value || 30);
             try {
-                const response = await fetch('/api/admin/analytics', { headers: adminHeaders() });
+                const response = await fetch(`/api/admin/analytics?days=${encodeURIComponent(days)}`, { headers: adminHeaders() });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.error || 'تعذر تحميل التحليلات');
-                const security = Object.fromEntries((data.security || []).map(item => [item._id, item.count]));
-                document.getElementById('analyticsLoginSuccess').innerText = security.login_success || 0;
-                document.getElementById('analyticsLoginFailed').innerText = security.login_failed || 0;
-                document.getElementById('analyticsEmailVerified').innerText = security.email_verified || 0;
+                const security = Object.fromEntries((data.security || []).map(item => [item._id, Number(item.count || 0)]));
+                const summary = data.summary || {};
+                const current = summary.current || {};
+                const totalUsers = Math.max(1, current.totalUsers || (data.usersByRole || []).reduce((sum, item) => sum + Number(item.count || 0), 0));
+                document.getElementById('analyticsLoginSuccess').textContent = security.login_success ?? 0;
+                document.getElementById('analyticsLoginFailed').textContent = security.login_failed ?? 0;
+                document.getElementById('analyticsEmailVerified').textContent = Number(current.verifiedUsers || 0);
+                document.getElementById('analyticsVerifiedPercent').textContent = `${Math.round((Number(current.verifiedUsers || 0) / totalUsers) * 100)}% من الحسابات`;
+                document.getElementById('analyticsVolume').textContent = `${Number(current.volume || 0).toFixed(2)} $`;
+                document.getElementById('analyticsVolumeDelta').textContent = analyticsDeltaText(summary.change?.volume);
+                document.getElementById('analyticsLoginSuccessDelta').textContent = `إيداعات ${Number(current.deposits || 0).toFixed(2)} $ · سحوبات ${Number(current.withdrawals || 0).toFixed(2)} $`;
+
                 const roleLabels = { user: 'مستخدمون', admin: 'مديرون', financial_admin: 'مديرون ماليون', support_admin: 'دعم', monitor: 'مراقبون' };
-                const maxRole = Math.max(1, ...(data.usersByRole || []).map(item => item.count));
-                document.getElementById('analyticsRoles').innerHTML = (data.usersByRole || []).map(item => `<div><div class="flex justify-between text-[11px] text-slate-300"><span>${escapeAdminHtml(roleLabels[item._id] || item._id)}</span><b>${item.count}</b></div><div class="h-1.5 bg-slate-950 rounded-full mt-1 overflow-hidden"><div class="h-full bg-cyan-400 rounded-full" style="width:${Math.round(item.count / maxRole * 100)}%"></div></div></div>`).join('') || '<span class="text-xs text-slate-500">لا توجد بيانات</span>';
-                document.getElementById('analyticsDaily').innerHTML = (data.daily || []).slice(-30).map(item => `<div class="flex justify-between border-b border-slate-800 pb-2 text-[10px]"><span class="text-slate-400">${escapeAdminHtml(item._id.day)} · ${escapeAdminHtml(item._id.type)}</span><span class="text-amber-400 font-bold">${Number(item.total || 0).toFixed(2)} $ (${item.count})</span></div>`).join('') || '<span class="text-xs text-slate-500">لا توجد معاملات في الفترة</span>';
-            } catch (error) { showToast(error.message); }
+                const maxRole = Math.max(1, ...(data.usersByRole || []).map(item => Number(item.count || 0)));
+                document.getElementById('analyticsRoles').innerHTML = (data.usersByRole || []).map(item => `<div><div class="flex justify-between text-[11px] text-slate-300"><span>${escapeAdminHtml(roleLabels[item._id] || item._id)}</span><b>${Number(item.count || 0)}</b></div><div class="h-1.5 bg-slate-950 rounded-full mt-1 overflow-hidden"><div class="h-full bg-cyan-400 rounded-full" style="width:${Math.round((Number(item.count || 0) / maxRole) * 100)}%"></div></div></div>`).join('') || '<span class="text-xs text-slate-500">لا بيانات</span>';
+
+                document.getElementById('analyticsDaily').innerHTML = (data.daily || []).slice(-40).reverse().map(item => `<div class="flex justify-between border-b border-slate-800 pb-2 text-[10px]"><span class="text-slate-400">${escapeAdminHtml(item._id?.day || '-')} · ${escapeAdminHtml(item._id?.type || '-')}</span><span class="text-amber-400 font-bold">${Number(item.total || 0).toFixed(2)} $ (${Number(item.count || 0)})</span></div>`).join('') || '<span class="text-xs text-slate-500">لا معاملات في هذه الفترة</span>';
+
+                const dayTotals = new Map();
+                (data.daily || []).forEach(item => {
+                    const day = item._id?.day || '';
+                    dayTotals.set(day, (dayTotals.get(day) || 0) + Number(item.total || 0));
+                });
+                const points = [...dayTotals.entries()].sort((a, b) => a[0].localeCompare(b[0])).slice(-days);
+                const max = Math.max(1, ...points.map(([, total]) => total));
+                document.getElementById('analyticsChart').innerHTML = points.length
+                    ? points.map(([day, total]) => `<div class="ops-bar" style="height:${Math.max(4, Math.round((total / max) * 100))}%" title="${escapeAdminHtml(day)} · ${total.toFixed(2)} $"></div>`).join('')
+                    : '<span class="m-auto text-[10px] text-slate-500">لا بيانات لعرضها في هذه الفترة</span>';
+                const labelStep = Math.max(1, Math.ceil(points.length / 7));
+                document.getElementById('analyticsChartLabels').innerHTML = points.filter((_, index) => index % labelStep === 0).map(([day]) => `<span>${escapeAdminHtml(String(day).slice(5))}</span>`).join('');
+            } catch (error) { showToastError(error.message); }
         }
-        function exportAnalyticsCsv() { const rows = [['المؤشر', 'القيمة'], ['دخول ناجح', document.getElementById('analyticsLoginSuccess')?.innerText || 0], ['محاولات فاشلة', document.getElementById('analyticsLoginFailed')?.innerText || 0], ['بريد موثق', document.getElementById('analyticsEmailVerified')?.innerText || 0]]; exportCsv(rows, 'operix-analytics.csv'); }
+
+        function exportAnalyticsCsv() {
+            const rows = [
+                ['المؤشر', 'القيمة'],
+                ['الفترة (أيام)', document.getElementById('analyticsPeriod')?.value || '30'],
+                ['دخول ناجح', document.getElementById('analyticsLoginSuccess')?.textContent || 0],
+                ['محاولات فاشلة', document.getElementById('analyticsLoginFailed')?.textContent || 0],
+                ['بريد موثق', document.getElementById('analyticsEmailVerified')?.textContent || 0],
+                ['حجم المعاملات', document.getElementById('analyticsVolume')?.textContent || 0]
+            ];
+            document.querySelectorAll('#analyticsRoles > div').forEach(row => rows.push([row.querySelector('span')?.textContent || '', row.querySelector('b')?.textContent || '']));
+            exportCsv(rows, 'operix-analytics.csv');
+        }
 
         async function fetchAdminOverview() {
             try {
@@ -1193,6 +1806,7 @@ body.modal-open{overflow:hidden}
         }
 
         async function fetchUsersList(page = 1) {
+            setTableState(document.getElementById('tblUsersBody'), 7, { loading: true });
             try {
                 const params = new URLSearchParams({ page, limit: 10, search: document.getElementById('txtSearchUser')?.value.trim() || '', role: document.getElementById('userFilterRole')?.value || '', tier: document.getElementById('userFilterTier')?.value.trim() || '', status: document.getElementById('userFilterStatus')?.value || '', verified: document.getElementById('userFilterVerified')?.value || '' });
                 const res = await fetch(`/api/admin/users?${params.toString()}`, {
@@ -1210,6 +1824,7 @@ body.modal-open{overflow:hidden}
                     document.getElementById('usersCurrentPage').innerText = usersCurrentPage;
                     document.getElementById('usersTotalPages').innerText = usersTotalPages;
                     renderUsersTable(users);
+                    syncAdminFiltersToHash();
                 }
             } catch(e) { console.error(e); }
         }
@@ -1250,7 +1865,14 @@ body.modal-open{overflow:hidden}
             tbody.innerHTML = referrals.length ? referrals.map(referral => `<tr><td class="p-4 text-white">${escapeAdminHtml(referral.email)}</td><td class="p-4 text-amber-400 font-mono">${escapeAdminHtml(referral.referralCode || '-')}</td><td class="p-4 text-slate-400 font-mono">${escapeAdminHtml(referral.referredBy || '-')}</td><td class="p-4 text-slate-300">${Number(referral.wallet?.totalDeposits || 0) > 0 ? escapeAdminHtml(referral.tierCode || 'A1') : 'غير مفعّل'}</td><td class="p-4">${Number(referral.wallet?.totalDeposits || 0) > 0 ? '<span class="text-emerald-400">نعم</span>' : '<span class="text-slate-500">لا</span>'}</td><td class="p-4 text-slate-500">${escapeAdminHtml(new Date(referral.createdAt).toLocaleDateString('ar'))}</td><td class="p-4"><button type="button" onclick="viewReferralTreeById('${escapeAdminHtml(referral._id)}')" class="text-blue-300 hover:text-blue-200" title="عرض شجرة الإحالات"><i class="fa-solid fa-sitemap"></i></button></td></tr>`).join('') : '<tr><td colspan="7" class="p-4 text-center text-slate-500">لا توجد إحالات</td></tr>';
         }
         function filterReferrals() { fetchReferrals(1); }
-        function exportCsv(rows, filename) { const csv = rows.map(row => row.map(value => `"${String(value ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n'); const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = filename; link.click(); URL.revokeObjectURL(link.href); }
+        function exportCsv(rows, filename) {
+            const escapeCell = value => {
+                if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+                let text = String(value ?? '');
+                if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
+                return `"${text.replace(/"/g, '""')}"`;
+            };
+            const csv = rows.map(row => row.map(escapeCell).join(',')).join('\r\n'); const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = filename; link.click(); URL.revokeObjectURL(link.href); }
         async function exportReferralsCsv() {
             try {
                 const params = new URLSearchParams({ search: document.getElementById('txtSearchReferral')?.value.trim() || '' });
@@ -1274,8 +1896,8 @@ body.modal-open{overflow:hidden}
         async function exportTransactionsCsv() { const params = new URLSearchParams({ status: document.getElementById('filterTxStatus')?.value || 'all', type: document.getElementById('filterTxType')?.value || 'all', network: document.getElementById('filterTxNetwork')?.value || '', search: document.getElementById('txSearch')?.value.trim() || '', from: document.getElementById('txFrom')?.value || '', to: document.getElementById('txTo')?.value || '' }); const response = await fetch(`/api/admin/withdrawals/export?${params}`, { headers: adminHeaders() }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر تصدير المعاملات'); exportCsv([['المستخدم', 'النوع', 'المبلغ', 'الشبكة', 'الهاش', 'المحفظة', 'الحالة', 'التاريخ'], ...(data.transactions || []).map(item => [item.userId?.email || '-', item.type, item.amount, item.network || '-', item.txHash || '-', item.walletAddress || '-', item.status, new Date(item.createdAt).toISOString()])], 'transactions.csv'); }
         function renderUsersTable(users) {
             const tbody = document.getElementById('tblUsersBody');
-            if(!users || users.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500">لا يوجد مستخدمين لعرضهم</td></tr>`;
+            if (!users || users.length === 0) {
+                setTableState(tbody, 7, { message: 'لا يوجد مستخدمون مطابقون للفلاتر الحالية', icon: 'fa-users-slash' });
                 return;
             }
             tbody.innerHTML = users.map(u => {
@@ -1334,6 +1956,17 @@ body.modal-open{overflow:hidden}
         }
         async function revokeDetailsSessions() { if (!currentDetailsUserId || !await showAdminConfirm('سيتم إنهاء جلسات المستخدم الحالية. هل تتابع؟', 'إنهاء الجلسات')) return; const response = await fetch(`/api/admin/users/${encodeURIComponent(currentDetailsUserId)}/revoke-sessions`, { method: 'POST' }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر إنهاء الجلسات'); showToast(data.message || 'تم إنهاء الجلسات'); loadUserDetails(currentDetailsUserId); }
         async function verifyDetailsEmail() { if (!currentDetailsUserId) return; const response = await fetch(`/api/admin/users/${encodeURIComponent(currentDetailsUserId)}/verify-email`, { method: 'POST' }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر توثيق البريد'); showToast(data.message || 'تم توثيق البريد'); loadUserDetails(currentDetailsUserId); }
+        async function resetDetailsDailyTasks() {
+            if (!currentDetailsUserId) return;
+            if (!await showAdminConfirm('سيتم حذف مهام اليوم وتسليماتها لهذا المستخدم فقط ليبدأ من جديد. هل تتابع؟', 'إعادة تعيين المهام اليومية')) return;
+            const response = await fetch('/api/admin/reset-daily-tasks', { method: 'POST', headers: adminJsonHeaders(), body: JSON.stringify({ userId: currentDetailsUserId }) });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) return showToastError(data.error || 'تعذر إعادة تعيين المهام');
+            showToastSuccess(data.message || 'تم إعادة تعيين مهام اليوم لهذا المستخدم');
+            loadUserDetails(currentDetailsUserId);
+            fetchUsersList(usersCurrentPage);
+        }
+
         async function disableDetails2FA() { if (!currentDetailsUserId || !await showAdminConfirm('سيتم تعطيل المصادقة الثنائية لهذا المستخدم. هل تتابع؟', 'تعطيل 2FA')) return; const response = await fetch(`/api/admin/users/${encodeURIComponent(currentDetailsUserId)}/disable-2fa`, { method: 'POST' }); const data = await response.json(); if (!response.ok) return showToast(data.error || 'تعذر تعطيل 2FA'); showToast(data.message || 'تم تعطيل 2FA'); loadUserDetails(currentDetailsUserId); }
 
         function filterUsersTable() {
@@ -1369,6 +2002,7 @@ body.modal-open{overflow:hidden}
             const status = document.getElementById('filterTxStatus').value;
             const type = document.getElementById('filterTxType').value;
             const params = new URLSearchParams({ status, type, network: document.getElementById('filterTxNetwork')?.value || '', search: document.getElementById('txSearch')?.value.trim() || '', from: document.getElementById('txFrom')?.value || '', to: document.getElementById('txTo')?.value || '', page, limit: 10 });
+            setTableState(document.getElementById('tblTransactionsBody'), 7, { loading: true });
 
             try {
                 const res = await fetch(`/api/admin/withdrawals?${params.toString()}`, {
@@ -1383,10 +2017,11 @@ body.modal-open{overflow:hidden}
                     txTotalPages = data.totalPages || 1;
                     document.getElementById('txCurrentPage').innerText = txCurrentPage;
                     document.getElementById('txTotalPages').innerText = txTotalPages;
+                    syncAdminFiltersToHash();
 
                     const tbody = document.getElementById('tblTransactionsBody');
                     if (!data.withdrawals || data.withdrawals.length === 0) {
-                        tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500">لا توجد طلبات مطابقة</td></tr>`;
+                        setTableState(tbody, 7, { message: 'لا توجد طلبات مطابقة للفلاتر الحالية', icon: 'fa-receipt' });
                         return;
                     }
                     tbody.innerHTML = data.withdrawals.map(tx => {
@@ -1418,6 +2053,14 @@ body.modal-open{overflow:hidden}
                     updateTransactionSelectionCount();
                 }
             } catch (e) { console.error('خطأ المعاملات:', e); }
+        }
+
+        function clearTransactionFilters() {
+            ['txSearch', 'txFrom', 'txTo'].forEach(id => { const field = document.getElementById(id); if (field) field.value = ''; });
+            const network = document.getElementById('filterTxNetwork'); if (network) network.value = '';
+            const type = document.getElementById('filterTxType'); if (type) type.value = 'all';
+            const status = document.getElementById('filterTxStatus'); if (status) status.value = 'pending';
+            fetchTransactionsList(1);
         }
 
         function changeTxPage(delta) {
@@ -1496,11 +2139,31 @@ body.modal-open{overflow:hidden}
 
         function openEditUser(id, tier, balance, role = 'user') {
             document.getElementById('editUserId').value = id;
-            document.getElementById('editUserTierDisplay').innerText = tier || 'غير مفعّل';
-            document.getElementById('editUserBalance').value = balance;
+            document.getElementById('editUserTierDisplay').textContent = tier || 'غير مفعّل';
+            const balanceField = document.getElementById('editUserBalance');
+            balanceField.value = Number(balance || 0).toFixed(2);
+            balanceField.dataset.originalBalance = String(Number(balance || 0));
             document.getElementById('editUserPass').value = '';
             document.getElementById('editUserRole').value = role;
+            const reasonField = document.getElementById('editUserBalanceReason');
+            if (reasonField) reasonField.value = '';
+            updateBalancePreview();
             document.getElementById('editUserModal').classList.remove('hide');
+            balanceField.focus({ preventScroll: true });
+            balanceField.select?.();
+        }
+
+        function updateBalancePreview() {
+            const field = document.getElementById('editUserBalance');
+            const label = document.getElementById('editUserBalancePreview');
+            if (!field || !label) return;
+            const previous = Number(field.dataset.originalBalance || 0);
+            const next = Number(field.value || 0);
+            if (!Number.isFinite(next)) { label.textContent = 'أدخل قيمة رقمية صالحة'; return; }
+            const delta = next - previous;
+            if (!delta) { label.textContent = `الرصيد الحالي ${previous.toFixed(2)} $ — لا تغيير`; return; }
+            label.textContent = `${previous.toFixed(2)} $ → ${next.toFixed(2)} $ (${delta > 0 ? '+' : ''}${delta.toFixed(2)} $)`;
+            label.className = `mt-1 block text-[9px] leading-4 ${delta > 0 ? 'text-emerald-300' : 'text-amber-300'}`;
         }
 
         function closeEditUserModal() {
@@ -1509,14 +2172,29 @@ body.modal-open{overflow:hidden}
 
         async function submitEditUser() {
             const userId = document.getElementById('editUserId').value;
-            const balance = parseFloat(document.getElementById('editUserBalance').value);
+            const balance = Number.parseFloat(document.getElementById('editUserBalance').value);
             const password = document.getElementById('editUserPass').value;
             const role = document.getElementById('editUserRole').value;
+            const reasonField = document.getElementById('editUserBalanceReason');
+            const reason = reasonField ? reasonField.value.trim() : '';
+            const originalBalance = Number(document.getElementById('editUserBalance').dataset.originalBalance || 0);
+
+            if (canAdmin('finance')) {
+                if (!Number.isFinite(balance) || balance < 0) return showToastError('أدخل رصيدًا صالحًا أكبر من أو يساوي صفر');
+                if (balance !== originalBalance) {
+                    if (reason.length < 5) {
+                        reasonField?.focus();
+                        return showToastError('سبب تعديل الرصيد مطلوب (5 أحرف على الأقل)');
+                    }
+                    const delta = balance - originalBalance;
+                    if (!await showAdminConfirm(`سيتم تغيير رصيد المستخدم من ${originalBalance.toFixed(2)} $ إلى ${balance.toFixed(2)} $ (${delta > 0 ? '+' : ''}${delta.toFixed(2)} $). السبب: ${reason}`, 'تأكيد تعديل الرصيد')) return;
+                }
+            }
 
             try {
                 const headers = adminJsonHeaders();
                 const operations = [];
-                if (canAdmin('finance')) operations.push(['الرصيد', () => fetch('/api/admin/users/update', { method: 'POST', headers, body: JSON.stringify({ userId, balance }) })]);
+                if (canAdmin('finance')) operations.push(['الرصيد', () => fetch('/api/admin/users/update', { method: 'POST', headers, body: JSON.stringify({ userId, balance, reason: reason || undefined }) })]);
                 if (canAdmin('manage_users') && password) operations.push(['بيانات الحساب', () => fetch('/api/admin/users/update-account', { method: 'POST', headers, body: JSON.stringify({ userId, password }) })]);
                 if (currentAdminRole === 'admin') operations.push(['الدور', () => fetch('/api/admin/users/role', { method: 'POST', headers, body: JSON.stringify({ userId, role }) })]);
                 if (!operations.length) return showToast('لا تملك صلاحية لتعديل بيانات هذا المستخدم');
@@ -1812,6 +2490,74 @@ body.modal-open{overflow:hidden}
             updateEmailBroadcastSendButton();
         }
 
+        let emailQueueState = { status: 'failed', loaded: false };
+        let emailQueueData = null;
+
+        function setEmailQueueFilter(status) {
+            emailQueueState.status = status;
+            document.querySelectorAll('[data-email-queue-filter]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.emailQueueFilter === status)));
+            fetchEmailQueue();
+        }
+
+        const EMAIL_QUEUE_LABELS = { failed: 'فاشلة', unknown: 'مجهولة', suppressed: 'مستبعدة', queued: 'بالانتظار', sending: 'قيد الإرسال', sent: 'مرسلة' };
+
+        async function fetchEmailQueue() {
+            const list = document.getElementById('emailQueueList');
+            const countsBox = document.getElementById('emailQueueCounts');
+            const actions = document.getElementById('emailQueueActions');
+            if (!list || !countsBox || !actions) return;
+            try {
+                const response = await fetch(`/api/admin/email-queue?status=${encodeURIComponent(emailQueueState.status)}&limit=20`, { headers: adminHeaders() });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'تعذر تحميل طابور البريد');
+                emailQueueData = data;
+                emailQueueState.loaded = true;
+                const counts = data.counts || {};
+                countsBox.innerHTML = ['sent', 'queued', 'failed', 'unknown', 'suppressed'].map(key => `<div class="rounded-xl border border-slate-800 bg-slate-950/60 p-3"><span class="block text-[9px] text-slate-500">${EMAIL_QUEUE_LABELS[key]}</span><b class="mt-1 block text-sm ${key === 'failed' || key === 'unknown' ? 'text-rose-300' : key === 'sent' ? 'text-emerald-300' : 'text-slate-200'}">${Number(counts[key] || 0)}</b></div>`).join('');
+                document.querySelectorAll('[data-email-queue-filter]').forEach(button => {
+                    const key = button.dataset.emailQueueFilter;
+                    button.textContent = `${EMAIL_QUEUE_LABELS[key] || key} (${Number(counts[key] || 0)})`;
+                });
+                list.innerHTML = data.recipients?.length ? data.recipients.map(item => `
+                    <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+                        <div class="flex flex-wrap items-start justify-between gap-2">
+                            <div class="min-w-0">
+                                <b class="block truncate text-white">${escapeAdminHtml(item.email || '-')}</b>
+                                <span class="block text-[10px] text-slate-500">${escapeAdminHtml(item.campaignSubject || 'بدون حملة')} · محاولات: ${Number(item.attempts || 0)}${item.updatedAt ? ` · ${escapeAdminHtml(new Date(item.updatedAt).toLocaleString('ar'))}` : ''}</span>
+                                ${item.lastError ? `<span class="mt-1 block break-all text-[10px] text-rose-300">${escapeAdminHtml(item.lastError)}</span>` : ''}
+                            </div>
+                            <span class="shrink-0 rounded-full border border-slate-700 px-2 py-0.5 text-[9px] ${['failed', 'unknown'].includes(item.status) ? 'text-rose-300' : item.status === 'sent' ? 'text-emerald-300' : 'text-slate-300'}">${EMAIL_QUEUE_LABELS[item.status] || item.status}</span>
+                        </div>
+                    </div>`).join('') : '<div class="table-empty"><i class="fa-solid fa-inbox" aria-hidden="true"></i>لا مستلمين بهذه الحالة</div>';
+                const actionable = data.actionableCampaigns || [];
+                actions.innerHTML = actionable.length
+                    ? actionable.slice(0, 5).map(campaignId => {
+                        const sample = data.recipients?.find(item => String(item.campaignId) === String(campaignId) && item.campaignSubject);
+                        return `<button type="button" onclick="retryEmailQueueCampaign('${escapeAdminHtml(campaignId)}')" class="rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-[10px] font-bold text-amber-200"><i class="fa-solid fa-rotate-right ml-1"></i>إعادة إرسال الفاشلين${sample?.campaignSubject ? ` — ${escapeAdminHtml(String(sample.campaignSubject).slice(0, 40))}` : ''}</button>`;
+                    }).join('')
+                    : '<span class="text-[10px] text-slate-500">لا توجد حملات بها مستلمون فاشلون قابلة لإعادة الإرسال.</span>';
+            } catch (error) {
+                list.innerHTML = `<div class="text-rose-300">${escapeAdminHtml(error.message)}</div>`;
+                actions.innerHTML = '';
+            }
+        }
+
+        async function retryEmailQueueCampaign(campaignId) {
+            if (!await showAdminConfirm('ستتم إعادة تجهيز المستلمين الفاشلين في هذه الحملة وإرسالهم الآن. من استلم الرسالة سابقًا لن يُرسل له مرة أخرى. هل تتابع؟', 'إعادة إرسال بريد فاشل')) return;
+            const button = document.querySelector(`#emailQueueActions button[onclick*="${campaignId}"]`);
+            if (button) { button.disabled = true; button.classList.add('opacity-50'); }
+            try {
+                const response = await fetch('/api/admin/email-queue/retry', { method: 'POST', headers: adminJsonHeaders(), body: JSON.stringify({ campaignId }) });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(data.error || 'تعذر إعادة الإرسال');
+                showToastSuccess(data.message || 'تمت إعادة الإرسال');
+                await Promise.all([fetchEmailQueue(), fetchEmailBroadcasts()]);
+            } catch (error) {
+                showToastError(error.message);
+                if (button) { button.disabled = false; button.classList.remove('opacity-50'); }
+            }
+        }
+
         async function previewEmailBroadcast() {
             const subject = document.getElementById('emailBroadcastSubject')?.value?.trim() || '';
             const body = document.getElementById('emailBroadcastBody')?.value?.trim() || '';
@@ -2062,15 +2808,60 @@ body.modal-open{overflow:hidden}
             `;
         }
 
-        async function fetchSocialFeedReports() {
+        let adminReportsState = { page: 1, limit: 10, status: 'all', totalPages: 1, total: 0, counts: { all: 0, reports: 0 } };
+
+        function setReportFilter(status) {
+            adminReportsState.status = status;
+            adminReportsState.page = 1;
+            document.querySelectorAll('[data-report-filter]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.reportFilter === status)));
+            fetchSocialFeedReports();
+        }
+
+        function renderReportsPagination() {
+            const counter = document.getElementById('reportsPaginationInfo');
+            const summary = document.getElementById('reportFilterSummary');
+            if (counter) counter.textContent = adminReportsState.total ? `صفحة ${adminReportsState.page} من ${adminReportsState.totalPages} · ${adminReportsState.total} منشور` : 'لا بلاغات';
+            if (summary) summary.textContent = `${Number(adminReportsState.counts?.reports || 0)} بلاغ إجمالًا على ${Number(adminReportsState.counts?.all || 0)} منشور`;
+            const prev = document.getElementById('reportsPrevButton');
+            const next = document.getElementById('reportsNextButton');
+            if (prev) prev.disabled = adminReportsState.page <= 1;
+            if (next) next.disabled = adminReportsState.page >= adminReportsState.totalPages;
+        }
+
+        function changeReportPage(delta) {
+            const target = adminReportsState.page + delta;
+            if (target < 1 || target > adminReportsState.totalPages) return;
+            fetchSocialFeedReports(target);
+        }
+
+        function socialReportStatusLabel(status) {
+            return ({ visible: 'ظاهر', hidden: 'مخفي', banned: 'محجوب', removed: 'محذوف' })[status] || status || '-';
+        }
+
+        async function fetchSocialFeedReports(page = adminReportsState.page) {
             const list = document.getElementById('socialFeedReportsList');
             if (!list) return;
             try {
-                const response = await fetch('/api/admin/social-feed/reports', { headers: adminHeaders() });
+                const params = new URLSearchParams({ page, limit: adminReportsState.limit });
+                if (adminReportsState.status !== 'all') params.set('status', adminReportsState.status);
+                const response = await fetch(`/api/admin/social-feed/reports?${params.toString()}`, { headers: adminHeaders() });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.error || 'تعذر تحميل البلاغات');
-                list.innerHTML = data.posts?.length ? data.posts.map(post => `<article class="glass-card rounded-2xl p-4 space-y-3"><div class="flex items-center justify-between gap-3"><div><b class="text-xs text-white">${escapeAdminHtml(post.authorLabel || 'عضو')}</b><span class="block text-[10px] text-slate-500 mt-1">${new Date(post.createdAt).toLocaleString('ar')} · ${post.reportCount || 0} بلاغ</span></div><span class="rounded-full border border-rose-500/20 bg-rose-500/10 px-2 py-1 text-[10px] text-rose-300">${escapeAdminHtml(post.status)}</span></div><p class="whitespace-pre-wrap text-xs leading-6 text-slate-300">${escapeAdminHtml(post.content)}</p><div class="flex flex-wrap gap-2"><button type="button" onclick="moderateSocialFeedPost('${post._id}', 'visible')" class="rounded-xl bg-emerald-500/15 px-3 py-2 text-[10px] font-bold text-emerald-300">إظهار</button><button type="button" onclick="moderateSocialFeedPost('${post._id}', 'hidden')" class="rounded-xl bg-amber-500/15 px-3 py-2 text-[10px] font-bold text-amber-300">إخفاء</button><button type="button" onclick="moderateSocialFeedPost('${post._id}', 'removed')" class="rounded-xl bg-rose-500/15 px-3 py-2 text-[10px] font-bold text-rose-300">حذف نهائي</button></div></article>`).join('') : '<p class="glass-card rounded-2xl p-4 text-center text-xs text-slate-500">لا توجد منشورات تحتاج مراجعة.</p>';
-            } catch (error) { list.innerHTML = `<p class="text-xs text-rose-300">${escapeAdminHtml(error.message)}</p>`; }
+                adminReportsState.page = Number(data.page) || 1;
+                adminReportsState.totalPages = Number(data.totalPages) || 1;
+                adminReportsState.total = Number(data.total) || 0;
+                adminReportsState.counts = data.counts || adminReportsState.counts;
+                setSidebarBadge('pendingReportsBadge', Number(adminReportsState.counts?.all || 0));
+                syncAdminFiltersToHash();
+                list.innerHTML = data.posts?.length ? data.posts.map(post => {
+                    const postId = escapeAdminHtml(post._id || post.id || '');
+                    const imageBlock = post.imageUrl ? `<img src="${escapeAdminHtml(post.imageUrl)}" alt="مرفق المنشور" loading="lazy" class="max-h-48 w-full rounded-xl object-cover">` : '';
+                    return `<article class="glass-card rounded-2xl p-4 space-y-3"><div class="flex items-center justify-between gap-3"><div><b class="text-xs text-white">${escapeAdminHtml(post.authorLabel || 'عضو')}</b><span class="block text-[10px] text-slate-500 mt-1">${escapeAdminHtml(new Date(post.createdAt).toLocaleString('ar'))} · ${Number(post.reportCount || 0)} بلاغ</span></div><span class="rounded-full border border-rose-500/20 bg-rose-500/10 px-2 py-1 text-[10px] text-rose-300">${escapeAdminHtml(socialReportStatusLabel(post.status))}</span></div>${imageBlock}<p class="max-h-40 overflow-y-auto whitespace-pre-wrap text-xs leading-6 text-slate-300">${escapeAdminHtml(post.content)}</p><div class="flex flex-wrap gap-2"><button type="button" onclick="moderateSocialFeedPost('${postId}', 'visible')" class="rounded-xl bg-emerald-500/15 px-3 py-2 text-[10px] font-bold text-emerald-300">إظهار</button><button type="button" onclick="moderateSocialFeedPost('${postId}', 'hidden')" class="rounded-xl bg-amber-500/15 px-3 py-2 text-[10px] font-bold text-amber-300">إخفاء</button><button type="button" onclick="moderateSocialFeedPost('${postId}', 'removed')" class="rounded-xl bg-rose-500/15 px-3 py-2 text-[10px] font-bold text-rose-300">حذف نهائي</button></div></article>`;
+                }).join('') : '<p class="glass-card rounded-2xl p-4 text-center text-xs text-slate-500">لا توجد منشورات تحتاج مراجعة.</p>';
+                renderReportsPagination();
+            } catch (error) {
+                list.innerHTML = `<p class="text-xs text-rose-300">${escapeAdminHtml(error.message)}</p>`;
+            }
         }
 
         async function moderateSocialFeedPost(postId, status) {
@@ -2082,9 +2873,8 @@ body.modal-open{overflow:hidden}
         }
 
         async function adminLogout() {
-            const token = localStorage.getItem('adminToken');
-            if (token) { try { await fetch('/api/auth/admin-logout', { method: 'POST', headers: { Authorization: `Bearer ${token}` } }); } catch (error) { } }
-            localStorage.removeItem('adminToken');
+            try { await fetch('/api/auth/admin-logout', { method: 'POST' }); } catch (error) { }
+            adminStorageRemoveItem('adminToken');
             window.location.href = '/admin-login.html';
         }
 
@@ -2100,17 +2890,16 @@ body.modal-open{overflow:hidden}
             } catch (error) { return null; }
         }
 
-        function startAdminRealtimeStream(token) {
-            if (!token) return;
-            if (!window.Ably) return startAdminRealtimeSse(token);
+        function startAdminRealtimeStream() {
+            if (!window.Ably) return startAdminRealtimeSse();
             if (adminRealtimeClient) adminRealtimeClient.close();
             adminRealtimeClient = new Ably.Realtime({
                 authUrl: '/api/realtime/token',
-                authHeaders: { Authorization: `Bearer ${token}` },
+                authMethod: 'GET',
                 disconnectedRetryTimeout: 5000,
                 suspendedRetryTimeout: 10000
             });
-            adminRealtimeClient.connection.on('failed', state => { console.error('Ably admin connection failed:', state.reason); startAdminRealtimeSse(token); });
+            adminRealtimeClient.connection.on('failed', state => { console.error('Ably admin connection failed:', state.reason); startAdminRealtimeSse(); });
             adminRealtimeClient.connection.on('suspended', state => console.warn('Ably admin connection suspended:', state.reason));
             const channel = adminRealtimeClient.channels.get('operix:admin');
             channel.subscribe('user_status_changed', () => {
@@ -2123,34 +2912,60 @@ body.modal-open{overflow:hidden}
         }
 
         function startAdminRealtimeSse(token) {
-            if (!token || !window.EventSource || window.adminRealtimeEventSource) return;
-            window.adminRealtimeEventSource = new EventSource(`/api/realtime/stream?token=${encodeURIComponent(token)}`);
+            if (!window.EventSource || window.adminRealtimeEventSource) return;
+            window.adminRealtimeEventSource = new EventSource('/api/realtime/stream', { withCredentials: true });
             const refresh = () => { fetchUsersList(usersCurrentPage); fetchTransactionsList(txCurrentPage); refreshAdminAlerts(); };
             ['user_status_changed', 'notification_created', 'admin_transaction_updated', 'admin_transaction_created'].forEach(eventName => window.adminRealtimeEventSource.addEventListener(eventName, refresh));
-            window.adminRealtimeEventSource.onerror = () => { if (window.adminRealtimeEventSource?.readyState === EventSource.CLOSED) { window.adminRealtimeEventSource.close(); window.adminRealtimeEventSource = null; setTimeout(() => startAdminRealtimeSse(token), 5000); } };
+            window.adminRealtimeEventSource.onerror = () => { if (window.adminRealtimeEventSource?.readyState === EventSource.CLOSED) { window.adminRealtimeEventSource.close(); window.adminRealtimeEventSource = null; setTimeout(() => startAdminRealtimeSse(), 5000); } };
         }
 
+        function enhanceAdminTables() {
+            document.querySelectorAll('table thead th').forEach(th => { if (!th.hasAttribute('scope')) th.setAttribute('scope', 'col'); });
+            document.querySelectorAll('button:not([aria-label]):not([title])').forEach(button => {
+                const label = (button.textContent || '').trim();
+                if (!label) button.setAttribute('aria-label', 'إجراء');
+            });
+        }
+
+        document.addEventListener('keydown', event => {
+            const tag = (event.target?.tagName || '').toLowerCase();
+            const typing = ['input', 'textarea', 'select'].includes(tag) || event.target?.isContentEditable;
+            if (event.key === 'Escape') {
+                const sidebar = document.getElementById('sidebar');
+                if (sidebar?.classList.contains('is-open')) { toggleMobileSidebar(false); event.preventDefault(); }
+                return;
+            }
+            if (typing) return;
+            if (event.key === '/') {
+                const active = ADMIN_TABS.find(tab => !document.getElementById(`admin-${tab}`)?.classList.contains('hide'));
+                const searchFields = {
+                    users: 'txtSearchUser', withdrawals: 'txSearch', audit: 'auditSearch',
+                    support: 'supportSearch', referrals: 'txtSearchReferral'
+                };
+                const field = document.getElementById(searchFields[active] || '');
+                if (field) { event.preventDefault(); field.focus(); field.select?.(); }
+            }
+        });
+
         window.onload = () => {
-            const token = getAdminAuthToken();
-            const sessionHeaders = token ? { Authorization: `Bearer ${token}` } : {};
-            fetch('/api/auth/admin-session', { credentials: 'same-origin', headers: sessionHeaders })
+            fetch('/api/auth/admin-session', { credentials: 'same-origin' })
                 .then(async response => {
                     const data = await response.json();
                     if (!response.ok) throw new Error(data.error || 'جلسة الإدارة غير صالحة');
                     return data;
                 })
                 .then(data => {
-                    currentAdminRole = data.user?.role || getTokenRole(token || '');
+                    currentAdminRole = data.user?.role || getTokenRole('');
+                    adminSessionInfo = { sessionId: data.sessionId || null, expiresAt: data.sessionExpiresAt || null, twoFactorEnabled: Boolean(data.user?.adminTwoFactorEnabled) };
                     if (!adminPermissions[currentAdminRole]) throw new Error('هذا الحساب ليس حساب مدير.');
                     applyRoleVisibility();
+                    enhanceAdminTables();
                     loadPlatformSupportUrl();
-                    refreshOverviewDashboard();
-                    fetchUsersList();
-                    if (canAdmin('finance')) fetchTransactionsList();
-                    refreshAdminAlerts();
-                    startAdminRealtimeStream(token);
+                    switchAdminTab(initialAdminTab());
+                    startAdminRealtimeStream();
                     setInterval(refreshAdminAlerts, 30000);
                     setInterval(updateAdminServiceStatus, 60000);
+                    startAdminAutoRefresh();
                 })
                 .catch(error => showAdminAccessMessage(error.message));
         }
@@ -2165,15 +2980,27 @@ body.modal-open{overflow:hidden}
             const syncAdminModals = () => {
                 const visible = [...document.querySelectorAll('[id$="Modal"]')].filter(modal => !modal.classList.contains('hide') && getComputedStyle(modal).display !== 'none');
                 document.body.classList.toggle('modal-open', visible.length > 0);
-                visible.forEach(modal => { if (!modal.hasAttribute('role')) modal.setAttribute('role', 'dialog'); modal.setAttribute('aria-modal', 'true'); if (!modal.hasAttribute('aria-labelledby') && !modal.hasAttribute('aria-label')) modal.setAttribute('aria-label', modal.querySelector('h1, h2, h3')?.innerText.trim() || 'نافذة منبثقة'); modal.setAttribute('aria-hidden', 'false'); });
+                visible.forEach(modal => { if (!modal.hasAttribute('role')) modal.setAttribute('role', 'dialog'); modal.setAttribute('aria-modal', 'true'); if (!modal.hasAttribute('aria-labelledby') && !modal.hasAttribute('aria-label')) modal.setAttribute('aria-label', (modal.querySelector('h1, h2, h3')?.textContent || '').trim() || 'نافذة منبثقة'); modal.setAttribute('aria-hidden', 'false'); });
             };
             new MutationObserver(syncAdminModals).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
             syncAdminModals();
             document.addEventListener('keydown', event => {
-                if (event.key !== 'Escape') return;
                 const visible = [...document.querySelectorAll('[id$="Modal"]')].filter(modal => !modal.classList.contains('hide') && getComputedStyle(modal).display !== 'none');
+                if (!visible.length) return;
                 const modal = visible[visible.length - 1];
-                modal?.querySelector('button[aria-label*="إغلاق"], button[title*="إغلاق"], button[onclick*="close"], #adminConfirmCancel')?.click();
+                if (event.key === 'Escape') {
+                    modal.querySelector('button[aria-label*="إغلاق"], button[title*="إغلاق"], button[onclick*="close"], #adminConfirmCancel')?.click();
+                    return;
+                }
+                if (event.key !== 'Tab') return;
+                const focusable = [...modal.querySelectorAll('a[href], button:not([disabled]), input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+                    .filter(element => element.offsetParent !== null);
+                if (!focusable.length) return;
+                const first = focusable[0];
+                const last = focusable[focusable.length - 1];
+                if (!modal.contains(document.activeElement)) { event.preventDefault(); first.focus(); return; }
+                if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+                else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
             });
         })();
     </script>

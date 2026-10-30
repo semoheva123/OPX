@@ -32,8 +32,51 @@ async function reply(req, res) {
 
 async function listAdmin(req, res) {
   try {
-    const tickets = await dataAccess.supportTicket.find({ status: { $ne: 'closed' } }, { sort: { updatedAt: -1 }, limit: 100 });
-    res.json({ success: true, tickets });
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
+    const requestedStatus = ['open', 'in_progress', 'resolved'].includes(String(req.query.status)) ? String(req.query.status) : '';
+    const search = String(req.query.search || '').trim().slice(0, 120).toLowerCase();
+    const baseQuery = requestedStatus ? { status: requestedStatus } : { status: { $ne: 'closed' } };
+
+    const counts = await Promise.all(['open', 'in_progress', 'resolved'].map(status =>
+      dataAccess.supportTicket.countDocuments({ status }).catch(() => 0)
+    ));
+    const countsPayload = { open: Number(counts[0] || 0), in_progress: Number(counts[1] || 0), resolved: Number(counts[2] || 0) };
+    countsPayload.active = countsPayload.open + countsPayload.in_progress;
+    countsPayload.all = countsPayload.active + countsPayload.resolved;
+
+    if (search) {
+      const candidates = await dataAccess.supportTicket.find(baseQuery, { sort: { updatedAt: -1 }, limit: 300 });
+      const matched = candidates.filter(ticket => {
+        const haystack = `${ticket.subject || ''} ${ticket.message || ''} ${ticket.userId?.email || ''} ${ticket.adminReply || ''}`.toLowerCase();
+        return haystack.includes(search);
+      });
+      const total = matched.length;
+      return res.json({
+        success: true,
+        tickets: matched.slice((page - 1) * limit, page * limit),
+        page,
+        limit,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+        counts: countsPayload,
+        truncationNotice: candidates.length >= 300 ? 'تم البحث في أحدث 300 تذكرة فقط' : null
+      });
+    }
+
+    const [tickets, total] = await Promise.all([
+      dataAccess.supportTicket.find(baseQuery, { sort: { updatedAt: -1 }, limit, skip: (page - 1) * limit }),
+      dataAccess.supportTicket.countDocuments(baseQuery).catch(() => 0)
+    ]);
+    res.json({
+      success: true,
+      tickets,
+      page,
+      limit,
+      total: Number(total || 0),
+      totalPages: Math.max(1, Math.ceil(Number(total || 0) / limit)),
+      counts: countsPayload
+    });
   } catch (error) { res.status(500).json({ error: 'تعذر تحميل تذاكر الدعم' }); }
 }
 

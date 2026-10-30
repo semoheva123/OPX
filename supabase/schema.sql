@@ -491,8 +491,16 @@ create table if not exists public.audit_logs (
   action text not null,
   entity text default '',
   metadata jsonb not null default '{}'::jsonb,
+  ip text,
+  user_agent text,
   created_at timestamptz not null default now()
 );
+
+alter table public.audit_logs add column if not exists ip text;
+alter table public.audit_logs add column if not exists user_agent text;
+create index if not exists idx_audit_logs_created_at on public.audit_logs(created_at desc);
+create index if not exists idx_audit_logs_action_created_at on public.audit_logs(action, created_at desc);
+create index if not exists idx_audit_logs_entity on public.audit_logs(entity);
 
 create index if not exists idx_transactions_user_type_created on public.transactions(user_id, type, created_at desc);
 create unique index if not exists idx_transactions_deposit_tx_hash on public.transactions(tx_hash) where type = 'deposit' and tx_hash is not null;

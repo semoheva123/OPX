@@ -231,7 +231,11 @@ function applyQueryOptions(request, options = {}) {
   for (const [key, direction] of Object.entries(sort)) {
     result = result.order(toSnakeCaseKey(key), { ascending: Number(direction) >= 0 });
   }
-  if (Number.isFinite(Number(options.limit))) result = result.limit(Number(options.limit));
+  const limit = Number(options.limit);
+  const skip = Number(options.skip) || 0;
+  if (Number.isFinite(limit) && limit > 0) {
+    result = skip > 0 ? result.range(skip, skip + limit - 1) : result.limit(limit);
+  }
   return result;
 }
 
