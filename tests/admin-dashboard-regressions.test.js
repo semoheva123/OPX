@@ -9,7 +9,8 @@ const adminHtml = read('admin.html');
 const adminRoutes = read('src/routes/adminRoutes.js');
 const controllerSource = read('src/controllers/adminController.js');
 
-assert.match(adminHtml, /fetch\('\/api\/health', \{ cache: 'no-store' \}\)/, 'service status must use live health data');
+assert.match(adminHtml, /fetch\('\/api\/admin\/health-details', \{ cache: 'no-store'/, 'service status must use live health data from the admin-only endpoint');
+assert.doesNotMatch(adminHtml, /fetch\('\/api\/health'/, 'the console must not depend on the public health probe');
 assert.match(adminHtml, /health\.financialSchema\?\.ready/, 'service status must check financial schema readiness');
 assert.doesNotMatch(adminHtml, /\+12%/, 'overview must not show a fabricated growth percentage');
 assert.match(adminHtml, /طلبات مالية معلقة/, 'pending metric must include both deposits and withdrawals');

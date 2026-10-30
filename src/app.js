@@ -46,7 +46,14 @@ function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
   const app = express();
   app.locals.deploymentVersion = process.env.DEPLOYMENT_VERSION || process.env.VERCEL_GIT_COMMIT_SHA || 'local';
   const trustProxy = process.env.TRUST_PROXY;
-  app.set('trust proxy', trustProxy === 'true' ? 1 : trustProxy === 'false' || trustProxy === undefined ? false : Number(trustProxy));
+  // Vercel and other serverless platforms always sit behind a proxy. Without this the client IP is
+  // the proxy address, so every visitor shares one rate-limit bucket (200 requests per 15 minutes
+  // for the whole platform). Explicit TRUST_PROXY still wins.
+  const trustProxySetting = trustProxy === 'true' ? 1
+    : trustProxy === 'false' ? false
+      : trustProxy !== undefined ? Number(trustProxy)
+        : (process.env.VERCEL ? 1 : false);
+  app.set('trust proxy', trustProxySetting);
   app.locals.resend = resend;
   app.locals.webpush = webpush;
   app.locals.gameSettings = gameSettings;
@@ -75,14 +82,45 @@ function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
       }
     }
   }));
-  app.use(express.json({ limit: '10mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-  app.get('/api/health', async (req, res) => {
+  // Global JSON bodies stay small; only the image upload endpoint may carry a large base64 payload.
+  // A 10 MB limit on every route let any anonymous caller spend server memory per request.
+  const DEFAULT_BODY_LIMIT = '1mb';
+  const IMAGE_UPLOAD_BODY_LIMIT = '3mb';
+  app.use('/api/social-feed/upload-image', express.json({ limit: IMAGE_UPLOAD_BODY_LIMIT }));
+  app.use(express.json({ limit: DEFAULT_BODY_LIMIT }));
+  app.use(express.urlencoded({ extended: true, limit: DEFAULT_BODY_LIMIT }));
+  let healthCache = { at: 0, value: null };
+  const collectHealth = async () => {
+    if (healthCache.value && Date.now() - healthCache.at < 10000) return healthCache.value;
     const runtimeMode = getDatabaseMode();
     const supabase = await checkSupabaseConnection().catch(error => ({ configured: true, reachable: false, error: error.message }));
     const databaseReady = Boolean(supabase?.reachable);
-    res.status(200).json({ success: databaseReady, status: databaseReady ? 'ok' : 'degraded', database: databaseReady ? 'supabase' : 'disconnected', financialSchema: supabase?.financialSchema || { depositTablesReady: false, payoutTableReady: false, ready: false }, supabase, migrationMode: runtimeMode, deploymentVersion: req.app.locals.deploymentVersion, uptime: Math.floor(process.uptime()), timestamp: new Date().toISOString() });
+    const result = {
+      databaseReady,
+      runtimeMode,
+      supabase,
+      payload: {
+        success: databaseReady,
+        status: databaseReady ? 'ok' : 'degraded',
+        database: databaseReady ? 'supabase' : 'disconnected',
+        financialSchema: supabase?.financialSchema || { depositTablesReady: false, payoutTableReady: false, ready: false },
+        supabase,
+        migrationMode: runtimeMode,
+        deploymentVersion: app.locals.deploymentVersion,
+        uptime: Math.floor(process.uptime()),
+        timestamp: new Date().toISOString()
+      }
+    };
+    healthCache = { at: Date.now(), value: result };
+    return result;
+  };
+  // Public probe: uptime monitors and the status page only need reachability. The detailed payload
+  // (schema readiness, connection error text, build id) stays behind the admin session.
+  app.get('/api/health', async (req, res) => {
+    const { databaseReady, payload } = await collectHealth();
+    res.status(200).json({ success: databaseReady, status: payload.status, database: payload.database, timestamp: payload.timestamp });
   });
+
 
   const runCronJob = async (req, res) => {
     const expectedSecret = process.env.CRON_SECRET;
@@ -172,13 +210,29 @@ function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
     skip: req => req.path.startsWith('/admin/') || req.path.startsWith('/internal/'),
     message: { error: 'تم تجاوز حد الطلبات المسموح به، يرجى المحاولة لاحقاً' }
   }));
+  // Only credential-changing endpoints deserve the strict budget. Applying it to every /api/auth
+  // route meant that opening the sessions modal, logging out, or booting the console (admin-session)
+  // could exhaust a whole 10-per-15-minute allowance, especially behind a shared IP.
+  const authCredentialPaths = new Set([
+    '/register', '/login', '/admin-login', '/forgot-password', '/verify-otp', '/reset-password',
+    '/resend-verification', '/admin-2fa/setup', '/admin-2fa/confirm', '/admin-invite/setup', '/admin-invite/confirm'
+  ]);
+  const isCredentialPath = req => authCredentialPaths.has(String(req.path || '').replace(/\/$/, ''));
   app.use('/api/auth/', rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 10,
     standardHeaders: true,
     legacyHeaders: false,
-    skip: req => req.path.startsWith('/admin-'),
+    skip: req => !isCredentialPath(req),
     message: { error: 'تم تجاوز محاولات الدخول/التسجيل المسموحة، يرجى الانتظار 15 دقيقة.' }
+  }));
+  app.use('/api/auth/', rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 120,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: req => isCredentialPath(req),
+    message: { error: 'تم تجاوز عدد الطلبات المسموح به، يرجى المحاولة بعد قليل.' }
   }));
   // A working admin console legitimately issues far more requests than an end user behind the same IP.
   app.use('/api/admin/', rateLimit({ windowMs: 15 * 60 * 1000, max: 1200, standardHeaders: true, legacyHeaders: false, message: { error: 'تم تجاوز حد طلبات لوحة الإدارة، يرجى المحاولة بعد قليل.' } }));
@@ -245,6 +299,10 @@ function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
   app.use('/api/ai', aiRoutes);
   app.use('/api', walletRoutes);
   app.use('/api/auth', authRoutes);
+  app.get('/api/admin/health-details', verifyAdmin, async (req, res) => {
+    const { payload } = await collectHealth();
+    res.status(200).json(payload);
+  });
   app.use('/api/admin', adminRoutes);
   app.use('/api/notifications', notificationRoutes);
   app.use('/api/support', supportRoutes);
@@ -261,8 +319,17 @@ function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
     res.status(404).sendFile(path.join(__dirname, '..', '404.html'));
   });
   app.use((error, req, res, next) => {
-    console.error('Unhandled application error:', error.message);
-    if (req.path.startsWith('/api/')) return res.status(500).json({ error: 'تعذر معالجة الطلب الآن. يرجى المحاولة مرة أخرى.' });
+    const status = Number(error.status || error.statusCode) || 500;
+    if (status >= 500) console.error('Unhandled application error:', error.message);
+    if (req.path.startsWith('/api/')) {
+      // Body-parser and other middleware errors already carry the right status; answering 500 hid
+      // oversized-payload (413) and malformed-JSON (400) failures from clients.
+      const message = status === 413 ? 'حجم البيانات المرسل أكبر من الحد المسموح.'
+        : status === 400 ? 'صيغة الطلب غير صحيحة.'
+          : 'تعذر معالجة الطلب الآن. يرجى المحاولة مرة أخرى.';
+      return res.status(status).json({ error: message });
+    }
+    if (status === 413 || status === 400) return res.status(status).sendFile(path.join(__dirname, '..', '500.html'));
     res.status(500).sendFile(path.join(__dirname, '..', '500.html'));
   });
 

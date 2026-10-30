@@ -89,6 +89,15 @@ function getTaskLimitForTier(tierCode = currentUserTier) {
 }
 
 // تهيئة التطبيق عند اكتمال تحميل عناصر الصفحة
+// Declared before initializePlatform(): that function can run as soon as the script is evaluated
+// (document.readyState !== 'loading'), and touching these bindings from a later `let` would throw
+// a ReferenceError (temporal dead zone) and stop the whole app from booting.
+let liveTickerEvents = [];
+let liveTickerIndex = 0;
+let liveTickerTimer = null;
+let liveTickerRefreshTimer = null;
+let homeSummaryRetryTimer = null;
+
 function initializePlatform() {
     if (window.__operixPlatformInitialized) return;
     window.__operixPlatformInitialized = true;
@@ -103,7 +112,7 @@ function initializePlatform() {
                 if (!modal.classList.contains('modal-shell')) modal.classList.add('modal-shell');
                 if (!modal.hasAttribute('role')) modal.setAttribute('role', 'dialog');
                 if (modal.getAttribute('aria-modal') !== 'true') modal.setAttribute('aria-modal', 'true');
-                if (!modal.hasAttribute('aria-labelledby') && !modal.hasAttribute('aria-label')) modal.setAttribute('aria-label', modal.querySelector('h1, h2, h3')?.innerText.trim() || 'نافذة منبثقة');
+                if (!modal.hasAttribute('aria-labelledby') && !modal.hasAttribute('aria-label')) modal.setAttribute('aria-label', String(modal.querySelector('h1, h2, h3')?.textContent || '').trim() || 'نافذة منبثقة');
                 const isVisible = !modal.classList.contains('hide') && getComputedStyle(modal).display !== 'none';
                 if (modal.getAttribute('aria-hidden') !== (isVisible ? 'false' : 'true')) modal.setAttribute('aria-hidden', isVisible ? 'false' : 'true');
                 if (isVisible) visibleModals.push(modal);
@@ -115,7 +124,17 @@ function initializePlatform() {
         }
     };
     document.querySelectorAll(modalSelector).forEach(modal => modal.classList.add('modal-shell'));
-    new MutationObserver(syncModalAccessibility).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
+    // A body-wide attribute observer fires on every UI state change; coalesce the work into one frame
+    // so opening a modal never triggers repeated querySelectorAll + getComputedStyle passes.
+    let modalSyncFrame = 0;
+    const scheduleModalSync = () => {
+        if (modalSyncFrame) return;
+        modalSyncFrame = requestAnimationFrame(() => {
+            modalSyncFrame = 0;
+            syncModalAccessibility();
+        });
+    };
+    new MutationObserver(scheduleModalSync).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
     syncModalAccessibility();
     document.addEventListener('keydown', event => {
         if (event.key !== 'Escape') return;
@@ -265,11 +284,6 @@ function buildDemoTickerMessages() {
     });
     return [...deposits, ...withdrawals];
 }
-let liveTickerEvents = [];
-let liveTickerIndex = 0;
-let liveTickerTimer = null;
-let liveTickerRefreshTimer = null;
-let homeSummaryRetryTimer = null;
 
 async function loadLiveTicker() {
     const message = document.getElementById('liveTickerMessage');
@@ -789,15 +803,45 @@ function startRealtimeSse(token = localStorage.getItem('token')) {
         fetchUnreadNotifications(true);
         try { const message = JSON.parse(event.data).message; if (message && window.activePrivateThreadId && String(message.senderId) === String(window.activePrivateThreadId)) loadPrivateThread(window.activePrivateThreadId, false); } catch (error) {}
     });
-    realtimeEventSource.onerror = () => { if (realtimeEventSource?.readyState === EventSource.CLOSED) { realtimeEventSource.close(); realtimeEventSource = null; setTimeout(() => startRealtimeSse(token), 5000); } };
+    realtimeEventSource.onopen = () => { if (typeof window.__operixReschedulePolling === 'function') window.__operixReschedulePolling(); };
+    realtimeEventSource.onerror = () => { if (realtimeEventSource?.readyState === EventSource.CLOSED) { realtimeEventSource.close(); realtimeEventSource = null; if (typeof window.__operixReschedulePolling === 'function') window.__operixReschedulePolling(); setTimeout(() => startRealtimeSse(token), 5000); } };
+}
+
+// Polling only runs while the tab is visible, and slows down when the realtime stream is healthy:
+// two 15-second timers plus the deposit monitor used to spend most of the shared 200-request budget
+// per 15 minutes, so active users could reach the rate limit (429) by simply leaving the app open.
+const POLL_INTERVAL_VISIBLE_MS = 15000;
+const POLL_INTERVAL_WITH_REALTIME_MS = 60000;
+const POLL_INTERVAL_HIDDEN_MS = 120000;
+
+function currentPollInterval() {
+    if (document.hidden) return POLL_INTERVAL_HIDDEN_MS;
+    return realtimeEventSource?.readyState === EventSource.OPEN ? POLL_INTERVAL_WITH_REALTIME_MS : POLL_INTERVAL_VISIBLE_MS;
 }
 
 function startNotificationPolling() {
     fetchUnreadNotifications();
     if (notificationPollTimer) clearInterval(notificationPollTimer);
-    notificationPollTimer = setInterval(() => fetchUnreadNotifications(true), 15000);
     if (profileSyncTimer) clearInterval(profileSyncTimer);
-    profileSyncTimer = setInterval(() => loadUserProfile(), 15000);
+    const schedule = () => {
+        if (notificationPollTimer) clearInterval(notificationPollTimer);
+        if (profileSyncTimer) clearInterval(profileSyncTimer);
+        const interval = currentPollInterval();
+        notificationPollTimer = setInterval(() => { if (!document.hidden) fetchUnreadNotifications(true); }, interval);
+        profileSyncTimer = setInterval(() => { if (!document.hidden) loadUserProfile(); }, interval);
+        window.__operixPollInterval = interval;
+    };
+    schedule();
+    window.__operixReschedulePolling = schedule;
+    // Re-evaluate the cadence when the tab is shown again or the realtime link changes state.
+    if (!window.__operixVisibilityPollingBound) {
+        window.__operixVisibilityPollingBound = true;
+        document.addEventListener('visibilitychange', () => {
+            if (!notificationPollTimer) return;
+            schedule();
+            if (!document.hidden) fetchUnreadNotifications(true);
+        });
+    }
 }
 
 async function stopRealtimeStream() {
@@ -3327,7 +3371,7 @@ async function sendPrivateMessage(event) {
 }
 
 async function loadPrivateConversations() {
-    const lists = [...document.querySelectorAll('#privateConversationList')];
+    const lists = [...document.querySelectorAll('[data-private-conversation-list]')];
     const token = localStorage.getItem('token');
     if (!lists.length) return;
     if (!token) {
@@ -3466,6 +3510,7 @@ async function openDepositModal() {
     } catch (_) { window.lastSeenAutomaticDepositId = null; }
     if (window.depositMonitorTimer) clearInterval(window.depositMonitorTimer);
     window.depositMonitorTimer = setInterval(async () => {
+        if (document.hidden) return;
         try {
             const response = await fetch('/api/transactions/my-history', { headers: { Authorization: `Bearer ${token}` } });
             const data = await response.json();
