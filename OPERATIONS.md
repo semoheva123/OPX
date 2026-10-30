@@ -89,6 +89,28 @@ Double claiming of the same transfer is still impossible: `shared_tron_deposit_e
 - **Dead routes:** `server.js` registered `/sitemap.xml`, `/robots.txt`, the Google verification file and a static mount after `createApp()` returned, so none of them ever executed. They are removed; `src/app.js` serves them.
 - **Markup:** duplicate element ids in `index.html` (two copies of the private-chat panel) are gone. The second copy never received updates because `getElementById` always resolved to the first one. Icon-only buttons now carry `aria-label`.
 
+## Deploy freshness (why a shipped fix can look "not applied")
+
+A fix that is in `main` and deployed can still be invisible to a browser that executes an older
+`app.js`. Three layers used to allow that, and all three are now closed:
+
+- **Cache-busted script URL.** The HTML is served with `no-store` and rewritten on the fly: the tag
+  becomes `/app.js?v=<build>` and `<meta name="operix-build" content="<build>">` is injected, where
+  `<build>` is the hash of the deployed bundle. A new deploy therefore requests a URL that no cache
+  has ever seen. Responses also carry `X-Operix-Build`.
+- **Network-first service worker.** `sw.js` no longer serves scripts/styles cache-first (that
+  strategy handed every visitor the bundle of the *previous* release). Same-origin assets are
+  network-first with the cache used only as an offline fallback, and the worker registers with
+  `updateViaCache: 'none'` plus `registration.update()`; when a new worker takes control the page
+  reloads once.
+- **Client self-heal.** `app.js` compares the build it was loaded as with the `<meta>` build and
+  reloads once (guarded by `sessionStorage`) when they differ, so a stale tab or CDN edge cannot
+  leave the UI on old logic.
+
+Diagnosing a report: open the page source and read `<meta name="operix-build">`, or check the
+`X-Operix-Build` response header. If they differ from `main`'s `dist/app-manifest.json`, the browser
+is running an older bundle.
+
 ## Logout and session teardown
 
 - `logout()` restores the guest screen **before** tearing the realtime transports down. Previously the teardown ran first, and a `ReferenceError` on an undeclared `realtimeEventSource` (the SSE handle used only when Ably is unavailable) aborted the function after the token was deleted: the user was signed out server-side but the authenticated shell and its nine navigation tabs stayed on screen until a reload.

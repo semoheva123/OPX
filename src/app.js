@@ -373,13 +373,49 @@ function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
       if (currentHash !== manifest.sourceHash) return null;
       const bundlePath = path.join(staticRoot, 'dist', manifest.file);
       nodeFs.accessSync(bundlePath);
-      return { path: bundlePath, bytes: manifest.bytes, builtAt: manifest.builtAt };
+      return { path: bundlePath, bytes: manifest.bytes, builtAt: manifest.builtAt, sourceHash: manifest.sourceHash };
     } catch (error) {
       return null;
     }
   })();
+  // Every deploy gets a new build id. The page points at /app.js?v=<id>, so a cached copy of an
+  // older bundle can never be reused: the URL itself changes.
+  const clientBuild = clientBundle?.sourceHash || (() => {
+    try {
+      const nodeFs = require('fs');
+      const stat = nodeFs.statSync(path.join(staticRoot, 'app.js'));
+      return `dev-${Math.floor(stat.mtimeMs).toString(36)}`;
+    } catch (error) {
+      return 'dev';
+    }
+  })();
+
+  let renderedIndex = { build: null, html: null };
+  const renderIndexHtml = () => {
+    if (renderedIndex.build === clientBuild && renderedIndex.html) return renderedIndex.html.html;
+    try {
+      const nodeFs = require('fs');
+      let html = nodeFs.readFileSync(path.join(staticRoot, 'index.html'), 'utf8');
+      html = html.replace(/(<script\s+src=")app\.js[^"]*(")/g, `$1app.js?v=${clientBuild}$2`);
+      html = html.replace('</head>', `    <meta name="operix-build" content="${clientBuild}">\n</head>`);
+      renderedIndex = { build: clientBuild, html };
+      return html;
+    } catch (error) {
+      return null;
+    }
+  };
+  const sendAppHtml = (req, res) => {
+    const html = renderIndexHtml();
+    if (!html) return sendNoStoreStatic(req, res, 'index.html');
+    res.status(200).type('html').set({
+      'Cache-Control': 'no-store, max-age=0, must-revalidate',
+      'X-Content-Type-Options': 'nosniff',
+      'X-Operix-Build': clientBuild
+    }).send(html);
+  };
+
   const sendAppScript = (req, res) => {
-    const headers = { 'Cache-Control': 'no-cache, must-revalidate', 'X-Content-Type-Options': 'nosniff', 'Content-Type': 'text/javascript; charset=utf-8' };
+    const headers = { 'Cache-Control': 'no-cache, must-revalidate', 'X-Content-Type-Options': 'nosniff', 'Content-Type': 'text/javascript; charset=utf-8', 'X-Operix-Build': clientBuild };
     if (!clientBundle) return res.sendFile(path.join(staticRoot, 'app.js'), { headers });
     return res.sendFile(clientBundle.path, { headers });
   };
@@ -399,8 +435,8 @@ function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
     }
   });
 
-  app.get('/', (req, res) => sendNoStoreStatic(req, res, 'index.html'));
-  app.get('/index.html', (req, res) => sendNoStoreStatic(req, res, 'index.html'));
+  app.get('/', sendAppHtml);
+  app.get('/index.html', sendAppHtml);
   app.get('/app.js', sendAppScript);
   app.get('/sw.js', (req, res) => sendRevalidated(req, res, 'sw.js', 'text/javascript; charset=utf-8'));
 
