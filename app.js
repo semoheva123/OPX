@@ -20,6 +20,11 @@ let profileSyncTimer = null;
 let platformSupportUrl = '';
 let realtimeClient = null;
 let realtimeChannel = null;
+// Declared here on purpose: reading an undeclared binding throws a ReferenceError, which used to
+// abort logout() before the guest screen was restored and to break the polling setup.
+let realtimeEventSource = null;
+// Bumped on every login/logout so a profile response that arrives late can never re-open the app.
+let sessionGeneration = 0;
 let socialFeedPage = 1;
 let socialFeedHasMore = false;
 let socialFeedMode = 'all';
@@ -849,7 +854,8 @@ function startRealtimeStream() {
 }
 
 function startRealtimeSse(token = localStorage.getItem('token')) {
-    if (!token || !window.EventSource || realtimeEventSource) return;
+    // A retry scheduled before logout must not reopen a stream for the signed-out session.
+    if (!token || !window.EventSource || realtimeEventSource || localStorage.getItem('token') !== token) return;
     realtimeEventSource = new EventSource(`/api/realtime/stream?token=${encodeURIComponent(token)}`);
     const refresh = () => loadUserProfile();
     realtimeEventSource.addEventListener('user_data_changed', event => { refresh(); try { if (JSON.parse(event.data || '{}').reason === 'referral_reward_awarded') loadReferralRewardHistory(); } catch (error) {} if (event.data) showToast('تم تحديث بيانات حسابك بنجاح.'); });
@@ -872,7 +878,10 @@ const POLL_INTERVAL_HIDDEN_MS = 120000;
 
 function currentPollInterval() {
     if (document.hidden) return POLL_INTERVAL_HIDDEN_MS;
-    return realtimeEventSource?.readyState === EventSource.OPEN ? POLL_INTERVAL_WITH_REALTIME_MS : POLL_INTERVAL_VISIBLE_MS;
+    // The OPEN constant is read defensively: environments without EventSource (or where it is not
+    // implemented) must still get a polling interval instead of a ReferenceError.
+    const openState = window.EventSource?.OPEN ?? 1;
+    return realtimeEventSource?.readyState === openState ? POLL_INTERVAL_WITH_REALTIME_MS : POLL_INTERVAL_VISIBLE_MS;
 }
 
 function startNotificationPolling() {
@@ -1933,6 +1942,7 @@ async function loadUserProfile() {
 
 async function loadUserProfileInternal() {
     const token = localStorage.getItem('token');
+    const generationAtStart = sessionGeneration;
     if(!token) {
         window.setTimeout(() => {
             hideLoadingView(0);
@@ -1954,6 +1964,7 @@ async function loadUserProfileInternal() {
             headers: {'Authorization': `Bearer ${token}`}
         });
         const data = await res.json();
+        if (generationAtStart !== sessionGeneration || !localStorage.getItem('token')) return;
         if(res.ok && data.user) {
             currentUserData = data.user;
             updateGameCredits(data.user);
@@ -3925,11 +3936,29 @@ function copyReferral() {
 async function logout({ notifyServer = true } = {}) {
     const token = localStorage.getItem('token');
     localStorage.removeItem('token');
-    await stopRealtimeStream();
+    // Any profile request already in flight belongs to the session being closed.
+    sessionGeneration += 1;
+    // The screen is restored before any teardown runs: a failure inside the realtime layer must
+    // never leave the signed-out user looking at the authenticated shell and its navigation bar.
+    if (typeof showGuestLanding === 'function') {
+        showGuestLanding();
+    } else {
+        hideLoadingView(0);
+        document.getElementById('appView')?.classList.add('hide');
+        document.getElementById('authView')?.classList.add('hide');
+        document.getElementById('companyIntroView')?.classList.remove('hide');
+        document.getElementById('liveTickerBar')?.classList.add('hide');
+        document.getElementById('appNavBar')?.classList.add('hide');
+    }
+    try {
+        await stopRealtimeStream();
+    } catch (error) { }
     if (notificationPollTimer) clearInterval(notificationPollTimer);
     notificationPollTimer = null;
     if (profileSyncTimer) clearInterval(profileSyncTimer);
     profileSyncTimer = null;
+    if (taskCountdownTimer) clearInterval(taskCountdownTimer);
+    taskCountdownTimer = null;
     unreadNotificationCount = null;
     const previousUserId = String(currentUserData?.id || currentUserData?._id || '');
     if (previousUserId) {
@@ -3949,16 +3978,6 @@ async function logout({ notifyServer = true } = {}) {
     hasPendingDeposit = false;
     localStorage.removeItem('operix_ref_code');
     localStorage.removeItem('ag_ref_code');
-    if (typeof showGuestLanding === 'function') {
-        showGuestLanding();
-    } else {
-        hideLoadingView();
-        document.getElementById('appView')?.classList.add('hide');
-        document.getElementById('authView')?.classList.add('hide');
-        document.getElementById('companyIntroView')?.classList.remove('hide');
-        document.getElementById('liveTickerBar')?.classList.add('hide');
-        document.getElementById('appNavBar')?.classList.add('hide');
-    }
 
     if (!notifyServer) return;
     if (token) {

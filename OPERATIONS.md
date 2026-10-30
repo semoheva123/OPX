@@ -89,6 +89,13 @@ Double claiming of the same transfer is still impossible: `shared_tron_deposit_e
 - **Dead routes:** `server.js` registered `/sitemap.xml`, `/robots.txt`, the Google verification file and a static mount after `createApp()` returned, so none of them ever executed. They are removed; `src/app.js` serves them.
 - **Markup:** duplicate element ids in `index.html` (two copies of the private-chat panel) are gone. The second copy never received updates because `getElementById` always resolved to the first one. Icon-only buttons now carry `aria-label`.
 
+## Logout and session teardown
+
+- `logout()` restores the guest screen **before** tearing the realtime transports down. Previously the teardown ran first, and a `ReferenceError` on an undeclared `realtimeEventSource` (the SSE handle used only when Ably is unavailable) aborted the function after the token was deleted: the user was signed out server-side but the authenticated shell and its nine navigation tabs stayed on screen until a reload.
+- `realtimeEventSource` is declared with the other realtime state, and `currentPollInterval()` reads `EventSource.OPEN` defensively, so notification polling and profile syncing also start on Ably sessions (that read used to throw inside `startNotificationPolling()`).
+- `sessionGeneration` is incremented on every logout: a `/api/user/profile` response that arrives after the click is discarded instead of re-opening the app shell, and a scheduled SSE retry cannot reconnect with the signed-out token.
+- `tests/logout-shell.test.js` (jsdom) renders the real `index.html`, signs a session in, logs out, and asserts the navigation bar disappears immediately, stays hidden after a late profile response, and that polling starts.
+
 ## Delivery hardening (assets, CSP, logging, offline, reports)
 
 - **Client bundle:** `npm run build:client` minifies `app.js` into `dist/app.min.js` and writes `dist/app-manifest.json` with the source hash. `postinstall` runs it, so Vercel rebuilds the bundle on every deploy. `/app.js` serves the bundle only when the hash still matches the committed source; otherwise it falls back to the readable file, so a forgotten rebuild can never ship stale code. Responses use `no-cache, must-revalidate` — a changed file is re-downloaded, an unchanged one answers `304`. Set `CSP_HASHES=off` only as an emergency switch.
