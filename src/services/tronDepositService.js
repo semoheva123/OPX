@@ -32,7 +32,10 @@ function getSharedDepositAddress() {
   return tronWeb.address.fromHex(tronWeb.address.toHex(address));
 }
 
-async function verifySharedDepositTransfer(txHash, expectedAddress = getSharedDepositAddress()) {
+// `pinnedWalletAddress` is the wallet the user pinned for withdrawals. It is only used to label the
+// deposit (matching / different / unknown); it never blocks a transfer, because deposits legitimately
+// arrive from exchange wallets or any other wallet the user controls.
+async function verifySharedDepositTransfer(txHash, expectedAddress = getSharedDepositAddress(), pinnedWalletAddress = '') {
   const normalizedHash = String(txHash || '').trim().toLowerCase();
   if (!/^[a-f0-9]{64}$/.test(normalizedHash)) throw new Error('INVALID_TRON_DEPOSIT_TX_HASH');
   if (!expectedAddress) throw new Error('TRON_SHARED_DEPOSIT_ADDRESS_NOT_CONFIGURED');
@@ -65,10 +68,15 @@ async function verifySharedDepositTransfer(txHash, expectedAddress = getSharedDe
     const from = String(event.result?.from ?? event.result?.['0'] ?? '').trim();
     return from ? getLocalTronWeb().address.fromHex(getLocalTronWeb().address.toHex(from)) : '';
   }).filter(Boolean))];
+  const pinned = String(pinnedWalletAddress || '').trim();
+  const senderMatchesPinnedWallet = pinned ? fromAddresses.includes(pinned) : null;
   return {
     txHash: normalizedHash,
     eventIndex: Math.min(...matchingTransfers.map(event => Number.isSafeInteger(Number(event.event_index)) ? Number(event.event_index) : 0)),
     fromAddress: fromAddresses.join(','),
+    senderAddresses: fromAddresses,
+    pinnedWalletAddress: pinned || null,
+    senderMatchesPinnedWallet,
     toAddress: expectedAddress,
     amount: formatUsdt(rawTotal.toString()),
     blockTimestamp: new Date(Math.max(...matchingTransfers.map(event => Number(event.block_timestamp || 0)))).toISOString(),

@@ -2451,6 +2451,7 @@
             <div class="space-y-2">
                 <div id="depositNetworkInstructions" class="deposit-info-panel hidden rounded-xl px-3 py-2 text-[10px] leading-5"></div>
                 <div id="sharedDepositClaimPanel" class="hidden space-y-2">
+                    <p class="rounded-xl border border-sky-500/20 bg-sky-500/5 px-3 py-2 text-[10px] leading-5 text-sky-100">يمكنك الإيداع من أي محفظة تملكها (محفظة جهازك، محفظة المنصات والبورصات، أو أي محفظة أخرى). لا يلزم أن تكون نفس محفظة سحب الأرباح، لكن أرسل عملة USDT على شبكة TRC20 فقط، وضع TxID التحويل هنا.</p>
                     <label for="sharedDepositTxHash" class="block text-[10px] font-bold text-slate-300">معرّف المعاملة (TxID)</label>
                     <input id="sharedDepositTxHash" type="text" maxlength="64" autocomplete="off" spellcheck="false" placeholder="أدخل TxID من 64 خانة" class="w-full rounded-xl border border-slate-800 bg-slate-950/70 p-3 text-left text-[10px] font-mono text-slate-100 outline-none focus:border-amber-400" dir="ltr">
                     <button id="sharedDepositClaimButton" type="button" onclick="claimSharedDeposit()" class="w-full rounded-xl bg-emerald-400 py-3 text-xs font-black text-slate-950">تحقق من التحويل وأضف الرصيد</button>

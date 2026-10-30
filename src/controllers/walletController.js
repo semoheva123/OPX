@@ -89,13 +89,52 @@ async function calculateWithdrawalRiskSupabase(user, amount, ip) {
   return { riskScore, riskLevel: riskScore >= 70 ? 'high' : riskScore >= 40 ? 'medium' : 'low', riskFlags: flags, ip };
 }
 
+async function recordDepositAudit(action, targetId, details = {}) {
+  try {
+    await dataAccess.auditLog.create({
+      actorId: details.userId || null,
+      action,
+      entity: String(targetId || ''),
+      metadata: details,
+      createdAt: new Date()
+    });
+  } catch (error) {
+    console.error(`Deposit audit entry failed (${action}):`, error.message);
+  }
+}
+
+// A deposit may come from any wallet. This helper never blocks: it records the sender next to the
+// balance change and flags differences so the finance team can review unusual funding patterns.
+async function inspectDepositSender({ transfer, userId, transactionId }) {
+  const reasons = [];
+  // No pinned wallet means there is no baseline to compare against, so the deposit is not flagged.
+  if (transfer.senderMatchesPinnedWallet === false) reasons.push('DEPOSIT_SENDER_DIFFERS_FROM_PINNED_WALLET');
+  const senders = (transfer.senderAddresses || []).filter(Boolean);
+  if (senders.length > 1) reasons.push('MULTIPLE_SENDERS_IN_ONE_TX');
+  const flagged = reasons.length > 0;
+  await recordDepositAudit(flagged ? 'deposit_sender_review' : 'deposit_sender_recorded', transfer.txHash, {
+    userId,
+    transactionId: transactionId || null,
+    amount: transfer.amount,
+    senderAddresses: senders,
+    pinnedWalletAddress: transfer.pinnedWalletAddress,
+    hasPinnedWallet: Boolean(transfer.pinnedWalletAddress),
+    senderMatchesPinnedWallet: transfer.senderMatchesPinnedWallet,
+    reasons
+  });
+  return { flagged, reasons };
+}
+
 async function deposit(req, res) {
   try {
     if (!dataAccess.isSupabaseRuntime()) return res.status(503).json({ success: false, error: 'خدمة الإيداع غير متاحة حاليًا.' });
     if (!await dataAccess.isSharedTronDepositSchemaReady()) return res.status(503).json({ success: false, error: 'تحديث خدمة الإيداع قيد التجهيز؛ لم يتم تسجيل العملية.' });
     const txHash = String(req.body?.txHash || '').trim().toLowerCase();
     const expectedAddress = tronDepositService.getSharedDepositAddress();
-    const transfer = await tronDepositService.verifySharedDepositTransfer(txHash, expectedAddress);
+    // Deposits are allowed from any wallet: the sender is compared with the pinned withdrawal wallet
+    // only to flag the deposit for a human review, never to reject it.
+    const senderAddress = String((await dataAccess.user.findById(req.user.id).catch(() => null))?.walletAddress || '').trim();
+    const transfer = await tronDepositService.verifySharedDepositTransfer(txHash, expectedAddress, senderAddress);
     const result = await dataAccess.callSupabaseRpc('operix_shared_tron_deposit_credit_atomic', {
       p_user_id: req.user.id,
       p_tx_hash: transfer.txHash,
@@ -107,14 +146,21 @@ async function deposit(req, res) {
     });
     if (result?.duplicate) return res.status(409).json({ success: false, duplicate: true, error: 'تم تسجيل هذه المعاملة مسبقًا أو أنها قيد المراجعة.' });
     if (!result?.credited) throw new Error('SHARED_TRON_DEPOSIT_CREDIT_FAILED');
+    const depositReview = await inspectDepositSender({ transfer, userId: req.user.id, transactionId: result.transaction?.id });
     try {
       await realtimeService.publish('user_data_changed', { reason: 'deposit_created', timestamp: new Date().toISOString() }, { userId: req.user.id });
-      await realtimeService.publish('admin_transaction_created', { transactionId: result.transaction?.id, type: 'deposit', userId: req.user.id }, { scope: 'admin' });
+      await realtimeService.publish('admin_transaction_created', { transactionId: result.transaction?.id, type: 'deposit', userId: req.user.id, senderReview: depositReview.flagged }, { scope: 'admin' });
     } catch (error) {
       console.error('TRON deposit realtime notification failed:', error.message);
     }
     await tronDepositService.sendDepositConfirmationEmail(req.app?.locals?.resend, req.user.id, result.transaction);
-    return res.status(201).json({ success: true, message: `تم تأكيد إيداع ${result.transaction?.amount || transfer.amount} USDT وإضافته إلى رصيدك.`, transaction: result.transaction, wallet: result.wallet });
+    return res.status(201).json({
+      success: true,
+      message: `تم تأكيد إيداع ${result.transaction?.amount || transfer.amount} USDT وإضافته إلى رصيدك.`,
+      transaction: result.transaction,
+      wallet: result.wallet,
+      senderReview: { flagged: depositReview.flagged, reasons: depositReview.reasons }
+    });
   } catch (error) {
     const messages = {
       INVALID_TRON_DEPOSIT_TX_HASH: 'أدخل TxID صحيحًا مكوّنًا من 64 خانة سداسية عشرية.',

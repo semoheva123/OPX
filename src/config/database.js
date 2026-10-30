@@ -7,10 +7,11 @@ function getDatabaseMode() {
   return 'supabase';
 }
 
+// Database operations must fail loudly: returning quietly here used to let callers continue with a
+// null client and report a generic 500 (or silently drop the write) instead of a configuration error.
 function assertSupabaseRuntimeReady() {
   if (!isSupabaseEnabled()) {
-    console.warn('⚠️ Supabase runtime is not configured yet. The app will continue in degraded mode without database writes.');
-    return false;
+    throw new Error('SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY must be configured before using the Supabase runtime.');
   }
   return true;
 }

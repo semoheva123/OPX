@@ -33,7 +33,7 @@ const originalEnv = { ...process.env };
     process.env.SUPABASE_SERVICE_ROLE_KEY = '';
     assert.equal(database.getDatabaseMode(), 'supabase');
     assert.throws(() => database.assertSupabaseRuntimeReady(), /SUPABASE_URL|SUPABASE_ANON_KEY|SUPABASE_SERVICE_ROLE_KEY/);
-    assert.rejects(() => dataAccess.user.create({ email: 'test@example.com', password: '12345678' }), /SUPABASE_URL|SUPABASE_ANON_KEY|SUPABASE_SERVICE_ROLE_KEY/);
+    await assert.rejects(() => dataAccess.user.create({ email: 'test@example.com', password: '12345678' }), /SUPABASE_URL|SUPABASE_ANON_KEY|SUPABASE_SERVICE_ROLE_KEY/);
 
     console.log('✅ Strict Supabase cutover checks passed');
   } catch (error) {
