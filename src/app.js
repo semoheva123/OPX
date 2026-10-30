@@ -29,6 +29,19 @@ const Session = dataAccess.session;
 const User = dataAccess.user;
 const { getDatabaseMode } = require('./config/database');
 
+function readCookieToken(req) {
+  const cookies = String(req.headers.cookie || '').split(';').map(cookie => cookie.trim());
+  const adminCookie = cookies.find(cookie => cookie.startsWith('operix_admin='));
+  if (adminCookie) return decodeURIComponent(adminCookie.slice('operix_admin='.length));
+  const userCookie = cookies.find(cookie => cookie.startsWith('operix_session='));
+  if (userCookie) return decodeURIComponent(userCookie.slice('operix_session='.length));
+  return '';
+}
+
+function readBearerToken(req) {
+  return String(req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim();
+}
+
 function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
   const app = express();
   app.locals.deploymentVersion = process.env.DEPLOYMENT_VERSION || process.env.VERCEL_GIT_COMMIT_SHA || 'local';
@@ -91,7 +104,8 @@ function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
   app.get('/api/realtime/token', realtimeRateLimit, async (req, res) => {
     try {
       if (!process.env.ABLY_API_KEY) return res.status(503).json({ error: 'خدمة التحديث اللحظي غير مهيأة' });
-      const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+      const token = readBearerToken(req) || readCookieToken(req);
+      if (!token) return res.status(401).json({ error: 'مطلوب توكن المصادقة' });
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       const scope = decoded.scope === 'admin' ? 'admin' : 'user';
       const activeSession = decoded.jti
@@ -113,7 +127,8 @@ function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
 
   app.get('/api/realtime/stream', realtimeRateLimit, async (req, res) => {
     try {
-      const token = String(req.query.token || '');
+      const token = String(req.query.token || '') || readBearerToken(req) || readCookieToken(req);
+      if (!token) return res.status(401).json({ error: 'مطلوب توكن المصادقة' });
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       const expectedScope = decoded.scope === 'admin' ? 'admin' : 'user';
       const activeSession = decoded.jti
@@ -140,15 +155,53 @@ function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
       const allowed = allowedOrigins.includes(origin.replace(/\/$/, ''));
-      callback(allowed ? null : new Error('CORS Policy: Access denied'), allowed);
+      // Rejecting the CORS handshake is enough for browsers; state-changing requests are also
+      // blocked with an explicit 403 by the origin guard below.
+      callback(null, allowed);
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
   }));
 
-  app.use('/api/', rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true, legacyHeaders: false, message: { error: 'تم تجاوز حد الطلبات المسموح به، يرجى المحاولة لاحقاً' } }));
-  app.use('/api/auth/', rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false, message: { error: 'تم تجاوز محاولات الدخول/التسجيل المسموحة، يرجى الانتظار 15 دقيقة.' } }));
+  app.use('/api/', rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 200,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: req => req.path.startsWith('/admin/') || req.path.startsWith('/internal/'),
+    message: { error: 'تم تجاوز حد الطلبات المسموح به، يرجى المحاولة لاحقاً' }
+  }));
+  app.use('/api/auth/', rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: req => req.path.startsWith('/admin-'),
+    message: { error: 'تم تجاوز محاولات الدخول/التسجيل المسموحة، يرجى الانتظار 15 دقيقة.' }
+  }));
+  // A working admin console legitimately issues far more requests than an end user behind the same IP.
+  app.use('/api/admin/', rateLimit({ windowMs: 15 * 60 * 1000, max: 1200, standardHeaders: true, legacyHeaders: false, message: { error: 'تم تجاوز حد طلبات لوحة الإدارة، يرجى المحاولة بعد قليل.' } }));
+  app.use('/api/auth/admin-login', rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false, message: { error: 'تم تجاوز محاولات الدخول الإدارية المسموحة، يرجى الانتظار 15 دقيقة.' } }));
+
+  const mutatingMethods = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+  app.use('/api/', (req, res, next) => {
+    if (!mutatingMethods.has(req.method)) return next();
+    const requestHost = String(req.headers.host || '').toLowerCase();
+    const isSameHost = value => {
+      try { return new URL(value).host.toLowerCase() === requestHost; } catch (error) { return false; }
+    };
+    const origin = req.get('origin');
+    const referer = req.get('referer');
+    if (origin) {
+      const allowed = allowedOrigins.includes(origin.replace(/\/$/, '')) || isSameHost(origin);
+      if (!allowed) return res.status(403).json({ error: 'طلب غير موثوق: مصدر الطلب غير مسموح' });
+    } else if (referer) {
+      const allowed = isSameHost(referer) || allowedOrigins.some(item => referer.startsWith(`${item}/`));
+      if (!allowed) return res.status(403).json({ error: 'طلب غير موثوق: مصدر الطلب غير مسموح' });
+    }
+    next();
+  });
   app.use((req, res, next) => {
     if (/^\/(?:private|\.)(?:\/|$)/i.test(req.path) || /^\/(?:package-lock\.json|package\.json)$/i.test(req.path)) return res.status(404).end();
     next();
@@ -179,7 +232,9 @@ function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
   app.get('/app.js', (req, res) => sendNoStoreStatic(req, res, 'app.js'));
   app.get('/sw.js', (req, res) => sendNoStoreStatic(req, res, 'sw.js'));
 
-  app.get('/admin.html', (req, res) => res.sendFile(path.join(__dirname, '..', 'admin.html')));
+  app.get('/admin.html', verifyAdmin, (req, res) => res.sendFile(path.join(__dirname, '..', 'admin.html'), {
+    headers: { 'Cache-Control': 'no-store, max-age=0, must-revalidate', 'X-Content-Type-Options': 'nosniff', 'X-Robots-Tag': 'noindex, nofollow' }
+  }));
   app.use(express.static(staticRoot, { dotfiles: 'deny', index: false, maxAge: 0 }));
 
   app.use('/api/user', userRoutes);

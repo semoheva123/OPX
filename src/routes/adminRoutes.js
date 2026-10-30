@@ -40,6 +40,7 @@ router.get('/withdrawals/export', requirePermission('finance'), adminController.
 router.get('/withdrawals/:transactionId', requirePermission('finance'), adminController.transactionDetails);
 router.post('/withdrawals/:transactionId/payout-reconcile', requirePermission('finance'), adminController.reconcileWithdrawalPayout);
 router.get('/audit-logs', requirePermission('read_audit'), adminController.listAuditLogs);
+router.get('/audit-logs/export', requirePermission('read_audit'), adminController.exportAuditLogs);
 router.get('/referrals', requirePermission('read_referrals'), adminController.listReferrals);
 router.get('/referrals/export', requirePermission('read_referrals'), adminController.exportReferrals);
 router.get('/referrals/tree/:userId', requirePermission('read_referrals'), adminController.referralTree);
@@ -59,7 +60,10 @@ router.post('/email-verification-reminders/recover-rejected', requirePermission(
 router.get('/social-feed/reports', requirePermission('manage_users'), socialFeedController.listReportedPosts);
 router.post('/social-feed/:postId/moderate', requirePermission('manage_users'), socialFeedController.moderatePost);
 router.get('/support/tickets', requirePermission('manage_users'), supportController.listAdmin);
-router.get('/security/2fa', requireFullAdmin, authController.adminSecurityStatus);
+router.get('/security/2fa', authController.adminSecurityStatus);
+router.get('/security/sessions', adminController.listAdminSessions);
+router.post('/security/sessions/revoke', adminController.revokeAdminSession);
+router.post('/security/sessions/revoke-others', adminController.revokeOtherAdminSessions);
 router.post('/security/2fa/setup', requireFullAdmin, authController.adminSecuritySetup);
 router.post('/security/2fa/confirm', requireFullAdmin, authController.adminSecurityConfirm);
 router.post('/security/invite-admin', requireFullAdmin, authController.inviteAdmin);

@@ -232,7 +232,18 @@ async function adminLogin(req, res) {
 }
 
 function adminSession(req, res) {
-  res.json({ success: true, user: { _id: req.user._id, email: req.user.email, role: req.user.role } });
+  res.json({
+    success: true,
+    user: {
+      _id: req.user._id,
+      email: req.user.email,
+      role: req.user.role,
+      adminTwoFactorEnabled: Boolean(req.user.adminTwoFactorEnabled),
+      lastLoginAt: req.user.lastLoginAt || null
+    },
+    sessionId: req.session?.jti || null,
+    sessionExpiresAt: req.session?.expiresAt || null
+  });
 }
 
 async function adminSetupTwoFactor(req, res) {

@@ -105,8 +105,17 @@ async function createAudit(req, action, targetId, details = {}, session) {
       metadata: details && typeof details === 'object' ? details : {},
       created_at: new Date().toISOString()
     };
-    const { error } = await supabaseAdmin.from('audit_logs').insert(payload);
-    if (error) throw error;
+    const enrichedPayload = {
+      ...payload,
+      ip: req?.ip ? String(req.ip).slice(0, 80) : null,
+      user_agent: req?.get ? String(req.get('user-agent') || '').slice(0, 400) : null
+    };
+    let { error } = await supabaseAdmin.from('audit_logs').insert(enrichedPayload);
+    if (error) {
+      // Databases that have not applied the audit-hardening migration only accept the base columns.
+      const legacy = await supabaseAdmin.from('audit_logs').insert(payload);
+      if (legacy.error) throw legacy.error;
+    }
     return payload;
   }
 
@@ -198,16 +207,20 @@ async function overview(req, res) {
 
 async function analytics(req, res) {
   try {
-    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const periodDays = [7, 30, 90].includes(Number(req.query.days)) ? Number(req.query.days) : 30;
+    const since = new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000);
+    const previousSince = new Date(Date.now() - periodDays * 2 * 24 * 60 * 60 * 1000);
     const [transactions, users] = await Promise.all([
-      dataAccess.transaction.find({ createdAt: { $gte: since } }, { limit: 10000 }),
+      dataAccess.transaction.find({ createdAt: { $gte: previousSince } }, { limit: 50000 }),
       dataAccess.user.find({}, { limit: 10000 })
     ]);
     const securityEvents = typeof dataAccess.securityEvent.find === 'function'
       ? await dataAccess.securityEvent.find({ createdAt: { $gte: since } }, { limit: 10000 }).catch(() => [])
       : [];
+    const currentTransactions = transactions.filter(transaction => new Date(transaction.createdAt).getTime() >= since.getTime());
+    const previousTransactions = transactions.filter(transaction => new Date(transaction.createdAt).getTime() < since.getTime());
     const dailyMap = new Map();
-    transactions.forEach(transaction => { const day = taskDateString(transaction.createdAt); const key = `${day}:${transaction.type}`; const item = dailyMap.get(key) || { _id: { day, type: transaction.type }, total: 0, count: 0 }; item.total += Number(transaction.amount || 0); item.count += 1; dailyMap.set(key, item); });
+    currentTransactions.forEach(transaction => { const day = taskDateString(transaction.createdAt); const key = `${day}:${transaction.type}`; const item = dailyMap.get(key) || { _id: { day, type: transaction.type }, total: 0, count: 0 }; item.total += Number(transaction.amount || 0); item.count += 1; dailyMap.set(key, item); });
     const roleMap = new Map();
     users.forEach(user => roleMap.set(user.role, (roleMap.get(user.role) || 0) + 1));
     const securityMap = new Map();
@@ -215,7 +228,34 @@ async function analytics(req, res) {
     const daily = [...dailyMap.values()].sort((a, b) => a._id.day.localeCompare(b._id.day));
     const usersByRole = [...roleMap.entries()].map(([role, count]) => ({ _id: role, count }));
     const security = [...securityMap.entries()].map(([event, count]) => ({ _id: event, count }));
-    res.json({ success: true, periodDays: 30, daily, usersByRole, security });
+    const summarize = rows => rows.reduce((summary, item) => {
+      const amount = Number(item.amount || 0);
+      if (item.status === 'approved' && item.type === 'deposit') summary.deposits += amount;
+      if (item.status === 'approved' && item.type === 'withdraw') summary.withdrawals += amount;
+      if (item.status === 'pending') summary.pending += 1;
+      summary.volume += amount;
+      return summary;
+    }, { deposits: 0, withdrawals: 0, pending: 0, volume: 0 });
+    const currentSummary = summarize(currentTransactions);
+    const previousSummary = summarize(previousTransactions);
+    const change = (current, previous) => {
+      if (!previous) return current ? 100 : 0;
+      return Math.round(((current - previous) / previous) * 1000) / 10;
+    };
+    const eventCount = name => Number(security.find(item => item._id === name)?.count || 0);
+    const verifiedUsers = users.filter(user => user.emailVerified).length;
+    res.json({
+      success: true,
+      periodDays,
+      daily,
+      usersByRole,
+      security,
+      summary: {
+        current: { ...currentSummary, loginSuccess: eventCount('login_success'), loginFailed: eventCount('login_failed'), verifiedUsers },
+        previous: previousSummary,
+        change: { deposits: change(currentSummary.deposits, previousSummary.deposits), withdrawals: change(currentSummary.withdrawals, previousSummary.withdrawals), volume: change(currentSummary.volume, previousSummary.volume) }
+      }
+    });
   } catch (err) { res.status(500).json({ error: 'تعذر تحميل التحليلات' }); }
 }
 
@@ -628,15 +668,33 @@ async function updateUser(req, res) {
     for (const value of [depositBalance, profitBalance, balance]) {
       if (value !== undefined && (!Number.isFinite(Number(value)) || Number(value) < 0)) return res.status(400).json({ error: 'قيمة الرصيد غير صالحة' });
     }
+    const reason = String(req.body.reason || '').trim().slice(0, 300);
+    const previousUser = await dataAccess.user.findById(userId).catch(() => null);
+    if (!previousUser) return res.status(404).json({ error: 'المستخدم غير موجود' });
+    const previousWallet = {
+      balance: Number(previousUser.wallet?.balance || 0),
+      depositBalance: Number(previousUser.wallet?.depositBalance || 0),
+      profitBalance: Number(previousUser.wallet?.profitBalance || 0)
+    };
     const result = await dataAccess.callSupabaseRpc('operix_admin_adjust_balance_atomic', {
       p_user_id: userId,
       p_deposit_balance: depositBalance === undefined ? null : Number(depositBalance),
       p_profit_balance: profitBalance === undefined ? null : Number(profitBalance),
       p_balance: balance === undefined ? null : Number(balance),
       p_admin_user_id: req.user?.id || null,
-      p_reason: 'admin_adjustment'
+      p_reason: reason || 'admin_adjustment'
     });
-    await createAudit(req, 'update_user_balance', String(userId), { newValue: { balance: result?.wallet?.balance ?? null }, depositBalance, profitBalance });
+    await createAudit(req, 'update_user_balance', String(userId), {
+      reason: reason || null,
+      oldValue: previousWallet,
+      newValue: {
+        balance: Number(result?.wallet?.balance ?? 0),
+        depositBalance: Number(result?.wallet?.depositBalance ?? 0),
+        profitBalance: Number(result?.wallet?.profitBalance ?? 0)
+      },
+      depositBalance,
+      profitBalance
+    });
     await emitUserDataChanged(userId, 'balance_updated');
     return res.json({ success: true, message: 'تم تعديل بيانات المستخدم بنجاح', user: result?.user || null, wallet: result?.wallet || null });
   } catch (err) {
@@ -771,33 +829,152 @@ async function exportTransactions(req, res) {
   } catch (error) { res.status(500).json({ error: 'تعذر تصدير المعاملات' }); }
 }
 
+function buildAuditFilters(query = {}) {
+  const action = String(query.action || 'all').slice(0, 80);
+  const search = String(query.search || '').trim().slice(0, 120);
+  const date = String(query.date || '').slice(0, 10);
+  return {
+    action: !action || action === 'all' ? null : action,
+    search: search || null,
+    date: /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null
+  };
+}
+
+async function fetchAuditLogsViaRpc({ action, search, date, limit, offset }) {
+  if (!supabaseAdmin) return null;
+  const result = await dataAccess.callSupabaseRpc('admin_audit_logs_page', {
+    p_action: action,
+    p_search: search,
+    p_date: date,
+    p_limit: limit,
+    p_offset: offset
+  });
+  if (!result || typeof result !== 'object') return null;
+  const logs = Array.isArray(result.logs) ? result.logs : [];
+  const actorIds = [...new Set(logs.map(log => log.actorId).filter(Boolean))];
+  const actors = actorIds.length ? await dataAccess.user.find({ id: { $in: actorIds } }, { limit: actorIds.length }).catch(() => []) : [];
+  const actorMap = new Map(actors.map(actor => [String(actor.id || actor._id), actor]));
+  return {
+    total: Number(result.total || 0),
+    logs: logs.map(log => {
+      const actor = actorMap.get(String(log.actorId || ''));
+      return { ...log, ip: log.ip || null, userAgent: log.userAgent || null, adminId: actor ? { email: actor.email } : null };
+    })
+  };
+}
+
+async function collectAuditLogs(query = {}, { limit = 20, offset = 0, maxRows = 5000 } = {}) {
+  const filters = buildAuditFilters(query);
+  if (dataAccess.isSupabaseRuntime()) {
+    try {
+      const rpcResult = await fetchAuditLogsViaRpc({
+        action: filters.action,
+        search: filters.search,
+        date: filters.date,
+        limit: Math.min(Number(limit) || 20, maxRows),
+        offset: Math.max(0, Number(offset) || 0)
+      });
+      if (rpcResult) return rpcResult;
+    } catch (error) {
+      if (!/function|does not exist|schema cache|Could not find/i.test(String(error.message || ''))) throw error;
+    }
+    let logs = await dataAccess.auditLog.find({}, { sort: { createdAt: -1 }, limit: 10000 });
+    if (filters.action) logs = logs.filter(log => log.action === filters.action);
+    if (filters.search) {
+      const needle = filters.search.toLowerCase();
+      logs = logs.filter(log => String(log.action || '').toLowerCase().includes(needle) || String(log.entity || '').toLowerCase().includes(needle));
+    }
+    if (filters.date) logs = logs.filter(log => String(log.createdAt || '').slice(0, 10) === filters.date);
+    const total = logs.length;
+    const pageLogs = logs.slice(offset, offset + limit);
+    const actorIds = [...new Set(pageLogs.map(log => log.actorId).filter(Boolean))];
+    const actors = actorIds.length ? await dataAccess.user.find({ id: { $in: actorIds } }, { limit: actorIds.length }).catch(() => []) : [];
+    const actorMap = new Map(actors.map(actor => [String(actor.id || actor._id), actor]));
+    return { logs: pageLogs.map(log => ({ ...log, adminId: actorMap.get(String(log.actorId)) ? { email: actorMap.get(String(log.actorId)).email } : null })), total };
+  }
+  const filter = {};
+  if (filters.action) filter.action = filters.action;
+  if (filters.search) filter.$or = [{ action: { $regex: filters.search, $options: 'i' } }, { entity: { $regex: filters.search, $options: 'i' } }];
+  if (filters.date) {
+    const start = new Date(`${filters.date}T00:00:00.000Z`);
+    const finish = new Date(start);
+    finish.setUTCDate(finish.getUTCDate() + 1);
+    if (!Number.isNaN(start.valueOf())) filter.createdAt = { $gte: start, $lt: finish };
+  }
+  const [logs, total] = await Promise.all([
+    AuditLog.find(filter).populate('adminId', 'email').sort({ createdAt: -1 }).skip(offset).limit(limit),
+    AuditLog.countDocuments(filter)
+  ]);
+  return { logs, total };
+}
+
 async function listAuditLogs(req, res) {
   try {
     const page = Math.max(1, Number(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
-    if (dataAccess.isSupabaseRuntime()) {
-      let logs = await dataAccess.auditLog.find({}, { sort: { createdAt: -1 }, limit: 10000 });
-      if (req.query.action && req.query.action !== 'all') logs = logs.filter(log => log.action === String(req.query.action).slice(0, 80));
-      const search = String(req.query.search || '').trim().toLowerCase().slice(0, 120);
-      if (search) logs = logs.filter(log => String(log.action || '').toLowerCase().includes(search) || String(log.entity || '').toLowerCase().includes(search));
-      if (req.query.date) logs = logs.filter(log => String(log.createdAt || '').slice(0, 10) === req.query.date);
-      const total = logs.length;
-      const pageLogs = logs.slice((page - 1) * limit, page * limit);
-      const actorIds = [...new Set(pageLogs.map(log => log.actorId).filter(Boolean))];
-      const actors = actorIds.length ? await dataAccess.user.find({ id: { $in: actorIds } }, { limit: actorIds.length }) : [];
-      const actorMap = new Map(actors.map(actor => [String(actor.id || actor._id), actor]));
-      return res.json({ success: true, logs: pageLogs.map(log => ({ ...log, adminId: actorMap.get(String(log.actorId)) ? { email: actorMap.get(String(log.actorId)).email } : null })), page, limit, totalPages: Math.max(1, Math.ceil(total / limit)), total });
-    }
-    const filter = {};
-    if (req.query.action && req.query.action !== 'all') filter.action = String(req.query.action).slice(0, 80);
-    if (req.query.search) filter.$or = [{ action: { $regex: String(req.query.search).slice(0, 80), $options: 'i' } }, { entity: { $regex: String(req.query.search).slice(0, 120), $options: 'i' } }];
-    if (req.query.date) { const start = new Date(`${req.query.date}T00:00:00.000Z`); const end = new Date(start); end.setUTCDate(end.getUTCDate() + 1); if (!Number.isNaN(start.valueOf())) filter.createdAt = { $gte: start, $lt: end }; }
-    const [logs, total] = await Promise.all([
-      AuditLog.find(filter).populate('adminId', 'email').sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit),
-      AuditLog.countDocuments(filter)
-    ]);
+    const { logs, total } = await collectAuditLogs(req.query, { limit, offset: (page - 1) * limit });
     res.json({ success: true, logs, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)), total });
   } catch (err) { res.status(500).json({ error: 'تعذر تحميل سجل التدقيق' }); }
+}
+
+async function exportAuditLogs(req, res) {
+  try {
+    const maxRows = Math.min(5000, Math.max(1, Number(req.query.limit) || 5000));
+    const { logs, total } = await collectAuditLogs(req.query, { limit: maxRows, offset: 0, maxRows });
+    res.json({ success: true, logs: logs.slice(0, maxRows), total, truncated: total > maxRows });
+  } catch (err) { res.status(500).json({ error: 'تعذر تصدير سجل التدقيق' }); }
+}
+
+async function listAdminSessions(req, res) {
+  try {
+    const currentJti = req.session?.jti || null;
+    const userId = req.user?.id || req.user?._id;
+    const sessions = await dataAccess.session.find({ userId, scope: 'admin' }, { sort: { createdAt: -1 }, limit: 50 });
+    const now = Date.now();
+    res.json({
+      success: true,
+      currentJti,
+      sessions: sessions.map(session => {
+        const { jti, ...safe } = session;
+        const expiresAt = session.expiresAt ? new Date(session.expiresAt).getTime() : 0;
+        return {
+          ...safe,
+          ip: session.ipAddress || session.ip || null,
+          userAgent: session.userAgent || null,
+          current: Boolean(jti) && jti === currentJti,
+          active: !session.revokedAt && expiresAt > now
+        };
+      })
+    });
+  } catch (error) { res.status(500).json({ error: 'تعذر تحميل جلسات الإدارة' }); }
+}
+
+async function revokeAdminSession(req, res) {
+  try {
+    const sessionId = String(req.body?.sessionId || '');
+    if (!sessionId) return res.status(400).json({ error: 'معرف الجلسة مطلوب' });
+    const userId = req.user?.id || req.user?._id;
+    const session = await dataAccess.session.findOne({ id: sessionId, userId, scope: 'admin' });
+    if (!session) return res.status(404).json({ error: 'الجلسة غير موجودة' });
+    const isCurrent = Boolean(req.session?.jti) && session.jti === req.session.jti;
+    await dataAccess.session.updateOne({ id: sessionId }, { $set: { revokedAt: new Date() } });
+    await createAudit(req, 'revoke_admin_session', String(sessionId), { current: isCurrent });
+    res.json({ success: true, current: isCurrent, message: isCurrent ? 'تم إنهاء الجلسة الحالية. سيُطلب منك تسجيل الدخول مجددًا.' : 'تم إنهاء الجلسة المحددة' });
+  } catch (error) { res.status(500).json({ error: 'تعذر إنهاء الجلسة' }); }
+}
+
+async function revokeOtherAdminSessions(req, res) {
+  try {
+    const userId = req.user?.id || req.user?._id;
+    const currentJti = req.session?.jti || null;
+    if (!currentJti) return res.status(409).json({ error: 'تعذر تحديد الجلسة الحالية' });
+    const result = await dataAccess.session.updateMany(
+      { userId, scope: 'admin', revokedAt: null, jti: { $ne: currentJti } },
+      { $set: { revokedAt: new Date() } }
+    );
+    await createAudit(req, 'revoke_other_admin_sessions', String(userId), { modifiedCount: result?.modifiedCount || 0 });
+    res.json({ success: true, modifiedCount: result?.modifiedCount || 0, message: 'تم إنهاء جلسات الإدارة الأخرى' });
+  } catch (error) { res.status(500).json({ error: 'تعذر إنهاء جلسات الإدارة الأخرى' }); }
 }
 
 async function getAdminReferralRows(query = {}) {
@@ -1510,4 +1687,4 @@ async function processScheduledBroadcasts(webpush) {
   return [];
 }
 
-module.exports = { saveVipLevel, listVipLevels, deleteVipLevel, overview, analytics, financialSummary, financialReadiness, financialAccounting, investmentVaultSummary, getInvestmentVaultContracts, updateInvestmentVaultContracts, listInvestmentVaults, emergencyReleaseInvestmentVault, riskSummary, listUsers, exportUsers, userDetails, resetDailyTasks, toggleBan, bulkToggleBan, revokeUserSessions, verifyUserEmail, disableUserTwoFactor, updateUser, updateUserAccount, updateUserRole, updateUserTier, listWithdrawals, transactionDetails, exportTransactions, listAuditLogs, listReferrals, exportReferrals, referralTree, withdrawalAction, reconcileWithdrawalPayout, bulkWithdrawalAction, gameSettings, updateGameSettings, previewEmailBroadcast, createEmailBroadcast, listEmailBroadcasts, processAdminEmailBroadcasts, previewEmailVerificationReminders, createEmailVerificationReminders, listEmailVerificationReminderCampaigns, recoverRejectedEmailVerificationReminders, processEmailVerificationReminders, broadcast, listBroadcasts, processScheduledBroadcasts, processAutomaticWithdrawalApprovals, processWithdrawalPayoutQueue, sendAdminAuditBroadcast };
+module.exports = { saveVipLevel, listVipLevels, deleteVipLevel, overview, analytics, financialSummary, financialReadiness, financialAccounting, investmentVaultSummary, getInvestmentVaultContracts, updateInvestmentVaultContracts, listInvestmentVaults, emergencyReleaseInvestmentVault, riskSummary, listUsers, exportUsers, userDetails, resetDailyTasks, toggleBan, bulkToggleBan, revokeUserSessions, verifyUserEmail, disableUserTwoFactor, updateUser, updateUserAccount, updateUserRole, updateUserTier, listWithdrawals, transactionDetails, exportTransactions, listAuditLogs, exportAuditLogs, listAdminSessions, revokeAdminSession, revokeOtherAdminSessions, listReferrals, exportReferrals, referralTree, withdrawalAction, reconcileWithdrawalPayout, bulkWithdrawalAction, gameSettings, updateGameSettings, previewEmailBroadcast, createEmailBroadcast, listEmailBroadcasts, processAdminEmailBroadcasts, previewEmailVerificationReminders, createEmailVerificationReminders, listEmailVerificationReminderCampaigns, recoverRejectedEmailVerificationReminders, processEmailVerificationReminders, broadcast, listBroadcasts, processScheduledBroadcasts, processAutomaticWithdrawalApprovals, processWithdrawalPayoutQueue, sendAdminAuditBroadcast };

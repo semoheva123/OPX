@@ -18,6 +18,7 @@ const rateLimit = require('express-rate-limit');
 const createApp = require('./src/app');
 const { connectDatabase, closeDatabase, getDatabaseMode } = require('./src/config/database');
 const dataAccess = require('./src/services/dataAccess');
+const { verifyAdmin } = require('./src/middlewares/auth');
 const User = dataAccess.user;
 const Transaction = dataAccess.transaction;
 const Staking = dataAccess.staking;
@@ -1074,9 +1075,9 @@ app.post('/api/wallet/withdraw', verifyToken, async (req, res) => {
 
 // ==================== 5. مسارات الإدارة (Admin APIs) ====================
 
-// 🔐 صفحة لوحة التحكم الأدمين
-app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'admin.html'));
+// 🔐 لوحة التحكم الإدارية — محمية بجلسة إدارية، وتُحوّل الزوار إلى صفحة الدخول
+app.get('/admin', verifyAdmin, (req, res) => {
+  res.redirect(302, '/admin.html');
 });
 /*
 // 💎 إضافة أو تعديل مستوى VIP من الأدمن
