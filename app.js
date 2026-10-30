@@ -888,13 +888,19 @@ function playBeep(type = 'default') {
     } catch(e) {}
 }
 
+let toastHideTimer = null;
 function showToast(msg, soundType = 'default') {
     playBeep(soundType);
     const toast = document.getElementById('toast');
     if (!toast) return;
-    toast.innerText = msg;
+    // textContent works in every environment (innerText is layout-dependent) and is announced by
+    // screen readers through the aria-live region on the toast.
+    toast.textContent = msg;
     toast.classList.remove('hide');
-    setTimeout(() => toast.classList.add('hide'), 3500);
+    // Without clearing the previous timer a second, faster toast inherits the first one's deadline
+    // and disappears almost immediately.
+    if (toastHideTimer) clearTimeout(toastHideTimer);
+    toastHideTimer = setTimeout(() => { toast.classList.add('hide'); toastHideTimer = null; }, 3500);
 }
 
 function showPlatformConfirm(message, title = 'تأكيد العملية') {
