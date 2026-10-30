@@ -1432,15 +1432,12 @@
     </div>
 
     <script>
+        // The service worker gives offline access to the shell and caches static assets only;
+        // /api/* responses are never cached, so balances and tickets always come from the network.
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function (registrations) {
-                registrations.forEach(function (registration) { registration.unregister(); });
-            }).catch(function () {});
-        }
-        if ('caches' in window) {
-            caches.keys().then(function (keys) {
-                keys.forEach(function (key) { caches.delete(key); });
-            }).catch(function () {});
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function () {});
+            });
         }
 
         function hideLoadingView(delayMs = 900) {

@@ -5,6 +5,9 @@ const { taskDateString } = require('../services/taskCalendar');
 const withdrawalPayoutService = require('../services/withdrawalPayoutService');
 const { checkFinancialReadiness } = require('../services/financialReadinessService');
 const { buildFinancialAccountingSummary } = require('../services/financialAccountingService');
+const { buildRetentionReport } = require('../services/reportService');
+const { buildFinancialReportPdf, buildRetentionReportPdf } = require('../services/pdfReportService');
+const logger = require('../services/logger');
 const adminEmailBroadcastService = require('../services/adminEmailBroadcastService');
 const emailVerificationReminderService = require('../services/emailVerificationReminderService');
 const User = adminRepository(dataAccess.user);
@@ -1763,8 +1766,53 @@ async function listBroadcasts(req, res) {
   catch (err) { res.status(500).json({ error: 'تعذر تحميل حملات البث' }); }
 }
 
+function reportFileName(prefix, range) {
+  return `${prefix}-${range}-${new Date().toISOString().slice(0, 10)}.pdf`;
+}
+
+async function retentionReport(req, res) {
+  try {
+    const weeks = Math.max(1, Math.min(26, Number(req.query.weeks) || 8));
+    const report = await buildRetentionReport(weeks);
+    res.json({ success: true, retention: report });
+  } catch (error) {
+    logger.error('retention_report_failed', { error: { name: error.name, message: error.message, stack: error.stack } });
+    res.status(500).json({ success: false, error: 'تعذر تحميل تقرير الاحتفاظ' });
+  }
+}
+
+async function financialReportPdf(req, res) {
+  try {
+    const days = Math.max(1, Math.min(365, Number(req.query.days) || 30));
+    const accounting = await buildFinancialAccountingSummary(days);
+    const buffer = await buildFinancialReportPdf({ accounting, days });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${reportFileName('operix-financial', `${days}d`)}"`);
+    res.setHeader('Cache-Control', 'no-store');
+    res.status(200).send(buffer);
+  } catch (error) {
+    logger.error('financial_report_pdf_failed', { error: { name: error.name, message: error.message, stack: error.stack } });
+    res.status(500).json({ success: false, error: 'تعذر إنتاج تقرير PDF' });
+  }
+}
+
+async function retentionReportPdf(req, res) {
+  try {
+    const weeks = Math.max(1, Math.min(26, Number(req.query.weeks) || 8));
+    const retention = await buildRetentionReport(weeks);
+    const buffer = await buildRetentionReportPdf({ retention });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${reportFileName('operix-retention', `${weeks}w`)}"`);
+    res.setHeader('Cache-Control', 'no-store');
+    res.status(200).send(buffer);
+  } catch (error) {
+    logger.error('retention_report_pdf_failed', { error: { name: error.name, message: error.message, stack: error.stack } });
+    res.status(500).json({ success: false, error: 'تعذر إنتاج تقرير PDF' });
+  }
+}
+
 async function processScheduledBroadcasts(webpush) {
   return [];
 }
 
-module.exports = { saveVipLevel, listVipLevels, deleteVipLevel, overview, analytics, financialSummary, financialReadiness, financialAccounting, investmentVaultSummary, getInvestmentVaultContracts, updateInvestmentVaultContracts, listInvestmentVaults, emergencyReleaseInvestmentVault, riskSummary, listUsers, exportUsers, userDetails, resetDailyTasks, toggleBan, bulkToggleBan, revokeUserSessions, verifyUserEmail, disableUserTwoFactor, updateUser, updateUserAccount, updateUserRole, updateUserTier, listWithdrawals, transactionDetails, exportTransactions, listAuditLogs, exportAuditLogs, listAdminSessions, revokeAdminSession, revokeOtherAdminSessions, listReferrals, exportReferrals, referralTree, withdrawalAction, reconcileWithdrawalPayout, bulkWithdrawalAction, gameSettings, updateGameSettings, previewEmailBroadcast, createEmailBroadcast, listEmailBroadcasts, emailQueueOverview, retryEmailQueue, processAdminEmailBroadcasts, previewEmailVerificationReminders, createEmailVerificationReminders, listEmailVerificationReminderCampaigns, recoverRejectedEmailVerificationReminders, processEmailVerificationReminders, broadcast, listBroadcasts, processScheduledBroadcasts, processAutomaticWithdrawalApprovals, processWithdrawalPayoutQueue, sendAdminAuditBroadcast };
+module.exports = { retentionReport, financialReportPdf, retentionReportPdf, saveVipLevel, listVipLevels, deleteVipLevel, overview, analytics, financialSummary, financialReadiness, financialAccounting, investmentVaultSummary, getInvestmentVaultContracts, updateInvestmentVaultContracts, listInvestmentVaults, emergencyReleaseInvestmentVault, riskSummary, listUsers, exportUsers, userDetails, resetDailyTasks, toggleBan, bulkToggleBan, revokeUserSessions, verifyUserEmail, disableUserTwoFactor, updateUser, updateUserAccount, updateUserRole, updateUserTier, listWithdrawals, transactionDetails, exportTransactions, listAuditLogs, exportAuditLogs, listAdminSessions, revokeAdminSession, revokeOtherAdminSessions, listReferrals, exportReferrals, referralTree, withdrawalAction, reconcileWithdrawalPayout, bulkWithdrawalAction, gameSettings, updateGameSettings, previewEmailBroadcast, createEmailBroadcast, listEmailBroadcasts, emailQueueOverview, retryEmailQueue, processAdminEmailBroadcasts, previewEmailVerificationReminders, createEmailVerificationReminders, listEmailVerificationReminderCampaigns, recoverRejectedEmailVerificationReminders, processEmailVerificationReminders, broadcast, listBroadcasts, processScheduledBroadcasts, processAutomaticWithdrawalApprovals, processWithdrawalPayoutQueue, sendAdminAuditBroadcast };

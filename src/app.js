@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const crypto = require('crypto');
 const fs = require('fs/promises');
 const path = require('path');
 const helmet = require('helmet');
@@ -28,6 +29,8 @@ const dataAccess = require('./services/dataAccess');
 const Session = dataAccess.session;
 const User = dataAccess.user;
 const { getDatabaseMode } = require('./config/database');
+const { collectInlineScriptHashes } = require('./services/cspHashes');
+const logger = require('./services/logger');
 
 function readCookieToken(req) {
   const cookies = String(req.headers.cookie || '').split(';').map(cookie => cookie.trim());
@@ -65,22 +68,74 @@ function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
     return res.redirect(308, `https://operix.website${req.originalUrl}`);
   });
 
+  // Every response carries a request id so a user report ("I got an error at 14:05") can be matched
+  // to a structured log line. API calls are logged with status and duration; slow page requests too.
+  app.use((req, res, next) => {
+    const requestId = String(req.get('x-request-id') || '').slice(0, 64) || crypto.randomUUID();
+    req.requestId = requestId;
+    res.setHeader('X-Request-Id', requestId);
+    const startedAt = process.hrtime.bigint();
+    res.on('finish', () => {
+      const durationMs = Number(process.hrtime.bigint() - startedAt) / 1e6;
+      const isApi = req.path.startsWith('/api/');
+      if (!isApi && durationMs < 2000) return;
+      const fields = {
+        requestId,
+        method: req.method,
+        path: req.originalUrl.split('?')[0],
+        status: res.statusCode,
+        durationMs: Math.round(durationMs),
+        ip: req.ip
+      };
+      if (res.statusCode >= 500) logger.error('request_failed', fields);
+      else if (durationMs >= 2000) logger.warn('request_slow', fields);
+      else logger.info('request_completed', fields);
+    });
+    next();
+  });
+
+  // Inline <script> blocks are pinned by sha256 so injected markup cannot execute; inline event
+  // handlers stay allowed through script-src-attr until they are migrated to listeners.
+  // CSP_HASHES=off restores the previous 'unsafe-inline' behaviour as an emergency switch.
+  const inlineScriptHashes = process.env.CSP_HASHES === 'off' ? [] : collectInlineScriptHashes(path.join(__dirname, '..'));
   app.use(helmet({
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.tailwindcss.com', 'https://cdnjs.cloudflare.com', 'https://cdn.ably.com'],
+        scriptSrc: [
+          "'self'",
+          ...(inlineScriptHashes.length ? inlineScriptHashes : ["'unsafe-inline'"]),
+          'https://cdn.tailwindcss.com',
+          'https://cdnjs.cloudflare.com',
+          'https://cdn.ably.com'
+        ],
         scriptSrcAttr: ["'unsafe-inline'"],
         styleSrc: ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com', 'https://fonts.googleapis.com'],
         fontSrc: ["'self'", 'https://cdnjs.cloudflare.com', 'https://fonts.gstatic.com', 'data:'],
         imgSrc: ["'self'", 'data:', 'https:'],
-        connectSrc: ["'self'", 'https:', 'wss://*.ably-realtime.com', 'wss://*.ably-realtime.net', 'wss://*.ably.net'],
+        connectSrc: [
+          "'self'",
+          'https://*.ably.io',
+          'https://*.ably.net',
+          'https://*.ably-realtime.com',
+          'wss://*.ably.io',
+          'wss://*.ably.net',
+          'wss://*.ably-realtime.com',
+          'wss://*.ably-realtime.net'
+        ],
         frameSrc: ["'self'", 'https://www.cpalead.com'],
+        formAction: ["'self'"],
         objectSrc: ["'none'"],
         baseUri: ["'self'"],
-        frameAncestors: ["'self'"]
+        frameAncestors: ["'self'"],
+        upgradeInsecureRequests: []
       }
-    }
+    },
+    crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
+    crossOriginResourcePolicy: { policy: 'same-site' },
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    strictTransportSecurity: { maxAge: 15552000, includeSubDomains: true },
+    xFrameOptions: false
   }));
   // Global JSON bodies stay small; only the image upload endpoint may carry a large base64 payload.
   // A 10 MB limit on every route let any anonymous caller spend server memory per request.
@@ -116,11 +171,40 @@ function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
   };
   // Public probe: uptime monitors and the status page only need reachability. The detailed payload
   // (schema readiness, connection error text, build id) stays behind the admin session.
+  // Public half of the Web Push key pair: the browser needs it to create a subscription.
+  app.get('/api/push/public-key', (req, res) => {
+    const publicKey = String(process.env.VAPID_PUBLIC_KEY || '');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    if (!publicKey) return res.status(200).json({ success: true, publicKey: null, pushEnabled: false });
+    res.status(200).json({ success: true, publicKey, pushEnabled: true });
+  });
+
+  app.get('/offline.html', (req, res) => sendNoStoreStatic(req, res, 'offline.html'));
+
   app.get('/api/health', async (req, res) => {
     const { databaseReady, payload } = await collectHealth();
     res.status(200).json({ success: databaseReady, status: payload.status, database: payload.database, timestamp: payload.timestamp });
   });
 
+
+  // Browser-side failures (a thrown boot error, a failed fetch) are invisible server-side, so the
+  // client reports them here. The payload is truncated, redacted and rate limited per IP.
+  const clientErrorRateLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false, message: { error: 'تم تجاوز حد تقارير الأخطاء' } });
+  app.post('/api/client-errors', clientErrorRateLimit, (req, res) => {
+    const body = req.body || {};
+    logger.error('client_error', {
+      requestId: req.requestId,
+      clientMessage: String(body.message || '').slice(0, 500),
+      source: String(body.source || '').slice(0, 300),
+      line: Number(body.line) || null,
+      column: Number(body.column) || null,
+      url: String(body.url || '').slice(0, 300),
+      userAgent: String(req.get('user-agent') || '').slice(0, 300),
+      ip: req.ip,
+      stack: String(body.stack || '').slice(0, 1500)
+    });
+    res.status(204).end();
+  });
 
   const runCronJob = async (req, res) => {
     const expectedSecret = process.env.CRON_SECRET;
@@ -132,7 +216,7 @@ function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
       const result = await handler(req);
       res.json({ success: true, job: req.params.job, result: result || null });
     } catch (error) {
-      console.error(`Cron job ${req.params.job} error:`, error.message);
+      logger.error('cron_job_failed', { job: req.params.job, error: { name: error.name, message: error.message, stack: error.stack } });
       res.status(500).json({ error: 'فشل تنفيذ المهمة المجدولة' });
     }
   };
@@ -266,6 +350,40 @@ function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
     headers: { 'Cache-Control': 'no-store, max-age=0, must-revalidate', 'X-Content-Type-Options': 'nosniff' }
   });
 
+  // Scripts and styles are revalidated on every navigation instead of being downloaded again:
+  // `no-cache` still guarantees a fresh file after a deploy, while an unchanged file answers 304.
+  const sendRevalidated = (req, res, file, contentType) => res.sendFile(path.join(staticRoot, file), {
+    headers: {
+      'Cache-Control': 'no-cache, must-revalidate',
+      'X-Content-Type-Options': 'nosniff',
+      ...(contentType ? { 'Content-Type': contentType } : {})
+    }
+  });
+
+  // Prefer the minified bundle produced by `npm run build:client`; fall back to the readable source
+  // so a failed build can never break the page.
+  const clientBundle = (() => {
+    try {
+      const nodeFs = require('fs');
+      const manifest = JSON.parse(nodeFs.readFileSync(path.join(staticRoot, 'dist', 'app-manifest.json'), 'utf8'));
+      if (!manifest?.file || !manifest.sourceHash) return null;
+      // Guard against a stale committed bundle: serve the source whenever app.js changed after the
+      // last `npm run build:client`, so a forgotten rebuild can never ship old code.
+      const currentHash = crypto.createHash('sha256').update(nodeFs.readFileSync(path.join(staticRoot, 'app.js'))).digest('hex').slice(0, 16);
+      if (currentHash !== manifest.sourceHash) return null;
+      const bundlePath = path.join(staticRoot, 'dist', manifest.file);
+      nodeFs.accessSync(bundlePath);
+      return { path: bundlePath, bytes: manifest.bytes, builtAt: manifest.builtAt };
+    } catch (error) {
+      return null;
+    }
+  })();
+  const sendAppScript = (req, res) => {
+    const headers = { 'Cache-Control': 'no-cache, must-revalidate', 'X-Content-Type-Options': 'nosniff', 'Content-Type': 'text/javascript; charset=utf-8' };
+    if (!clientBundle) return res.sendFile(path.join(staticRoot, 'app.js'), { headers });
+    return res.sendFile(clientBundle.path, { headers });
+  };
+
   app.get('/sitemap.xml', async (req, res, next) => {
     try {
       const sitemap = await fs.readFile(path.join(staticRoot, 'sitemap.xml'));
@@ -283,8 +401,8 @@ function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
 
   app.get('/', (req, res) => sendNoStoreStatic(req, res, 'index.html'));
   app.get('/index.html', (req, res) => sendNoStoreStatic(req, res, 'index.html'));
-  app.get('/app.js', (req, res) => sendNoStoreStatic(req, res, 'app.js'));
-  app.get('/sw.js', (req, res) => sendNoStoreStatic(req, res, 'sw.js'));
+  app.get('/app.js', sendAppScript);
+  app.get('/sw.js', (req, res) => sendRevalidated(req, res, 'sw.js', 'text/javascript; charset=utf-8'));
 
   // Legacy bookmark: /admin must not bypass the console gate.
   app.get('/admin', verifyAdmin, (req, res) => res.redirect(302, '/admin.html'));
@@ -320,7 +438,15 @@ function createApp({ resend, webpush, gameSettings, cronHandlers = {} }) {
   });
   app.use((error, req, res, next) => {
     const status = Number(error.status || error.statusCode) || 500;
-    if (status >= 500) console.error('Unhandled application error:', error.message);
+    if (status >= 500) {
+      logger.error('unhandled_error', {
+        requestId: req.requestId,
+        method: req.method,
+        path: req.originalUrl.split('?')[0],
+        status,
+        error: { name: error.name, message: error.message, code: error.code, stack: error.stack }
+      });
+    }
     if (req.path.startsWith('/api/')) {
       // Body-parser and other middleware errors already carry the right status; answering 500 hid
       // oversized-payload (413) and malformed-JSON (400) failures from clients.

@@ -98,6 +98,40 @@ let liveTickerTimer = null;
 let liveTickerRefreshTimer = null;
 let homeSummaryRetryTimer = null;
 
+// Records browser-side failures on the server so a broken deploy or a device-specific crash is
+// visible in the logs. Reports are de-duplicated per session and never block the UI.
+const reportedClientErrors = new Set();
+function reportClientError(details) {
+    try {
+        const signature = `${details.message}|${details.source}|${details.line}`;
+        if (reportedClientErrors.has(signature) || reportedClientErrors.size > 10) return;
+        reportedClientErrors.add(signature);
+        const payload = JSON.stringify({ ...details, url: location.href, userAgent: navigator.userAgent });
+        if (navigator.sendBeacon) navigator.sendBeacon('/api/client-errors', new Blob([payload], { type: 'application/json' }));
+        else fetch('/api/client-errors', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload, keepalive: true }).catch(() => {});
+    } catch (error) { }
+}
+
+function installClientErrorReporting() {
+    if (window.__operixErrorReporting) return;
+    window.__operixErrorReporting = true;
+    window.addEventListener('error', event => {
+        if (event.target && event.target !== window && event.target.tagName) {
+            const tag = String(event.target.tagName).toLowerCase();
+            if (tag === 'img' || tag === 'script' || tag === 'link') {
+                reportClientError({ message: `resource failed to load: ${event.target.src || event.target.href || tag}`, source: tag, line: 0 });
+                return;
+            }
+        }
+        reportClientError({ message: event.message, source: event.filename, line: event.lineno, column: event.colno, stack: event.error?.stack });
+    }, true);
+    window.addEventListener('unhandledrejection', event => {
+        const reason = event.reason;
+        reportClientError({ message: (reason && (reason.message || String(reason))) || 'unhandled rejection', source: 'promise', line: 0, stack: reason?.stack });
+    });
+}
+installClientErrorReporting();
+
 function initializePlatform() {
     if (window.__operixPlatformInitialized) return;
     window.__operixPlatformInitialized = true;
@@ -629,31 +663,53 @@ function renderHomeSummary(summary) {
 
 /* --- 2. الإشعارات والأصوات والنوافذ التنبيهية --- */
 async function initPushNotifications() {
-    return;
-    if ('serviceWorker' in navigator && 'PushManager' in window) {
-        try {
-            const registration = await navigator.serviceWorker.register('/sw.js?v=20260913-1');
-            registration.update();
-            if (registration.waiting) registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-            navigator.serviceWorker.addEventListener('message', event => { if (event.data?.type === 'OPERIX_NOTIFICATION') { fetchUnreadNotifications(true); } });
-            const token = localStorage.getItem('token');
-            if (token) {
-                const subscription = await registration.pushManager.subscribe({
-                    userVisibleOnly: true,
-                    applicationServerKey: 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qAYIHBQJN2XH7k8KJY'
-                });
-                await fetch('/api/user/push/subscribe', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify(subscription)
-                });
-            }
-        } catch (e) {}
-    }
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    try {
+        const registration = await navigator.serviceWorker.ready;
+        navigator.serviceWorker.addEventListener('message', event => {
+            if (event.data?.type === 'OPERIX_NOTIFICATION') fetchUnreadNotifications(true);
+        });
+        // The subscription is created only when the visitor already granted permission and the
+        // server publishes a VAPID key; nothing is prompted silently.
+        if (Notification.permission !== 'granted') return;
+        await subscribeToPush(registration);
+    } catch (error) { }
 }
+
+async function subscribeToPush(registration) {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    const existing = await registration.pushManager.getSubscription();
+    if (existing) return;
+    let publicKey = window.__OPERIX_VAPID_KEY;
+    if (!publicKey) {
+        const response = await fetch('/api/push/public-key');
+        if (!response.ok) return;
+        const data = await response.json().catch(() => ({}));
+        publicKey = data.publicKey;
+        window.__OPERIX_VAPID_KEY = publicKey;
+    }
+    if (!publicKey) return;
+    const subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: publicKey });
+    await fetch('/api/user/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(subscription)
+    });
+}
+
+// Called from a user gesture (settings screen) so the permission prompt is always intentional.
+async function enablePushNotifications() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
+    try {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') return false;
+        const registration = await navigator.serviceWorker.ready;
+        await subscribeToPush(registration);
+        return true;
+    } catch (error) { return false; }
+}
+window.enablePushNotifications = enablePushNotifications;
 
 async function fetchUnreadNotifications(isLiveUpdate = false) {
     const token = localStorage.getItem('token');

@@ -17,6 +17,9 @@ router.get('/risk-summary', requirePermission('read_overview'), adminController.
 router.get('/financial-summary', requirePermission('finance'), adminController.financialSummary);
 router.get('/financial-readiness', requirePermission('finance'), adminController.financialReadiness);
 router.get('/financial-accounting', requirePermission('finance'), adminController.financialAccounting);
+router.get('/reports/financial.pdf', requirePermission('finance'), adminController.financialReportPdf);
+router.get('/reports/retention', requirePermission('read_overview'), adminController.retentionReport);
+router.get('/reports/retention.pdf', requirePermission('read_overview'), adminController.retentionReportPdf);
 router.get('/investment-vault/summary', requirePermission('finance'), adminController.investmentVaultSummary);
 router.get('/investment-vault/contracts', requirePermission('finance'), adminController.getInvestmentVaultContracts);
 router.post('/investment-vault/contracts', requireFullAdmin, adminController.updateInvestmentVaultContracts);
