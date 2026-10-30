@@ -550,7 +550,14 @@ function renderHomeSummary(summary) {
     const goalProgress = document.getElementById('homeGoalProgress');
     if (goal) goal.innerText = tierActive ? (completedTasks < taskLimit ? `أكمل ${taskLimit - completedTasks} مهمة للوصول إلى هدف اليوم.` : 'أكملت هدف المهام اليومية.') : 'فعّل المستوى الأول لبدء المهام اليومية.';
     if (goalMeta) goalMeta.innerText = `${taskProgress}% من هدف اليوم`;
-    if (goalProgress) goalProgress.style.width = `${taskProgress}%`;
+    if (goalProgress) {
+        goalProgress.style.width = `${taskProgress}%`;
+        const progressTrack = goalProgress.parentElement;
+        if (progressTrack?.getAttribute('role') === 'progressbar') {
+            progressTrack.setAttribute('aria-valuenow', String(taskProgress));
+            progressTrack.setAttribute('aria-valuetext', `${taskProgress}% من هدف اليوم`);
+        }
+    }
 
     const healthScore = Number(summary.health || 0);
     const healthLabel = document.getElementById('homeHealthScore');
@@ -559,7 +566,15 @@ function renderHomeSummary(summary) {
     const healthChecks = summary.healthChecks || {};
     const missingChecks = [];
     if (healthLabel) healthLabel.innerText = `${healthScore}%`;
-    if (healthProgress) healthProgress.style.width = `${healthScore}%`;
+    if (healthProgress) {
+        const healthPercent = Math.min(100, Math.max(0, healthScore));
+        healthProgress.style.width = `${healthPercent}%`;
+        const progressTrack = healthProgress.parentElement;
+        if (progressTrack?.getAttribute('role') === 'progressbar') {
+            progressTrack.setAttribute('aria-valuenow', String(healthPercent));
+            progressTrack.setAttribute('aria-valuetext', `جاهزية الحساب ${healthPercent}%`);
+        }
+    }
     if (healthMessage) {
         if (!healthChecks.wallet) missingChecks.push('ثبّت عنوان محفظة السحب');
         if (!healthChecks.deposit) missingChecks.push('أكمل أول إيداع لتفعيل الحساب');
