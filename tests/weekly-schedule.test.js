@@ -8,6 +8,7 @@ const read = relative => fs.readFileSync(path.join(__dirname, '..', relative), '
 const activityController = read('src/controllers/activityController.js');
 const walletController = read('src/controllers/walletController.js');
 const client = read('app.js');
+const scheduleSource = read('src/services/weeklySchedule.js');
 const index = read('index.html');
 const migration = read('supabase/weekly-schedule-guards.sql');
 const readiness = read('supabase/production-readiness.sql');
@@ -27,7 +28,7 @@ assert.equal(schedule.isTaskHoliday(friday), true, 'Friday is the only task holi
 assert.equal(schedule.isTaskHoliday(saturday), false, 'Saturday is not a task holiday');
 assert.equal(schedule.isTaskHoliday(sunday), false, 'Sunday is a task day');
 assert.equal(schedule.isTaskHoliday(thursday), false, 'Thursday is a task day');
-assert.equal(schedule.getTaskSchedule(friday).message, 'عطلة المهام الأسبوعية: لا توجد مهام يوم الجمعة.');
+assert.equal(schedule.getTaskSchedule(friday).message, 'عطلة المهام المدفوعة الأسبوعية: لا توجد مهام يوم الجمعة فقط.');
 assert.equal(schedule.getTaskSchedule(saturday).holiday, false, 'Saturday tasks should stay available');
 
 for (const tier of ['A1', 'A2', 'A3', 'A4', 'A5', 'UNKNOWN']) {
@@ -49,6 +50,11 @@ assert.match(walletController, /WITHDRAWAL_SCHEDULE_UPDATE_REQUIRED/, 'a legacy 
 assert.match(client, /يوم الجمعة/);
 assert.match(client, /return day === 5;/, 'the client should treat Friday as the only task holiday');
 assert.doesNotMatch(client, /return day === 5 \|\| day === 6;/, 'Saturday must remain available for tasks in the client');
+assert.doesNotMatch(client, /الجمعة أو السبت/, 'the console must never claim that Saturday is also a task holiday');
+assert.doesNotMatch(client, /مواعيد السحب: A1 وA2/, 'stale tier-withdrawal weekday copy must not come back');
+assert.match(client, /عطلة المهام المدفوعة الأسبوعية/, 'the holiday notice must say that paid tasks are the ones paused');
+assert.match(client, /السحب متاح يوميًا لجميع المستويات/, 'the holiday notice must state that withdrawals stay available every day');
+assert.doesNotMatch(scheduleSource, /day === 6|day === 0/, 'only Friday may pause tasks in the schedule service');
 assert.match(client, /السحب متاح يوميًا لمستوى/);
 assert.match(index, /withdrawalScheduleStatus/);
 for (const source of [migration, readiness, allDaysMigration]) {

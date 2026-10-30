@@ -2188,7 +2188,7 @@ function renderTaskBoard(completed, maximum) {
     const scheduleNotice = document.getElementById('weeklyScheduleNotice');
     if (scheduleNotice) {
         scheduleNotice.innerText = taskHoliday
-            ? 'اليوم عطلة مهام الجمعة: لا توجد مهام يوم الجمعة. تستأنف المهام مباشرة بعد انتهاء العطلة. مواعيد السحب: A1 وA2 يوم الجمعة، وبقية المستويات يوم السبت (UTC).'
+            ? 'اليوم عطلة المهام المدفوعة الأسبوعية: لا توجد مهام يوم الجمعة فقط. تستأنف المهام غدًا السبت مع بداية اليوم في Europe/Istanbul. السحب متاح يوميًا لجميع المستويات.'
             : '';
     }
     const activeTier = getActiveTaskTier();
@@ -2268,7 +2268,7 @@ function renderDailyTaskDetail(data) {
     if (data.holiday) {
         window.__latestDailyTasks = [];
         title.innerText = 'عطلة المهام الأسبوعية';
-        meta.innerText = data.schedule?.message || 'لا توجد مهام يوم الجمعة أو السبت.';
+        meta.innerText = data.schedule?.message || 'عطلة المهام المدفوعة الأسبوعية: لا توجد مهام يوم الجمعة فقط.';
         list.innerHTML = '<div class="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 text-center"><i class="fa-solid fa-calendar-check text-cyan-300 text-lg"></i><p class="mt-2 text-xs font-bold text-cyan-100">لا توجد مهام اليوم</p><p class="mt-1 text-[10px] text-slate-400">عطلة مهام يوم الجمعة فقط. تعود المهام مباشرة بعد انتهاء العطلة.</p></div>';
         return;
     }
