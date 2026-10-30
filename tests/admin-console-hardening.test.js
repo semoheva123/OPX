@@ -45,6 +45,21 @@ assert.match(migration, /grant execute on function public\.admin_audit_logs_page
 assert.match(supportController, /totalPages: Math\.max\(1, Math\.ceil\(total \/ limit\)\)/, 'support tickets must be paginated');
 assert.match(supportController, /counts: countsPayload/, 'support tickets must return status counters');
 
+// 4b. Email queue visibility + retry, moderation pagination, shareable filters.
+const socialFeedController = read('src/controllers/socialFeedController.js');
+assert.match(adminRoutes, /router\.get\('\/email-queue', requirePermission\('broadcast'\)/, 'email queue overview route is required');
+assert.match(adminRoutes, /router\.post\('\/email-queue\/retry', requirePermission\('broadcast'\)/, 'email queue retry route is required');
+assert.match(adminController, /async function emailQueueOverview/, 'email queue overview handler is required');
+assert.match(adminController, /status: 'queued', lastError: '', updatedAt: new Date\(\)/, 'retry must requeue failed recipients only');
+assert.match(adminController, /retry_email_broadcast/, 'retries must be audited');
+assert.match(adminHtml, /fetchEmailQueue\(\)/, 'console must render the email queue');
+assert.match(adminHtml, /retryEmailQueueCampaign\('/, 'console must expose per-campaign email retry');
+assert.match(socialFeedController, /totalPages: Math\.max\(1, Math\.ceil\(total \/ limit\)\)/, 'reported posts must be paginated');
+assert.match(socialFeedController, /payload\.reports \+= Number\(post\.reportCount \|\| 0\)/, 'reported posts must return report counters');
+assert.match(adminHtml, /function syncAdminFiltersToHash\(/, 'filters must be serializable into the URL');
+assert.match(adminHtml, /function applyAdminFiltersFromHash\(/, 'filters must be restorable from the URL');
+assert.match(adminHtml, /data-report-filter/, 'moderation tab must expose status filters');
+
 // 5. Request hardening.
 assert.match(appSource, /const mutatingMethods = new Set\(\['POST', 'PUT', 'PATCH', 'DELETE'\]\)/, 'mutating requests must be origin checked');
 assert.match(appSource, /طلب غير موثوق: مصدر الطلب غير مسموح/, 'origin rejection message is required');

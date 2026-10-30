@@ -53,6 +53,8 @@ router.get('/broadcasts', requirePermission('broadcast'), adminController.listBr
 router.post('/email-broadcasts/preview', requirePermission('broadcast'), adminController.previewEmailBroadcast);
 router.post('/email-broadcasts', requirePermission('broadcast'), adminController.createEmailBroadcast);
 router.get('/email-broadcasts', requirePermission('broadcast'), adminController.listEmailBroadcasts);
+router.get('/email-queue', requirePermission('broadcast'), adminController.emailQueueOverview);
+router.post('/email-queue/retry', requirePermission('broadcast'), adminController.retryEmailQueue);
 router.post('/email-verification-reminders/preview', requirePermission('broadcast'), adminController.previewEmailVerificationReminders);
 router.post('/email-verification-reminders', requirePermission('broadcast'), adminController.createEmailVerificationReminders);
 router.get('/email-verification-reminders', requirePermission('broadcast'), adminController.listEmailVerificationReminderCampaigns);

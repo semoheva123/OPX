@@ -1510,6 +1510,86 @@ async function listEmailBroadcasts(req, res) {
   }
 }
 
+async function emailQueueOverview(req, res) {
+  try {
+    const limit = Math.min(50, Math.max(5, Number(req.query.limit) || 20));
+    const statusFilter = ['failed', 'unknown', 'suppressed', 'queued', 'sending'].includes(String(req.query.status))
+      ? String(req.query.status)
+      : 'failed';
+    const [failed, unknown, suppressed, queued, sending, sent] = await Promise.all([
+      dataAccess.emailBroadcastRecipient.countDocuments({ status: 'failed' }).catch(() => 0),
+      dataAccess.emailBroadcastRecipient.countDocuments({ status: 'unknown' }).catch(() => 0),
+      dataAccess.emailBroadcastRecipient.countDocuments({ status: 'suppressed' }).catch(() => 0),
+      dataAccess.emailBroadcastRecipient.countDocuments({ status: 'queued' }).catch(() => 0),
+      dataAccess.emailBroadcastRecipient.countDocuments({ status: 'sending' }).catch(() => 0),
+      dataAccess.emailBroadcastRecipient.countDocuments({ status: 'sent' }).catch(() => 0)
+    ]);
+    const recipients = await dataAccess.emailBroadcastRecipient.find(
+      { status: statusFilter },
+      { sort: { updatedAt: -1 }, limit }
+    );
+    const campaignIds = [...new Set(recipients.map(recipient => recipient.campaignId).filter(Boolean))];
+    const campaigns = campaignIds.length
+      ? await dataAccess.emailBroadcast.find({ id: { $in: campaignIds } }, { limit: campaignIds.length }).catch(() => [])
+      : [];
+    const campaignMap = new Map(campaigns.map(campaign => [String(campaign.id || campaign._id), campaign]));
+    const actionable = recipients.filter(recipient => recipient.status === 'failed' || recipient.status === 'unknown');
+    res.json({
+      success: true,
+      status: statusFilter,
+      counts: {
+        failed: Number(failed || 0),
+        unknown: Number(unknown || 0),
+        suppressed: Number(suppressed || 0),
+        queued: Number(queued || 0),
+        sending: Number(sending || 0),
+        sent: Number(sent || 0),
+        retryable: Number(failed || 0) + Number(unknown || 0)
+      },
+      recipients: recipients.map(recipient => ({
+        id: recipient.id || recipient._id,
+        email: recipient.email,
+        status: recipient.status,
+        attempts: Number(recipient.attempts || 0),
+        lastError: recipient.lastError || '',
+        campaignId: recipient.campaignId,
+        campaignSubject: campaignMap.get(String(recipient.campaignId))?.subject || null,
+        updatedAt: recipient.updatedAt || recipient.createdAt || null
+      })),
+      actionableCampaigns: [...new Set(actionable.map(recipient => String(recipient.campaignId)))].slice(0, 20)
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'تعذر تحميل حالة طابور البريد' });
+  }
+}
+
+async function retryEmailQueue(req, res) {
+  try {
+    const campaignId = String(req.body?.campaignId || '').trim();
+    if (!campaignId) return res.status(400).json({ error: 'حدد الحملة المطلوب إعادة إرسالها' });
+    const campaign = await dataAccess.emailBroadcast.findOne({ id: campaignId });
+    if (!campaign) return res.status(404).json({ error: 'الحملة غير موجودة' });
+    if (['sending', 'completed', 'sent'].includes(String(campaign.status))) return res.status(409).json({ error: 'الحملة قيد الإرسال أو مكتملة بالفعل' });
+    const reset = await dataAccess.emailBroadcastRecipient.updateMany(
+      { campaignId, status: 'failed' },
+      { $set: { status: 'queued', lastError: '', updatedAt: new Date() } }
+    );
+    const requeued = Number(reset?.modifiedCount || 0);
+    if (!requeued) return res.status(409).json({ error: 'لا يوجد مستلمون فاشلون في هذه الحملة' });
+    await dataAccess.emailBroadcast.updateOne({ id: campaignId }, { $set: { status: 'queued', lastError: '' } });
+    await createAudit(req, 'retry_email_broadcast', campaignId, { requeued });
+    let delivery = null;
+    try {
+      delivery = await adminEmailBroadcastService.processAdminEmailBroadcastQueue(req.app?.locals?.resend, campaignId);
+    } catch (deliveryError) {
+      delivery = { error: deliveryError.message };
+    }
+    res.json({ success: true, requeued, delivery, message: `تمت إعادة تجهيز ${requeued} مستلمًا للإرسال` });
+  } catch (error) {
+    res.status(500).json({ error: 'تعذر إعادة إرسال طابور البريد' });
+  }
+}
+
 async function processAdminEmailBroadcasts(resend, campaignId) {
   return adminEmailBroadcastService.processAdminEmailBroadcastQueue(resend, campaignId);
 }
@@ -1687,4 +1767,4 @@ async function processScheduledBroadcasts(webpush) {
   return [];
 }
 
-module.exports = { saveVipLevel, listVipLevels, deleteVipLevel, overview, analytics, financialSummary, financialReadiness, financialAccounting, investmentVaultSummary, getInvestmentVaultContracts, updateInvestmentVaultContracts, listInvestmentVaults, emergencyReleaseInvestmentVault, riskSummary, listUsers, exportUsers, userDetails, resetDailyTasks, toggleBan, bulkToggleBan, revokeUserSessions, verifyUserEmail, disableUserTwoFactor, updateUser, updateUserAccount, updateUserRole, updateUserTier, listWithdrawals, transactionDetails, exportTransactions, listAuditLogs, exportAuditLogs, listAdminSessions, revokeAdminSession, revokeOtherAdminSessions, listReferrals, exportReferrals, referralTree, withdrawalAction, reconcileWithdrawalPayout, bulkWithdrawalAction, gameSettings, updateGameSettings, previewEmailBroadcast, createEmailBroadcast, listEmailBroadcasts, processAdminEmailBroadcasts, previewEmailVerificationReminders, createEmailVerificationReminders, listEmailVerificationReminderCampaigns, recoverRejectedEmailVerificationReminders, processEmailVerificationReminders, broadcast, listBroadcasts, processScheduledBroadcasts, processAutomaticWithdrawalApprovals, processWithdrawalPayoutQueue, sendAdminAuditBroadcast };
+module.exports = { saveVipLevel, listVipLevels, deleteVipLevel, overview, analytics, financialSummary, financialReadiness, financialAccounting, investmentVaultSummary, getInvestmentVaultContracts, updateInvestmentVaultContracts, listInvestmentVaults, emergencyReleaseInvestmentVault, riskSummary, listUsers, exportUsers, userDetails, resetDailyTasks, toggleBan, bulkToggleBan, revokeUserSessions, verifyUserEmail, disableUserTwoFactor, updateUser, updateUserAccount, updateUserRole, updateUserTier, listWithdrawals, transactionDetails, exportTransactions, listAuditLogs, exportAuditLogs, listAdminSessions, revokeAdminSession, revokeOtherAdminSessions, listReferrals, exportReferrals, referralTree, withdrawalAction, reconcileWithdrawalPayout, bulkWithdrawalAction, gameSettings, updateGameSettings, previewEmailBroadcast, createEmailBroadcast, listEmailBroadcasts, emailQueueOverview, retryEmailQueue, processAdminEmailBroadcasts, previewEmailVerificationReminders, createEmailVerificationReminders, listEmailVerificationReminderCampaigns, recoverRejectedEmailVerificationReminders, processEmailVerificationReminders, broadcast, listBroadcasts, processScheduledBroadcasts, processAutomaticWithdrawalApprovals, processWithdrawalPayoutQueue, sendAdminAuditBroadcast };

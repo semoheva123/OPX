@@ -112,6 +112,12 @@ body.modal-open{overflow:hidden}
 .admin-modal{overscroll-behavior:contain}
 @media (max-width:767px){.admin-modal>.glass-card{width:100%;max-height:calc(100dvh - 1.5rem);overflow-y:auto;border-radius:1.5rem 1.5rem 1rem 1rem}}
 
+/* ===== Typography floor: keep operational tables and notes readable ===== */
+main table tbody td, main table thead th { font-size: .75rem; line-height: 1.45; }
+main table tbody td span.text-\[9px\], main table tbody td span.text-\[10px\] { font-size: .68rem !important; line-height: 1.4; }
+main .overview-panel small, main .overview-section-heading span, main .table-empty, main p.text-\[9px\], main p.text-\[10px\], main span.text-\[9px\] { font-size: .7rem; }
+main label.block.text-\[10px\], main label.text-\[10px\] { font-size: .72rem; }
+
 /* ===== Admin navigation drawer (mobile), toast variants, table states ===== */
 @media (max-width: 767px) {
     #sidebar { position: fixed; top: 0; right: 0; bottom: 0; height: 100dvh; width: min(88vw, 20rem); z-index: 80; overflow-y: auto; border-radius: 0; border-left: 1px solid var(--operix-line); transform: translateX(102%); transition: transform .26s cubic-bezier(.22,1,.36,1); will-change: transform; }
@@ -360,7 +366,20 @@ body.modal-open{overflow:hidden}
 
         <div id="admin-social-feed" class="space-y-6 hide">
             <div class="flex items-center justify-between gap-3"><div><h2 class="text-xl font-black text-white">مراجعة جدار التواصل</h2><p class="text-[10px] text-slate-500 mt-1">راجع البلاغات والمنشورات المحجوبة واتخذ قرار النشر.</p></div><button onclick="fetchSocialFeedReports()" title="تحديث البلاغات" class="rounded-xl bg-slate-900 px-3 py-2 text-slate-300"><i class="fa-solid fa-arrows-rotate"></i></button></div>
+            <div class="filter-bar">
+                <button type="button" class="toolbar-chip" data-report-filter="all" aria-pressed="true" onclick="setReportFilter('all')">الكل</button>
+                <button type="button" class="toolbar-chip" data-report-filter="visible" aria-pressed="false" onclick="setReportFilter('visible')">ظاهرة</button>
+                <button type="button" class="toolbar-chip" data-report-filter="hidden" aria-pressed="false" onclick="setReportFilter('hidden')">مخفية</button>
+                <button type="button" class="toolbar-chip" data-report-filter="banned" aria-pressed="false" onclick="setReportFilter('banned')">محجوبة</button>
+                <button type="button" class="toolbar-chip" data-report-filter="removed" aria-pressed="false" onclick="setReportFilter('removed')">محذوفة</button>
+                <span id="reportFilterSummary" class="text-[10px] text-slate-500"></span>
+            </div>
             <div id="socialFeedReportsList" class="space-y-3"><p class="glass-card rounded-2xl p-4 text-center text-xs text-slate-500">جارٍ تحميل البلاغات...</p></div>
+            <div class="flex items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-950/60 p-3 text-[11px] text-slate-400">
+                <button type="button" id="reportsPrevButton" onclick="changeReportPage(-1)" class="rounded-lg bg-slate-900 px-3 py-1.5 font-bold disabled:opacity-40">السابق</button>
+                <span id="reportsPaginationInfo" aria-live="polite">جارٍ التحميل...</span>
+                <button type="button" id="reportsNextButton" onclick="changeReportPage(1)" class="rounded-lg bg-slate-900 px-3 py-1.5 font-bold disabled:opacity-40">التالي</button>
+            </div>
         </div>
 
         <!-- تبويب: طلبات السحب والشحن -->
@@ -535,6 +554,24 @@ body.modal-open{overflow:hidden}
             <div class="glass-card rounded-3xl overflow-hidden border border-slate-800"><div class="flex items-center justify-between p-4 border-b border-slate-800"><div><h3 class="text-sm font-bold text-white">سجل تذكيرات توثيق البريد</h3><p class="mt-1 text-[9px] text-slate-500">دفعات التذكير وحالات تسليمها إلى مزود البريد</p></div><button onclick="fetchEmailVerificationReminderCampaigns()" aria-label="تحديث سجل تذكيرات التوثيق" class="rounded-lg bg-slate-900 px-3 py-2 text-slate-300"><i class="fa-solid fa-arrows-rotate"></i></button></div><div class="overflow-x-auto"><table class="w-full min-w-[640px] text-right text-xs"><thead class="bg-slate-900/80 text-slate-400"><tr><th class="p-3">الحالة</th><th class="p-3">أُرسلت لمزود البريد</th><th class="p-3">تعذّر</th><th class="p-3">مستبعد</th><th class="p-3">مراجعة مطلوبة</th><th class="p-3">تاريخ الإنشاء</th></tr></thead><tbody id="emailVerificationReminderHistory"><tr><td colspan="6" class="p-4 text-center text-slate-500">جارٍ تحميل سجل التذكيرات...</td></tr></tbody></table></div></div>
 
             <div class="glass-card rounded-3xl overflow-hidden border border-slate-800"><div class="flex items-center justify-between p-4 border-b border-slate-800"><div><h3 class="text-sm font-bold text-white">سجل تحديثات البريد</h3><p class="mt-1 text-[9px] text-slate-500">حالات الطابور والإرسال والتعثرات</p></div><button onclick="fetchEmailBroadcasts()" aria-label="تحديث سجل حملات البريد" class="rounded-lg bg-slate-900 px-3 py-2 text-slate-300"><i class="fa-solid fa-arrows-rotate"></i></button></div><div class="overflow-x-auto"><table class="w-full min-w-[720px] text-right text-xs"><thead class="bg-slate-900/80 text-slate-400"><tr><th class="p-3">العنوان</th><th class="p-3">الحالة</th><th class="p-3">وصل لمزود البريد</th><th class="p-3">تعذّر</th><th class="p-3">مستبعد/ألغى الاشتراك</th><th class="p-3">مراجعة يدوية</th><th class="p-3">تاريخ الإنشاء</th></tr></thead><tbody id="emailBroadcastHistory"><tr><td colspan="7" class="p-4 text-center text-slate-500">جارٍ تحميل سجل البريد...</td></tr></tbody></table></div></div>
+        </div>
+
+            <section class="glass-card rounded-3xl border border-rose-500/20 p-5 sm:p-6 space-y-4" aria-labelledby="emailQueueHeading">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex items-start gap-3"><span class="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-rose-400/20 bg-rose-400/10 text-rose-300"><i class="fa-solid fa-envelope-circle-check" aria-hidden="true"></i></span><div><h3 id="emailQueueHeading" class="text-base font-black text-white">مراقبة طابور البريد</h3><p class="mt-1 text-[10px] leading-5 text-slate-400">حالة كل مستلم في حملات البريد، وأسباب الفشل، مع إمكانية إعادة إرسال الفاشلين فقط دون تكرار من استلم الرسالة.</p></div></div>
+                    <button type="button" onclick="fetchEmailQueue()" title="تحديث طابور البريد" aria-label="تحديث طابور البريد" class="rounded-lg bg-slate-900 px-3 py-2 text-slate-300"><i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i></button>
+                </div>
+                <div id="emailQueueCounts" class="grid grid-cols-2 gap-2 sm:grid-cols-5"></div>
+                <div class="filter-bar">
+                    <button type="button" class="toolbar-chip" data-email-queue-filter="failed" aria-pressed="true" onclick="setEmailQueueFilter('failed')">فاشلة</button>
+                    <button type="button" class="toolbar-chip" data-email-queue-filter="unknown" aria-pressed="false" onclick="setEmailQueueFilter('unknown')">مجهولة</button>
+                    <button type="button" class="toolbar-chip" data-email-queue-filter="suppressed" aria-pressed="false" onclick="setEmailQueueFilter('suppressed')">مستبعدة</button>
+                    <button type="button" class="toolbar-chip" data-email-queue-filter="queued" aria-pressed="false" onclick="setEmailQueueFilter('queued')">بالانتظار</button>
+                    <button type="button" class="toolbar-chip" data-email-queue-filter="sent" aria-pressed="false" onclick="setEmailQueueFilter('sent')">مرسلة</button>
+                </div>
+                <div id="emailQueueList" class="space-y-2 text-[11px] text-slate-300" aria-live="polite"></div>
+                <div id="emailQueueActions" class="flex flex-wrap gap-2"></div>
+            </section>
         </div>
 
         <div id="admin-audit" class="space-y-6 hide">
@@ -897,7 +934,7 @@ body.modal-open{overflow:hidden}
                 withdrawals: () => { fetchTransactionsList(txCurrentPage); fetchInvestmentVaultSummary(); fetchInvestmentVaultList(); },
                 plans: () => { fetchVipPlans(); fetchVaultContractsAdmin(); },
                 games: () => fetchGameSettings(),
-                broadcast: () => { fetchBroadcasts(); fetchEmailBroadcasts(); fetchEmailVerificationReminderCampaigns(); },
+                broadcast: () => { fetchBroadcasts(); fetchEmailBroadcasts(); fetchEmailVerificationReminderCampaigns(); fetchEmailQueue(); },
                 audit: () => fetchAuditLogs(auditCurrentPage),
                 support: () => fetchAdminSupport(adminSupportState.page),
                 'social-feed': () => fetchSocialFeedReports(),
@@ -938,8 +975,13 @@ body.modal-open{overflow:hidden}
                 activeBtn.setAttribute('aria-current', 'page');
             }
             applyRoleVisibility();
-            if (options.updateHash !== false && window.location.hash !== `#${tab}`) {
-                try { window.history.replaceState(null, '', `#${tab}`); } catch (error) { }
+            if (options.updateHash !== false) {
+                const cleanHash = `#${tab}`;
+                const hashTab = decodeURIComponent((window.location.hash || '').replace(/^#/, '')).split('?')[0];
+                if (hashTab !== tab) {
+                    try { window.history.replaceState(null, '', cleanHash); } catch (error) { }
+                }
+                applyAdminFiltersFromHash(tab);
             }
             adminActiveTab = tab;
             try { adminStorageSetItem('operixAdminTab', tab); } catch (error) { }
@@ -954,7 +996,7 @@ body.modal-open{overflow:hidden}
             if(tab === 'plans') { fetchVipPlans(); fetchVaultContractsAdmin(); }
             if(tab === 'games') fetchGameSettings();
             if(tab === 'audit') fetchAuditLogs();
-            if(tab === 'broadcast') { fetchBroadcasts(); fetchEmailBroadcasts(); fetchEmailVerificationReminderCampaigns(); }
+            if(tab === 'broadcast') { fetchBroadcasts(); fetchEmailBroadcasts(); fetchEmailVerificationReminderCampaigns(); fetchEmailQueue(); }
             if(tab === 'support') fetchAdminSupport();
             if(tab === 'social-feed') fetchSocialFeedReports();
             if(tab === 'security') { loadAdminSecurityStatus(); loadAdminSessions(); renderAdminSessionMeta(); }
@@ -970,8 +1012,78 @@ body.modal-open{overflow:hidden}
             return !permission || canAdmin(permission);
         }
 
+        const ADMIN_FILTER_FIELDS = {
+            users: { q: 'txtSearchUser', role: 'userFilterRole', tier: 'userFilterTier', status: 'userFilterStatus', verified: 'userFilterVerified', page: 'adminUsersPageState' },
+            withdrawals: { q: 'txSearch', status: 'filterTxStatus', type: 'filterTxType', network: 'filterTxNetwork', from: 'txFrom', to: 'txTo', page: 'adminTxPageState' },
+            audit: { action: 'auditAction', q: 'auditSearch', date: 'auditDate', page: 'adminAuditPageState' },
+            support: { status: null, q: 'supportSearch', page: null },
+            'social-feed': { status: null, page: null }
+        };
+
+        function currentTabFilters(tab = adminActiveTab) {
+            const fields = ADMIN_FILTER_FIELDS[tab];
+            if (!fields) return {};
+            const filters = {};
+            Object.entries(fields).forEach(([key, elementId]) => {
+                if (!elementId) return;
+                const element = document.getElementById(elementId);
+                if (element && typeof element.value === 'string' && element.value.trim()) filters[key] = element.value.trim();
+            });
+            return filters;
+        }
+
+        function syncAdminFiltersToHash() {
+            const filters = currentTabFilters();
+            if (adminActiveTab === 'support') { if (adminSupportState.status !== 'all') filters.status = adminSupportState.status; if (adminSupportState.page > 1) filters.page = String(adminSupportState.page); if (adminSupportState.query.trim()) filters.q = adminSupportState.query.trim(); }
+            if (adminActiveTab === 'social-feed') { if (adminReportsState.status !== 'all') filters.status = adminReportsState.status; if (adminReportsState.page > 1) filters.page = String(adminReportsState.page); }
+            const query = new URLSearchParams(filters).toString();
+            const nextHash = `#${adminActiveTab}${query ? `?${query}` : ''}`;
+            if (window.location.hash === nextHash) return;
+            try { window.history.replaceState(null, '', nextHash); } catch (error) { }
+            try { adminStorageSetItem(`operixAdminFilters:${adminActiveTab}`, query); } catch (error) { }
+        }
+
+        function applyAdminFiltersFromHash(tab = adminActiveTab) {
+            const raw = decodeURIComponent((window.location.hash || '').replace(/^#/, ''));
+            const queryIndex = raw.indexOf('?');
+            let queryString = queryIndex >= 0 ? raw.slice(queryIndex + 1) : '';
+            if (queryIndex >= 0 && raw.slice(0, queryIndex) && raw.slice(0, queryIndex) !== tab) return;
+            if (!queryString && !ADMIN_FILTER_FIELDS[tab]) return;
+            if (!queryString) {
+                try { queryString = adminStorageGetItem(`operixAdminFilters:${tab}`) || ''; } catch (error) { queryString = ''; }
+            }
+            if (!queryString) return;
+            const params = new URLSearchParams(queryString);
+            if (tab === 'support') {
+                const status = params.get('status');
+                if (['open', 'in_progress', 'resolved', 'all'].includes(status)) adminSupportState.status = status;
+                adminSupportState.query = params.get('q') || '';
+                const searchField = document.getElementById('supportSearch');
+                if (searchField) searchField.value = adminSupportState.query;
+                document.querySelectorAll('[data-support-filter]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.supportFilter === adminSupportState.status)));
+                adminSupportState.page = Math.max(1, Number(params.get('page')) || 1);
+                return;
+            }
+            if (tab === 'social-feed') {
+                const status = params.get('status');
+                if (['visible', 'hidden', 'banned', 'removed', 'all'].includes(status)) adminReportsState.status = status;
+                document.querySelectorAll('[data-report-filter]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.reportFilter === adminReportsState.status)));
+                adminReportsState.page = Math.max(1, Number(params.get('page')) || 1);
+                return;
+            }
+            const fields = ADMIN_FILTER_FIELDS[tab] || {};
+            Object.entries(fields).forEach(([key, elementId]) => {
+                if (key === 'page' || !elementId) return;
+                const element = document.getElementById(elementId);
+                if (element && params.has(key)) element.value = params.get(key);
+            });
+            if (tab === 'users' && params.get('page')) usersCurrentPage = Math.max(1, Number(params.get('page')) || 1);
+            if (tab === 'withdrawals' && params.get('page')) txCurrentPage = Math.max(1, Number(params.get('page')) || 1);
+            if (tab === 'audit' && params.get('page')) auditCurrentPage = Math.max(1, Number(params.get('page')) || 1);
+        }
+
         function initialAdminTab() {
-            const hash = decodeURIComponent((window.location.hash || '').replace(/^#/, '')).trim();
+            const hash = decodeURIComponent((window.location.hash || '').replace(/^#/, '')).trim().split('?')[0];
             if (ADMIN_TABS.includes(hash) && tabAllowed(hash)) return hash;
             try {
                 const saved = adminStorageGetItem('operixAdminTab');
@@ -982,9 +1094,12 @@ body.modal-open{overflow:hidden}
 
 
         window.addEventListener('hashchange', () => {
-            const hash = decodeURIComponent((window.location.hash || '').replace(/^#/, '')).trim();
-            const target = ADMIN_TABS.includes(hash) ? document.getElementById(`admin-${hash}`) : null;
-            if (target && target.classList.contains('hide')) switchAdminTab(hash);
+            const raw = decodeURIComponent((window.location.hash || '').replace(/^#/, '')).trim();
+            const hash = raw.split('?')[0];
+            if (!ADMIN_TABS.includes(hash)) return;
+            const isCurrentTab = hash === adminActiveTab;
+            switchAdminTab(hash);
+            if (isCurrentTab) refreshActiveAdminTab();
         });
 
         const adminPermissions = {
@@ -1338,6 +1453,7 @@ body.modal-open{overflow:hidden}
                 }
                 auditCurrentPage = data.page || 1; auditTotalPages = data.totalPages || 1;
                 document.getElementById('auditCurrentPage').innerText = auditCurrentPage; document.getElementById('auditTotalPages').innerText = auditTotalPages;
+                syncAdminFiltersToHash();
                 const labels = { update_game_settings: 'تعديل إعدادات الألعاب', update_user: 'تعديل مستخدم', update_user_balance: 'تعديل رصيد', update_user_role: 'تعديل دور', transaction_approve: 'الموافقة على معاملة', transaction_reject: 'رفض معاملة', schedule_broadcast: 'جدولة بث', broadcast_notification: 'إرسال بث', reset_daily_tasks: 'إعادة المهام' };
                 tbody.innerHTML = data.logs.map(log => `<tr><td class="p-4 text-slate-400 whitespace-nowrap">${escapeAdminHtml(new Date(log.createdAt).toLocaleString('ar'))}</td><td class="p-4 text-white">${escapeAdminHtml(log.adminId?.email || 'مدير')}</td><td class="p-4 text-amber-400">${escapeAdminHtml(labels[log.action] || log.action)}</td><td class="p-4 font-mono text-[10px] text-slate-500">${escapeAdminHtml(log.targetId || '-')}</td><td class="p-4 text-slate-400 text-[10px] max-w-40"><span class="block">${escapeAdminHtml(log.ip || '-')}</span><span class="block truncate" title="${escapeAdminHtml(log.userAgent || '')}">${escapeAdminHtml(log.userAgent || '-')}</span></td><td class="p-4 text-slate-400 max-w-xs"><div class="max-w-xs truncate">${formatAuditDetails(log.details || {})}</div><button onclick='showAuditDetails(${JSON.stringify(log.details || {}).replace(/'/g, '&#39;')})' class="mt-1 text-[10px] text-cyan-300 hover:underline">عرض التفاصيل</button></td></tr>`).join('');
             } catch (error) { showToast('تعذر تحميل سجل التدقيق'); }
@@ -1460,6 +1576,7 @@ body.modal-open{overflow:hidden}
                 renderAdminSupportTickets();
                 renderSupportPagination();
                 updateSupportBadge();
+                syncAdminFiltersToHash();
             } catch (error) {
                 if (list) list.innerHTML = `<div class="table-empty glass-card rounded-2xl"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>${escapeAdminHtml(error.message)}</div>`;
             }
@@ -1707,6 +1824,7 @@ body.modal-open{overflow:hidden}
                     document.getElementById('usersCurrentPage').innerText = usersCurrentPage;
                     document.getElementById('usersTotalPages').innerText = usersTotalPages;
                     renderUsersTable(users);
+                    syncAdminFiltersToHash();
                 }
             } catch(e) { console.error(e); }
         }
@@ -1899,6 +2017,7 @@ body.modal-open{overflow:hidden}
                     txTotalPages = data.totalPages || 1;
                     document.getElementById('txCurrentPage').innerText = txCurrentPage;
                     document.getElementById('txTotalPages').innerText = txTotalPages;
+                    syncAdminFiltersToHash();
 
                     const tbody = document.getElementById('tblTransactionsBody');
                     if (!data.withdrawals || data.withdrawals.length === 0) {
@@ -2371,6 +2490,74 @@ body.modal-open{overflow:hidden}
             updateEmailBroadcastSendButton();
         }
 
+        let emailQueueState = { status: 'failed', loaded: false };
+        let emailQueueData = null;
+
+        function setEmailQueueFilter(status) {
+            emailQueueState.status = status;
+            document.querySelectorAll('[data-email-queue-filter]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.emailQueueFilter === status)));
+            fetchEmailQueue();
+        }
+
+        const EMAIL_QUEUE_LABELS = { failed: 'فاشلة', unknown: 'مجهولة', suppressed: 'مستبعدة', queued: 'بالانتظار', sending: 'قيد الإرسال', sent: 'مرسلة' };
+
+        async function fetchEmailQueue() {
+            const list = document.getElementById('emailQueueList');
+            const countsBox = document.getElementById('emailQueueCounts');
+            const actions = document.getElementById('emailQueueActions');
+            if (!list || !countsBox || !actions) return;
+            try {
+                const response = await fetch(`/api/admin/email-queue?status=${encodeURIComponent(emailQueueState.status)}&limit=20`, { headers: adminHeaders() });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'تعذر تحميل طابور البريد');
+                emailQueueData = data;
+                emailQueueState.loaded = true;
+                const counts = data.counts || {};
+                countsBox.innerHTML = ['sent', 'queued', 'failed', 'unknown', 'suppressed'].map(key => `<div class="rounded-xl border border-slate-800 bg-slate-950/60 p-3"><span class="block text-[9px] text-slate-500">${EMAIL_QUEUE_LABELS[key]}</span><b class="mt-1 block text-sm ${key === 'failed' || key === 'unknown' ? 'text-rose-300' : key === 'sent' ? 'text-emerald-300' : 'text-slate-200'}">${Number(counts[key] || 0)}</b></div>`).join('');
+                document.querySelectorAll('[data-email-queue-filter]').forEach(button => {
+                    const key = button.dataset.emailQueueFilter;
+                    button.textContent = `${EMAIL_QUEUE_LABELS[key] || key} (${Number(counts[key] || 0)})`;
+                });
+                list.innerHTML = data.recipients?.length ? data.recipients.map(item => `
+                    <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+                        <div class="flex flex-wrap items-start justify-between gap-2">
+                            <div class="min-w-0">
+                                <b class="block truncate text-white">${escapeAdminHtml(item.email || '-')}</b>
+                                <span class="block text-[10px] text-slate-500">${escapeAdminHtml(item.campaignSubject || 'بدون حملة')} · محاولات: ${Number(item.attempts || 0)}${item.updatedAt ? ` · ${escapeAdminHtml(new Date(item.updatedAt).toLocaleString('ar'))}` : ''}</span>
+                                ${item.lastError ? `<span class="mt-1 block break-all text-[10px] text-rose-300">${escapeAdminHtml(item.lastError)}</span>` : ''}
+                            </div>
+                            <span class="shrink-0 rounded-full border border-slate-700 px-2 py-0.5 text-[9px] ${['failed', 'unknown'].includes(item.status) ? 'text-rose-300' : item.status === 'sent' ? 'text-emerald-300' : 'text-slate-300'}">${EMAIL_QUEUE_LABELS[item.status] || item.status}</span>
+                        </div>
+                    </div>`).join('') : '<div class="table-empty"><i class="fa-solid fa-inbox" aria-hidden="true"></i>لا مستلمين بهذه الحالة</div>';
+                const actionable = data.actionableCampaigns || [];
+                actions.innerHTML = actionable.length
+                    ? actionable.slice(0, 5).map(campaignId => {
+                        const sample = data.recipients?.find(item => String(item.campaignId) === String(campaignId) && item.campaignSubject);
+                        return `<button type="button" onclick="retryEmailQueueCampaign('${escapeAdminHtml(campaignId)}')" class="rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-[10px] font-bold text-amber-200"><i class="fa-solid fa-rotate-right ml-1"></i>إعادة إرسال الفاشلين${sample?.campaignSubject ? ` — ${escapeAdminHtml(String(sample.campaignSubject).slice(0, 40))}` : ''}</button>`;
+                    }).join('')
+                    : '<span class="text-[10px] text-slate-500">لا توجد حملات بها مستلمون فاشلون قابلة لإعادة الإرسال.</span>';
+            } catch (error) {
+                list.innerHTML = `<div class="text-rose-300">${escapeAdminHtml(error.message)}</div>`;
+                actions.innerHTML = '';
+            }
+        }
+
+        async function retryEmailQueueCampaign(campaignId) {
+            if (!await showAdminConfirm('ستتم إعادة تجهيز المستلمين الفاشلين في هذه الحملة وإرسالهم الآن. من استلم الرسالة سابقًا لن يُرسل له مرة أخرى. هل تتابع؟', 'إعادة إرسال بريد فاشل')) return;
+            const button = document.querySelector(`#emailQueueActions button[onclick*="${campaignId}"]`);
+            if (button) { button.disabled = true; button.classList.add('opacity-50'); }
+            try {
+                const response = await fetch('/api/admin/email-queue/retry', { method: 'POST', headers: adminJsonHeaders(), body: JSON.stringify({ campaignId }) });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(data.error || 'تعذر إعادة الإرسال');
+                showToastSuccess(data.message || 'تمت إعادة الإرسال');
+                await Promise.all([fetchEmailQueue(), fetchEmailBroadcasts()]);
+            } catch (error) {
+                showToastError(error.message);
+                if (button) { button.disabled = false; button.classList.remove('opacity-50'); }
+            }
+        }
+
         async function previewEmailBroadcast() {
             const subject = document.getElementById('emailBroadcastSubject')?.value?.trim() || '';
             const body = document.getElementById('emailBroadcastBody')?.value?.trim() || '';
@@ -2621,15 +2808,60 @@ body.modal-open{overflow:hidden}
             `;
         }
 
-        async function fetchSocialFeedReports() {
+        let adminReportsState = { page: 1, limit: 10, status: 'all', totalPages: 1, total: 0, counts: { all: 0, reports: 0 } };
+
+        function setReportFilter(status) {
+            adminReportsState.status = status;
+            adminReportsState.page = 1;
+            document.querySelectorAll('[data-report-filter]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.reportFilter === status)));
+            fetchSocialFeedReports();
+        }
+
+        function renderReportsPagination() {
+            const counter = document.getElementById('reportsPaginationInfo');
+            const summary = document.getElementById('reportFilterSummary');
+            if (counter) counter.textContent = adminReportsState.total ? `صفحة ${adminReportsState.page} من ${adminReportsState.totalPages} · ${adminReportsState.total} منشور` : 'لا بلاغات';
+            if (summary) summary.textContent = `${Number(adminReportsState.counts?.reports || 0)} بلاغ إجمالًا على ${Number(adminReportsState.counts?.all || 0)} منشور`;
+            const prev = document.getElementById('reportsPrevButton');
+            const next = document.getElementById('reportsNextButton');
+            if (prev) prev.disabled = adminReportsState.page <= 1;
+            if (next) next.disabled = adminReportsState.page >= adminReportsState.totalPages;
+        }
+
+        function changeReportPage(delta) {
+            const target = adminReportsState.page + delta;
+            if (target < 1 || target > adminReportsState.totalPages) return;
+            fetchSocialFeedReports(target);
+        }
+
+        function socialReportStatusLabel(status) {
+            return ({ visible: 'ظاهر', hidden: 'مخفي', banned: 'محجوب', removed: 'محذوف' })[status] || status || '-';
+        }
+
+        async function fetchSocialFeedReports(page = adminReportsState.page) {
             const list = document.getElementById('socialFeedReportsList');
             if (!list) return;
             try {
-                const response = await fetch('/api/admin/social-feed/reports', { headers: adminHeaders() });
+                const params = new URLSearchParams({ page, limit: adminReportsState.limit });
+                if (adminReportsState.status !== 'all') params.set('status', adminReportsState.status);
+                const response = await fetch(`/api/admin/social-feed/reports?${params.toString()}`, { headers: adminHeaders() });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.error || 'تعذر تحميل البلاغات');
-                list.innerHTML = data.posts?.length ? data.posts.map(post => `<article class="glass-card rounded-2xl p-4 space-y-3"><div class="flex items-center justify-between gap-3"><div><b class="text-xs text-white">${escapeAdminHtml(post.authorLabel || 'عضو')}</b><span class="block text-[10px] text-slate-500 mt-1">${new Date(post.createdAt).toLocaleString('ar')} · ${post.reportCount || 0} بلاغ</span></div><span class="rounded-full border border-rose-500/20 bg-rose-500/10 px-2 py-1 text-[10px] text-rose-300">${escapeAdminHtml(post.status)}</span></div><p class="whitespace-pre-wrap text-xs leading-6 text-slate-300">${escapeAdminHtml(post.content)}</p><div class="flex flex-wrap gap-2"><button type="button" onclick="moderateSocialFeedPost('${post._id}', 'visible')" class="rounded-xl bg-emerald-500/15 px-3 py-2 text-[10px] font-bold text-emerald-300">إظهار</button><button type="button" onclick="moderateSocialFeedPost('${post._id}', 'hidden')" class="rounded-xl bg-amber-500/15 px-3 py-2 text-[10px] font-bold text-amber-300">إخفاء</button><button type="button" onclick="moderateSocialFeedPost('${post._id}', 'removed')" class="rounded-xl bg-rose-500/15 px-3 py-2 text-[10px] font-bold text-rose-300">حذف نهائي</button></div></article>`).join('') : '<p class="glass-card rounded-2xl p-4 text-center text-xs text-slate-500">لا توجد منشورات تحتاج مراجعة.</p>';
-            } catch (error) { list.innerHTML = `<p class="text-xs text-rose-300">${escapeAdminHtml(error.message)}</p>`; }
+                adminReportsState.page = Number(data.page) || 1;
+                adminReportsState.totalPages = Number(data.totalPages) || 1;
+                adminReportsState.total = Number(data.total) || 0;
+                adminReportsState.counts = data.counts || adminReportsState.counts;
+                setSidebarBadge('pendingReportsBadge', Number(adminReportsState.counts?.all || 0));
+                syncAdminFiltersToHash();
+                list.innerHTML = data.posts?.length ? data.posts.map(post => {
+                    const postId = escapeAdminHtml(post._id || post.id || '');
+                    const imageBlock = post.imageUrl ? `<img src="${escapeAdminHtml(post.imageUrl)}" alt="مرفق المنشور" loading="lazy" class="max-h-48 w-full rounded-xl object-cover">` : '';
+                    return `<article class="glass-card rounded-2xl p-4 space-y-3"><div class="flex items-center justify-between gap-3"><div><b class="text-xs text-white">${escapeAdminHtml(post.authorLabel || 'عضو')}</b><span class="block text-[10px] text-slate-500 mt-1">${escapeAdminHtml(new Date(post.createdAt).toLocaleString('ar'))} · ${Number(post.reportCount || 0)} بلاغ</span></div><span class="rounded-full border border-rose-500/20 bg-rose-500/10 px-2 py-1 text-[10px] text-rose-300">${escapeAdminHtml(socialReportStatusLabel(post.status))}</span></div>${imageBlock}<p class="max-h-40 overflow-y-auto whitespace-pre-wrap text-xs leading-6 text-slate-300">${escapeAdminHtml(post.content)}</p><div class="flex flex-wrap gap-2"><button type="button" onclick="moderateSocialFeedPost('${postId}', 'visible')" class="rounded-xl bg-emerald-500/15 px-3 py-2 text-[10px] font-bold text-emerald-300">إظهار</button><button type="button" onclick="moderateSocialFeedPost('${postId}', 'hidden')" class="rounded-xl bg-amber-500/15 px-3 py-2 text-[10px] font-bold text-amber-300">إخفاء</button><button type="button" onclick="moderateSocialFeedPost('${postId}', 'removed')" class="rounded-xl bg-rose-500/15 px-3 py-2 text-[10px] font-bold text-rose-300">حذف نهائي</button></div></article>`;
+                }).join('') : '<p class="glass-card rounded-2xl p-4 text-center text-xs text-slate-500">لا توجد منشورات تحتاج مراجعة.</p>';
+                renderReportsPagination();
+            } catch (error) {
+                list.innerHTML = `<p class="text-xs text-rose-300">${escapeAdminHtml(error.message)}</p>`;
+            }
         }
 
         async function moderateSocialFeedPost(postId, status) {
@@ -2729,7 +2961,7 @@ body.modal-open{overflow:hidden}
                     applyRoleVisibility();
                     enhanceAdminTables();
                     loadPlatformSupportUrl();
-                    switchAdminTab(initialAdminTab(), { updateHash: false });
+                    switchAdminTab(initialAdminTab());
                     startAdminRealtimeStream();
                     setInterval(refreshAdminAlerts, 30000);
                     setInterval(updateAdminServiceStatus, 60000);

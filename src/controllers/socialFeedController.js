@@ -247,8 +247,39 @@ async function uploadImage(req, res) {
 }
 
 async function listReportedPosts(req, res) {
-  const posts = await dataAccess.socialPost.find({}, { sort: { reportCount: -1, createdAt: -1 }, limit: 100 });
-  res.json({ success: true, posts: posts.filter(post => Number(post.reportCount || 0) > 0 || post.status === 'banned').map(post => { delete post.reportedBy; return toClientPost(post); }) });
+  try {
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
+    const statusFilter = ['visible', 'hidden', 'removed', 'banned'].includes(String(req.query.status)) ? String(req.query.status) : '';
+    const reportsQuery = { reportCount: { $gt: 0 } };
+    const reported = await dataAccess.socialPost.find(reportsQuery, {
+      sort: { reportCount: -1, createdAt: -1 },
+      select: 'id,authorId,authorLabel,content,hashtags,imageUrl,isOfficialAi,source,status,moderationReason,reportCount,likeCount,shareCount,isPinned,createdAt,updatedAt',
+      limit: 500
+    });
+    const flagged = await dataAccess.socialPost.find({ status: 'banned' }, { sort: { createdAt: -1 }, limit: 50 });
+    const byId = new Map();
+    [...reported, ...flagged].forEach(post => {
+      const key = String(post.id || post._id);
+      if (!byId.has(key)) byId.set(key, post);
+    });
+    const all = [...byId.values()].filter(post => !statusFilter || post.status === statusFilter);
+    const counts = all.reduce((payload, post) => {
+      payload.all += 1;
+      payload[post.status] = (payload[post.status] || 0) + 1;
+      payload.reports += Number(post.reportCount || 0);
+      return payload;
+    }, { all: 0, visible: 0, hidden: 0, removed: 0, banned: 0, reports: 0 });
+    const total = all.length;
+    const posts = all.slice((page - 1) * limit, page * limit).map(post => {
+      const clientPost = toClientPost({ ...post });
+      delete clientPost.reportedBy;
+      return clientPost;
+    });
+    res.json({ success: true, posts, page, limit, total, totalPages: Math.max(1, Math.ceil(total / limit)), counts });
+  } catch (error) {
+    res.status(500).json({ error: 'تعذر تحميل البلاغات' });
+  }
 }
 
 async function moderatePost(req, res) {
