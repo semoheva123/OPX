@@ -222,15 +222,22 @@ body:has(#appView) {
     background-color: rgba(9, 13, 19, .72);
 }
 
-/* The headline figure of the wallet: gold leaf, not plain white. */
+/* The headline figure of the wallet: gold leaf, not plain white. The solid gold
+   stays as the fallback — the transparent fill only lands where text clipping
+   is supported, so the figure can never vanish. */
 #appView #lblWalletBalance {
     background-image: linear-gradient(180deg, var(--gold-050) 0%, var(--gold-300) 52%, var(--gold-500) 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    color: transparent;
+    color: var(--gold-200);
     letter-spacing: -.03em;
     filter: drop-shadow(0 12px 26px rgba(200, 155, 74, .18));
+}
+
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+    #appView #lblWalletBalance {
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
 }
 
 /* ---------------------------------------------------------------------------
