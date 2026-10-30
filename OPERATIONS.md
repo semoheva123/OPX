@@ -78,3 +78,13 @@ Double claiming of the same transfer is still impossible: `shared_tron_deposit_e
 - Every admin action is written to `audit_logs` with actor, target, metadata, IP and device. Run `supabase/admin-audit-hardening.sql` so those origin columns and the paginated read RPC exist.
 - Operators can review and revoke their own admin sessions from «أمان الإدارة», and revoke every other session with one action.
 - Balance adjustments require an operator reason and record the wallet values before and after the change.
+
+## Platform hardening (client boot, quotas, request limits)
+
+- **Boot safety:** `app.js` declares the live-ticker state before `initializePlatform()`; declaring it later produced a temporal-dead-zone `ReferenceError` whenever the bundle was evaluated after `DOMContentLoaded`, leaving the page uninitialised.
+- **Polling budget:** the notification and profile timers run at 60 s while the realtime stream is open, 15 s when it is not, and 120 s for a hidden tab; the deposit monitor skips hidden tabs. Previously two 15 s timers plus the deposit monitor consumed most of the 200-requests-per-15-minutes budget, so a user who left the app open could be answered with 429.
+- **Auth rate budgets:** only credential endpoints (`/login`, `/register`, `/admin-login`, password reset, verification resend, 2FA and invite setup) keep the strict 10-requests-per-15-minutes limit. Session listing, logout and `admin-session` moved to a 120-requests allowance; the strict limit made the sessions panel and console reloads fail behind shared IPs.
+- **Request bodies:** JSON bodies are capped at 1 MB, with a 3 MB allowance only on `/api/social-feed/upload-image`. Oversized payloads now answer 413 and malformed JSON answers 400 instead of a generic 500.
+- **Health probe:** `GET /api/health` returns reachability only (status, database, timestamp) and caches the probe for 10 s; the detailed payload — schema readiness, build id, connection error text — moved to `GET /api/admin/health-details`, which requires an admin session. This stops anonymous callers from reading build/schema details and from turning the probe into a database loop.
+- **Dead routes:** `server.js` registered `/sitemap.xml`, `/robots.txt`, the Google verification file and a static mount after `createApp()` returned, so none of them ever executed. They are removed; `src/app.js` serves them.
+- **Markup:** duplicate element ids in `index.html` (two copies of the private-chat panel) are gone. The second copy never received updates because `getElementById` always resolved to the first one. Icon-only buttons now carry `aria-label`.
