@@ -14,7 +14,7 @@ const app = read('app.js');
 assert.match(routes, /wallet\/deposit-config/);
 assert.match(routes, /router\.post\('\/wallet\/deposit',\s*verifyToken/);
 assert.doesNotMatch(routes, /nowpayments/i);
-assert.match(controller, /verifySharedDepositTransfer\(txHash, expectedAddress\)/);
+assert.match(controller, /verifySharedDepositTransfer\(txHash, expectedAddress, senderAddress\)/);
 assert.doesNotMatch(controller, /TRON_DEPOSIT_SENDER_MISMATCH/);
 assert.match(controller, /operix_shared_tron_deposit_credit_atomic/);
 assert.match(controller, /p_tx_hash: transfer\.txHash/);

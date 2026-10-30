@@ -85,17 +85,20 @@ function responseRecorder() {
     assert.equal(saved[0].feedback, '', 'rating-only evaluations should not require or persist a note');
     assert.equal(rpcCalls, 1);
 
-    const outOfSequenceResponse = responseRecorder();
-    const savedBeforeSequenceError = saved.length;
-    const rpcBeforeSequenceError = rpcCalls;
+    // Any task of the plan may be evaluated in any order: sequencing and the old 2-hour release
+    // gate were removed deliberately, so the second task must succeed without task 01 first.
+    const anyOrderResponse = responseRecorder();
+    const savedBeforeAnyOrder = saved.length;
+    const rpcBeforeAnyOrder = rpcCalls;
     completionRows = [];
     await activityController.submitDailyEvaluation({
       user: { id: 'user-1' },
       body: { taskKey: 'A2-task-02', rating: 4, selectedTag: 'الدقة' }
-    }, outOfSequenceResponse);
-    assert.equal(outOfSequenceResponse.statusCode, 409, 'paid evaluations remain sequential without requiring community completion');
-    assert.equal(saved.length, savedBeforeSequenceError, 'out-of-sequence evaluations must not be saved');
-    assert.equal(rpcCalls, rpcBeforeSequenceError, 'out-of-sequence evaluations must not call the reward RPC');
+    }, anyOrderResponse);
+    assert.equal(anyOrderResponse.statusCode, 200, 'paid evaluations are not sequential any more');
+    assert.equal(saved.length, savedBeforeAnyOrder + 1, 'a task from any position in the plan is saved');
+    assert.equal(saved.at(-1).taskKey, 'A2-task-02');
+    assert.equal(rpcCalls, rpcBeforeAnyOrder + 1, 'a task from any position in the plan earns its reward');
 
     const missingPreviousAssignmentResponse = responseRecorder();
     const originalFindOne = dataAccess.dailyTaskAssignment.findOne;
@@ -121,29 +124,28 @@ function responseRecorder() {
     assert.equal(accruedBacklogResponse.statusCode, 200, 'a task already accrued in the 2-hour release schedule can be completed immediately after its predecessor');
     assert.equal(saved.at(-1).taskKey, 'A2-task-02');
 
+    // A freshly assigned plan must not delay the tasks: there is no release window any more.
     assignmentCreatedAt = new Date(Date.now() - 60 * 60 * 1000).toISOString();
     completionRows = [{ taskKey: 'A2-task-01', createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString() }];
-    const notYetReleasedResponse = responseRecorder();
-    const savedBeforeRelease = saved.length;
-    const rpcBeforeRelease = rpcCalls;
+    const freshPlanResponse = responseRecorder();
     await activityController.submitDailyEvaluation({
       user: { id: 'user-1' },
       body: { taskKey: 'A2-task-02', rating: 3, selectedTag: 'الدقة' }
-    }, notYetReleasedResponse);
-    assert.equal(notYetReleasedResponse.statusCode, 429, 'a future task must remain locked until its plan-start release time');
-    assert.equal(saved.length, savedBeforeRelease, 'not-yet-released evaluations must not be saved');
-    assert.equal(rpcCalls, rpcBeforeRelease, 'not-yet-released evaluations must not call the reward RPC');
+    }, freshPlanResponse);
+    assert.equal(freshPlanResponse.statusCode, 200, 'tasks stay available immediately after the plan starts');
 
     assignmentCreatedAt = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
     completionRows = [];
     const noCommunityPrerequisiteResponse = responseRecorder();
+    const rpcBeforeCommunity = rpcCalls;
     await activityController.submitDailyEvaluation({
       user: { id: 'user-1' },
       body: { taskKey: 'A2-task-01', rating: 3, selectedTag: 'الدقة' }
     }, noCommunityPrerequisiteResponse);
     assert.equal(noCommunityPrerequisiteResponse.statusCode, 200, 'the first paid evaluation is immediately available without any community action');
     assert.equal(saved.at(-1).feedback, '');
-    assert.equal(rpcCalls, 4, 'successful first-visible-task completions should still call the reward RPC');
+    assert.equal(saved.at(-1).taskKey, 'A2-task-01');
+    assert.equal(rpcCalls, rpcBeforeCommunity + 1, 'every successful evaluation calls the reward RPC exactly once');
 
     const invalidResponse = responseRecorder();
     const savedBeforeInvalid = saved.length;

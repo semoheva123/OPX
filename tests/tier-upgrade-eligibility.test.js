@@ -24,12 +24,13 @@ assert.doesNotMatch(upgradeHandler, /requiredReferrals|activeReferrals|targetInd
 assert.match(upgradeHandler, /const initialActivation = !currentActivated/, 'direct selection of any tier must be treated as first activation until an account is activated');
 assert.match(upgradeHandler, /currentActivated = Boolean\(currentLevel && \([\s\S]*?user\.tierCode \|\| 'A1'[\s\S]*?totalDeposits/, 'saved non-default tiers must block repeating activation when deposit totals are zero');
 assert.match(upgradeHandler, /const upgradeCost = Number\(targetLevel\.price\)/, 'every paid upgrade must charge the full target-tier price');
-assert.match(tierRenderer, /Boolean\(currentUserData\?\.isTierActivated\)/, 'tier status must use the activation flag loaded from the profile');
+assert.match(tierRenderer, /Boolean\(currentUserData\?\.isTierActivated/, 'tier status must use the activation flag loaded from the profile');
+assert.match(tierRenderer, /currentUserData\?\.tierActivated/, 'tier status must accept the legacy activation flag name');
 assert.match(tierRenderer, /const cost = fullFeatureAccess \? 0 : isCurrent && currentActivated \? 0 : Number\(tier\.price \|\| 0\)/, 'tier cards must show the full target-tier price');
 assert.match(nextTierPanel, /const cost = Number\(next\.price \|\| 0\)/, 'the next-tier panel must show the full tier price');
 assert.match(upgradeAction, /const current = tiersData\.find\(tier => tier\.code === currentUserTier\)/, 'upgrade confirmation must retain the current tier activation check');
 assert.match(upgradeAction, /const upgradeCost = fullFeatureAccess \? 0 : Number\(target\.price \|\| 0\)/, 'the payment confirmation must use the full target-tier price');
-assert.match(upgradeAction, /Boolean\(currentUserData\?\.isTierActivated\)/, 'upgrade confirmation must respect persisted activation after reload');
+assert.match(upgradeAction, /Boolean\(current && \(currentUserData\?\.isTierActivated/, 'upgrade confirmation must respect persisted activation after reload');
 assert.match(productionMigration, /expected_upgrade_cost := target_level\.price;/, 'the production RPC must require the full target-tier price');
 assert.doesNotMatch(productionMigration, /when wallet_row\.total_deposits > 0 then greatest\(target_level\.price - coalesce\(current_level\.price, 0\), 0\)/, 'the production RPC must not subtract the current tier price');
 assert.match(fullPriceMigration, /pg_get_functiondef\(function_signature\)/, 'the focused production migration must preserve the installed function body');

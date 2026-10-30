@@ -61,6 +61,14 @@ Withdrawals are available every day of the week for every tier. Before deploying
 - Apply the database migration before deploying this application version. Existing pending withdrawal requests created before network persistence have no trustworthy network recorded and cannot be paid automatically; reject/refund them or have the user create a new request after deployment.
 - Never use production keys for testing. Monitor the payout status and transaction hash from the Finance room and fund native gas balances before approving requests.
 
+## Deposit sender policy
+
+Deposits are claimed by TxID against the shared TRC20 deposit address. The sending wallet is **never** required to match the wallet pinned for withdrawals: users may deposit from an exchange wallet, a second device, or any wallet they control. The verifier records every sender address, and the deposit is credited normally.
+
+When the sender differs from the pinned withdrawal wallet (or one transaction carries multiple senders), the credit still succeeds and an audit entry `deposit_sender_review` is written with the sender addresses, the pinned wallet, and the amount. Matching, unknown, and non-flagged deposits are written as `deposit_sender_recorded`. Review these entries from the admin console: سجل التدقيق → «إيداعات من محفظة مختلفة».
+
+Double claiming of the same transfer is still impossible: `shared_tron_deposit_events.tx_hash` is unique and the credit RPC takes an advisory lock per hash, so a second claim of an already credited TxID returns `duplicate`.
+
 ## Admin console security model
 
 - Admin authentication is a separate JWT scope plus mandatory TOTP. The session is issued as an `HttpOnly; SameSite=Lax; Secure` cookie (`operix_admin`, 8 hours) and the console never reads or stores the bearer token in web storage.
