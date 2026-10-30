@@ -1,0 +1,638 @@
+/* ============================================================================
+   OPERIX — Royal Black design layer (signed-in app)
+   ----------------------------------------------------------------------------
+   One visual layer for the product UI: near-black ink surfaces, a single
+   polished-gold accent, warm hairline borders, layered soft shadows, a strict
+   type rhythm and one consistent card material.
+
+   Rules of the layer
+   · Presentation only — no layout, no behaviour.
+   · Scoped to the app shell (#appView / #appNavBar / #liveTickerBar / #authView)
+     so the public marketing pages keep their own styling.
+   · Every selector must match real markup (verified with a DOM scan before
+     each commit) — no speculative class names, no dead CSS.
+   ========================================================================== */
+
+#appView,
+#appNavBar,
+#liveTickerBar,
+#authView {
+    --ink-950: #04060a;
+    --ink-900: #070a10;
+    --ink-850: #0a0e15;
+    --ink-800: #0d121b;
+    --ink-750: #111825;
+    --ink-700: #16202f;
+
+    --line-soft: rgba(148, 163, 184, .10);
+    --line: rgba(203, 175, 116, .16);
+    --line-strong: rgba(216, 178, 103, .34);
+
+    --gold-050: #fff8e7;
+    --gold-100: #f8ebcb;
+    --gold-200: #efd9a8;
+    --gold-300: #e3c57f;
+    --gold-400: #d8b267;
+    --gold-500: #c49a4e;
+    --gold-600: #a87f35;
+
+    --text-primary: #edf0f5;
+    --text-secondary: #b9c2ce;
+    --text-muted: #8d99a9;
+    --text-faint: #6e7a8b;
+
+    --success: #74c69d;
+    --danger: #e88898;
+    --info: #9db8d8;
+
+    --radius-sm: 12px;
+    --radius-md: 16px;
+    --radius-lg: 22px;
+    --radius-xl: 28px;
+
+    --shadow-raise: 0 1px 0 rgba(255, 255, 255, .04) inset, 0 18px 40px -22px rgba(0, 0, 0, .9);
+    --shadow-float: 0 1px 0 rgba(255, 255, 255, .05) inset, 0 28px 60px -30px rgba(0, 0, 0, .95);
+    --shadow-gold: 0 18px 38px -20px rgba(200, 155, 74, .55);
+    --ease: cubic-bezier(.22, .61, .36, 1);
+}
+
+/* ---------------------------------------------------------------------------
+   1. Scene
+   ------------------------------------------------------------------------- */
+body:has(#appView) {
+    background-color: #04060a;
+    background-image:
+        radial-gradient(1200px 620px at 88% -8%, rgba(200, 155, 74, .10), transparent 62%),
+        radial-gradient(900px 520px at 6% 104%, rgba(94, 128, 176, .07), transparent 60%),
+        linear-gradient(180deg, #04060a 0%, #060910 46%, #04060a 100%);
+    background-attachment: fixed;
+}
+
+#appView {
+    position: relative;
+    color: var(--text-secondary);
+    font-feature-settings: "kern" 1, "liga" 1;
+    text-rendering: optimizeLegibility;
+}
+
+/* A fine hairline grid keeps large empty areas from reading as flat black.
+   It sits on z-index:-1 so it never paints over content and never forces the
+   views (or the modal that is a direct child of #appView) to reposition. */
+#appView::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image:
+        linear-gradient(rgba(255, 255, 255, .012) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, .012) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: radial-gradient(120% 88% at 50% 0%, #000 18%, transparent 76%);
+    -webkit-mask-image: radial-gradient(120% 88% at 50% 0%, #000 18%, transparent 76%);
+}
+
+/* ---------------------------------------------------------------------------
+   2. Type rhythm
+   ------------------------------------------------------------------------- */
+#appView h2,
+#appView h3,
+#appView h4 {
+    color: var(--text-primary);
+    letter-spacing: -.011em;
+    text-wrap: balance;
+}
+
+#appView h2 {
+    font-weight: 900;
+    line-height: 1.45;
+}
+
+#appView h3,
+#appView h4 {
+    font-weight: 800;
+    line-height: 1.5;
+}
+
+#appView p {
+    line-height: 1.75;
+}
+
+/* One warm grey ramp instead of eight slate tones. */
+#appView .text-slate-600 {
+    color: var(--text-faint);
+}
+
+#appView .text-slate-500 {
+    color: var(--text-muted);
+}
+
+#appView .text-slate-400 {
+    color: var(--text-secondary);
+}
+
+#appView .text-slate-300 {
+    color: #d6dde7;
+}
+
+#appView .text-white {
+    color: var(--text-primary);
+}
+
+/* Accents: gold primary, one cool secondary, muted semantics. */
+#appView .text-amber-200,
+#appView .text-amber-300,
+#appView .text-amber-400 {
+    color: var(--gold-300);
+}
+
+#appView .text-cyan-200,
+#appView .text-cyan-300 {
+    color: var(--info);
+}
+
+#appView .text-emerald-300,
+#appView .text-emerald-400 {
+    color: var(--success);
+}
+
+#appView .text-rose-300,
+#appView .text-rose-400 {
+    color: var(--danger);
+}
+
+#appView .text-violet-300 {
+    color: #b7a9da;
+}
+
+/* Every figure aligns on its last digit. */
+#appView strong {
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------------------
+   3. One card material
+   ------------------------------------------------------------------------- */
+#appView .glass-card {
+    position: relative;
+    background-color: var(--ink-850);
+    background-image:
+        radial-gradient(120% 140% at 100% 0%, rgba(255, 255, 255, .035), transparent 58%),
+        linear-gradient(180deg, var(--ink-800), var(--ink-850));
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-raise);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+/* A hairline of gold along the top edge: the single "polished" signature. */
+#appView .glass-card::after {
+    content: "";
+    position: absolute;
+    inset-inline: 14%;
+    top: -1px;
+    height: 1px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, transparent, rgba(216, 178, 103, .55), transparent);
+    pointer-events: none;
+}
+
+#appView .glass-card:hover {
+    border-color: var(--line-strong);
+    box-shadow: var(--shadow-float);
+}
+
+/* Utility-drawn panels get the same hairline instead of 52 different slate borders. */
+#appView .border-slate-800,
+#appView .border-slate-800\/80,
+#appView .border-slate-700 {
+    border-color: var(--line);
+}
+
+#appView .bg-slate-950,
+#appView .bg-slate-950\/35,
+#appView .bg-slate-950\/50,
+#appView .bg-slate-950\/60,
+#appView .bg-slate-950\/70,
+#appView .bg-slate-950\/80,
+#appView .bg-slate-950\/85,
+#appView .bg-slate-900,
+#appView .bg-slate-900\/80 {
+    background-color: rgba(9, 13, 19, .72);
+}
+
+/* The headline figure of the wallet: gold leaf, not plain white. */
+#appView #lblWalletBalance {
+    background-image: linear-gradient(180deg, var(--gold-050) 0%, var(--gold-300) 52%, var(--gold-500) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    letter-spacing: -.03em;
+    filter: drop-shadow(0 12px 26px rgba(200, 155, 74, .18));
+}
+
+/* ---------------------------------------------------------------------------
+   4. Hero surfaces
+   ------------------------------------------------------------------------- */
+#appView .operix-wallet,
+#appView .home-overview {
+    background-image:
+        radial-gradient(140% 120% at 100% 0%, rgba(216, 178, 103, .16), transparent 58%),
+        linear-gradient(180deg, #101620, #080c12) !important;
+    border-color: var(--line-strong) !important;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, .06) inset, 0 30px 64px -34px rgba(0, 0, 0, .95), 0 0 0 1px rgba(216, 178, 103, .05) !important;
+}
+
+#appView .balance-summary-card {
+    background-image: linear-gradient(180deg, rgba(255, 255, 255, .028), transparent 70%);
+    background-color: rgba(9, 13, 19, .6);
+    border-color: var(--line);
+    box-shadow: var(--shadow-raise);
+}
+
+#appView .home-eyebrow {
+    color: var(--gold-300);
+    letter-spacing: .14em;
+}
+
+#appView .status-pill {
+    background-image: linear-gradient(160deg, rgba(255, 255, 255, .035), rgba(0, 0, 0, .2));
+    background-color: rgba(9, 13, 19, .6);
+    border-color: var(--line);
+}
+
+#appView .status-pill strong {
+    color: var(--text-primary);
+}
+
+#appView .home-overview-pulse {
+    border-color: var(--line);
+    background-color: rgba(9, 13, 19, .55);
+}
+
+#appView .opx-market-card {
+    border-color: var(--line);
+}
+
+#appView .task-hero {
+    background-image:
+        radial-gradient(ellipse at 100% 0%, rgba(216, 178, 103, .14), transparent 54%),
+        linear-gradient(150deg, #0f1520, #070b12) !important;
+    border-color: var(--line-strong) !important;
+}
+
+/* ---------------------------------------------------------------------------
+   4b. Per-view finishing
+   The nine views were styled one by one over time; these rules bring their
+   hand-made panels back onto the same material, gold accent and grey ramp.
+   ------------------------------------------------------------------------- */
+
+/* Home — dashboard panels */
+#appView .home-panel {
+    border-color: var(--line);
+    border-radius: var(--radius-lg);
+    background-image: linear-gradient(150deg, #0d1520, #060b12);
+    box-shadow: var(--shadow-raise);
+}
+
+#appView .home-panel:hover {
+    border-color: var(--line-strong);
+}
+
+#appView .home-overview-heading h2 {
+    letter-spacing: -.022em;
+}
+
+#appView .home-overview-mark {
+    color: #14100a;
+    background-image: linear-gradient(160deg, var(--gold-200), var(--gold-500));
+    border-color: rgba(255, 240, 205, .38);
+    box-shadow: var(--shadow-gold);
+}
+
+#appView .home-progress-track {
+    border-color: var(--line-soft);
+    background-color: rgba(2, 5, 9, .8);
+}
+
+#appView .home-progress-fill {
+    background-image: linear-gradient(90deg, var(--gold-600), var(--gold-300));
+    box-shadow: 0 0 16px rgba(216, 178, 103, .45);
+}
+
+/* Feed — the last cyan accents in the product become royal gold */
+#appView .social-feed-tabs {
+    border-color: var(--line);
+    border-radius: var(--radius-md);
+    background-image: linear-gradient(145deg, #0c131c, #060a10);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04);
+}
+
+#appView .social-feed-tab {
+    color: var(--text-muted);
+}
+
+#appView .social-feed-tab:hover {
+    color: var(--text-primary);
+    background-image: none;
+    background-color: rgba(255, 255, 255, .035);
+}
+
+#appView .social-feed-tab.social-feed-mode-active {
+    color: var(--gold-200);
+    background-image: none;
+    background-color: transparent;
+}
+
+#appView .social-floating-compose {
+    color: #1a1206;
+    border: 1px solid rgba(255, 240, 205, .42);
+    background-image: linear-gradient(160deg, var(--gold-200), var(--gold-500));
+    box-shadow: var(--shadow-gold);
+}
+
+/* Travel — the level panel under the hero */
+#appView #taskLevelPanel {
+    border-color: var(--line);
+    background-image: linear-gradient(160deg, #0c131d, #060a10);
+}
+
+/* Assistant — actions, mode chips and replies */
+#appView .ai-quick-action {
+    border-color: var(--line);
+    background-image: linear-gradient(135deg, #0d141e, #060a11);
+}
+
+#appView .ai-quick-action:hover {
+    border-color: var(--line-strong);
+    background-image: linear-gradient(135deg, rgba(216, 178, 103, .10), #070c13);
+}
+
+#appView .ai-mode-button {
+    border-color: var(--line);
+    color: var(--text-muted);
+}
+
+#appView .ai-mode-button.is-active {
+    border-color: var(--line-strong);
+    background-image: linear-gradient(120deg, rgba(216, 178, 103, .2), rgba(216, 178, 103, .07));
+    color: var(--gold-100);
+}
+
+#appView .ai-assistant-message {
+    border-color: var(--line);
+    background-image: linear-gradient(135deg, #0d1622, #060b12);
+}
+
+#appView .ai-assistant-avatar {
+    border-color: var(--line-strong);
+    background-color: rgba(216, 178, 103, .14);
+    color: var(--gold-200);
+}
+
+/* Spin — the wheel rim is the one place the gold is allowed to be loud */
+#appView .wheel-disc {
+    border-color: rgba(255, 240, 205, .7);
+    box-shadow: 0 0 0 8px rgba(216, 178, 103, .06), 0 0 44px rgba(200, 155, 74, .22),
+        0 34px 70px -32px rgba(0, 0, 0, .95), inset 0 0 0 3px rgba(28, 21, 12, .6);
+}
+
+/* Team — referral surfaces */
+#appView .team-code-card {
+    border-color: var(--line-strong);
+    background-image:
+        radial-gradient(circle at 0 0, rgba(216, 178, 103, .16), transparent 14rem),
+        linear-gradient(135deg, #101a26, #060a11);
+}
+
+#appView .referral-rewards-card {
+    border-color: var(--line-strong);
+    background-image:
+        radial-gradient(ellipse at 6% 0%, rgba(216, 178, 103, .12), transparent 36%),
+        linear-gradient(150deg, #101722, #060a11);
+}
+
+#appView .referral-reward-level {
+    border-color: var(--line);
+    background-color: rgba(6, 10, 16, .7);
+}
+
+#appView .referral-reward-level:hover {
+    border-color: var(--line-strong);
+}
+
+/* Profile — cover and stat tiles */
+#appView .social-profile-cover {
+    border-bottom-color: var(--line);
+}
+
+/* ---------------------------------------------------------------------------
+   5. Buttons
+   ------------------------------------------------------------------------- */
+#appView button,
+#appNavBar button {
+    font-family: inherit;
+    transition: background-color .18s var(--ease), border-color .18s var(--ease), box-shadow .18s var(--ease), color .18s var(--ease), transform .12s var(--ease);
+}
+
+#appView button:not(:disabled):active {
+    transform: scale(.985);
+}
+
+#appView button:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Primary: polished gold gradient with ink text. Buttons additionally get a
+   hairline of light and a warm glow; filled bars and badges stay borderless. */
+#appView .gold-gradient {
+    color: #1a1206;
+    background-image: linear-gradient(180deg, var(--gold-200) 0%, var(--gold-400) 52%, var(--gold-500) 100%);
+    font-weight: 900;
+}
+
+#appView button.gold-gradient {
+    border: 1px solid rgba(255, 240, 205, .45);
+    box-shadow: var(--shadow-gold), 0 1px 0 rgba(255, 255, 255, .55) inset;
+}
+
+#appView button.gold-gradient:not(:disabled):hover {
+    filter: brightness(1.04);
+    box-shadow: 0 22px 44px -22px rgba(200, 155, 74, .68), 0 1px 0 rgba(255, 255, 255, .6) inset;
+}
+
+#appView .gold-gradient.h-full {
+    box-shadow: 0 0 18px -6px rgba(216, 178, 103, .55);
+}
+
+/* Segmented filter: the selected segment is the only filled control. */
+#appView .task-filter-active {
+    color: #1a1206;
+    background-image: linear-gradient(180deg, var(--gold-200), var(--gold-400));
+    border-color: rgba(255, 240, 205, .4);
+    box-shadow: 0 12px 26px -16px rgba(200, 155, 74, .8);
+}
+
+/* ---------------------------------------------------------------------------
+   6. Inputs
+   ------------------------------------------------------------------------- */
+#appView input:not([type="checkbox"]):not([type="radio"]),
+#appView select,
+#appView textarea {
+    background-color: rgba(6, 10, 16, .82);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+}
+
+#appView input::placeholder,
+#appView textarea::placeholder,
+#authView input::placeholder {
+    color: var(--text-faint);
+}
+
+#appView input:not([type="checkbox"]):not([type="radio"]):focus,
+#appView select:focus,
+#appView textarea:focus {
+    outline: none;
+    border-color: var(--gold-500) !important;
+    box-shadow: 0 0 0 3px rgba(216, 178, 103, .16);
+}
+
+#appView :is(button, a, input, select, textarea):focus-visible,
+#appNavBar button:focus-visible {
+    outline: 2px solid var(--gold-400);
+    outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+   7. Progress
+   ------------------------------------------------------------------------- */
+#appView #taskProgressBar {
+    background-image: linear-gradient(90deg, var(--gold-500), var(--gold-300));
+    box-shadow: 0 0 18px -6px rgba(216, 178, 103, .6);
+}
+
+/* ---------------------------------------------------------------------------
+   8. Bottom navigation
+   ------------------------------------------------------------------------- */
+#appNavBar {
+    background-color: rgba(6, 9, 14, .96) !important;
+    background-image: linear-gradient(180deg, rgba(20, 27, 38, .55), rgba(6, 9, 14, .97)) !important;
+    border-top: 1px solid var(--line) !important;
+    box-shadow: 0 -20px 44px -28px rgba(0, 0, 0, .95), 0 1px 0 rgba(255, 255, 255, .04) inset;
+    backdrop-filter: blur(20px) saturate(120%);
+    -webkit-backdrop-filter: blur(20px) saturate(120%);
+}
+
+#appNavBar .app-nav-item {
+    position: relative;
+    color: var(--text-faint);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 14px;
+    box-shadow: none;
+}
+
+#appNavBar .app-nav-item i {
+    transition: transform .2s var(--ease), color .2s var(--ease);
+}
+
+/* Active tab: gold label, soft pool of light, two-pixel indicator. */
+#appNavBar .app-nav-item.is-active {
+    color: var(--gold-300);
+    background-image: radial-gradient(80% 130% at 50% 120%, rgba(216, 178, 103, .20), transparent 72%);
+    border-color: rgba(216, 178, 103, .22);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05);
+}
+
+#appNavBar .app-nav-item.is-active::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 50%;
+    translate: -50% 0;
+    width: 26px;
+    height: 2px;
+    border-radius: 0 0 999px 999px;
+    background-image: linear-gradient(90deg, transparent, var(--gold-300), transparent);
+    box-shadow: 0 0 14px rgba(216, 178, 103, .7);
+}
+
+#appNavBar .app-nav-item.is-active i {
+    transform: translateY(-1px) scale(1.06) !important;
+    color: var(--gold-300);
+}
+
+#appNavBar .app-nav-item.is-active span {
+    color: var(--gold-200);
+    opacity: 1;
+}
+
+#appNavBar .app-nav-item:not(.is-active):hover {
+    color: var(--text-secondary);
+}
+
+/* ---------------------------------------------------------------------------
+   9. Live ticker
+   ------------------------------------------------------------------------- */
+#liveTickerBar {
+    background-color: rgba(6, 9, 14, .9);
+    background-image: linear-gradient(180deg, rgba(18, 25, 36, .5), rgba(6, 9, 14, .9));
+    border-bottom: 1px solid var(--line);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+}
+
+/* ---------------------------------------------------------------------------
+   10. Auth screen
+   ------------------------------------------------------------------------- */
+#authView .auth-panel {
+    background-image:
+        radial-gradient(120% 120% at 100% 0%, rgba(216, 178, 103, .10), transparent 58%),
+        linear-gradient(180deg, var(--ink-800), var(--ink-900));
+    border-color: var(--line);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-float);
+}
+
+/* ---------------------------------------------------------------------------
+   11. Finish
+   ------------------------------------------------------------------------- */
+#appView ::selection {
+    background-color: rgba(216, 178, 103, .28);
+    color: var(--gold-050);
+}
+
+#appView ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+#appView ::-webkit-scrollbar-thumb {
+    background-color: rgba(216, 178, 103, .22);
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: 999px;
+}
+
+#appView ::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(216, 178, 103, .38);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #appView *,
+    #appNavBar * {
+        transition-duration: .01ms !important;
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+    }
+
+    #appView button:not(:disabled):active {
+        transform: none;
+    }
+}

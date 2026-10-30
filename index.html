@@ -71,7 +71,7 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <style>
         :root {
@@ -1400,6 +1400,7 @@
         }
 </style>
 <link rel="stylesheet" href="/styles/operix-premium.css?v=20261030-home-dashboard-refresh-1">
+<link rel="stylesheet" href="/styles/operix-royal.css?v=20261104-royal-2">
 </head>
 <body class="min-h-screen flex flex-col justify-between pb-28">
 <div class="tech-grid-bg"></div>
@@ -2379,39 +2380,39 @@
 
     <!-- 5. شريط التنقل السفلي (Bottom Navigation) -->
     <nav id="appNavBar" aria-label="التنقل الرئيسي" class="hide fixed bottom-0 left-0 right-0 bg-slate-950/90 backdrop-blur-md border-t border-slate-800 px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] flex justify-around items-center z-40 max-w-lg mx-auto">
-        <button id="nav-home" onclick="switchTab('home')" class="flex flex-col items-center flex-1 text-amber-500 transition-all">
+        <button id="nav-home" onclick="switchTab('home')" class="app-nav-item flex flex-col items-center flex-1 text-amber-500 transition-all">
             <i class="fa-solid fa-house text-base"></i>
             <span class="text-[10px] font-bold mt-1">الرئيسية</span>
         </button>
-        <button id="nav-feed" onclick="switchTab('feed')" class="flex flex-col items-center flex-1 text-slate-400 transition-all">
+        <button id="nav-feed" onclick="switchTab('feed')" class="app-nav-item flex flex-col items-center flex-1 text-slate-400 transition-all">
             <i class="fa-solid fa-comments text-base"></i>
             <span class="text-[10px] font-bold mt-1">المجتمع</span>
         </button>
-        <button id="nav-tiers" onclick="switchTab('tiers')" class="flex flex-col items-center flex-1 text-slate-400 transition-all">
+        <button id="nav-tiers" onclick="switchTab('tiers')" class="app-nav-item flex flex-col items-center flex-1 text-slate-400 transition-all">
             <i class="fa-solid fa-layer-group text-base"></i>
             <span class="text-[10px] font-bold mt-1">المستويات</span>
         </button>
-        <button id="nav-vault" onclick="switchTab('vault')" class="flex flex-col items-center flex-1 text-slate-400 transition-all">
+        <button id="nav-vault" onclick="switchTab('vault')" class="app-nav-item flex flex-col items-center flex-1 text-slate-400 transition-all">
             <i class="fa-solid fa-lock text-base"></i>
             <span class="text-[10px] font-bold mt-1">الخزنة</span>
         </button>
-        <button id="nav-travel" onclick="switchTab('travel')" class="flex flex-col items-center flex-1 text-slate-400 transition-all">
+        <button id="nav-travel" onclick="switchTab('travel')" class="app-nav-item flex flex-col items-center flex-1 text-slate-400 transition-all">
             <i class="fa-solid fa-list-check text-base"></i>
             <span class="text-[10px] font-bold mt-1">المهام</span>
         </button>
-        <button id="nav-spin" onclick="switchTab('spin')" class="flex flex-col items-center flex-1 text-slate-400 transition-all">
+        <button id="nav-spin" onclick="switchTab('spin')" class="app-nav-item flex flex-col items-center flex-1 text-slate-400 transition-all">
             <i class="fa-solid fa-dharmachakra text-base"></i>
             <span class="text-[10px] font-bold mt-1">الألعاب</span>
         </button>
-        <button id="nav-ai" onclick="switchTab('ai')" class="flex flex-col items-center flex-1 text-slate-400 transition-all">
+        <button id="nav-ai" onclick="switchTab('ai')" class="app-nav-item flex flex-col items-center flex-1 text-slate-400 transition-all">
             <i class="fa-solid fa-robot text-base"></i>
             <span class="text-[10px] font-bold mt-1">خدمة العملاء</span>
         </button>
-        <button id="nav-team" onclick="switchTab('team')" class="flex flex-col items-center flex-1 text-slate-400 transition-all">
+        <button id="nav-team" onclick="switchTab('team')" class="app-nav-item flex flex-col items-center flex-1 text-slate-400 transition-all">
             <i class="fa-solid fa-users text-base"></i>
             <span class="text-[10px] font-bold mt-1">الفريق</span>
         </button>
-        <button id="nav-profile" onclick="switchTab('profile')" class="flex flex-col items-center flex-1 text-slate-400 transition-all">
+        <button id="nav-profile" onclick="switchTab('profile')" class="app-nav-item flex flex-col items-center flex-1 text-slate-400 transition-all">
             <i class="fa-solid fa-user text-base"></i>
             <span class="text-[10px] font-bold mt-1">حسابي</span>
         </button>
